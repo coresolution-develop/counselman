@@ -1,0 +1,77 @@
+@charset "UTF-8";
+:root {
+    --primary-color: #2f425a;
+    --primary-hover-color: #293a4f;
+    --background-color: #f7f7f7;
+    --text-color: #333;
+    --secondary-text-color: #555;
+    --logout-background: #2f425a;
+    --logout-hover-background: #293a4f;
+    --orange-color: #ffa200;
+    --table-header-color: #e0e6ed;
+    --table-header-font-color: #111111;
+}
+.btn {
+	background-color: #b2b2b2;
+    color: white;
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+    margin: 5px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.newBtn, .delBtn {
+	width: 49%;
+}
+
+.listBtn {
+	height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.listBtn2 {
+	display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 140px !important;
+    margin: 5px;
+    background-color: #EDEDED;
+    color: #222;
+    font-size: 14px;
+    font-weight: 500;
+    flex: 1;
+}
+
+.btnw100 {
+	width:100%;
+}
+.btnw49 {
+	width: 49%;
+}
+.btnw20 {
+	width: 20%;
+}
+.newBtn {
+	background: #06603A;
+	color: #fff;
+}
+.delBtn {
+	background-color: #9B9B9B;
+	color: #fff;
+}
+.orderBtn {
+    width: 100%;
+    background: #06603A;
+}
+
+.btn.delBtn.setting-btn {
+	border: 1px solid #06603A;
+	color: #222;
+	background-color: #fff;
+}
+

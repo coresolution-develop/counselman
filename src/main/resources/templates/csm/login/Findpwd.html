@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta name="_csrf" th:content="${_csrf.token}" />
+    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>비밀번호변경 : SOSYGE EASY-CRM</title>
+
+    <meta property="og:title" content="상담관리시스템">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="http://csm.sosyge.net/csm/login">
+    <meta property="og:image" th:content="@{/icon/ev/core_icon_big.png}" content="/icon/ev/core_icon_big.png">
+    <meta property="og:description" content="병원상담관리시스템">
+
+    <link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+    <link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/login/login.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/spinner.css}">
+
+    <style>
+        #result {
+            color: red;
+            font-size: 14px;
+            text-align: center;
+            margin: 0 0 3px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<div class="login-container">
+    <div class="login_wrap">
+        <h2 class="login_title" align="center">비밀번호 변경</h2>
+        <form th:action="@{/findpwd/post}" method="post" onsubmit="return false;">
+            <input type="text" class="login-select" placeholder="기관코드" name="us_col_04" id="us_col_04">
+            <input type="text" placeholder="아이디" name="us_col_02" id="us_col_02">
+            <input type="text" placeholder="이름" name="us_col_12" id="us_col_12" autofocus="autofocus">
+            <div id="result"></div>
+            <input class="login_btn" type="button" value="비밀번호 변경" id="confirm">
+            <a class="pwd_btn" th:href="@{/login}">로그인</a>
+        </form>
+    </div>
+    <div class="bottom_img">
+        <div class="login_bottom" alt="하단백그라운드"></div>
+        <div class="logo_bottom">
+            <img th:src="@{/icon/ev/sosyge_logo.png}" class="logo_bottom_img" alt="하단로고">
+        </div>
+    </div>
+</div>
+
+<div id="spinner-overlay" style="display: none;">
+    <div class="spinner-container">
+        <div class="spinner"></div>
+        <p>잠시만 기다려주세요</p>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+<script th:src="@{/js/csm/login/Findpwd.js}"></script>
+</body>
+</html>

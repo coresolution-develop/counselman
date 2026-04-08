@@ -1,0 +1,519 @@
+@charset "UTF-8";
+:root {
+    --primary-color: #06603A;
+    --primary-hover-color: #06603A;
+    --background-color: #f7f7f7;
+    --text-color: #333;
+    --secondary-text-color: #555;
+    --logout-background: #2f425a;
+    --logout-hover-background: #293a4f;
+    --orange-color: #ffa200;
+    --table-header-color: #e0e6ed;
+    --table-header-font-color: #111111;
+}
+* {
+	box-sizing: border-box;
+}
+.main {
+    padding: 80px 15px 62px 15px;
+    margin-left: 145px;
+    max-width: 2560px;
+    height: 100vh;
+}
+.section {
+	border-radius: 10px;
+    background: #F9F9F9;
+    box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.10);
+    padding: 20px;
+    height: calc(100vh - 160px);
+}
+
+.section-top {
+	width: 100%;
+	height: 100%;
+}
+
+.content-top {
+	font-size: 14px;
+	background: #F9F9F9;
+	border:none;
+	margin-bottom: 10px;
+}
+.status-area {
+	width: 30%;
+}
+.content-mid {
+	height: calc(100% - 60px);
+}
+
+#table-header {
+	position: sticky;
+	top: 0;
+}
+
+.btn.delBtn.btnw100.listBtn {
+	
+}
+
+.content-bot {
+	height: 32px;
+}
+
+.content-inner {
+	display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    justify-content: space-evenly;
+	align-content: space-between;
+}
+.noneorder {
+	
+}
+
+.search-container {
+	display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.inner-top {
+	width: auto;
+}
+
+.inner-area {
+	display: flex;
+	align-items: center;
+}
+.nav-right {
+    width: 180px;
+    margin: 2px;
+    padding: 2px;
+    border: 1px solid #dddddd;
+}
+.input-name {
+	width: 60px;
+}
+
+.input-number {
+	width: 100px;
+}
+.section-mid {
+	border: none;
+	padding-right: 7px;
+}
+
+.section-mid::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.section-mid::-webkit-scrollbar-thumb {
+    background: #DADADA;
+    border-radius: 4px;
+}
+
+.section-mid::-webkit-scrollbar-track {
+    background: #F9F9F9;
+}
+
+
+table tr td, table tr th {
+	border: none;
+}
+
+thead {
+	color: #545454;
+    font-size: 17px;
+    background: #EEE;
+    height: 45px;
+    font-weight: 600;
+    border-radius: 0px 5px 5px 0px;
+}
+
+.right-border {
+    border-radius: 0px 5px 0 0px; 
+}
+
+.left-border {
+    border-radius: 5px 0 0 0; 
+}
+
+.counselRow td {
+    font-size: 15px;
+    color: #474747;
+    height: 50px;
+    font-weight: 400;
+}
+
+#myTable {
+	background: #fff;
+	width: 100%;
+    border-left: none;
+    border-right: none;
+}
+
+#myTable th {
+	white-space: nowrap; /* 텍스트 줄바꿈 방지 */
+    height: inherit;
+    padding: 15px;
+    background: #eee;
+	color: #545454;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+#myTable td {
+	white-space: nowrap; /* 텍스트 줄바꿈 방지 */
+    height: 45px;
+    border: 1px solid #eee;
+    padding: 11px;
+    background: #fff;
+	color: #474747;
+    font-size: 12px;
+    font-weight: 400;
+}
+
+
+.inner-content{
+	border: 1px solid #eee;
+}
+.content-mobile {
+	display: none;
+}
+.inner-area .input-number, .inner-area .input-name {
+	display: none !important;
+}
+.inner-area select, .inner-area .input-name, .inner-area .input-number, .inner-area,
+#setting, .search-mobile{
+    border-radius: 5px;
+    border: 1px solid #DBDBDB;
+    font-size: 16px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 5px;
+}
+
+.inner-area select {
+	appearance: none;
+    background-image: url("../../../icon/ev/arrow-icon.png");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 9px;
+    padding: 8px 40px 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 120px;
+	color: #777;
+	font-weight: 400;
+	font-size: 12px;
+}
+
+.search-mobile {
+	background-image: url("../../../icon/ev/search-icon.png");
+    background-repeat: no-repeat;
+    background-position: left 12px center;
+    background-size: 12px;
+	width: 250px;
+	padding : 0 35px !important;
+	color: #777;
+	font-weight: 400;
+	font-size: 12px;
+}
+
+.btn.search-box.listBtn.btnw100 {
+	width: 120px;
+	background: #06603A;
+	color: #fff;
+	font-size: 14px;
+	font-weight: 500;
+}
+
+.inner-area {
+	border:none;
+	margin: 0;
+}
+
+#setting {
+	border: none;
+	width: 26px;
+    height: 26px;
+}
+
+.search-text, .input-number, .input-name {
+	display: none;
+}
+.search-box {
+	background: #06603A;
+	color: #fff!important;
+    min-width: 52px;
+}
+
+
+/* 페이징 번호 */
+.pagination {
+	display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 60px 0 30px 0;
+    gap: 8px;
+    position: absolute;
+    width: calc(100vw - 225px);
+    bottom: calc(0vh + 70px);
+}
+
+.pagination a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 28px;
+    font-size: 10px;
+    font-weight: 300;
+    background: #fff;
+    color: #474747;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: none;
+    text-align: center;
+    width: 28px;
+}
+
+.pagination-list {
+    display: flex;
+    gap: 5px;
+}
+
+.pagination .page-numbers {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 300;
+    background-color: #fff;
+    border: 1px solid #eee;
+    color: #474747;
+}
+
+.pagination .page-numbers.active a{
+    background-color: #06603A !important;
+    color: white !important;
+}
+
+/* 입원완료 */
+.counselRow.bg-admitted {
+    background: #F2FCEF !important;
+}
+
+/* 입원예약 */
+.counselRow.bg-color {
+	background: #FFF4EF!important;
+}
+
+/* BC */
+.counselRow.bg-bc td {
+/*     background: #CAF1E7 !important; */
+    color: #CD1039 !important;
+}
+/* 잠재고객 */
+.counselRow.bg-abc {
+    background: #F5F2FF !important;
+}
+
+.counselRow td {
+    background: inherit !important; /* 하위 요소 상속 */
+}
+.counselRow.selected-row {
+   background-color: #f0f8ff !important;  /* 원하는 배경색으로 변경 */
+}
+.counselRow.selected-row * {
+   background-color: #f0f8ff !important;  /* 원하는 배경색으로 변경 */
+}
+
+.input-wrapper input[type="checkbox"], .input-wrapper input[type="radio"] {
+    margin-right: 5px;
+}
+
+ input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    width: 10px;
+    height: 10px;
+    margin-right: 8px;
+    border: 1px solid #4A4A4A;
+    border-radius: 2px;
+    background-color: #fff;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+ input[type="checkbox"]:checked {
+    background-color: #346523;
+    border-color: #346523;
+    background-image: url("../../../icon/ev/check-icon.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 7px 7px;
+}
+
+ input[type="checkbox"]:checked::after {
+    font-size: 11px;
+    display: block;
+    text-align: center;
+    line-height: 14px;
+}
+.limited-text {
+    max-width: 400px; /* 최대 너비 제한 */
+    white-space: nowrap; /* 한 줄로 유지 */
+    overflow: hidden; /* 넘치는 부분 숨김 */
+    text-overflow: ellipsis; /* 말줄임표(...) 추가 */
+}
+
+.text-container {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+@media screen and (max-width: 720px){
+	.nav_section {
+		display: none !important;
+	}
+	.main {
+        left: 0;
+        width: 100%;
+        background: linear-gradient(to right, rgba(26, 44, 66, 1) 0%, rgba(29, 57, 93, 1) 100%);
+        height: auto;
+	}
+	.section {
+		width: 100%;
+        background: #fff;
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        padding: 30px 30px 50px 30px;
+        height: 100%;
+	}
+	.content-top {
+        background: #fff;
+        border: none;
+	}
+	.content-inner {
+		
+    flex-wrap: nowrap;
+	}
+	.inner-top {
+	
+	}
+	.inner-bot {
+	
+	}
+	.search-text, .input-number, .input-name {
+		display: none !important;
+	}
+	.inner-area select {
+        border-radius: 5px;
+        background: #fff;
+        border: 1px solid #eaeaea;
+        padding: 12px 12px 12px 14px !important;
+        font-size: 16px;
+        width: 100%;
+        height: 46px;
+    }
+	.search-mobile {
+		display: inline-block;
+		border-radius: 5px;
+	    background: #fff;
+	    border: 1px solid #eaeaea;
+	    padding: 12px 12px 12px 14px !important;
+	    font-size: 16px;
+        width: 100%;
+	}
+	.content-mobile {
+		display: inline-block;
+		color: var(--table-header-color);
+        width: 100%;
+        font-size: 16px;
+	}
+	.content-mid {
+		margin-top: 50px;
+	}
+	.search-box{
+		display: flex !important;
+        min-width: 30px !important;
+        margin: 5px !important;
+        padding: 8px 10px !important;
+        background-color: var(--primary-color) !important;
+        color: white !important;
+        width: 60px !important;
+        height: 46px !important;
+        cursor: pointer;
+        justify-content: center;
+        align-items: center;
+	}
+	.inner-area .seaarch-box, .inner-area .search-mobile, .inner-area select{
+		margin: 5px;
+	}
+	.section-mid{
+		display: none;
+	}
+	.mobile-list {
+		border: 1px solid #ccc;
+        border-left: unset;
+        border-right: unset;
+        display: block;
+	}
+	.mobile-tr {
+		border-bottom: 1px solid #ddd;
+	}
+	.mobile-td {
+		border: none;
+	    border-bottom: 1px solid #eee;
+	    white-space: normal;
+	    text-align: left;
+	    padding: 20px 12px;
+	    display: flex;
+	}
+	.content-mobile ht:before {
+        position: absolute;
+        left: 6px;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        text-align: left;
+        font-weight: bold;
+	}
+	.mobile-name {
+		width: 130px;
+		font-weight: bold;
+        display: flex;
+        align-items: center;
+	}
+	.detail {
+        display: flex !important;
+        min-width: 30px !important;
+        padding: 8px 10px !important;
+        background-color: var(--orange-color);
+        color: white !important;
+        width: 86px !important;
+        height: 46px !important;
+        border-radius: 5px;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+	}
+	#myTable {
+	
+	}
+	
+}
+
+@media screen and (max-width: 650px) {
+
+}

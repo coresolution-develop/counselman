@@ -1,0 +1,124 @@
+@charset "UTF-8";
+@import url('https://hangeul.pstatic.net/hangeul_static/css/nanum-square-neo.css');
+
+/* 색상 스키마를 위한 CSS 변수 */
+:root {
+    --primary-color: #2f425a; /* 기본 색상 */
+    --primary-hover-color: #293a4f ; /* 호버 시 색상 */
+    --background-color: #f7f7f7; /* 배경 색상 */
+    --text-color: #333; /* 텍스트 색상 */
+    --secondary-text-color: #555; /* 보조 텍스트 색상 */
+    --logout-background: #2f425a; /* 로그아웃 버튼 배경 색상 */
+    --logout-hover-background: #293a4f; /* 로그아웃 버튼 호버 색상 */
+}
+
+body {
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+	font-family: 'NanumSquare', sans-serif;
+}
+
+button {
+    padding: 10px 20px;
+    margin: 10px;
+    font-size: 16px; /* 기본 폰트 크기 */
+    color: white;
+    background-color: var(--primary-color);
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    width: 100%; /* 모든 버튼은 기본적으로 폭 100% */
+}
+
+button:hover {
+    background-color: var(--primary-hover-color);
+}
+
+.login_bottom {
+	display: none;
+}
+
+.logo_bottom{
+	display: none;
+}
+
+.logo_bottom_img{
+	display: none;
+}
+
+.container {
+	width: 90%;
+	max-width: 600px;
+	margin: 40px auto;
+	border-radius: 10px;
+	padding: 30px;
+	text-align: center;
+	color: #2f2f2f;
+}
+
+.container p{
+	text-align: center;
+}
+.container .barcode-scan {
+	display: flex;
+	justify-content: center;
+}
+.container .barcode-scan button{
+	width: 50%;
+}
+
+@media (min-width: 601px) {
+}
+
+.title, .username, .logout-button {
+    font-weight: 600; /* 공통 글꼴 두께 */
+    color: var(--text-color); /* 공통 텍스트 색상 */
+}
+
+.title {
+    font-size: 1.8em; /* 타이틀 특화 폰트 크기 */
+}
+
+.username {
+    margin-right: 10px;
+    font-size: 1em;
+    color: var(--secondary-text-color); /* 사용자 이름에만 적용되는 색상 */
+}
+
+
+
+@media screen and (max-width: 720px){
+	body {overflow: hidden; background: linear-gradient(to right, rgba(26, 44, 66, 1) 0%, rgba(29, 57, 93, 1) 100%);}
+	main {margin-left:0 !important; display:flex; justify-content: center;}
+	button {width:90%;}
+	.nav_section{display:none !important;}
+	.container { background:none; box-shadow:none; }
+	.container p{text-align: center; color: #fff; font-size: 20px;}
+	.login-container{border-radius:0; height:auto;; width:100%; margin-top:-100px; background:none; box-shadow:none; }
+	.login_wrap {padding:0 25px; width:100%; box-sizing: border-box;}
+	.login_title{padding-bottom:10px;}
+	.bottom_img{position: fixed; bottom:0; width: 100%}
+	.login_bottom {border-radius: 0;}
+	.hospital_choose p{padding:10px;}
+	.drop-down .selected a{line-height:50px;}
+	input[type="text"], input[type="password"] {
+		padding: 15px;
+	}
+	input[type="submit"] {
+		padding: 12px;
+	}
+	input[type="radio"] + label {
+		padding-top: 1px;
+		font-size: 16px;
+	}
+	#barcode-reader{background: #fff;}
+	.login_bottom {width:100%; display: block; position: absolute; bottom: 0;}
+	.logo_bottom{left: 50%; transform: translateX(-50%); position: absolute; display: flex; justify-content: center; bottom: 20px;}
+	.logo_bottom_img{display: block; width: 50%}
+}
+
+

@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta name="app-context-path" th:content="@{/}" />
+    <meta name="_csrf" th:content="${_csrf.token}" />
+    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>입원상담(모바일) : SOSYGE EASY-CRM</title>
+
+    <link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+    <link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+
+    <link rel="stylesheet" th:href="@{/css/reset.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/style.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/spinner.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/counsel/newMobile.css}">
+</head>
+<body>
+<div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
+<div th:replace="~{csm/Include/layout :: nav_section2('new', ${endVar}, ${st}, ${kw})}"></div>
+
+<div class="main mobile-main">
+    <div class="mobile-card">
+        <div class="mobile-card-header">
+            <h1 th:text="${cs_idx != null ? '상담 조회/수정' : '신규 상담 등록'}">상담 조회/수정</h1>
+            <p>모바일 간편 입력: 기본항목, 보호자정보, 상담기록만 수정합니다.</p>
+        </div>
+
+        <form id="mobileCounselForm"
+              th:object="${csData}"
+              th:action="${cs_idx} != null ? @{/counselupdate/{id}(id=${cs_idx})} : @{/counsel}"
+              method="post"
+              autocomplete="off">
+
+            <input type="hidden" name="cs_idx" th:value="${cs_idx}">
+            <input type="hidden" id="inst" name="inst" th:value="${inst}"/>
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+            <input type="hidden" id="audio_temp_key" name="audio_temp_key">
+            <input type="hidden" id="file_temp_key" name="file_temp_key">
+            <input type="file" id="audioFileInput" accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac,.ac3" style="display:none;">
+            <input type="file" id="counselFileInput" style="display:none;">
+
+            <!-- 모바일 폼에서 편집하지 않는 컬럼은 기존값 유지 -->
+            <input type="hidden" name="cs_col_06" th:value="${csData.cs_col_06}">
+            <input type="hidden" name="cs_col_07" th:value="${csData.cs_col_07}">
+            <input type="hidden" name="cs_col_08" th:value="${csData.cs_col_08}">
+            <input type="hidden" name="cs_col_09" th:value="${csData.cs_col_09}">
+            <input type="hidden" name="cs_col_10" th:value="${csData.cs_col_10}">
+            <input type="hidden" name="cs_col_12" th:value="${csData.cs_col_12}">
+            <input type="hidden" name="cs_col_20" th:value="${csData.cs_col_20}">
+            <input type="hidden" name="cs_col_21" th:value="${csData.cs_col_21}">
+            <input type="hidden" name="cs_col_22" th:value="${csData.cs_col_22}">
+            <input type="hidden" name="cs_col_23" th:value="${csData.cs_col_23}">
+            <input type="hidden" name="cs_col_24" th:value="${csData.cs_col_24}">
+            <input type="hidden" name="cs_col_25" th:value="${csData.cs_col_25}">
+            <input type="hidden" name="cs_col_26" th:value="${csData.cs_col_26}">
+            <input type="hidden" name="cs_col_27" th:value="${csData.cs_col_27}">
+            <input type="hidden" name="cs_col_28" th:value="${csData.cs_col_28}">
+            <input type="hidden" name="cs_col_29" th:value="${csData.cs_col_29}">
+            <input type="hidden" name="cs_col_30" th:value="${csData.cs_col_30}">
+            <input type="hidden" name="cs_col_31" th:value="${csData.cs_col_31}">
+            <input type="hidden" name="cs_col_33" th:value="${csData.cs_col_33}">
+            <input type="hidden" name="cs_col_34"
+                   th:value="${!#strings.isEmpty(csData.cs_col_34) ? csData.cs_col_34 : (info != null ? info.us_col_05 : '')}">
+            <input type="hidden" name="cs_col_35" th:value="${csData.cs_col_35}">
+            <input type="hidden" name="cs_col_37" th:value="${csData.cs_col_37}">
+            <input type="hidden" name="cs_col_38" th:value="${csData.cs_col_38}">
+            <input type="hidden" name="cs_col_39" th:value="${csData.cs_col_39}">
+            <input type="hidden" name="cs_col_40" th:value="${csData.cs_col_40}">
+            <input type="hidden" name="cs_col_41" th:value="${csData.cs_col_41}">
+            <input type="hidden" name="cs_col_42" th:value="${csData.cs_col_42}">
+
+            <section class="block">
+                <h2>상담 기본 항목</h2>
+                <div class="field">
+                    <label for="cs_col_01">환자명</label>
+                    <input type="text" id="cs_col_01" name="cs_col_01" th:value="${csData.cs_col_01}">
+                </div>
+                <div class="field-grid">
+                    <div class="field">
+                        <label for="cs_col_02">성별</label>
+                        <select id="cs_col_02" name="cs_col_02">
+                            <option value="">선택하세요</option>
+                            <option value="남성" th:selected="${csData.cs_col_02} == '남성'">남성</option>
+                            <option value="여성" th:selected="${csData.cs_col_02} == '여성'">여성</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="cs_col_04">나이(만)</label>
+                        <input type="text" id="cs_col_04" name="cs_col_04" th:value="${csData.cs_col_04}">
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="cs_col_03">생년월일</label>
+                    <input type="text" id="cs_col_03" name="cs_col_03" maxlength="10" placeholder="YYYY-MM-DD"
+                           th:value="${csData.cs_col_03}">
+                </div>
+                <div class="field">
+                    <label for="cs_col_05">보험유형</label>
+                    <select name="cs_col_05" id="cs_col_05">
+                        <option value="">선택하세요</option>
+                        <option value="건강보험" th:selected="${csData.cs_col_05}=='건강보험'">건강보험</option>
+                        <option value="건강보험(차상위1종)" th:selected="${csData.cs_col_05}=='건강보험(차상위1종)'">건강보험(차상위1종)</option>
+                        <option value="건강보험(차상위2종)" th:selected="${csData.cs_col_05}=='건강보험(차상위2종)'">건강보험(차상위2종)</option>
+                        <option value="건강보혐(차상위2종장애)" th:selected="${csData.cs_col_05}=='건강보혐(차상위2종장애)'">건강보혐(차상위2종장애)</option>
+                        <option value="의료급여1종" th:selected="${csData.cs_col_05}=='의료급여1종'">의료급여1종</option>
+                        <option value="의료급여2종" th:selected="${csData.cs_col_05}=='의료급여2종'">의료급여2종</option>
+                        <option value="의료급여2종장애" th:selected="${csData.cs_col_05}=='의료급여2종장애'">의료급여2종장애</option>
+                        <option value="자보" th:selected="${csData.cs_col_05}=='자보'">자보</option>
+                        <option value="산재" th:selected="${csData.cs_col_05}=='산재'">산재</option>
+                        <option value="산정특례(암)5%" th:selected="${csData.cs_col_05}=='산정특례(암)5%'">산정특례(암)5%</option>
+                        <option value="산정특례10%" th:selected="${csData.cs_col_05}=='산정특례10%'">산정특례10%</option>
+                    </select>
+                </div>
+            </section>
+
+            <section class="block">
+                <div class="block-header">
+                    <h2>보호자 정보</h2>
+                    <button type="button" id="addGuardianBtn" class="mini-btn">추가</button>
+                </div>
+                <div id="guardianContainer">
+                    <th:block th:if="${guardians == null or #lists.isEmpty(guardians)}">
+                        <div class="guardian-entry">
+                            <div class="field-grid">
+                                <div class="field">
+                                    <label>보호자명</label>
+                                    <input type="text" name="cs_col_13[]">
+                                </div>
+                                <div class="field">
+                                    <label>관계</label>
+                                    <input type="text" name="cs_col_14[]">
+                                </div>
+                            </div>
+                            <div class="field guardian-phone-row">
+                                <label>연락처</label>
+                                <div class="inline-with-btn">
+                                    <input type="text" name="cs_col_15[]" class="guardian-phone" maxlength="13">
+                                    <button type="button" class="mini-btn remove-guardian">삭제</button>
+                                </div>
+                            </div>
+                        </div>
+                    </th:block>
+
+                    <th:block th:if="${guardians != null and !#lists.isEmpty(guardians)}">
+                        <div class="guardian-entry" th:each="guardian : ${guardians}">
+                            <div class="field-grid">
+                                <div class="field">
+                                    <label>보호자명</label>
+                                    <input type="text" name="cs_col_13[]" th:value="${guardian.name}">
+                                </div>
+                                <div class="field">
+                                    <label>관계</label>
+                                    <input type="text" name="cs_col_14[]" th:value="${guardian.relationship}">
+                                </div>
+                            </div>
+                            <div class="field guardian-phone-row">
+                                <label>연락처</label>
+                                <div class="inline-with-btn">
+                                    <input type="text" name="cs_col_15[]" class="guardian-phone" maxlength="13"
+                                           th:value="${guardian.contact_number}">
+                                    <button type="button" class="mini-btn remove-guardian">삭제</button>
+                                </div>
+                            </div>
+                        </div>
+                    </th:block>
+                </div>
+            </section>
+
+            <section class="block">
+                <h2>상담일지 커스텀 항목</h2>
+                <div class="mobile-category-container">
+                    <div class="mobile-category-group"
+                         th:each="c1Wrap : ${categoryData}"
+                         th:with="c1=${c1Wrap.category1}">
+                        <h3 class="mobile-category-title" th:text="${c1.cc_col_02}">카테고리</h3>
+                        <div class="mobile-subcategory-list">
+                            <th:block th:each="c2Wrap : ${c1Wrap.subcategories}"
+                                      th:with="
+                                        c2=${c2Wrap.category2},
+                                        fieldKey=${'field_' + c1.cc_col_01 + '_' + c2.cc_col_01},
+                                        chk=${c2.cc_col_04 == 1},
+                                        rad=${c2.cc_col_05 == 1},
+                                        txt=${c2.cc_col_06 == 1},
+                                        sel=${c2.cc_col_07 == 1},
+                                        type=${
+                                          chk and !rad and !txt and !sel ? 'checkbox_only' :
+                                          rad and !chk and !txt and !sel ? 'radio_only' :
+                                          sel and !chk and !rad and !txt ? 'select_only' :
+                                          txt and !chk and !rad and !sel ? 'text_only' :
+                                          chk and txt and !rad and !sel ? 'checkbox_text' :
+                                          chk and sel and !rad and !txt ? 'checkbox_select' :
+                                          rad and txt and !chk and !sel ? 'radio_text' :
+                                          rad and sel and !chk and !txt ? 'radio_select' :
+                                          chk and txt and sel and !rad ? 'checkbox_select_text' :
+                                          rad and txt and sel and !chk ? 'radio_select_text' : null
+                                        },
+                                        opts=${c2Wrap.options}">
+
+                                <div th:if="${type == 'checkbox_only'}" class="custom-input-row">
+                                    <label class="check-label">
+                                        <input type="checkbox"
+                                               th:name="|${fieldKey}_checkbox|"
+                                               th:value="${c2.cc_col_02}"
+                                               th:checked="${valueMap[fieldKey + '_checkbox'] != null}"
+                                               th:attr="data-field-base=${fieldKey},data-label=${c2.cc_col_02}">
+                                        <span th:text="${c2.cc_col_02}">항목</span>
+                                    </label>
+                                </div>
+
+                                <div th:if="${type == 'radio_only'}" class="custom-input-row">
+                                    <label class="check-label">
+                                        <th:block th:with="rdGroup=${'field_' + c1.cc_col_01 + '_radio'}">
+                                            <input type="radio"
+                                                   th:name="${rdGroup}"
+                                                   th:value="${c2.cc_col_01}"
+                                                   th:checked="${valueMap[fieldKey + '_radio'] != null}"
+                                                   th:attr="data-field-base=${fieldKey},data-label=${c2.cc_col_02}">
+                                        </th:block>
+                                        <span th:text="${c2.cc_col_02}">항목</span>
+                                    </label>
+                                </div>
+
+                                <div th:if="${type == 'select_only'}" class="custom-input-row">
+                                    <label class="custom-input-label" th:text="${c2.cc_col_02}">항목</label>
+                                    <select th:if="${opts != null and !#lists.isEmpty(opts)}"
+                                            th:name="|${fieldKey}_select|"
+                                            th:attr="data-field-base=${fieldKey},data-label=${c2.cc_col_02}">
+                                        <option value="">선택하세요</option>
+                                        <th:block th:each="opt : ${opts}"
+                                                  th:with="label=${#strings.isEmpty(opt.cc_col_03AsString) ? opt.cc_col_02 : opt.cc_col_03AsString}">
+                                            <option th:if="${!#strings.isEmpty(label) and #strings.trim(label) != #strings.trim(c2.cc_col_02)}"
+                                                    th:value="${label}"
+                                                    th:text="${label}"
+                                                    th:selected="${valueMap[fieldKey + '_select'] == label}">
+                                            </option>
+                                        </th:block>
+                                    </select>
+                                </div>
+
+                                <div th:if="${type == 'text_only'}" class="custom-input-row">
+                                    <label class="custom-input-label" th:text="${c2.cc_col_02}">항목</label>
+                                    <input type="text"
+                                           th:name="|${fieldKey}_text|"
+                                           th:value="${valueMap[fieldKey + '_text']}"
+                                           th:attr="data-field-base=${fieldKey},data-label=${c2.cc_col_02}">
+                                </div>
+
+                                <div th:if="${type == 'checkbox_select'}" class="custom-input-row">
+                                    <label class="check-label">
+                                        <input type="checkbox"
+                                               th:name="|${fieldKey}_checkbox|"
+                                               th:value="${c2.cc_col_02}"
+                                               th:checked="${valueMap[fieldKey + '_checkbox'] != null}"
+                                               th:attr="data-field-base=${fieldKey},data-label=${c2.cc_col_02}">
+                                        <span th:text="${c2.cc_col_02}">항목</span>
+                                    </label>
+                                </div>
+                                <div th:if="${type == 'checkbox_select' and opts != null and !#lists.isEmpty(opts)}" class="custom-input-row custom-input-row-indent">
+                                    <select th:name="|${fieldKey}_select|"
+                                            th:attr="data-field-base=${fieldKey},data-label=${c2.cc_col_02}">
+                                        <option value="">선택하세요</option>
+                                        <th:block th:each="opt : ${opts}"
+                                                  th:with="label=${#strings.isEmpty(opt.cc_col_03AsString) ? opt.cc_col_02 : opt.cc_col_03AsString}">
+                                            <option th:if="${!#strings.isEmpty(label) and #strings.trim(label) != #strings.trim(c2.cc_col_02)}"
+                                                    th:value="${label}"
+                                                    th:text="${label}"
+                                                    th:selected="${valueMap[fieldKey + '_select'] == label}">
+                                            </option>
+                                        </th:block>
+                                    </select>
+                                </div>
+
+                                <div th:if="${type == 'radio_select'}" class="custom-input-row">
+                                    <label class="check-label">
+                                        <th:block th:with="rdGroup=${'field_' + c1.cc_col_01 + '_radio'}">
+                                            <input type="radio"
+                                                   th:name="${rdGroup}"
+                                                   th:value="${c2.cc_col_01}"
+                                                   th:checked="${valueMap[fieldKey + '_radio'] != null}"
+                                                   th:attr="data-field-base=${fieldKey},data-label=${c2.cc_col_02}">
+                                        </th:block>
+                                        <span th:text="${c2.cc_col_02}">항목</span>
+                                    </label>
+                                </div>
+                                <div th:if="${type == 'radio_select' and opts != null and !#lists.isEmpty(opts)}" class="custom-input-row custom-input-row-indent">
+                                    <select th:name="|${fieldKey}_select|"
+                                            th:attr="data-field-base=${fieldKey},data-label=${c2.cc_col_02}">
+                                        <option value="">선택하세요</option>
+                                        <th:block th:each="opt : ${opts}"
+                                                  th:with="label=${#strings.isEmpty(opt.cc_col_03AsString) ? opt.cc_col_02 : opt.cc_col_03AsString}">
+                                            <option th:if="${!#strings.isEmpty(label) and #strings.trim(label) != #strings.trim(c2.cc_col_02)}"
+                                                    th:value="${label}"
+                                                    th:text="${label}"
+                                                    th:selected="${valueMap[fieldKey + '_select'] == label}">
+                                            </option>
+                                        </th:block>
+                                    </select>
+                                </div>
+
+                                <div th:if="${type == 'checkbox_text'}" class="custom-input-row">
+                                    <label class="check-label">
+                                        <input type="checkbox"
+                                               th:name="|${fieldKey}_checkbox|"
+                                               th:value="${c2.cc_col_02}"
+                                               th:checked="${valueMap[fieldKey + '_checkbox'] != null}"
+                                               th:attr="data-field-base=${fieldKey},data-label=${c2.cc_col_02}">
+                                        <span th:text="${c2.cc_col_02}">항목</span>
+                                    </label>
+                                </div>
+                                <div th:if="${type == 'checkbox_text'}" class="custom-input-row custom-input-row-indent">
+                                    <input type="text"
+                                           th:name="|${fieldKey}_text|"
+                                           th:value="${valueMap[fieldKey + '_text']}"
+                                           th:attr="data-field-base=${fieldKey},data-label=${c2.cc_col_02}">
+                                </div>
+
+                                <div th:if="${type == 'radio_text'}" class="custom-input-row">
+                                    <label class="check-label">
+                                        <th:block th:with="rdGroup=${'field_' + c1.cc_col_01 + '_radio'}">
+                                            <input type="radio"
+                                                   th:name="${rdGroup}"
+                                                   th:value="${c2.cc_col_01}"
+                                                   th:checked="${valueMap[fieldKey + '_radio'] != null}"
+                                                   th:attr="data-field-base=${fieldKey},data-label=${c2.cc_col_02}">
+                                        </th:block>
+                                        <span th:text="${c2.cc_col_02}">항목</span>
+                                    </label>
+                                </div>
+                                <div th:if="${type == 'radio_text'}" class="custom-input-row custom-input-row-indent">
+                                    <input type="text"
+                                           th:name="|${fieldKey}_text|"
+                                           th:value="${valueMap[fieldKey + '_text']}"
+                                           th:attr="data-field-base=${fieldKey},data-label=${c2.cc_col_02}">
+                                </div>
+
+                                <div th:if="${type == 'checkbox_select_text'}" class="custom-input-row">
+                                    <label class="check-label">
+                                        <input type="checkbox"
+                                               th:name="|${fieldKey}_checkbox|"
+                                               th:value="${c2.cc_col_02}"
+                                               th:checked="${valueMap[fieldKey + '_checkbox'] != null}"
+                                               th:attr="data-field-base=${fieldKey},data-label=${c2.cc_col_02}">
+                                        <span th:text="${c2.cc_col_02}">항목</span>
+                                    </label>
+                                </div>
+                                <div th:if="${type == 'checkbox_select_text' and opts != null and !#lists.isEmpty(opts)}" class="custom-input-row custom-input-row-indent">
+                                    <select th:name="|${fieldKey}_select|"
+                                            th:attr="data-field-base=${fieldKey},data-label=${c2.cc_col_02}">
+                                        <option value="">선택하세요</option>
+                                        <th:block th:each="opt : ${opts}"
+                                                  th:with="label=${#strings.isEmpty(opt.cc_col_03AsString) ? opt.cc_col_02 : opt.cc_col_03AsString}">
+                                            <option th:if="${!#strings.isEmpty(label) and #strings.trim(label) != #strings.trim(c2.cc_col_02)}"
+                                                    th:value="${label}"
+                                                    th:text="${label}"
+                                                    th:selected="${valueMap[fieldKey + '_select'] == label}">
+                                            </option>
+                                        </th:block>
+                                    </select>
+                                </div>
+                                <div th:if="${type == 'checkbox_select_text'}" class="custom-input-row custom-input-row-indent">
+                                    <input type="text"
+                                           th:name="|${fieldKey}_text|"
+                                           th:value="${valueMap[fieldKey + '_text']}"
+                                           th:attr="data-field-base=${fieldKey},data-label=${c2.cc_col_02}">
+                                </div>
+
+                                <div th:if="${type == 'radio_select_text'}" class="custom-input-row">
+                                    <label class="check-label">
+                                        <th:block th:with="rdGroup=${'field_' + c1.cc_col_01 + '_radio'}">
+                                            <input type="radio"
+                                                   th:name="${rdGroup}"
+                                                   th:value="${c2.cc_col_01}"
+                                                   th:checked="${valueMap[fieldKey + '_radio'] != null}"
+                                                   th:attr="data-field-base=${fieldKey},data-label=${c2.cc_col_02}">
+                                        </th:block>
+                                        <span th:text="${c2.cc_col_02}">항목</span>
+                                    </label>
+                                </div>
+                                <div th:if="${type == 'radio_select_text' and opts != null and !#lists.isEmpty(opts)}" class="custom-input-row custom-input-row-indent">
+                                    <select th:name="|${fieldKey}_select|"
+                                            th:attr="data-field-base=${fieldKey},data-label=${c2.cc_col_02}">
+                                        <option value="">선택하세요</option>
+                                        <th:block th:each="opt : ${opts}"
+                                                  th:with="label=${#strings.isEmpty(opt.cc_col_03AsString) ? opt.cc_col_02 : opt.cc_col_03AsString}">
+                                            <option th:if="${!#strings.isEmpty(label) and #strings.trim(label) != #strings.trim(c2.cc_col_02)}"
+                                                    th:value="${label}"
+                                                    th:text="${label}"
+                                                    th:selected="${valueMap[fieldKey + '_select'] == label}">
+                                            </option>
+                                        </th:block>
+                                    </select>
+                                </div>
+                                <div th:if="${type == 'radio_select_text'}" class="custom-input-row custom-input-row-indent">
+                                    <input type="text"
+                                           th:name="|${fieldKey}_text|"
+                                           th:value="${valueMap[fieldKey + '_text']}"
+                                           th:attr="data-field-base=${fieldKey},data-label=${c2.cc_col_02}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="block">
+                <h2>상담 기록</h2>
+                <div class="field-grid">
+                    <div class="field">
+                        <label for="cs_col_16">상담일자</label>
+                        <input type="text" id="cs_col_16" name="cs_col_16" maxlength="10" placeholder="YYYY-MM-DD"
+                               th:value="${csData.cs_col_16}">
+                    </div>
+                    <div class="field">
+                        <label for="cs_col_17">상담자</label>
+                        <input type="text" id="cs_col_17" name="cs_col_17"
+                               th:value="${!#strings.isEmpty(csData?.cs_col_17) ? csData.cs_col_17 : (info != null ? info.us_col_12 : '')}">
+                    </div>
+                </div>
+                <div class="field-grid">
+                    <div class="field">
+                        <label for="cs_col_18">방법</label>
+                        <select id="cs_col_18" name="cs_col_18">
+                            <option value="">선택하세요</option>
+                            <option value="전화" th:selected="${csData.cs_col_18}=='전화'">전화</option>
+                            <option value="방문" th:selected="${csData.cs_col_18}=='방문'">방문</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="cs_col_19">결과</label>
+                        <select id="cs_col_19" name="cs_col_19">
+                            <option value="">선택하세요</option>
+                            <option value="입원완료" th:selected="${csData.cs_col_19}=='입원완료'">입원완료</option>
+                            <option value="입원예약" th:selected="${csData.cs_col_19}=='입원예약'">입원예약</option>
+                            <option value="입원안함" th:selected="${csData.cs_col_19}=='입원안함'">입원안함</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="cs_col_11">현상태</label>
+                    <textarea id="cs_col_11" name="cs_col_11" rows="3" th:text="${csData.cs_col_11}"></textarea>
+                </div>
+                <div class="field">
+                    <label for="cs_col_32">상담 내용</label>
+                    <audio id="recordPreview" controls class="record-preview" style="display:none;"></audio>
+                    <div id="audioRecordList" class="audio-record-list"></div>
+                    <div class="counsel-file-panel">
+                        <div class="counsel-file-actions">
+                            <button type="button" id="uploadCounselFileBtn" class="mini-btn">서류 업로드</button>
+                            <span class="counsel-file-help">소견서/PDF/이미지/문서 첨부</span>
+                        </div>
+                        <div id="counselFileList" class="counsel-file-list"></div>
+                        <p id="counselFileStatus" class="counsel-file-status"></p>
+                    </div>
+                    <textarea id="cs_col_32" name="cs_col_32" rows="7"
+                              th:text="${csData != null and !#strings.isEmpty(csData.cs_col_32) ? csData.cs_col_32 : (!#lists.isEmpty(cslog) ? (cslog[0]['counsel_content'] != null ? cslog[0]['counsel_content'] : '') : '')}"></textarea>
+                </div>
+            </section>
+
+            <div class="mobile-print-log-source" style="display:none;">
+                <div class="logs-body">
+                    <th:block th:each="log : ${cslog}">
+                        <div class="logs-content"
+                             th:with="logDate=${!#strings.isEmpty(log.counsel_at) ? log.counsel_at : '-'}">
+                            <div class="method" th:text="${!#strings.isEmpty(log.counsel_method) ? log.counsel_method : '-'}">-</div>
+                            <div class="date" th:text="${logDate}">-</div>
+                            <div class="result" th:text="${!#strings.isEmpty(log.counsel_result) ? log.counsel_result : '-'}">-</div>
+                            <div class="counselor" th:text="${!#strings.isEmpty(log.counsel_name) ? log.counsel_name : '-'}">-</div>
+                        </div>
+                    </th:block>
+                </div>
+            </div>
+
+            <div class="floating-tools">
+                <div id="recordingIndicator" class="recording-indicator" aria-live="polite">
+                    <span class="recording-dot" aria-hidden="true"></span>
+                    <span class="recording-label">녹음 중</span>
+                    <span id="recordingTimer" class="recording-timer">00:00</span>
+                </div>
+                <div class="record-tools">
+                    <button type="button" id="startRecordingBtn" class="mini-btn">녹음 시작</button>
+                    <button type="button" id="stopRecordingBtn" class="mini-btn" disabled>녹음 중지</button>
+                    <button type="button" id="uploadAudioFileBtn" class="mini-btn upload-btn">파일 업로드</button>
+                    <button type="button" id="applyDiseaseMatchBtn" class="mini-btn">커스텀 매칭</button>
+                    <button type="button" id="generateSummaryBtn" class="mini-btn summary-btn">상담 요약</button>
+                </div>
+                <p id="recordingStatus" class="recording-status">대기 중</p>
+            </div>
+
+            <div class="bottom-actions">
+                <button type="button" class="btn list-btn" id="goListBtn">목록</button>
+                <button type="button" class="btn print-btn" id="print-preview">일지출력</button>
+                <button type="submit" class="btn save-btn" th:text="${cs_idx != null ? '수정 저장' : '신규 저장'}">저장</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="spinner-overlay" style="display:none;">
+    <div class="spinner-container">
+        <div class="spinner"></div>
+        <p>잠시만 기다려주세요</p>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+<script th:replace="~{csm/Include/layout :: scripts}"></script>
+<script th:src="@{/js/csm/counsel/newMobile.js}"></script>
+<script th:src="@{/js/csm/counsel/counselFile.js}"></script>
+</body>
+</html>

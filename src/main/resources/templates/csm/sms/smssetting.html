@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="app-context" th:content="@{/}">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>상용구관리 : SOSYGE EASY-CRM</title>
+
+    <link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+    <link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+    <script th:src="@{/js/csm/admin/admin.js}" defer></script>
+    <script th:src="@{/js/csm/admin/smssetting.js}" defer></script>
+
+    <link rel="stylesheet" th:href="@{/css/reset.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/sms/smssetting.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/popup/popup.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/spinner.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/modal.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
+
+    <style>
+        .selected-row { background-color: #f0f8ff !important; }
+        .selected-row * { background-color: #f0f8ff !important; }
+    </style>
+</head>
+<body>
+<div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
+<div th:replace="~{csm/Include/layout :: nav_section2('sms', ${endVar}, ${st}, ${kw})}"></div>
+
+<div class="main">
+    <div class="section">
+        <div class="content-top">
+            <div class="section-top">
+                <div class="section-menu">
+                    <span class="section-header" style="cursor: pointer;" th:onclick="|location.href='@{/smsSetting(page=${page},perPageNum=${perPageNum})}'|">상용구관리</span> |
+                    <span style="cursor: pointer;" th:onclick="|location.href='@{/cardsetting(page=${page},perPageNum=${perPageNum})}'|">서명관리</span> |
+                    <span style="cursor: pointer;" th:onclick="|location.href='@{/smslog(page=${page},perPageNum=${perPageNum})}'|">전송내역</span> |
+                    <span style="cursor: pointer;" th:onclick="|location.href='@{/rate}'|">요금관리</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-mid">
+            <div class="section-mid">
+                <div class="sms-section">
+                    <div class="sms-template-container">
+                        <div class="sms-header"><h3></h3></div>
+                        <div class="sms-container-wrap">
+                            <div class="smsTemplateDiv">
+                                <div class="sms-history-grid sms-history-grid2">
+                                    <div class="grid-header">
+                                        <div>생성일자</div>
+                                        <div>상용구명</div>
+                                        <div>상용구 내용</div>
+                                    </div>
+                                    <div class="scroll-container">
+                                        <div class="grid-body template-list">
+                                            <div class="grid-row template-row"
+                                                 th:each="t : ${smsTemplates}"
+                                                 th:attr="data-id=${t.id}">
+                                                <div th:text="${t.created_at != null ? #dates.format(t.created_at, 'yyyy-MM-dd HH:mm:ss') : ''}"></div>
+                                                <div th:text="${t.title}"></div>
+                                                <div th:text="${t.template}"></div>
+                                            </div>
+                                            <div id="scrollDetector"></div>
+                                            <div id="loading" style="display: none; text-align: center; margin-top: 10px;">
+                                                <div class="lodaing-container" style="display: flex; justify-content: center; align-items: center;">
+                                                    <div class="loading-spinner"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-bot">
+        <div>
+            <div class="search-status-area">
+                <div class="status-area">
+                    <div class="section-btn">
+                        <span class="btn delBtn btnw100 listBtn2" id="templateDelete" style="flex: inherit;">삭제</span>
+                        <span class="btn modifyBtn btnw100 listBtn2" id="templateModify" style="flex: inherit;">수정</span>
+                        <span class="btn newBtn btnw100 listBtn2" id="templateInsert" style="flex: inherit;">추가</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal normal">
+    <div class="modal_body">
+        <div>
+            <div class="menu_msg">text</div>
+            <input type="text" style="margin-bottom: 10px;" class="modal-input" id="sms_title" name="sms_title" placeholder="상용구 이름을 입력하세요.">
+            <textarea style="height: 150px;" class="modal-input" id="sms_template" placeholder="추가할 상용구를 입력하세요."></textarea>
+            <div class="modal_footer">
+                <div class="btn modal_btn" id="templateSaveBtn">확인</div>
+                <div class="btn pink_btn2 listBtn" onclick="closeModal()">취소</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="spinner-overlay" style="display: none;">
+    <div class="spinner-container">
+        <div class="spinner"></div>
+        <p>잠시만 기다려주세요</p>
+    </div>
+</div>
+
+<script th:replace="~{csm/Include/layout :: scripts}"></script>
+</body>
+</html>

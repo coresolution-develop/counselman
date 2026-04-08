@@ -1,0 +1,262 @@
+@charset "UTF-8";
+
+:root {
+    --brand-green: #06603A;
+    --brand-green-dark: #05401E;
+    --text-main: #333;
+    --text-sub: #6a6a6a;
+    --line: #ececec;
+    --card-bg: #fff;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background: #fbfbfb;
+}
+
+.main.mobile-main {
+    padding: 84px 12px 96px;
+    margin-left: 145px;
+    min-height: 100vh;
+}
+
+.mobile-section {
+    border-radius: 12px;
+    background: #f9f9f9;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    padding: 14px;
+    min-height: calc(100vh - 150px);
+}
+
+.filter-card {
+    background: var(--card-bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+.filter-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.filter-row:last-child {
+    margin-bottom: 0;
+    grid-template-columns: 1fr;
+}
+
+.check-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-main);
+}
+
+.filter-card select,
+.filter-card input[type="text"] {
+    width: 100%;
+    height: 38px;
+    border: 1px solid #d9d9d9;
+    border-radius: 7px;
+    padding: 8px 10px;
+    font-size: 13px;
+    color: var(--text-main);
+    background: #fff;
+}
+
+.search-btn {
+    width: 100%;
+    height: 38px;
+    border: none;
+    border-radius: 7px;
+    background: var(--brand-green);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.mobile-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.counsel-card {
+    background: var(--card-bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px;
+}
+
+.counsel-card.bg-admitted {
+    background: #f2fcef;
+    border-left: 4px solid #3f9e61;
+}
+
+.counsel-card.bg-reserved {
+    background: #fff4ef;
+    border-left: 4px solid #f5a25b;
+}
+
+.counsel-card.bg-abc {
+    background: #f5f2ff;
+    border-left: 4px solid #8f7ad8;
+}
+
+.counsel-card.bg-bc .patient-name {
+    color: #cd1039;
+}
+
+.card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 10px;
+}
+
+.patient-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #2d2d2d;
+    margin: 0;
+}
+
+.result-badge {
+    font-size: 11px;
+    font-weight: 600;
+    background: #eef4ff;
+    color: #325a9c;
+    border-radius: 999px;
+    padding: 4px 9px;
+    white-space: nowrap;
+}
+
+.card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.grid-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.grid-item span {
+    font-size: 11px;
+    color: var(--text-sub);
+}
+
+.grid-item strong {
+    font-size: 13px;
+    color: #2f2f2f;
+    font-weight: 600;
+    word-break: break-all;
+}
+
+.grid-item.full {
+    grid-column: 1 / -1;
+}
+
+.card-foot {
+    margin-top: 10px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.view-btn {
+    height: 32px;
+    border: 1px solid #d7d7d7;
+    border-radius: 7px;
+    background: #fff;
+    color: #333;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 0 12px;
+}
+
+.empty-state {
+    text-align: center;
+    color: #888;
+    font-size: 13px;
+    padding: 26px 0;
+}
+
+.loading-area {
+    justify-content: center;
+    align-items: center;
+    padding: 12px 0;
+}
+
+.loading-spinner {
+    border: 4px solid var(--brand-green);
+    border-top: 4px solid #fff;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+#scrollDetector {
+    height: 1px;
+}
+
+.fab-new {
+    position: fixed;
+    right: 14px;
+    bottom: 14px;
+    z-index: 1002;
+    border: none;
+    border-radius: 999px;
+    background: linear-gradient(312deg, var(--brand-green-dark) 20.34%, var(--brand-green) 155.45%);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 12px 16px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+@media screen and (max-width: 900px) {
+    .nav_section {
+        display: none;
+    }
+
+    .main.mobile-main {
+        margin-left: 0;
+        padding: 76px 10px 94px;
+    }
+
+    .mobile-section {
+        min-height: calc(100vh - 112px);
+        padding: 10px;
+    }
+}
+
+@media screen and (max-width: 420px) {
+    .card-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .grid-item.full {
+        grid-column: auto;
+    }
+
+    .result-badge {
+        font-size: 10px;
+    }
+}

@@ -1,0 +1,189 @@
+@charset "UTF-8";
+@import url('https://hangeul.pstatic.net/hangeul_static/css/nanum-square-neo.css');
+
+.wrapper {
+	position: fixed;
+	top: 0;
+	width: 100%;
+	z-index: 1000; /* Ensure the header is on top */
+}
+
+.logo {
+	background: linear-gradient(312deg, #05401E 20.34%, #005424 155.45%);
+	position: relative;
+	display: flex;
+	align-items: center;
+	box-sizing: border-box;
+	padding: 0 20px;
+	min-height: 65px;
+	width: 100%;
+	z-index: 1001; /* Ensure the logo is on top */
+}
+
+.home-icon {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	z-index: 2;
+}
+
+.home-icon>a>img {
+	width: 20px;
+	display: block;
+}
+
+.logo-img {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	align-items: center;
+	display: flex;
+	justify-content: center;
+	white-space: nowrap;
+	pointer-events: none;
+	z-index: 1;
+}
+
+.logo-img>img {
+	height: 30px;
+	display: block;
+}
+
+.sys-name {
+	color: #fff;
+	font-size: 12px;
+	font-weight: 500;
+	margin-left: 5px;
+}
+
+.sys-name .line {
+	font-size: 14px;
+	font-weight: 100;
+	margin: 0 3px;
+}
+
+.header-right {
+	margin-left: auto;
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	min-width: 0;
+	max-width: 65%;
+	z-index: 2;
+}
+
+.logout-img {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+}
+
+.logout-img>a>img {
+	width: 19px;
+	display: block;
+}
+
+.info-header {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 2px;
+	color: #dadada;
+	font-size: 12px;
+	font-weight: 400;
+	line-height: 1.2;
+	min-width: 0;
+}
+
+.info-header-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	max-width: 100%;
+}
+
+.info-header-item {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.info-header-name {
+	max-width: 220px;
+}
+
+.info-header-user {
+	max-width: 130px;
+}
+
+.info-header-dot {
+	opacity: 0.85;
+}
+
+
+
+@media screen and (max-width: 1140px) {
+	.info-header {
+		font-size: 11px;
+	}
+	.info-header-name {
+		max-width: 180px;
+	}
+	.info-header-user {
+		max-width: 110px;
+	}
+}
+
+@media screen and (max-width: 1000px){
+	.logo {
+		padding: 0 12px;
+		min-height: 58px;
+	}
+
+	.logo-img>img {
+		height: 24px;
+	}
+
+	.sys-name {
+		font-size: 11px;
+	}
+
+	.info-header {
+		font-size: 10px;
+	}
+
+	.info-header-name {
+		max-width: 120px;
+	}
+	.info-header-user {
+		max-width: 88px;
+	}
+
+	.header-right {
+		max-width: 62%;
+	}
+
+	.logout-img>a>img {
+		width: 17px;
+	}
+}
+
+@media screen and (max-width: 720px){
+	.info-header-row-bottom {
+		display: none;
+	}
+
+	.info-header-name {
+		max-width: 95px;
+	}
+	.info-header-user {
+		max-width: 95px;
+	}
+
+	.header-right {
+		gap: 10px;
+		max-width: 52%;
+	}
+}

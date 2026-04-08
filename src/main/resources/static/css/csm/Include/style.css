@@ -1,0 +1,4 @@
+@charset "UTF-8";
+input[type=text], input[type=button] { 
+	-webkit-appearance: none;
+}

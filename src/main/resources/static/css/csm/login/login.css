@@ -1,0 +1,349 @@
+@charset "UTF-8";
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: rgb(224, 224, 224);
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+.login-container {
+    background: linear-gradient(180deg, #05401E 0%, #06603A 100%);
+    border-radius: 25px;
+	box-shadow: 0px 0px 43.6px 0px rgba(0, 0, 0, 0.15);
+    width: 500px;
+    height: 400px;
+    position: relative;
+}
+
+.login_wrap {
+    padding: 28px 80px 0 80px;
+}
+
+.login_title {
+	color: #FFF;
+	font-size: 25px;
+	font-weight: 500;
+}
+
+.font12{
+	font-size: 15px;
+	color: #f5f5f5;
+}
+
+.login_btn{
+	font-size: 18px;
+	font-weight: 700;
+	margin-top: 5px;
+}
+
+.login_bottom {
+	width:100%;
+	border-radius: 0 0px 25px 25px; 
+	display: block;
+	position: absolute;
+	bottom: 0;
+	background: #fff;
+    height: 60px;
+}
+
+.logo_bottom{
+	left: 50%;
+	transform: translateX(-50%);
+	position: absolute;
+	display: flex;
+	justify-content: center;
+	bottom: 23px;
+}
+
+.logo_bottom_img{
+	width: 60px;
+}
+
+form {
+	display: flex;
+	flex-direction: column;
+	padding: 25px 0;
+}
+
+
+/* 셀렉트박스 커스텀 */
+.drop-down {
+	position: relative;
+}
+
+.drop-down-1 {
+	z-index: 1;
+}
+
+.drop-down .selected a {
+	background: rgb(224, 224, 224) no-repeat scroll right center;
+	display: block;
+	padding: 5px 10px;
+	border: 1px solid #363636;
+	border-radius: 5px;
+	text-decoration: none;
+	color: #929191;
+	width: 100%;
+	font-size: 14px;
+	box-sizing: border-box;
+	line-height: 42px;
+	margin-bottom: 10px;
+}
+
+.drop-down .selected a span {
+	cursor: pointer;
+	display: block;
+}
+
+.drop-down .options ul {
+	font-family: 'NanumSquare', sans-serif;
+	background: #fff none repeat scroll 0 0;
+	display: none;
+	list-style: none;
+	padding: 0px 0px;
+	position: absolute;
+	top: 100%;
+	left: 0;
+	width: 100%;
+	box-sizing: border-box;
+	border: 1px solid #363636;
+	border-top: none;
+	margin-top: -7px;
+}
+
+.drop-down .selected span.value, .drop-down .options span.value {
+	display: none;
+}
+
+.drop-down .options ul li a {
+	display: block;
+	text-decoration: none;
+	color: #2f425a;
+	box-sizing: border-box;
+	padding: 10px 10px;
+	font-size: 14px;
+}
+
+.drop-down .options ul li a:hover {
+	background: #2f425a;
+	color: #fff;
+	transition: 0.2s ease;
+}
+
+
+.drop-down .selected a::after {
+	content: '▼';
+	position: absolute;
+	right: 10px;
+	top: 40%;
+	transform: translateY(-50%);
+	color: #929191;
+}
+
+/* ************ */
+
+
+input[type="text"],
+input[type="password"] {
+    margin-bottom: 10px;
+    padding: 0 20px;
+    font-size: 13px;
+    border: 1px solid #e8e8e8;
+    border-radius: 5px;
+    color: #9F9F9F;
+    background-color: #fff;
+    height: 40px;
+}
+
+input[type="text"]::placeholder,
+input[type="password"]::placeholder {
+    color: #ccc;
+    font-size: 13px;
+}
+
+input[type="submit"],input[type="button"]{
+    background: rgba(255, 255, 255, 0.20);
+    color: white;
+    padding: 0 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 1;
+	height: 40px;
+    
+}
+
+input[type="submit"]:hover,input[type="button"]:hover {
+    background-color: rgba(255, 255, 255, 0.20);
+}
+
+.error-message {
+    color: red;
+    font-size: 14px;
+    text-align: center;
+    margin: 15px 0 3px;
+}
+
+/* 기본 라디오 버튼 숨기기 */
+input[type="radio"] {
+    display: none;
+}
+
+/* 커스텀 라디오 버튼 스타일 */
+input[type="radio"] + label {
+    position: relative;
+    padding-left: 30px;
+    cursor: pointer;
+    display: inline-block;
+    color: #f5f5f5;
+    font-size: 12px;
+    padding-top: 4px;
+}
+
+/* 커스텀 라디오 버튼 */
+input[type="radio"] + label:before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #ccc;
+    border-radius: 3px;
+    background-color: rgb(224, 224, 224);
+}
+
+/* 라디오 버튼 체크되었을 때 스타일 */
+input[type="radio"]:checked + label:before {
+    border-color: rgb(224, 224, 224);
+    background: #ffa200;
+}
+
+/* 체크 표시 스타일  */
+input[type="radio"]:checked + label:after {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 6px;
+    width: 8px;
+    height: 8px;
+}
+
+/* 스피너 스타일 */
+#spinner-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.spinner-container {
+    text-align: center;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.spinner {
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top: 4px solid white;
+    width: 40px;
+    height: 40px;
+    margin-bottom: 20px;
+    animation: spin 1s linear infinite;
+}
+
+.login-select {
+	appearance: none;
+	margin-bottom: 10px;
+    padding: 0 20px;
+    font-size: 13px;
+    border: 1px solid #e8e8e8;
+    border-radius: 5px;
+    color: #9F9F9F;
+    background-color: #fff;
+    height: 40px;
+    width: 100%;
+}
+.pwd_btn {
+    background: none;
+    border: none;
+    padding: 5px;
+    color: #b4b4b4;
+    text-decoration: underline;
+    text-align: center;
+    font-size: 12px;
+    cursor: pointer;
+    z-index: 1;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+
+@media screen and (max-width: 720px){
+	body{overflow: hidden; background: linear-gradient(180deg, #05401E 0%, #06603A 100%);}
+	.login-container{border-radius:0; height:auto;; width:100%; margin-top:-100px; background:none; box-shadow:none;}
+	.login_wrap {padding:0 25px; width:100%; box-sizing: border-box;}
+	.login_title{padding-bottom:10px;}
+	.bottom_img{position: fixed; bottom:0; width: 100%}
+	.login_bottom {border-radius: 0;}
+	.hospital_choose p{padding:10px;}
+	input[type="text"], input[type="password"] {
+		padding: 15px;
+		font-size: 16px;
+		height: 44px;
+	}
+	.login-select {
+		font-size: 16px;
+		height: 44px;
+	}
+	input[type="text"]::placeholder,
+	input[type="password"]::placeholder {
+		font-size: 16px;
+	}
+	input[type="submit"],input[type="button"] {
+		padding: 12px;
+	}
+	input[type="radio"] + label {
+		padding-top: 1px;
+		font-size: 16px;
+	}
+}
+
+@media screen and (max-width: 360px){
+	.login_wrap{padding-bottom:80px;}
+}
+
+@media screen and (max-width: 350px){
+	.error-message{margin:0; padding-top:15px;}
+}
+
+@media (hover: none) and (pointer: coarse) {
+	input[type="text"],
+	input[type="password"],
+	.login-select {
+		font-size: 16px !important;
+		height: 44px;
+	}
+	input[type="text"]::placeholder,
+	input[type="password"]::placeholder {
+		font-size: 16px !important;
+	}
+}

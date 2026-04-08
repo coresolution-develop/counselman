@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>상담리스트 : SOSYGE EASY-CRM</title>
+
+    <link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+    <link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+
+    <link rel="stylesheet" th:href="@{/css/reset.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/style.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/spinner.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/counsel/listMobile.css}">
+</head>
+<body>
+<div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
+<div th:replace="~{csm/Include/layout :: nav_section2('list', ${endVar}, ${st}, ${kw})}"></div>
+
+<div class="main mobile-main">
+    <div class="section mobile-section">
+        <form id="mobileSearchForm" th:action="@{/counsel/list}" method="get" class="filter-card">
+            <div class="filter-row">
+                <label class="check-label" for="end">
+                    <input type="checkbox" name="end" id="end" th:checked="${cri.end} == 'on'"/>
+                    <span>완료포함</span>
+                </label>
+                <select name="dateRange" id="dateRange">
+                    <option th:value="all" th:selected="${cri.dateRange} == 'all'">전체기간</option>
+                    <option th:value="10" th:selected="${cri.dateRange} == '10'">최근10일</option>
+                    <option th:value="30" th:selected="${cri.dateRange} == '30'">최근30일</option>
+                    <option th:value="90" th:selected="${cri.dateRange} == '90'">최근90일</option>
+                </select>
+            </div>
+            <div class="filter-row">
+                <select name="searchType" id="searchType">
+                    <option th:value="patient" th:selected="${cri.searchType} == 'patient'">환자명</option>
+                    <option th:value="guardian" th:selected="${cri.searchType} == 'guardian'">보호자명</option>
+                    <option th:value="phone" th:selected="${cri.searchType} == 'phone'">전화번호</option>
+                    <option th:value="counselor" th:selected="${cri.searchType} == 'counselor'">상담자</option>
+                    <option th:value="content" th:selected="${cri.searchType} == 'content'">상담내용</option>
+                </select>
+                <input type="text" id="keywordInput" name="keyword" placeholder="검색어를 입력하세요" th:value="${cri.keyword}">
+                <button type="submit" id="mobileSearchBtn" class="btn search-btn">검색</button>
+            </div>
+        </form>
+
+        <div id="mobileList" class="mobile-list"></div>
+        <div id="emptyState" class="empty-state" style="display:none;">조회 결과가 없습니다.</div>
+        <div id="loading" class="loading-area" style="display:none;">
+            <div class="loading-spinner"></div>
+        </div>
+        <div id="scrollDetector"></div>
+    </div>
+
+    <button type="button" id="new-counsel-mobile" class="fab-new">신규상담</button>
+</div>
+
+<div id="spinner-overlay" style="display:none;">
+    <div class="spinner-container">
+        <div class="spinner"></div>
+        <p>잠시만 기다려주세요</p>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+<script th:replace="~{csm/Include/layout :: scripts}"></script>
+<script th:src="@{/js/csm/counsel/listMobile.js}"></script>
+</body>
+</html>

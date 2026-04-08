@@ -1,0 +1,95 @@
+@charset "UTF-8";
+@import url('https://hangeul.pstatic.net/hangeul_static/css/nanum-square-neo.css');
+
+/* 네비게이션(카테고리) */
+.nav_section {
+	width: 145px;
+	background: #06603A;
+	color: #fff;
+	position: fixed;
+	height: 100%;
+	font-size: 17px;
+	z-index: 1000;
+	top: 65px !important;
+}
+
+.nav_section ul {
+	list-style-type: none;
+	padding: 0;
+	margin: 0;
+}
+
+.nav_link {
+	text-align: left;
+	cursor: pointer;
+	min-height: 50px;
+	padding: 15px 15px 15px 30px;
+	display: flex;
+	align-items: center;
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.nav_link > span,
+.nav_link > [data-base-url],
+.nav_link > .disabled-link {
+	display: inline-flex;
+	align-items: center;
+	justify-content: flex-start;
+	width: 100%;
+	height: 100%;
+	font-size: 12px;
+	font-weight: 400;
+}
+
+.nav_link > [data-base-url] {
+	cursor: pointer;
+}
+
+.nav_link:hover {
+	background: linear-gradient(312deg, #05401E 20.34%, #005424 155.45%);
+	color: #fff;
+}
+
+.nav_link.active,
+.nav_link.on {
+	color: #fff;
+}
+
+.active,
+.on {
+	border-left: 5px solid #fff;
+	background:  rgba(255, 255, 255, 0.20);
+	color: #fff;
+}
+
+.content {
+	margin-left: 260px;
+	padding: 20px;
+	width: calc(100% - 260px);
+}
+
+main {
+	margin-left: 240px;
+	margin-top: 90px;
+	padding: 10px 0;
+}
+.copyright {
+    text-align: center;
+    font-size: 9px;
+    font-weight: 300;
+    color: rgba(255, 255, 255, 0.80);
+    margin-bottom: 30px;
+    margin-top: 8px;
+    bottom: 0;
+    position: fixed;
+    display: flex;
+    justify-content: center;
+    width: 145px;
+}
+.disabled-link {
+    color: #999; /* 텍스트를 회색으로 표시 */
+    cursor: not-allowed; /* 커서를 "허용되지 않음" 기호로 변경 */
+    opacity: 0.7; /* 불투명도를 약간 줄임 */
+    pointer-events: none; /* 포인터 이벤트를 비활성화하여 확실하게 함 */
+}

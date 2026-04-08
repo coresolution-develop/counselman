@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+<title>사용자수정 : SOSYGE EASY-CRM</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+<link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+<link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+<link rel="stylesheet" th:href="@{/css/csm/admin/newuser.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/spinner.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/modal.css}">
+<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+<script th:src="@{/js/csm/admin/modifyUserPopup.js}"></script>
+</head>
+<body>
+<form th:action="@{/modifyuserPopup/post}" method="post">
+  <div class="user-header"><h3>수정할 사용자 정보를 입력해 주세요.</h3></div>
+  <label>아이디 <font color="red">*</font></label>
+  <input type="text" class="user-area" id="us_col_02" name="us_col_02" th:value="${user != null ? user.us_col_02 : ''}" required />
+  <label>이름 <font color="red">*</font></label>
+  <input type="text" class="user-area" id="us_col_12" name="us_col_12" th:value="${user != null ? user.us_col_12 : ''}" required />
+  <label>부서 <font color="red">*</font></label>
+  <input type="text" class="user-area" id="us_col_13" name="us_col_13" th:value="${user != null ? user.us_col_13 : ''}" required />
+  <label>직급 <font color="red">*</font></label>
+  <input type="text" class="user-area" id="us_col_14" name="us_col_14" th:value="${user != null ? user.us_col_14 : ''}" required />
+  <label>Email <font color="red">*</font></label>
+  <input type="text" class="user-area" id="us_col_11" name="us_col_11" th:value="${user != null ? user.us_col_11 : ''}" required />
+  <label>비고 <font color="red">*</font></label>
+  <input type="text" class="user-area" id="us_col_06" name="us_col_06" th:value="${user != null ? user.us_col_06 : ''}" required />
+  <label>권한 <font color="red">*</font></label>
+  <div class="drop-down drop-down-1">
+    <div class="options">
+      <select class="user-area" name="us_col_08" id="us_col_08" required>
+        <option value="" th:selected="${user == null}">선택해주세요</option>
+        <option value="1" th:selected="${user != null and user.us_col_08 == 1}">admin(관리자)</option>
+        <option value="2" th:selected="${user != null and user.us_col_08 == 2}">supervisor(통계권한)</option>
+        <option value="3" th:selected="${user != null and user.us_col_08 == 3}">manager</option>
+        <option value="4" th:selected="${user != null and user.us_col_08 == 4}">viewer</option>
+      </select>
+    </div>
+  </div>
+
+  <label>사용상태 <font color="red">*</font></label>
+  <div class="drop-down drop-down-1">
+    <div class="options">
+      <select class="user-area" name="us_col_07" id="us_col_07" required>
+        <option value="" th:selected="${user == null}">선택해주세요</option>
+        <option value="y" th:selected="${user != null and user.us_col_07 == 'y'}">사용중</option>
+        <option value="n" th:selected="${user != null and user.us_col_07 == 'n'}">사용중지</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="btn-area">
+    <button class="blue-btn" id="submit-btn" type="button">수정</button>
+    <button class="gray-btn" type="button" onclick="window.close()">취소</button>
+  </div>
+
+  <input type="hidden" name="us_col_05" id="us_col_05" th:value="${instName}">
+  <input type="hidden" name="us_col_01" id="us_col_01" th:value="${user != null ? user.us_col_01 : ''}">
+</form>
+
+<div id="spinner-overlay" style="display: none;">
+  <div class="spinner-container">
+    <div class="spinner"></div>
+    <p>잠시만 기다려주세요</p>
+  </div>
+</div>
+<div class="modal normal">
+  <div class="modal_body">
+    <div>
+      <img class="menu_icon" th:src="@{/img/alert_img.png}">
+      <div class="menu_msg"></div>
+      <div class="modal_footer">
+        <div class="btn modal_btn" onclick="closePopup()" id="confirmBtn2">확인</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

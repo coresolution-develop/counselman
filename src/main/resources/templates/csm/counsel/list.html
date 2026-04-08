@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+<meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>상담리스트 : SOSYGE EASY-CRM</title>
+    <meta property="og:title" content="상담관리시스템"> <!-- 공유시 사이트 이름 -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="http://49.247.42.59:8090/csm/login"> <!-- 공유시 입력될 URL -->
+    <meta property="og:image" content="/icon/ev/core_icon_big.png" th:content="@{/icon/ev/core_icon_big.png}"> <!-- 공유시 노출 이미지 (최적 사이즈 : 800 x 400) -->
+    <meta property="og:description" content="병원상담관리시스템"> <!-- 공유시 보여질 사이트 간략 소개 -->
+
+    <link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+    <link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+    <link rel="stylesheet" th:href="@{/css/reset.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/style.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/admin/admin.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/popup/listpopup.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/counsel/list.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/spinner.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
+
+    <style>
+        #scrollDetector {
+            height: 10px;
+        }
+
+        .arrow {
+            display: inline-block;
+            width: 0;
+            height: 0;
+            margin-left: 5px;
+        }
+
+        .up {
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 5px solid black;
+        }
+
+        .down {
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 5px solid black;
+        }
+
+        .sortable-ghost {
+            opacity: 0.5;
+            background-color: #f0f0f0;
+        }
+
+        .loading-spinner {
+            border: 4px solid #06603A;
+            border-radius: 50%;
+            border-top: 4px solid #fff;
+            width: 30px;
+            height: 30px;
+            margin-bottom: 20px;
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
+    <div th:replace="~{csm/Include/layout :: nav_section2('list', ${endVar}, ${st}, ${kw})}"></div>
+    <div class="main">
+        <!-- 중앙 콘텐츠 -->
+        <div class="section">
+            <div class="content-top">
+                <div class="section-top">
+                    <form id="searchForm" th:action="@{/counsel/list}" method="get" style="width:100%;height:100%;">
+                        <div class="content-inner">
+                            <div>
+                                <img class="search-text" id="setting" th:src="@{/icon/ev/fix-icon.png}">
+                            </div>
+
+                            <div class="search-container">
+                                <div class="inner-top">
+                                    <div class="inner-section">
+                                        <div class="inner-area">
+
+                                            <div style="display:flex;justify-content:center;align-items:center;">
+                                                <input type="checkbox" name="end" id="end"
+                                                    th:checked="${cri.end} == 'on'" />
+                                                <label for="end"><span
+                                                        style="font-size:12px;color:#333">완료포함</span></label>
+                                            </div>
+
+                                            <span class="search-text">최종상담일:</span>
+                                            <select name="dateRange" id="dateRange">
+                                                <option th:value="all" th:selected="${cri.dateRange} == 'all'">전체기간
+                                                </option>
+                                                <option th:value="10" th:selected="${cri.dateRange} == '10'">최근10일
+                                                </option>
+                                                <option th:value="30" th:selected="${cri.dateRange} == '30'">최근30일
+                                                </option>
+                                                <option th:value="90" th:selected="${cri.dateRange} == '90'">최근90일
+                                                </option>
+                                            </select>
+
+                                            <span class="search-text">검색선택</span>
+                                            <select name="searchType" id="searchType">
+                                                <option th:value="patient" th:selected="${cri.searchType} == 'patient'">
+                                                    환자명</option>
+                                                <option th:value="guardian"
+                                                    th:selected="${cri.searchType} == 'guardian'">보호자명</option>
+                                                <option th:value="phone" th:selected="${cri.searchType} == 'phone'">전화번호
+                                                </option>
+                                                <option th:value="counselor"
+                                                    th:selected="${cri.searchType} == 'counselor'">상담자</option>
+                                                <option th:value="content" th:selected="${cri.searchType} == 'content'">
+                                                    상담내용</option>
+                                            </select>
+
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="inner-bot">
+                                    <div class="inner-section">
+                                        <div class="inner-area">
+                                            <span class="search-text">환자명:</span><input class="input-name" type="text">
+                                            <span class="search-text">보호자명:</span><input class="input-name" type="text">
+                                            <span class="search-text">전화번호:</span><input class="input-number"
+                                                type="text">
+                                            <div class="search-text">기본목록</div>
+
+                                            <input class="search-mobile" type="text" id="keywordInput" name="keyword"
+                                                placeholder="검색어를 입력하세요" th:value="${cri.keyword}">
+                                            <div class="btn search-box listBtn btnw100" id="searchBtn">검색</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="content-mid">
+                <div class="section-mid">
+                    <table style="width:100%;" id="myTable">
+                        <colgroup>
+                            <col class="col1">
+                            <col class="col2">
+                            <col class="col3">
+                            <col class="col4">
+                            <col class="col5">
+                            <col class="col6">
+                            <col class="col7">
+                            <col class="col8">
+                            <col class="col9">
+                            <col class="col10">
+                            <col class="col11">
+                            <col class="col12">
+                            <col class="col13">
+                            <col class="col14">
+                            <col class="col15">
+                            <col class="col16">
+                            <col class="col17">
+                            <col class="col18">
+                        </colgroup>
+                        <thead id="table-header"></thead>
+                        <tbody id="table-body"></tbody>
+                    </table>
+                    <div id="scrollDetector"></div>
+                </div>
+
+                <div id="loading" style="display:none;text-align:center;margin-top:10px;">
+                    <div class="lodaing-container" style="display:flex;justify-content:center;align-items:center;">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-bot">
+                <div>
+                    <div class="search-status-area">
+                        <div></div>
+                        <div class="status-area">
+                            <div style="display:flex;justify-content:flex-end;">
+                                <div class="btn delBtn btnw100 listBtn2" id="del-counsel" style="flex:inherit;">환자정보삭제
+                                </div>
+                                <div class="btn newBtn btnw100 listBtn2" id="new-counsel" style="flex:inherit;">신규상담
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div> <!-- /.section -->
+    </div> <!-- /.main -->
+
+    <!-- 모달 -->
+    <div class="popup-wrap" id="popup">
+        <div class="popup">
+            <div class="popup-head">
+                <span class="head-title">리스트 항목 설정</span>
+            </div>
+
+            <form id="orderForm" style="width:100%;height:calc(100% - 85px)" th:action="@{/counsel/ListSetting}"
+                method="post">
+
+                <div class="popup-body">
+                    <div class="body-content">
+                        <div class="body-contentbox">
+                            <div class="body-inner">
+
+<div class="noneorder">
+  <div class="noneorder-header"><span>가려질 항목</span></div>
+  <ul id="inner-content" class="sortable-list">
+    <th:block th:each="l : ${innerContentItems}">
+      <th:block th:if="${l != null}">
+        <li class="sortable-item" draggable="true"
+            th:with="
+              cn=${l['column_name'] != null ? l['column_name'] :
+                  (l['COLUMN_NAME'] != null ? l['COLUMN_NAME'] :
+                  (l['coulmn'] != null ? l['coulmn'] : l['COULMN']))},
+              cc=${l['column_comment'] != null ? l['column_comment'] :
+                  (l['COLUMN_COMMENT'] != null ? l['COLUMN_COMMENT'] :
+                  (l['comment'] != null ? l['comment'] : l['COMMENT']))}"
+            th:attr="data-column=${cn}, data-comment=${#strings.isEmpty(cc) ? cn : cc}">
+          <span th:text="${#strings.isEmpty(cc) ? cn : cc}">label</span>
+        </li>
+      </th:block>
+    </th:block>
+  </ul>
+</div>
+<!-- 보여질 항목 -->
+<div class="order">
+  <div class="order-header"><span>보여질 항목</span></div>
+  <ul id="order" class="sortable-list">
+    <th:block th:each="l : ${orderItems}">
+      <th:block th:if="${l != null}">
+        <li class="sortable-item" draggable="true"
+            th:with="
+              cn=${l['column_name'] != null ? l['column_name'] :
+                  (l['COLUMN_NAME'] != null ? l['COLUMN_NAME'] :
+                  (l['coulmn'] != null ? l['coulmn'] : l['COULMN']))},
+              cc=${l['column_comment'] != null ? l['column_comment'] :
+                  (l['COLUMN_COMMENT'] != null ? l['COLUMN_COMMENT'] :
+                  (l['comment'] != null ? l['comment'] : l['COMMENT']))},
+              t=${l['turn'] != null ? l['turn'] : l['TURN']}"
+            th:attr="data-column=${cn}, data-comment=${#strings.isEmpty(cc) ? cn : cc}, data-turn=${t}">
+          <span th:text="${#strings.isEmpty(cc) ? cn : cc}">label</span>
+        </li>
+      </th:block>
+    </th:block>
+  </ul>
+</div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="popup-foot">
+                    <span class="btn listBtn close" id="close">닫기</span>
+                    <div class="btn listBtn pink_btn2" id="removeOrder">모두 비우기</div>
+                    <button type="button" class="btn listBtn modal_btn2" id="confirm">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="spinner-overlay" style="display:none;">
+        <div class="spinner-container">
+            <div class="spinner"></div>
+            <p>잠시만 기다려주세요</p>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js" integrity="sha512-zYXldzJsDrNKV+odAwFYiDXV2Cy37cwizT+NkuiPGsa9X1dOz04eHvUWVuxaJ299GvcJT31ug2zO4itXBjFx4w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script th:replace="~{csm/Include/layout :: scripts}"></script>
+    <script th:src="@{/js/csm/counsel/list.js}"></script>
+</body>
+
+</html>

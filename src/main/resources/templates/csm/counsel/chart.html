@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>상담통계 : SOSYGE EASY-CRM</title>
+
+<meta property="og:title" content="상담관리시스템">
+<meta property="og:type" content="website">
+<meta property="og:url" content="http://csm.sosyge.net/csm/login">
+<meta property="og:image" th:content="@{/icon/ev/core_icon_big.png}" content="/icon/ev/core_icon_big.png">
+<meta property="og:description" content="병원상담관리시스템">
+
+<link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+<link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+<link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+
+<link rel="stylesheet" th:href="@{/css/reset.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/spinner.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
+<link rel="stylesheet" th:href="@{/css/csm/counsel/chart.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
+
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
+<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highcharts@12/highcharts.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highcharts@12/modules/exporting.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highcharts@12/modules/accessibility.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highcharts@12/modules/no-data-to-display.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
+<div th:replace="~{csm/Include/layout :: nav_section2('statistics', ${endVar}, ${st}, ${kw})}"></div>
+
+<div class="main">
+    <div class="section">
+        <div th:if="${!hasData}" style="padding:40px 16px; text-align:center; border:1px dashed #ccc; border-radius:12px; background:#fafafa;">
+            <h3 style="margin:0 0 12px;">상담 데이터가 없습니다</h3>
+            <p style="margin:0 0 20px; color:#666;">상담 등록 후 통계를 확인할 수 있어요.</p>
+        </div>
+
+        <th:block th:if="${hasData}">
+            <input type="hidden" id="firstYear" th:value="${firstYear}">
+            <input type="hidden" id="firstMonth" th:value="${firstMonth}">
+            <input type="hidden" id="lastYear" th:value="${lastYear}">
+            <input type="hidden" id="lastMonth" th:value="${lastMonth}">
+
+            <div>
+                <div>
+                    <div class="mb10" style="border-bottom: 1px solid #6A6A6A; padding: 33px 0; display: flex; align-items: center;">
+                        <select class="mr5" id="yearSelect">
+                            <option th:each="y : ${#numbers.sequence(firstYear, lastYear)}"
+                                    th:value="${y}"
+                                    th:text="${y + '년'}"
+                                    th:selected="${y == lastYear}"></option>
+                        </select>
+
+                        <select class="mr5" id="monthSelect"></select>
+                        <select class="mr5" id="counselorFilter">
+                            <option value="">전체</option>
+                        </select>
+                        <span>검색할 년월과 상담자를 선택해주세요.</span>
+                        <button id="exportStatisticsBtn" type="button" class="btn listBtn2" style="margin-left:auto; width: 160px !important;">
+                            엑셀 내보내기
+                        </button>
+                    </div>
+
+                    <div class="scrollDiv">
+                        <div class="mr5">
+                            <div><span class="header-line">1. 상담자별 상담건수 월별추이</span></div>
+                            <div class="tableDiv"><table id="monthlyStatsTable" border="1"></table></div>
+
+                            <div><span class="header-line">1-1. 상담형태별 월별추이</span></div>
+                            <div class="tableDiv"><table id="monthlyMethodStatsTable" class="table table-bordered" border="1"></table></div>
+
+                            <div><span class="header-line">상담건수 월별추이</span></div>
+                            <div id="counselTotalChart"></div>
+
+                            <div><span class="header-line">2. 상담-입원 연계(성공)건수 월별추이</span></div>
+                            <div class="tableDiv"><table id="admissionStatsTable" border="1"></table></div>
+
+                            <div><span class="header-line">상담-입원 연계(성공)건수 월별추이</span></div>
+                            <div id="admissionChartCanvas"></div>
+                            <div id="compareChart"></div>
+
+                            <div><span class="header-line">3. 상담연계유형별 건수 월별추이</span></div>
+                            <div class="tableDiv"><table id="admissionTypeTable" border="1"></table></div>
+
+                            <div><span class="header-line">3-1. 상담연계유형별 - 입원연계(성공) 건수 월별추이</span></div>
+                            <div class="tableDiv"><table id="admissionSuccessTypeTable" border="1"></table></div>
+
+                            <div style="display: flex; min-height: 500px;">
+                                <div id="admissionSuccessTypeChart" style="width: 100%;"></div>
+                                <div id="admissionSuccessTypePie" style="width: 50%;"></div>
+                            </div>
+
+                            <div><span class="header-line">4. 미입원 사유 유형별 월별 추이</span></div>
+                            <div class="tableDiv"><table id="nonAdmissionReasonTable" border="1"></table></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </th:block>
+    </div>
+</div>
+
+<div id="spinner-overlay" style="display: none;">
+    <div class="spinner-container">
+        <div class="spinner"></div>
+        <p>잠시만 기다려주세요</p>
+    </div>
+</div>
+
+<script th:inline="javascript">
+window.HAS_DATA = /*[[${hasData}]]*/ false;
+</script>
+<script th:replace="~{csm/Include/layout :: scripts}"></script>
+<script th:src="@{/js/csm/counsel/chart.js}"></script>
+</body>
+</html>

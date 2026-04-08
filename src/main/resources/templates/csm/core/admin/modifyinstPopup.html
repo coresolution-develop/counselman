@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="_csrf" th:content="${_csrf.token}">
+<meta name="_csrf_header" th:content="${_csrf.headerName}">
+<title>기관수정 : SOSYGE EASY-CRM</title>
+<meta property="og:title" content="상담관리시스템">
+<meta property="og:type" content="website">
+<meta property="og:url" content="http://csm.sosyge.net/csm/login">
+<meta property="og:image" th:content="@{/icon/ev/core_icon_big.png}" content="/icon/ev/core_icon_big.png">
+<meta property="og:description" content="병원상담관리시스템">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+<link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+<link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+<link rel="stylesheet" th:href="@{/css/csm/admin/newuser.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/spinner.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/modal.css}">
+<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+<script th:src="@{/js/csm/core/admin/modifyinstPopup.js}"></script>
+</head>
+<body>
+<form action="/csm/core/inst/post" method="post">
+  <div class="user-header"><h3>기관 정보를 수정해 주세요.</h3></div>
+  <label>기관명 <font color="red">*</font></label>
+  <input type="text" class="user-area" id="id_col_02" name="id_col_02" th:value="${instdata != null ? instdata.id_col_02 : ''}" required="required" />
+  <label>기관코드 <font color="red">*</font></label>
+  <input type="text" class="user-area" id="id_col_03" name="id_col_03" th:value="${instdata != null ? instdata.id_col_03 : ''}" required="required" disabled="disabled" />
+  <label>사업자등록번호 <font color="red">*</font></label>
+  <input type="text" class="user-area" id="id_col_09" name="id_col_09" th:value="${instdata != null ? instdata.id_col_09 : ''}" required="required" />
+  <label>연락처(1) <font color="red">*</font></label>
+  <input type="text" class="user-area" id="id_col_06" name="id_col_06" th:value="${instdata != null ? instdata.id_col_06 : ''}" required="required" />
+  <label>연락처(2)</label>
+  <input type="text" class="user-area" id="id_col_07" name="id_col_07" th:value="${instdata != null ? instdata.id_col_07 : ''}" />
+  <label>주소 <font color="red">*</font></label>
+  <input type="text" class="user-area" id="id_col_08" name="id_col_08" th:value="${instdata != null ? instdata.id_col_08 : ''}" required="required" />
+  <label>비고</label>
+  <input type="text" class="user-area" id="id_col_05" name="id_col_05" th:value="${instdata != null ? instdata.id_col_05 : ''}" />
+  <div class="btn-area">
+    <button class="blue-btn" id="submit-btn" type="button">등록</button>
+    <button class="gray-btn" type="button" onclick="window.close()">취소</button>
+  </div>
+  <input type="hidden" name="id_col_01" id="id_col_01" th:value="${instdata != null ? instdata.id_col_01 : ''}">
+</form>
+<div id="spinner-overlay" style="display: none;">
+  <div class="spinner-container">
+    <div class="spinner"></div>
+    <p>잠시만 기다려주세요</p>
+  </div>
+</div>
+<div class="modal normal">
+  <div class="modal_body">
+    <div>
+      <img class="menu_icon" th:src="@{/img/alert_img.png}">
+      <div class="menu_msg"></div>
+      <div class="modal_footer">
+        <div class="btn modal_btn" onclick="closePopup()" id="confirmBtn2">확인</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

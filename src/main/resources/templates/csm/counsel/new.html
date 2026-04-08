@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta name="app-context-path" th:content="@{/}" />
+    <meta name="_csrf" th:content="${_csrf.token}" />
+    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>입원상담 : SOSYGE EASY-CRM</title>
+    <meta property="og:title" content="상담관리시스템"> <!-- 공유시 사이트 이름 -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="http://49.247.42.59:8090/csm/login"> <!-- 공유시 입력될 URL -->
+    <meta property="og:image" content="/icon/ev/core_icon_big.png" th:content="@{/icon/ev/core_icon_big.png}"> <!-- 공유시 노출 이미지 (최적 사이즈 : 800 x 400) -->
+    <meta property="og:description" content="병원상담관리시스템"> <!-- 공유시 보여질 사이트 간략 소개 -->
+
+    <link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+    <link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+    <link rel="stylesheet" th:href="@{/css/reset.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/style.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/admin/admin.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/popup/newpopup.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/counsel/new.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/spinner.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
+
+    <style>
+        .sms-reservation {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .sms-title {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .input-sms-reservation {
+            display: flex;
+            gap: 5px;
+            flex-basis: content;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .reservation-input {
+            width: 120px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .calendar-icon {
+            cursor: pointer;
+            width: 24px;
+            height: 24px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
+    <div th:replace="~{csm/Include/layout :: nav_section2('new', ${endVar}, ${st}, ${kw})}"></div>
+    <div class="main">
+        <div class="section">
+            <!-- action의 c:choose → 삼항연산자 -->
+            <form id="counselForm"
+                th:object="${csData}"
+                th:action="${cs_idx} != null ? @{/counselupdate/{id}(id=${cs_idx})} : @{/counsel}" method="post"
+                autocomplete="off" onsubmit="return handleSubmit(event)">
+
+                <input type="hidden" name="cs_idx" th:value="${cs_idx}">
+                <input type="hidden" id="inst" name="inst" th:value="${inst}"/>
+                <input type="hidden" id="audio_temp_key" name="audio_temp_key">
+                <input type="hidden" id="file_temp_key" name="file_temp_key">
+                <input type="file" id="audioFileInput" accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac,.ac3" style="display:none;">
+                <input type="file" id="counselFileInput" style="display:none;">
+
+                <div class="section-content">
+                    <div class="content-body">
+                        <div class="contentbox">
+                            <div class="content-inner">
+                                <!-- 좌측 폼 -->
+                                <div class="inner-left">
+                                    <div class="left-content">
+                                        <div class="left-header" style="margin-right:7px;">
+                                            <span>환자상세정보</span>
+                                        </div>
+
+                                        <div class="left-content-1" style="margin-right:7px;">
+                                            <div class="form-row" style="margin-bottom:10px;">
+                                                <div class="field-group">
+                                                    <label for="cs_col_01" class="choose-text1">환자명</label>
+                                                    <input class="input-name" type="text" name="cs_col_01"
+                                                        id="cs_col_01" th:field="*{cs_col_01}">
+                                                </div>
+                                                <div style="display:none">cs_col_01(debug) = [[*{cs_col_01}]]</div>
+                                                <div class="field-group">
+                                                    <label for="cs_col_02">성별</label>
+                                                    <select name="cs_col_02" id="cs_col_02">
+                                                        <option value="">선택하세요</option>
+                                                        <option value="남성" th:selected="${csData.cs_col_02} == '남성'">남성
+                                                        </option>
+                                                        <option value="여성" th:selected="${csData.cs_col_02} == '여성'">여성
+                                                        </option>
+                                                    </select>
+                                                </div>
+
+                                                <!-- JSP의 c:set/split → th:with + #strings.split -->
+                                                <div class="field-group"
+     th:with="
+  raw=${csData.cs_col_07},
+  cleaned=${raw == null ? null : #strings.trim(raw)},
+        parts=${#strings.isEmpty(cleaned) ? null : cleaned.split(',')},
+        v=${parts != null ? #strings.trim(parts[0]) : ''},
+        t=${parts != null and #arrays.length(parts) > 1 ? #strings.trim(parts[1]) : ''}">
+  <label for="cs_col_07" class="cs_col_07-place">현재계신곳</label>
+
+  <select name="cs_col_07" id="cs_col_07" onchange="toggleCsCol07Text(this.value)">
+    <option value="">선택하세요</option>
+    <option value="자택" th:selected="${v}=='자택'">자택</option>
+    <option value="요양원" th:selected="${v}=='요양원'">요양원</option>
+    <option value="요양병원" th:selected="${v}=='요양병원'">요양병원</option>
+    <option value="급성기병원" th:selected="${v}=='급성기병원'">급성기병원</option>
+    <option value="기타" th:selected="${v}=='기타'">기타</option>
+  </select>
+
+  <input type="text" id="cs_col_07_text" name="cs_col_07_text"
+         th:value="${t}"
+         th:style="${v}=='기타' or v=='요양원' or v=='요양병원' or v=='급성기병원' ? '' : 'display:none;'">
+</div>
+
+                                                <div class="field-group">
+                                                    <label for="cs_col_05">보험유형</label>
+                                                    <select name="cs_col_05" id="cs_col_05">
+                                                        <option value="">선택하세요</option>
+                                                        <option value="건강보험" th:selected="${csData.cs_col_05}=='건강보험'">
+                                                            건강보험</option>
+                                                        <option value="건강보험(차상위1종)" th:selected="${csData.cs_col_05}=='건강보험(차상위1종)'">건강보험(차상위1종)</option>
+                                                        <option value="건강보험(차상위2종)" th:selected="${csData.cs_col_05}=='건강보험(차상위2종)'">건강보험(차상위2종)</option>
+                                                        <option value="건강보혐(차상위2종장애)" th:selected="${csData.cs_col_05}=='건강보혐(차상위2종장애)'">건강보혐(차상위2종장애)</option>
+                                                        <option value="의료급여1종" th:selected="${csData.cs_col_05}=='의료급여1종'">의료급여1종</option>
+                                                        <option value="의료급여2종" th:selected="${csData.cs_col_05}=='의료급여2종'">의료급여2종</option>
+                                                        <option value="의료급여2종장애" th:selected="${csData.cs_col_05}=='의료급여2종장애'">의료급여2종장애</option>
+                                                        <option value="자보" th:selected="${csData.cs_col_05}=='자보'">자보</option>
+                                                        <option value="산재" th:selected="${csData.cs_col_05}=='산재'">산재</option>
+                                                        <option value="산정특례(암)5%" th:selected="${csData.cs_col_05}=='산정특례(암)5%'">산정특례(암)5%</option>
+                                                        <option value="산정특례10%" th:selected="${csData.cs_col_05}=='산정특례10%'">산정특례10%</option>
+                                                    </select>
+                                                </div>
+
+                                                <div class="field-group checkbox-group">
+                                                    <input type="checkbox" id="cs_col_06" name="cs_col_06" value="실손보험"
+                                                        th:checked="${csData.cs_col_06}=='실손보험'">
+                                                    <label for="cs_col_06">실손보험</label>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-row">
+                                                <div class="field-group">
+                                                    <label for="cs_col_03">생년월일</label>
+                                                    <input class="purchase_date" name="cs_col_03" id="cs_col_03"
+                                                        th:value="${csData.cs_col_03}" type="text" placeholder="년도-월-일"
+                                                        maxlength="10" oninput="oninputDate(this)" />
+                                                </div>
+
+                                                <div class="field-group">
+                                                    <label for="cs_col_04">나이(만)</label>
+                                                    <input class="input-age" type="text" name="cs_col_04" id="cs_col_04"
+                                                        th:value="${csData.cs_col_04}">
+                                                </div>
+
+                                                <!-- 상담유입경로 분리 -->
+                                                <div class="field-group"
+     th:with="
+        raw=${csData.cs_col_08},
+        cleaned=${raw == null ? null : #strings.trim(raw)},
+        parts=${#strings.isEmpty(cleaned) ? null : cleaned.split(',')},
+        v=${parts != null ? #strings.trim(parts[0]) : ''},
+        t=${parts != null and #arrays.length(parts) > 1 ? #strings.trim(parts[1]) : ''}">
+                                                    <label for="cs_col_08">상담유입경로</label>
+                                                    <select name="cs_col_08" id="cs_col_08"
+                                                        onchange="toggleCsCol08Text(this.value)">
+                                                        <option value="">선택하세요</option>
+                                                        <option value="인터넷" th:selected="${v}=='인터넷'">인터넷</option>
+                                                        <option value="대외협력" th:selected="${v}=='대외협력'">대외협력</option>
+                                                        <option value="협력병원" th:selected="${v}=='협력병원'">협력병원</option>
+                                                        <option value="직원유치" th:selected="${v}=='직원유치'">직원유치</option>
+                                                        <option value="입원환자소개" th:selected="${v}=='입원환자소개'">입원환자소개</option>
+                                                        <option value="재입원" th:selected="${v}=='재입원'">재입원</option>
+                                                        <option value="기타" th:selected="${v}=='기타'">기타</option>
+                                                        <!-- 생략 -->
+                                                        <option value="기타" th:selected="${v}=='기타'">기타</option>
+                                                    </select>
+                                                    <input type="text" id="cs_col_08_text" name="cs_col_08_text"
+         th:value="${t}"
+         th:style="${#strings.isEmpty(v) ? 'display:none;' : ''}">
+                                                </div>
+
+                                                <div class="field-group">
+                                                    <label for="cs_col_09">잠재고객</label>
+                                                    <select name="cs_col_09" id="cs_col_09">
+                                                        <option value="">선택하세요</option>
+                                                        <option value="A" th:selected="${csData.cs_col_09}=='A'">A
+                                                        </option>
+                                                        <option value="B" th:selected="${csData.cs_col_09}=='B'">B
+                                                        </option>
+                                                        <option value="C" th:selected="${csData.cs_col_09}=='C'">C
+                                                        </option>
+                                                    </select>
+                                                </div>
+
+                                                <div class="field-group checkbox-group">
+                                                    <input type="checkbox" id="cs_col_10" name="cs_col_10" value="BC"
+                                                        th:checked="${csData.cs_col_10}=='BC'">
+                                                    <label for="cs_col_10">BC</label>
+                                                </div>
+                                            </div>
+                                        </div>
+<div class="category-container">
+  <!-- Category1 루프 -->
+  <div class="category1-wrapper"
+       th:each="c1Wrap : ${categoryData}"
+       th:with="c1=${c1Wrap.category1}">
+
+    <div class="category1" th:text="${c1.cc_col_02}">카테고리1 라벨</div>
+<div class="subcategory-list">
+    <!-- Category2 루프 -->
+    <th:block th:each="c2Wrap : ${c1Wrap.subcategories}"
+              th:with="
+                c2=${c2Wrap.category2},
+                fieldKey=${'field_' + c1.cc_col_01 + '_' + c2.cc_col_01},
+                chk=${c2.cc_col_04 == 1},
+                rad=${c2.cc_col_05 == 1},
+                txt=${c2.cc_col_06 == 1},
+                sel=${c2.cc_col_07 == 1},
+                type=${
+                  chk and !rad and !txt and !sel ? 'checkbox_only' :
+                  rad and !chk and !txt and !sel ? 'radio_only' :
+                  sel and !chk and !rad and !txt ? 'select_only' :
+                  txt and !chk and !rad and !sel ? 'text_only' :
+                  chk and txt and !rad and !sel ? 'checkbox_text' :
+                  chk and sel and !rad and !txt ? 'checkbox_select' :
+                  rad and txt and !chk and !sel ? 'radio_text' :
+                  rad and sel and !chk and !txt ? 'radio_select' :
+                  chk and txt and sel and !rad ? 'checkbox_select_text' :
+                  rad and txt and sel and !chk ? 'radio_select_text' : null
+                },
+                opts=${c2Wrap.options}">
+
+      <!-- checkbox_only -->
+      <div th:if="${type == 'checkbox_only'}" class="input-wrapper">
+        <input type="checkbox"
+               th:name="|${fieldKey}_checkbox|"
+               th:value="${c2.cc_col_02}"
+               th:checked="${valueMap[fieldKey + '_checkbox'] != null}">
+        <label th:text="${c2.cc_col_02}">라벨</label>
+      </div>
+
+      <!-- radio_only -->
+      <div th:if="${type == 'radio_only'}" class="input-wrapper">
+        <th:block th:with="rdGroup=${'field_' + c1.cc_col_01 + '_radio'}">
+          <input type="radio"
+                 th:name="${rdGroup}"
+                 th:value="${c2.cc_col_01}"
+                 th:checked="${valueMap[fieldKey + '_radio'] != null}">
+        </th:block>
+        <label th:text="${c2.cc_col_02}">라벨</label>
+      </div>
+
+      <!-- select_only -->
+      <div th:if="${type == 'select_only'}" class="input-wrapper">
+        <span th:text="${c2.cc_col_02}">라벨</span>
+        <select th:if="${opts != null and !#lists.isEmpty(opts)}"
+                th:name="|${fieldKey}_select|">
+          <option value="">선택하세요</option>
+          <th:block th:each="opt : ${opts}"
+                    th:with="label=${#strings.isEmpty(opt.cc_col_03AsString) ? opt.cc_col_02 : opt.cc_col_03AsString}">
+            <option th:if="${!#strings.isEmpty(label) and #strings.trim(label) != #strings.trim(c2.cc_col_02)}"
+                    th:value="${label}"
+                    th:text="${label}"
+                    th:selected="${valueMap[fieldKey + '_select'] == label}">
+            </option>
+          </th:block>
+        </select>
+      </div>
+
+      <!-- text_only -->
+      <div th:if="${type == 'text_only'}" class="input-wrapper">
+        <span th:text="${c2.cc_col_02}">라벨</span>
+        <input type="text"
+               th:name="|${fieldKey}_text|"
+               th:value="${valueMap[fieldKey + '_text']}">
+      </div>
+
+      <!-- checkbox_select -->
+      <div th:if="${type == 'checkbox_select'}" class="input-wrapper">
+        <input type="checkbox"
+               th:name="|${fieldKey}_checkbox|"
+               th:value="${c2.cc_col_02}"
+               th:checked="${valueMap[fieldKey + '_checkbox'] != null}">
+        <label th:text="${c2.cc_col_02}">라벨</label>
+      </div>
+      <div th:if="${type == 'checkbox_select' and opts != null and !#lists.isEmpty(opts)}" class="input-wrapper">
+        <span></span>
+        <select th:name="|${fieldKey}_select|">
+          <option value="">선택하세요</option>
+          <th:block th:each="opt : ${opts}"
+                    th:with="label=${#strings.isEmpty(opt.cc_col_03AsString) ? opt.cc_col_02 : opt.cc_col_03AsString}">
+            <option th:if="${!#strings.isEmpty(label) and #strings.trim(label) != #strings.trim(c2.cc_col_02)}"
+                    th:value="${label}"
+                    th:text="${label}"
+                    th:selected="${valueMap[fieldKey + '_select'] == label}">
+            </option>
+          </th:block>
+        </select>
+      </div>
+
+      <!-- radio_select -->
+      <div th:if="${type == 'radio_select'}" class="input-wrapper">
+        <th:block th:with="rdGroup=${'field_' + c1.cc_col_01 + '_radio'}">
+          <input type="radio"
+                 th:name="${rdGroup}"
+                 th:value="${c2.cc_col_01}"
+                 th:checked="${valueMap[fieldKey + '_radio'] != null}">
+        </th:block>
+        <label th:text="${c2.cc_col_02}">라벨</label>
+      </div>
+      <div th:if="${type == 'radio_select' and opts != null and !#lists.isEmpty(opts)}" class="input-wrapper">
+        <span></span>
+        <select th:name="|${fieldKey}_select|">
+          <option value="">선택하세요</option>
+          <th:block th:each="opt : ${opts}"
+                    th:with="label=${#strings.isEmpty(opt.cc_col_03AsString) ? opt.cc_col_02 : opt.cc_col_03AsString}">
+            <option th:if="${!#strings.isEmpty(label) and #strings.trim(label) != #strings.trim(c2.cc_col_02)}"
+                    th:value="${label}"
+                    th:text="${label}"
+                    th:selected="${valueMap[fieldKey + '_select'] == label}">
+            </option>
+          </th:block>
+        </select>
+      </div>
+
+      <!-- checkbox_text -->
+      <div th:if="${type == 'checkbox_text'}" class="input-wrapper">
+        <input type="checkbox"
+               th:name="|${fieldKey}_checkbox|"
+               th:value="${c2.cc_col_02}"
+               th:checked="${valueMap[fieldKey + '_checkbox'] != null}">
+        <label th:text="${c2.cc_col_02}">라벨</label>
+      </div>
+      <div th:if="${type == 'checkbox_text'}" class="input-wrapper">
+        <span></span>
+        <input type="text"
+               th:name="|${fieldKey}_text|"
+               th:value="${valueMap[fieldKey + '_text']}">
+      </div>
+
+      <!-- radio_text -->
+      <div th:if="${type == 'radio_text'}" class="input-wrapper">
+        <th:block th:with="rdGroup=${'field_' + c1.cc_col_01 + '_radio'}">
+          <input type="radio"
+                 th:name="${rdGroup}"
+                 th:value="${c2.cc_col_01}"
+                 th:checked="${valueMap[fieldKey + '_radio'] != null}">
+        </th:block>
+        <label th:text="${c2.cc_col_02}">라벨</label>
+      </div>
+      <div th:if="${type == 'radio_text'}" class="input-wrapper">
+        <span></span>
+        <input type="text"
+               th:name="|${fieldKey}_text|"
+               th:value="${valueMap[fieldKey + '_text']}">
+      </div>
+
+      <div style="display:none"><pre th:text="${valueMap}"></pre></div>
+    </th:block>
+    </div>
+  </div>
+
+
+  <div class="left-content-2">
+												<div class="left-container">
+													<div class="left-custom">
+														<div class="left-customname">현상태</div>
+														<textarea  class="left-textarea" name="cs_col_11" id="cs_col_11" th:text="${csData.cs_col_11}">현상태</textarea>
+													</div>
+												</div>
+												
+											</div>
+</div>
+
+                                    </div>
+                                </div>
+
+                                <!-- 우측 폼 (상담기록) - 핵심만 -->
+                                <div class="inner-right">
+                                    <div class="right-header">상담기록</div>
+                                    <div class="right-content">
+                                        <div class="right-content-1">
+                                            <div class="counsel-form">
+                                                <div class="form-section">
+                                                    <div id="guardianContainer">
+                                                        <th:block th:if="${guardians == null or #lists.isEmpty(guardians)}">
+                                                            <div class="guardian-entry">
+                                                                <div class="form-group">
+                                                                    <label class="protector_name_text" for="protector_name">보호자명</label>
+                                                                    <input class="protector_name" type="text" name="cs_col_13[]" value="">
+                                                                </div>
+                                                                <div class="form-group">
+                                                                    <label class="protector_connection_text" for="protector_connection">관계</label>
+                                                                    <input class="protector_connection" type="text" name="cs_col_14[]" value="">
+                                                                </div>
+                                                                <div class="form-group guardian-phone">
+                                                                    <label class="protector_phone_text" for="protector_phone">연락처</label>
+                                                                    <div class="input-with-icon">
+                                                                        <input class="protector_phone" type="text" name="cs_col_15[]"
+                                                                               value="" oninput="oninputPhone(this)" onkeydown="handleBackspace(event)"
+                                                                               pattern="^\\+?[0-9\\-]{7,15}$" maxlength="13" title="유효한 연락처를 입력해주세요.">
+                                                                        <img class="sms_icon" th:src="@{/icon/ev/sender-icon.png}">
+                                                                    </div>
+                                                                </div>
+                                                                <div>
+                                                                    <button type="button" class="removeGuardian" onclick="removeGuardian(this)"></button>
+                                                                    <button type="button" class="addGuardianButton" onclick="addGuardian()"></button>
+                                                                </div>
+                                                            </div>
+                                                        </th:block>
+
+                                                        <th:block th:if="${guardians != null and !#lists.isEmpty(guardians)}">
+                                                            <div class="guardian-entry" th:each="guardian,loop : ${guardians}">
+                                                                <div class="form-group">
+                                                                    <label class="protector_name_text" for="protector_name">보호자명</label>
+                                                                    <input class="protector_name" type="text" name="cs_col_13[]" th:value="${guardian.name}">
+                                                                </div>
+                                                                <div class="form-group">
+                                                                    <label class="protector_connection_text" for="protector_connection">관계</label>
+                                                                    <input class="protector_connection" type="text" name="cs_col_14[]" th:value="${guardian.relationship}">
+                                                                </div>
+                                                                <div class="form-group guardian-phone">
+                                                                    <label class="protector_phone_text" for="protector_phone">연락처</label>
+                                                                    <div class="input-with-icon">
+                                                                        <input class="protector_phone" type="text" name="cs_col_15[]" th:value="${guardian.contact_number}"
+                                                                               oninput="oninputPhone(this)" onkeydown="handleBackspace(event)"
+                                                                               pattern="^\\+?[0-9\\-]{7,15}$" maxlength="13" title="유효한 연락처를 입력해주세요.">
+                                                                        <img class="sms_icon" th:src="@{/icon/ev/sender-icon.png}">
+                                                                    </div>
+                                                                </div>
+                                                                <button type="button" class="removeGuardian" onclick="removeGuardian(this)"></button>
+                                                                <button type="button" class="addGuardianButton" onclick="addGuardian()" th:if="${loop.last}"></button>
+                                                            </div>
+                                                        </th:block>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="right-content-2">
+                                            <div id="counselContainer" class="counsel-container">
+                                                <div class="counsel-entry" style="display:flex;">
+                                                    <div class="form-group">
+                                                        <label for="cs_col_16">상담일자</label>
+                                                        <input class="purchase_date flatpickr-input" name="cs_col_16" id="cs_col_16"
+                                                            th:value="${csData.cs_col_16}" type="text" maxlength="10"
+                                                            autocomplete="off" />
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <img id="form-reset"
+                                                            style="width:15px;cursor:pointer;position:absolute;top:20px;right:0;"
+                                                            th:src="@{/icon/ev/refresh.png}">
+                                                        <label for="cs_col_17">상담자</label>
+                                                        <input type="text" name="cs_col_17" id="cs_col_17" 
+  th:value="${!#strings.isEmpty(csData?.cs_col_17) 
+              ? csData.cs_col_17 
+              : (info != null ? info.us_col_12 : '')}" />
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label for="cs_col_18">방법</label>
+                                                        <select name="cs_col_18" id="cs_col_18">
+                                                            <option value="">선택하세요</option>
+                                                            <option value="전화" th:selected="${csData.cs_col_18}=='전화'">
+                                                                전화</option>
+                                                            <option value="방문" th:selected="${csData.cs_col_18}=='방문'">
+                                                                방문</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label for="cs_col_19">결과</label>
+                                                        <select name="cs_col_19" id="cs_col_19">
+                                                            <option value="">선택하세요</option>
+                                                            <option value="입원완료"
+                                                                th:selected="${csData.cs_col_19}=='입원완료'">입원완료</option>
+                                                            <option value="입원예약"
+                                                                th:selected="${csData.cs_col_19}=='입원예약'">입원예약</option>
+                                                            <option value="입원안함"
+                                                                th:selected="${csData.cs_col_19}=='입원안함'">입원안함</option>
+                                                        </select>
+                                                    </div>
+                                                    <!-- 예약/미입원 영역은 기존 JS 그대로 제어 -->
+                                                    <div id="reservationFields"
+     style="display: none;"
+     th:style="${#strings.isEmpty(csData.cs_col_21) and #strings.isEmpty(csData.cs_col_38) ? 'display:none;' : ''}">
+  <div class="form-group">
+    <label class="cs_col_21_date" for="cs_col_21">입원예정일</label>
+    <input class="purchase_date flatpickr-input"
+           name="cs_col_21"
+           id="cs_col_21"
+           type="text"
+           placeholder="년도-월-일"
+           maxlength="10"
+           oninput="oninputDate(this)"
+           th:value="${csData.cs_col_21}" />
+  </div>
+
+  <div class="form-group">
+    <label class="cs_col_21_time flatpickr-input" for="cs_col_21_time">예정시간</label>
+    <input class="purchase_time"
+           type="text"
+           name="cs_col_21_time"
+           id="cs_col_21_time"
+           placeholder="HH:mm"
+           th:value="${csData.cs_col_21}" />
+  </div>
+
+  <div class="form-group">
+    <label class="cs_col_21_room" for="cs_col_38">예상 호실</label>
+    <input type="text"
+           name="cs_col_38"
+           id="cs_col_38"
+           th:value="${csData.cs_col_38}" />
+  </div>
+</div>
+                                                    <div id="noAdmissionReason"
+     style="display: none;"
+     th:style="${#strings.isEmpty(csData.cs_col_20) ? 'display:none;' : ''}">
+  <div class="form-group">
+    <label for="cs_col_20">미입원사유</label>
+    <select name="cs_col_20" id="cs_col_20">
+      <option value="">선택하세요</option>
+      <option value="병원쇼핑"  th:selected="${csData.cs_col_20}=='병원쇼핑'">병원쇼핑</option>
+      <option value="간병비"    th:selected="${csData.cs_col_20}=='간병비'">간병비</option>
+      <option value="병실차액"  th:selected="${csData.cs_col_20}=='병실차액'">병실차액</option>
+      <option value="타병원입원" th:selected="${csData.cs_col_20}=='타병원입원'">타병원입원</option>
+      <option value="입원불허"  th:selected="${csData.cs_col_20}=='입원불허'">입원불허</option>
+      <option value="기타"      th:selected="${csData.cs_col_20}=='기타'">기타</option>
+    </select>
+  </div>
+</div>
+                                                </div>
+                                            </div>
+                                            <div class="right-container">
+                                                <div class="right-custom">
+                                                    <div class="right-customname">상담내용</div>
+                                                    <div class="pc-audio-panel">
+                                                        <div class="pc-audio-header">
+                                                            <div class="pc-audio-title">음성 녹음</div>
+                                                            <div id="recordingIndicator" class="recording-indicator" aria-live="polite">
+                                                                <span class="recording-dot" aria-hidden="true"></span>
+                                                                <span class="recording-label">녹음 중</span>
+                                                                <span id="recordingTimer" class="recording-timer">00:00</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="record-tools pc-record-tools">
+                                                            <button type="button" id="startRecordingBtn" class="btn counsel-file-btn">녹음 시작</button>
+                                                            <button type="button" id="stopRecordingBtn" class="btn counsel-file-btn" disabled>녹음 중지</button>
+                                                            <button type="button" id="uploadAudioFileBtn" class="btn counsel-file-btn">파일 업로드</button>
+                                                            <button type="button" id="applyDiseaseMatchBtn" class="btn counsel-file-btn">커스텀 매칭</button>
+                                                        </div>
+                                                        <p id="recordingStatus" class="recording-status">대기 중</p>
+                                                        <audio id="recordPreview" controls class="record-preview" style="display:none;"></audio>
+                                                        <div id="audioRecordList" class="audio-record-list"></div>
+                                                    </div>
+                                                    <div class="counsel-file-panel pc-file-panel">
+                                                        <div class="counsel-file-actions">
+                                                            <button type="button" id="uploadCounselFileBtn" class="btn counsel-file-btn">서류 업로드</button>
+                                                            <span class="counsel-file-help">소견서/PDF/이미지/문서 첨부</span>
+                                                        </div>
+                                                        <div id="counselFileList" class="counsel-file-list"></div>
+                                                        <p id="counselFileStatus" class="counsel-file-status"></p>
+                                                    </div>
+                                                    <textarea class="right-textarea" style="height:200px;"
+          name="cs_col_32" id="cs_col_32"
+          th:text="${!#lists.isEmpty(cslog) 
+                    ? (cslog[0]['counsel_content'] != null ? cslog[0]['counsel_content'] : '') 
+                    : (csData != null ? csData.cs_col_32 : '')}">
+</textarea>
+                                                </div>
+                                            </div>
+
+                                            <!-- 상담 로그 간단 예시 -->
+                                            <div class="counsel-log">
+                                                <div class="logs-header"
+                                                    style="display:flex;justify-content:space-around;">
+                                                    <div class="method">방법</div>
+                                                    <div class="date">상담일자</div>
+                                                    <div class="result">결과</div>
+                                                    <div class="counselor">상담자</div>
+                                                </div>
+                                                <div class="logs-body">
+                                                    <th:block th:each="log,st : ${cslog}">
+                                                        <div class="logs-content"
+                                                            style="display:flex;justify-content:space-around;padding:5px 10px;border-bottom:1px solid #eee;cursor:pointer"
+                                                            th:with="logDate=${!#strings.isEmpty(log.counsel_at) ? log.counsel_at : '-'},
+                                                                     logMethod=${!#strings.isEmpty(log.counsel_method) ? log.counsel_method : '-'},
+                                                                     logResult=${!#strings.isEmpty(log.counsel_result) ? log.counsel_result : '-'},
+                                                                     logCounselor=${!#strings.isEmpty(log.counsel_name) ? log.counsel_name : '-'}"
+                                                            th:attr="data-idx=${log.idx},
+                                            data-csidx=${cs_idx},
+                                            data-created-at=${logDate},
+                                            data-counsel-method=${logMethod},
+                                            data-counsel-result=${logResult},
+                                            data-counsel-name=${logCounselor}" onclick="logsOpen(this)">
+                                                            <div class="method" th:text="${logMethod}">
+                                                            </div>
+                                                            <div class="date" th:text="${logDate}"></div>
+                                                            <div class="result" th:text="${logResult}">
+                                                            </div>
+                                                            <div class="counselor" th:text="${logCounselor}">
+                                                            </div>
+                                                        </div>
+                                                    </th:block>
+                                                    <div th:if="${#lists.isEmpty(cslog)}"
+                                                        style="padding:12px 10px;color:#888;text-align:center;border-bottom:1px solid #eee;">
+                                                        저장된 상담 이력이 없습니다.
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="counsel-bottom">
+                                                <div class="right-content-5 counsel-bottom-2"
+                                                    style="padding:0;border:0;">
+                                                    <div style="display:flex;padding:0;width:100%;">
+                                                        <button type="button" class="btn counsel-btn"
+                                                            id="print-preview">일지출력</button>
+                                                        <button class="btn newBtn pop-btn counsel-btn"
+                                                            id="confirm">환자정보저장</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                        </div> <!-- right-content-2 -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div> <!-- /.section -->
+    </div> <!-- /.main -->
+
+    <!-- 상담 이력 상세 모달 -->
+    <div class="popup-wrap counsel-history-popup" id="popup" role="dialog" aria-modal="true"
+        aria-labelledby="counsel-history-title">
+        <div class="popup counsel-history-dialog">
+            <div class="popup-head">
+                <span class="head-title" id="counsel-history-title">상담 이력 상세</span>
+            </div>
+            <div class="popup-body">
+                <div class="body-content">
+                    <div class="body-contentbox">
+                        <div class="counsel-history-grid">
+                            <div class="form-group form-group2">
+                                <label for="log_cs_col_16">상담일자</label>
+                                <input type="text" id="log_cs_col_16" name="log_cs_col_16" readonly>
+                            </div>
+                            <div class="form-group form-group2">
+                                <label for="log_cs_col_17">상담자</label>
+                                <input type="text" id="log_cs_col_17" name="log_cs_col_17" readonly>
+                            </div>
+                            <div class="form-group form-group2">
+                                <label for="log_cs_col_18">상담방법</label>
+                                <input type="text" id="log_cs_col_18" name="log_cs_col_18" readonly>
+                            </div>
+                            <div class="form-group form-group2">
+                                <label for="log_cs_col_19">상담결과</label>
+                                <input type="text" id="log_cs_col_19" name="log_cs_col_19" readonly>
+                            </div>
+                        </div>
+
+                        <div id="reservationFields-log" class="counsel-history-extra" style="display:none;">
+                            <div class="form-group form-group2">
+                                <label for="log_cs_col_21">입원예정일</label>
+                                <input type="text" id="log_cs_col_21" name="log_cs_col_21" readonly>
+                            </div>
+                        </div>
+
+                        <div id="noAdmissionReason-log" class="counsel-history-extra" style="display:none;">
+                            <div class="form-group form-group2">
+                                <label for="log_cs_col_20">미입원사유</label>
+                                <input type="text" id="log_cs_col_20" name="log_cs_col_20" readonly>
+                            </div>
+                        </div>
+
+                        <div class="form-group form-group2">
+                            <label for="log_cs_col_32">상담내용</label>
+                            <textarea id="log_cs_col_32" name="log_cs_col_32" rows="7"
+                                placeholder="기록된 상담내용이 없습니다." readonly></textarea>
+                        </div>
+
+                        <div class="guardianContainer-log" id="guardianContainer-log"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="popup-foot">
+                <button type="button" class="btn listBtn close" id="close">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모달 -->
+
+    <!-- 문자전송 -->
+    <div id="phone-container" class="phone-container">
+        <div class="phone-wrap">
+            <div class="phone-wrapper">
+                <div>
+                    <div style="width: 450px; height: 100%;">
+                        <div class="form-group">
+                            <span class="sms-title">발신번호</span>
+                            <select name="from-phone" id="from-phone">
+                                <option value="">발신번호 선택</option>
+                                <th:block th:if="${phOptions != null and !#lists.isEmpty(phOptions)}">
+                                    <option th:each="opt : ${phOptions}"
+                                        th:value="${opt.value}"
+                                        th:text="${opt.text}"></option>
+                                </th:block>
+                                <option th:if="${phOptions == null or #lists.isEmpty(phOptions)}" value="" disabled>등록된 발신번호가 없습니다</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <span class="sms-title">수신번호</span>
+                            <div id="input-value-display" class="input-value-display"></div>
+                        </div>
+
+                        <div class="sms-reservation">
+                            <span class="sms-title" id="reservation-title">예약발송</span>
+                            <div class="input-sms-reservation">
+                                <input type="hidden" id="reservation" name="reservation">
+                                <input type="text" id="reservation-date" class="reservation-input" placeholder="날짜 선택">
+                                <select id="reservation-hour" name="reservation-hour">
+                                    <option value="">시간 선택</option>
+                                </select>
+                                <select id="reservation-minute" name="reservation-minute">
+                                    <option value="">분 선택</option>
+                                </select>
+                                <span class="reset_icon" id="reservation-reset">
+                                    <img style="width: 15px;" th:src="@{/icon/ev/refresh.png}">
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="sms-title">상용구</div>
+                        <div style="margin-bottom: 20px; background: #F9F9F9; border-radius: 5px; padding: 15px;">
+                            <div class="sms-titile-wrap">
+                                <div class="sms-name">
+                                    <div class="sms-scrollarea">
+                                        <div class="template-item"
+                                            th:each="t,st : ${smstemplate}"
+                                            style="cursor: pointer; padding-bottom: 10px; display: flex; align-items: center;">
+                                            <input type="radio" th:data-template="${t.template}"
+                                                th:id="|template-${st.index}|"
+                                                name="templateRadio" class="template-radio"
+                                                th:value="${t.template}" style="margin-right: 5px;">
+                                            <label th:class="|template-${st.index}|" th:for="|template-${st.index}|"
+                                                th:text="${t.title}"></label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <textarea id="userTemplate" class="sms-sub" placeholder="선택한 상용구 내용이 여기에 표시됩니다." readonly></textarea>
+                            </div>
+                            <div class="sms-button">
+                                <button type="button" class="btn btn-sms" id="template-select-btn"
+                                    style="padding: 4px 7px; margin: 0;">확인</button>
+                            </div>
+                        </div>
+
+                        <div class="sms-title">서명</div>
+                        <div style="background: #F9F9F9; border-radius: 5px; padding: 15px;">
+                            <div class="sms-titile-wrap">
+                                <div class="sms-name">
+                                    <div class="sms-scrollarea">
+                                        <div class="card-item"
+                                            th:each="c,st : ${card}"
+                                            style="cursor: pointer; padding-bottom: 10px; display: flex; align-items: center;">
+                                            <input type="radio" th:data-card="${c.content}"
+                                                th:id="|card-${st.index}|"
+                                                name="cardRadio" class="card-radio"
+                                                th:value="${c.content}" style="margin-right: 5px;">
+                                            <label th:class="|card-${st.index}|" th:for="|card-${st.index}|"
+                                                th:text="${c.title}"></label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <textarea id="cardTemplate" class="sms-sub" placeholder="선택한 서명 내용이 여기에 표시됩니다." readonly></textarea>
+                            </div>
+                            <div class="sms-button">
+                                <button type="button" class="btn btn-sms" id="card-select-btn"
+                                    style="padding: 4px 7px; margin: 0;">확인</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div style="display: flex; gap: 20px;">
+                        <div style="position: relative; width: 350px;">
+                            <div class="sms-title"><span>문자입력</span></div>
+                            <div class="phone-space">
+                                <div class="textarea-container">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                                        <span id="byte-count">0 / 90byte&nbsp;<span class="type_90">단문</span></span>
+                                        <span class="reset_icon" id="template-reset"><img style="width: 15px;" th:src="@{/icon/ev/refresh.png}"></span>
+                                    </div>
+                                    <textarea id="message-textarea" placeholder="문자 내용을 입력해주세요." wrap="soft"></textarea>
+                                    <div style="display: flex; align-items: center; justify-content: right; margin-top: 30px; margin-bottom: 10px;">
+                                        <span class="reset_icon" id="card-reset"><img style="width: 15px;" th:src="@{/icon/ev/refresh.png}"></span>
+                                    </div>
+                                    <textarea id="card-textarea" placeholder="서명 및 인사말을 입력해주세요." wrap="soft"></textarea>
+                                    <div style="padding-top: 20px;">
+                                        <span id="template-save-btn">상용구 저장</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="width: 350px;">
+                            <div>
+                                <div class="sms-title"><span>문자전송이력</span></div>
+                                <div id="history-wrapper"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="footer-wrapper">
+                        <div class="btn-wrapper" style="display: flex; justify-content: flex-end;">
+                            <div class="sms-no">
+                                <input type="checkbox" id="ad-checkbox" name="ad-checkbox">
+                                <label for="ad-checkbox">광고문자(080 무료수신거부)</label>
+                            </div>
+                            <button class="btn close-button" id="close-button">닫기</button>
+                            <button class="btn send-button" id="send-button">전송</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="template-save-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h2>상용구 저장</h2>
+                <div class="form-group">
+                    <label for="template-name">상용구 제목:</label>
+                    <input type="text" id="template-name" placeholder="Enter template name" />
+                </div>
+                <div class="form-group">
+                    <label for="template-content">상용구 내용:</label>
+                    <textarea id="template-content" placeholder="Enter template content"></textarea>
+                </div>
+                <div class="button-group">
+                    <button id="cancel-template-button" class="btn btn-cancel">취소</button>
+                    <button id="save-template-button" class="btn btn-save">저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="spinner-overlay" style="display:none;">
+        <div class="spinner-container">
+            <div class="spinner"></div>
+            <p>잠시만 기다려주세요</p>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"
+        integrity="sha512-zYXldzJsDrNKV+odAwFYiDXV2Cy37cwizT+NkuiPGsa9X1dOz04eHvUWVuxaJ299GvcJT31ug2zO4itXBjFx4w=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script th:replace="~{csm/Include/layout :: scripts}"></script>
+    <script th:src="@{/js/csm/counsel/new.js}"></script>
+    <script th:src="@{/js/csm/counsel/counselFile.js}"></script>
+    <script th:src="@{/js/csm/counsel/counselAudio.js}"></script>
+</body>
+
+</html>

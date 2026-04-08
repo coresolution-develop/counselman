@@ -1,0 +1,134 @@
+@charset "UTF-8";
+@import url(https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@1.0/nanumsquare.css);
+*,
+*::before,
+*::after {
+  /* 테두리를 기준으로 크기를 정합니다. */
+  box-sizing: border-box;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+	-webkit-text-fill-color: #929191;
+    -webkit-box-shadow: 0 0 0px 1000px #e8e8e8 inset;
+    box-shadow: 0 0 0px 1000px #e8e8e8 inset;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+input:autofill,
+input:autofill:hover,
+input:autofill:focus,
+input:autofill:active {
+	-webkit-text-fill-color: #929191;
+    -webkit-box-shadow: 0 0 0px 1000px #e8e8e8 inset;
+    box-shadow: 0 0 0px 1000px #e8e8e8 inset;
+    transition: background-color 5000s ease-in-out 0s;
+}
+html, body{
+  -webkit-text-size-adjust : none;  /* 크롬, 사파리, 오페라 신버전 */
+  -ms-text-size-adjust : none;  /* IE */
+  -moz-text-size-adjust : none;  /* 파이어폭스 */
+  -o-text-size-adjust : none;  /* 오페라 구버전 */
+}
+
+body {
+  margin: 0;
+}
+
+/* 기본 셋업 */
+header,section,article,aside,footer,main,a,button,input,textarea,img,nav,ul,ol,li,p,h1,h2,h3,h4,h5,h6,div,span{
+	margin   : 0;
+	padding  : 0;
+	/* 폰트 크기 상속 */
+	font-size: inherit;
+}
+ul,ol,li{
+	list-style: none;
+}
+table {
+	border-collapse: collapse;
+		
+}
+
+body {
+	font-family: 'NanumSquare', sans-serif;
+}
+.normal{
+	font-weight:400
+}
+.bold{
+	font-weight:700
+}
+.bolder{
+	font-weight:800
+}
+.light{
+	font-weight:300
+}
+
+.flex{
+	display: flex;
+	align-items: center; /* 수직 정렬을 위해 align-items 속성을 사용합니다. */
+}
+.flex-center{
+	justify-content: center;
+}
+.flex-between{
+	justify-content: space-between;
+}
+.flex-around{
+	justify-content: space-around;
+}
+.flex-start{
+	justify-content: flex-start;
+}
+.flex-end{
+	justify-content: flex-end;
+}
+.flex-col{
+	flex-direction: column;
+}
+.flex-row{
+	display: inline-block;
+}
+.bg-1{
+	background-color: black;
+	color: #ffffff;
+}
+.center{
+	text-align: center;
+}
+.row {
+	display: flex;
+	flex-wrap: wrap;
+}
+.row > * {
+	flex-shrink: 0;
+	width: 100%;
+	max-width: 100%;
+}
+.col {
+	flex: 1 0 0%;
+}
+
+
+/*
+
+Copyright (c) 2010, NAVER Corporation (https://www.navercorp.com/) with Reserved Font Name Nanum, Naver Nanum, NanumGothic, Naver NanumGothic, NanumMyeongjo, Naver NanumMyeongjo, NanumBrush, Naver NanumBrush, NanumPen, Naver NanumPen, Naver NanumGothicEco, NanumGothicEco, Naver NanumMyeongjoEco, NanumMyeongjoEco, Naver NanumGothicLight, NanumGothicLight, NanumBarunGothic, Naver NanumBarunGothic, NanumSquareRound, NanumBarunPen, MaruBuri, NanumSquareNeo
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+
+This license is copied below, and is also available with a FAQ at: http://scripts.sil.org/OFL
+
+SIL OPEN FONT LICENSE
+
+Version 1.1 - 26 February 2007 
+
+*/
+
+
+
+
+

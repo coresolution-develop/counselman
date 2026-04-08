@@ -1,0 +1,151 @@
+@charset "UTF-8";
+
+* {
+	box-sizing: border-box;
+}
+body {
+	background: #fbfbfb;
+}
+select {
+    appearance: none;
+    background-image: url(../../../icon/arrow-down-icon.png);
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 8px;
+    cursor: pointer;
+    outline: none;
+    padding: 8px 12px !important;
+    border: 1px solid #6A6A6A;
+    border-radius: 4px;
+    background-color: #fff;
+    font-size: 12px;
+    color: #777;
+    transition: border-color 0.3s ease;
+    font-weight: 400;
+    text-align: left;
+    width: 140px;
+}
+.main {
+	padding: 90px 20px 0 20px;
+    margin-left: 145px;
+    max-width: 2560px;
+    height: 100vh;
+}
+
+.section {
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.10);
+    padding: 20px;
+    height: calc(100vh - 105px);
+/*     overflow-y: auto; */
+}
+.tableDiv {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: auto;
+    border-radius: 5px;
+}
+.scrollDiv {
+	overflow: auto;
+    height: calc(100vh - 256px);
+}
+
+.scrollDiv::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.scrollDiv::-webkit-scrollbar-thumb {
+    background: #DADADA;
+    border-radius: 4px;
+}
+
+.scrollDiv::-webkit-scrollbar-track {
+    background: #F9F9F9;
+}
+#monthlyStatsTable, #monthlyMethodStatsTable, #admissionStatsTable, 
+#admissionTypeStatsTable, #admissionTypeTable, #admissionSuccessTypeTable,
+#nonAdmissionReasonTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    border-radius: 5px;
+}
+#monthlyStatsTable th, #monthlyMethodStatsTable th, #admissionStatsTable th,
+#admissionTypeStatsTable th, #admissionTypeTable th, #admissionSuccessTypeTable th,
+#nonAdmissionReasonTable th  {
+    background-color: #eee;
+    color: #545454;
+    font-size: 12px;
+    font-weight: 500;
+    width: 120px;
+/*     min-width: 120px; */
+/*     max-width: 160px; */
+    text-align: center;
+    padding: 10px 0;
+    text-align: center;
+    border: 1px solid #eee;
+    color: #474747;
+    font-size: 11px;
+    font-weight: 400;
+}
+#monthlyStatsTable td, #monthlyMethodStatsTable td, #admissionStatsTable td,
+#admissionTypeStatsTable td, #admissionTypeTable td, #admissionSuccessTypeTable td,
+#nonAdmissionReasonTable td  {
+    padding: 10px 0;
+    text-align: center;
+    border: 1px solid #eee;
+    color: #474747;
+    font-size: 11px;
+    font-weight: 400;
+}
+#monthlyStatsTable td:last-child,
+#monthlyStatsTable td:nth-last-child(2),
+#monthlyStatsTable td:nth-last-child(3),
+#monthlyMethodStatsTable td:last-child,
+#monthlyMethodStatsTable td:nth-last-child(2),
+#monthlyMethodStatsTable td:nth-last-child(3),
+#admissionStatsTable td:last-child,
+#admissionStatsTable td:nth-last-child(2),
+#admissionStatsTable td:nth-last-child(3), 
+#admissionTypeTable td:last-child,
+#admissionTypeTable td:nth-last-child(2),
+#admissionTypeTable td:nth-last-child(3),  
+#admissionSuccessTypeTable td:last-child,
+#admissionSuccessTypeTable td:nth-last-child(2),
+#admissionSuccessTypeTable td:nth-last-child(3), 
+#nonAdmissionReasonTable td:last-child,
+#nonAdmissionReasonTable td:nth-last-child(2),
+#nonAdmissionReasonTable td:nth-last-child(3)  {
+  font-weight: 600;
+}
+#monthlyStatsTable tr:nth-child(even) td,
+#monthlyMethodStatsTable tr:nth-child(even) td,
+#admissionStatsTable tr:nth-child(even) td,
+#admissionTypeTable tr:nth-child(even) td,
+#admissionSuccessTypeTable tr:nth-child(even) td,
+#nonAdmissionReasonTable tr:nth-child(even) td {
+    background-color: #f9f9f9;
+}
+.total td{
+    border-top: 2px solid #DBDBDB !important;
+    color: #264272 !important;
+    font-weight: 600 !important; 
+}
+.pmcount td{
+	
+}
+.pmper td{
+	
+}
+.header-line {
+	font-size: 18px;
+    font-weight: 600;
+    color: #474747;
+    display: block;
+    margin: 10px 0;
+}
+#yearSelect, #monthSelect, #counselorFilter {
+	
+}

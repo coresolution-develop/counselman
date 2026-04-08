@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+    <title>로그인 : SOSYGE EASY-CRM</title>
+
+    <!-- SNS 공유시 썸네일 표시(보통 헤드에 들어감) -->
+    <meta property="og:title" content="상담관리시스템">	<!-- 공유시 사이트 이름 -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="http://csm.sosyge.net/csm/login">	<!-- 공유시 입력될 URL -->
+    <meta property="og:image" content="/icon/ev/core_icon_big.png" th:content="@{/icon/ev/core_icon_big.png}">	<!-- 공유시 노출 이미지 (최적 사이즈 : 800 x 400) -->
+    <meta property="og:description" content="병원상담관리시스템">	<!-- 공유시 보여질 사이트 간략 소개 -->
+    <link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+    <link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/login/login.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
+    <style type="text/css">
+        #result {
+            color: red;
+            font-size: 14px;
+            text-align: center;
+            margin: 0 0 3px;
+            font-weight: bold;
+        }
+</style>
+</head>
+<body>
+    <div class="login-container">
+		<div class="login_wrap">
+			<h2 th:align="center" class="login_title">SOSYGE EASY CRM</h2>
+			<form th:action="@{/login/post}" method="post">
+				<input type="text" placeholder="기관코드" name="us_col_04" id="us_col_04" >
+                <!--   style="text-transform: uppercase;"  -->
+				<input type="text" placeholder="아이디" name="us_col_02" id="us_col_02" />
+				<input type="password" placeholder="비밀번호" name="us_col_03" id="us_col_03" autofocus="autofocus"/>
+				<!-- <c:if test="${not empty error}">
+					<div class="error-message">${error}</div>
+				</c:if> -->
+				<div id="result"></div>
+				<input class="login_btn" type="button" value="로그인" id="confirm"/>
+				<a class="pwd_btn" th:href="@{/findpwd}">비밀번호변경</a>
+			</form>
+		</div>
+		<div class="bottom_img">
+			<div class="login_bottom" alt="하단백그라운드"></div>
+			<div class="logo_bottom">
+				<img th:src="@{/icon/ev/sosyge_logo.png}" class="logo_bottom_img" alt="하단로고">
+			</div>
+		</div>
+	</div>
+
+    <script src="https://code.jquery.com/jquery-latest.min.js"></script>
+    <script th:src="@{/js/csm/login/login.js}"></script>
+</body>
+</html>

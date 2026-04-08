@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+	<meta charset="UTF-8">
+<link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+	<title>layout</title>
+</head>
+
+<body>
+	<div class="wrapper" th:fragment="header(info)" th:with="u=${info != null ? info : session.userInfo}">
+		<div class="logo">
+			<div class="home-icon">
+				<a th:href="@{/counsel/list(page=1,perPageNum=10,end='',searchType='',keyword='')}">
+					<img th:src="@{/icon/ev/home_white.png}">
+				</a>
+			</div>
+			<div class="logo-img">
+				<img th:src="@{/icon/ev/sosyge_logo_w2.png}">
+                <span class="sys-name"><span class="line">|</span> CounselMan</span>
+			</div>
+            <div class="header-right">
+                <div class="info-header">
+                    <div class="info-header-row info-header-row-top">
+                        <span class="info-header-item info-header-user"
+                              th:text="${u != null ? u.us_col_02 : ''}">아이디</span>
+                    </div>
+                    <div class="info-header-row info-header-row-bottom">
+                        <span class="info-header-item info-header-name" th:text="${u != null ? u.us_col_05 : ''}">기관명</span>
+                        <span class="info-header-dot">·</span>
+                        <span class="info-header-item info-header-position"
+                              th:text="${u == null ? '' : ((u.us_col_08 == 0 or u.us_col_08 == 1) ? 'admin' : (u.us_col_08 == 2 ? 'supervisor' : (u.us_col_08 == 3 ? 'manager' : (u.us_col_08 == 4 ? 'viewer' : ''))))}">
+                            등급
+                        </span>
+                    </div>
+                </div>
+                <div class="logout-img">
+                    <a th:href="@{/logout}" class="logout-button">
+                        <img th:src="@{/icon/ev/logout_new.png}">
+                    </a>
+                </div>
+            </div>
+		</div>
+	</div>
+	<div id="user-nav" class="nav_section"
+     th:fragment="nav_section2(activeMenu, end, searchType, keyword)"
+     th:attr="data-active-menu=${activeMenu}">
+  <th:block th:with="info=${session.userInfo}, isCore=${info != null and info.us_col_04 != null and #strings.equalsIgnoreCase(info.us_col_04, 'core')}">
+  <ul th:if="${isCore}">
+    <li class="nav_link menu1"
+        data-menu="admin" data-content="all"
+        th:classappend="${activeMenu == 'admin' ? ' on active' : ''}">
+      <a th:href="@{/core/admin}" aria-label="관리자 페이지로 이동">기관/사용자 등록</a>
+    </li>
+    <li class="nav_link menu2"
+        data-menu="setting" data-content="all"
+        th:classappend="${activeMenu == 'setting' ? ' on active' : ''}">
+      <a th:href="@{/core/setting}" aria-label="설정관리 페이지로 이동">상담일지관리</a>
+    </li>
+    <li class="nav_link menu3"
+        data-menu="smssetting" data-content="all"
+        th:classappend="${activeMenu == 'smssetting' ? ' on active' : ''}">
+      <a th:href="@{/core/smssetting}" aria-label="문자관리 페이지로 이동">문자관리</a>
+    </li>
+  </ul>
+
+  <ul th:unless="${isCore}">
+    <!-- 입원상담 -->
+    <li class="nav_link menu1"
+        data-menu="new" data-content="all"
+        th:classappend="${activeMenu == 'new' ? ' on active' : ''}"
+        th:attr="data-base-url=@{/counsel/new}"
+        role="link" tabindex="0" aria-label="입원상담 페이지로 이동">
+      <span>입원상담</span>
+    </li>
+
+    <!-- 상담리스트 -->
+    <li class="nav_link menu2"
+        data-menu="list" data-content="all"
+        th:classappend="${activeMenu == 'list' ? ' on active' : ''}"
+        th:attr="data-base-url=@{/counsel/list(page=1, perPageNum=10, end=${end}, searchType=${searchType}, keyword=${keyword})}"
+        role="link" tabindex="0" aria-label="상담리스트 페이지로 이동">
+      <span>상담리스트</span>
+    </li>
+
+    <!-- 상담통계 (info.us_col_08 == 2 또는 coreadmin) -->
+    <li class="nav_link menu3"
+        data-menu="statistics" data-content="all"
+        th:classappend="${activeMenu == 'statistics' ? ' on active' : ''}">
+      <!-- 접근 가능 -->
+      <div th:if="${info != null and (info.us_col_08 == 2 or info.us_col_02 == 'coreadmin')}"
+           th:attr="data-base-url=@{/statistics}"
+           role="link" tabindex="0" aria-label="상담통계 페이지로 이동">
+        <span>상담통계</span>
+      </div>
+      <!-- 접근 불가 -->
+      <div th:unless="${info != null and (info.us_col_08 == 2 or info.us_col_02 == 'coreadmin')}"
+           class="disabled-link" aria-disabled="true">
+        <span>상담통계</span>
+      </div>
+    </li>
+
+    <!-- 상담일지관리(설정관리) -->
+    <li class="nav_link menu4"
+        data-menu="setting" data-content="all"
+        th:classappend="${activeMenu == 'setting' ? ' on active' : ''}"
+        th:attr="data-base-url=@{/setting}"
+        role="link" tabindex="0" aria-label="설정관리 페이지로 이동">
+      <span>상담일지관리</span>
+    </li>
+
+    <!-- 문자관리 -->
+    <li class="nav_link menu5"
+        data-menu="sms" data-content="all"
+        th:classappend="${activeMenu == 'sms' ? ' on active' : ''}"
+        th:attr="data-base-url=@{/smsSetting(page=1, perPageNum=10, comment='')}"
+        role="link" tabindex="0" aria-label="상용구관리 페이지로 이동">
+      <span>문자관리</span>
+    </li>
+
+    <!-- 관리자 (info.us_col_08 == 1 또는 coreadmin) -->
+    <li class="nav_link menu6"
+        data-menu="admin" data-content="all"
+        th:classappend="${activeMenu == 'admin' ? ' on active' : ''}">
+      <!-- 접근 가능 -->
+      <div th:if="${info != null and (info.us_col_08 == 1 or info.us_col_02 == 'coreadmin')}"
+           th:attr="data-base-url=@{/admin}"
+           role="link" tabindex="0" aria-label="관리자 페이지로 이동">
+        <span>관리자</span>
+      </div>
+      <!-- 접근 불가 -->
+      <div th:unless="${info != null and (info.us_col_08 == 1 or info.us_col_02 == 'coreadmin')}"
+           class="disabled-link" aria-disabled="true">
+        <span>관리자</span>
+      </div>
+    </li>
+  </ul>
+  </th:block>
+</div>
+
+
+</body>
+
+<script th:fragment="scripts">
+	function initPage() {
+        console.log("initPage() start");
+        updateMenuLinksUser();
+        return;
+    }
+function updateMenuLinksAdmin(year) {
+    document.querySelectorAll('#admin-nav [data-base-url]').forEach(el => {
+      el.removeAttribute('onclick');
+      const baseUrl = el.dataset.baseUrl;
+      if (!baseUrl) return;
+      const url = new URL(baseUrl, window.location.origin);
+      url.searchParams.set('year', year);
+      el.setAttribute('onclick', 'location.href="' + url.pathname + '?' + url.searchParams.toString() + '"');
+    });
+  }
+  function updateMenuLinksUser() {
+    document.querySelectorAll('#user-nav [data-base-url]').forEach(el => {
+      el.removeAttribute('onclick');
+      const baseUrl = el.dataset.baseUrl;
+      if (!baseUrl) return;
+      el.setAttribute('onclick', 'location.href="' + baseUrl + '"'); // year 안 붙임
+    });
+  }
+
+  // 페이지 로드 시 사용자용 메뉴에 클릭 바인딩
+  document.addEventListener('DOMContentLoaded', function () {
+    updateMenuLinksUser();
+
+    // 서버에서 전달한 activeMenu를 기준으로 nav 활성화 일관성 보장
+    const userNav = document.getElementById('user-nav');
+    const activeMenu = userNav ? (userNav.dataset.activeMenu || '').trim() : '';
+    if (userNav && activeMenu) {
+      userNav.querySelectorAll('.nav_link').forEach(li => li.classList.remove('active', 'on'));
+      const target = userNav.querySelector(`.nav_link[data-menu='${activeMenu}']`);
+      if (target) {
+        target.classList.add('active', 'on');
+      }
+    }
+
+    // 접근성: 키보드로도 동작(Enter/Space)
+    document.querySelectorAll('#user-nav [data-base-url]').forEach(el => {
+      el.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+      });
+      // 포커스 가능하도록 보장(이미 role="link" tabindex="0" 부여했지만 혹시 몰라서)
+      if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+      if (!el.hasAttribute('role')) el.setAttribute('role', 'link');
+    });
+  });
+
+/** 모든 메뉴의 active/아이콘 상태 초기화 */
+  function resetMenu(nav) {
+    nav.querySelectorAll('.nav_link, .nav_sub_link').forEach(li => li.classList.remove('active', 'on'));
+    nav.querySelectorAll('[data-icon-on][data-icon-off]').forEach(li => {
+      const img = li.querySelector('img.icon-image');
+      if (img && li.dataset.iconOff) img.src = li.dataset.iconOff;
+    });
+  }
+
+  /** 특정 메뉴(class) 활성화 + 아이콘 on */
+  function setActiveMenu(menuClass) {
+    const nav = document.getElementById('admin-nav') || document.getElementById('user-nav');
+    if (!nav) return;
+
+    resetMenu(nav);
+
+    const li = nav.querySelector('.' + menuClass);
+    if (!li) return;
+
+    // 선택 항목 활성화
+    li.classList.add('active', 'on');
+
+    // 아이콘 on
+    const img = li.querySelector('img.icon-image');
+    if (img && li.dataset.iconOn) img.src = li.dataset.iconOn;
+
+    // 하위 메뉴(subX)라면, 바로 위의 상위 메뉴(nav_link)도 on 처리
+    if (li.classList.contains('nav_sub_link')) {
+      let prev = li.previousElementSibling;
+      while (prev && !prev.classList.contains('nav_link')) prev = prev.previousElementSibling;
+      if (prev) {
+        prev.classList.add('active', 'on');
+        const pimg = prev.querySelector('img.icon-image');
+        if (pimg && prev.dataset.iconOn) pimg.src = prev.dataset.iconOn;
+      }
+    }
+  }
+
+</script>
+
+</html>

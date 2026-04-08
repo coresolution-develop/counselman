@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>설정관리 : SOSYGE EASY-CRM</title>
+
+    <meta property="og:title" content="상담관리시스템">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="http://49.247.42.59:8090/csm/login">
+    <meta property="og:image" th:content="@{/icon/ev/core_icon_big.png}" content="/icon/ev/core_icon_big.png">
+    <meta property="og:description" content="병원상담관리시스템">
+
+    <link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+    <link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+    <script th:src="@{/js/csm/admin/admin.js}" defer></script>
+    <script th:src="@{/js/csm/admin/setting.js}" defer></script>
+
+    <link rel="stylesheet" th:href="@{/css/reset.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/setting/settingpopup.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/setting/setting.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/popup/popup.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/spinner.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/modal.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"
+            integrity="sha512-zYXldzJsDrNKV+odAwFYiDXV2Cy37cwizT+NkuiPGsa9X1dOz04eHvUWVuxaJ299GvcJT31ug2zO4itXBjFx4w=="
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+
+    <style>
+        .off { display: none; }
+        Button { font-size: inherit; }
+        #checkboxContainer { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .template-option {
+            display: flex; align-items: center; padding: 15px; border: 1px solid #ccc;
+            border-radius: 5px; margin-bottom: 10px; cursor: pointer; position: relative;
+            transition: background-color 0.3s ease; height: 50px;
+        }
+        .template-option.selected { background-color: #f0f8ff; border-color: #007bff; }
+        .template-option .checkmark {
+            display: inline-block; width: 15px; height: 15px; margin-right: 10px;
+            background-image: url('/csm/icon/ev/checkbox_off.png'); background-size: cover;
+        }
+        .template-option input[type="radio"] { display: none; }
+        .template-option input[type="radio"]:checked + .checkmark {
+            background-image: url('/csm/icon/ev/checkbox_on2.png');
+        }
+        .bi-pen { display: none; }
+    </style>
+</head>
+<body>
+<div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
+<div th:replace="~{csm/Include/layout :: nav_section2('setting', ${endVar}, ${st}, ${kw})}"></div>
+
+<div class="main">
+    <div class="section">
+        <div class="content-top">
+            <div class="section-top">
+                <div><span class="section-header"></span></div>
+            </div>
+        </div>
+
+        <div class="content-mid">
+            <div class="section-mid">
+                <div class="category-section">
+                    <div class="category-container">
+                        <div class="category-header">
+                            <h3>상담항목</h3>
+                            <div class="settingDiv">
+                                <img class="search-text" id="setting-main" th:src="@{/icon/ev/fix-icon.png}" src="/csm/icon/ev/fix-icon.png">
+                            </div>
+                        </div>
+
+                        <div class="category-container-wrap">
+                            <div id="mainCategoryDiv">
+                                <label class="custom-radio" data-category-type="main"
+                                       th:each="category1Data : ${categoryData}">
+                                    <input type="radio" data-category-type="parent" name="mainCategory"
+                                           th:value="${category1Data.category1.cc_col_01}">
+                                    <span class="custom-radio-mark"></span>
+                                    <span th:text="${category1Data.category1.cc_col_02}"></span>
+                                    <img th:src="@{/icon/ev/pen-icon.png}" src="/csm/icon/ev/pen-icon.png"
+                                         width="16" height="16" fill="currentColor" class="bi bi-pen"
+                                         viewBox="0 0 16 16"
+                                         th:attr="value=${category1Data.category1.cc_col_01}">
+                                </label>
+                            </div>
+                            <div id="main" class="cateButton">
+                                <button class="btn orderBtn" id="save-order-main" style="display: none;" onclick="saveOrder('main')">순서저장</button>
+                                <button class="btn delBtn setting-btn" id="del-maincategory" data-category-type="parent" onclick="showDeleteConfirmation(this)">- 삭제</button>
+                                <button class="btn newBtn" id="new-maincategory" data-category-type="parent" onclick="showAddCategoryModal(this)">+ 추가</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="category-container">
+                        <div class="category-header">
+                            <h3>설정값</h3>
+                            <div class="settingDiv">
+                                <img class="search-text" id="setting-sub" th:src="@{/icon/ev/fix-icon.png}" src="/csm/icon/ev/fix-icon.png">
+                            </div>
+                        </div>
+                        <div class="category-container-wrap">
+                            <div id="subCategoryDiv"></div>
+                            <div id="sub" class="cateButton">
+                                <button class="btn orderBtn" id="save-order-sub" style="display: none;" onclick="saveOrder('sub')">순서저장</button>
+                                <button class="btn delBtn setting-btn" id="del-subcategory" data-category-type="child" onclick="showDeleteConfirmation(this)" disabled>- 삭제</button>
+                                <button class="btn newBtn" id="new-subcategory" data-category-type="child" onclick="showAddCategoryModal(this)" disabled>+ 추가</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="category-container">
+                        <div class="category-header">
+                            <h3>Select Box 설정값</h3>
+                            <div class="settingDiv">
+                                <img class="search-text" id="setting-option" th:src="@{/icon/ev/fix-icon.png}" src="/csm/icon/ev/fix-icon.png">
+                            </div>
+                        </div>
+                        <div class="category-container-wrap">
+                            <div id="optionCategoryDiv"></div>
+                            <div id="option" class="cateButton">
+                                <button class="btn orderBtn" id="save-order-option" style="display: none;" onclick="saveOrder('option')">순서저장</button>
+                                <button class="btn delBtn setting-btn" id="del-optioncategory" data-category-type="option" onclick="showDeleteConfirmation(this)" disabled> 삭제</button>
+                                <button class="btn newBtn" id="new-optioncategory" data-category-type="option" onclick="showAddCategoryModal(this)" disabled>+ 추가</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-bot">
+            <div>
+                <div class="search-status-area">
+                    <div class="status-area">
+                        <div>
+                            <span class="btn delBtn btnw100 listBtn2" id="templatePreview" style="flex: inherit;">미리보기</span>
+                            <span class="btn newBtn btnw100 listBtn2" id="templateSelect" style="flex: inherit;">템플릿 불러오기</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="spinner-overlay" style="display: none;">
+    <div class="spinner-container">
+        <div class="spinner"></div>
+        <p>잠시만 기다려주세요</p>
+    </div>
+</div>
+
+<div class="modal normal">
+    <div class="modal_body">
+        <div>
+            <img class="menu_icon" th:src="@{/img/alert_img.png}" src="/csm/img/alert_img.png">
+            <div class="menu_msg">text</div>
+            <div class="modal_footer">
+                <div class="btn modal_btn">확인</div>
+                <div class="btn pink_btn2 listBtn" onclick="closePopup()">취소</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal2 normal">
+    <div class="modal_body2">
+        <div>
+            <img class="menu_icon" th:src="@{/img/alert_img.png}" src="/csm/img/alert_img.png">
+            <div class="menu_msg2">text</div>
+            <input type="text" class="modal-input" id="cc_col_02" name="cc_col_02" placeholder="분류/옵션을 입력하세요.">
+            <div class="modal_footer2">
+                <div class="btn modal_btn2 listBtn" id="ModifyBtn">확인</div>
+                <div class="btn pink_btn2 listBtn" onclick="closePopup2()">취소</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal3 normal">
+    <div class="modal_body3">
+        <div>
+            <img class="menu_icon" th:src="@{/img/alert_img.png}" src="/csm/img/alert_img.png">
+            <div class="menu_msg3">text</div>
+            <div class="modal_footer3">
+                <div class="btn modal_btn2 listBtn" id="confirmBtn" onclick="deleteCategory()">확인</div>
+                <div class="btn pink_btn2 listBtn" onclick="closePopup3()">취소</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="templateModal" class="templateModal">
+    <div class="modal-content">
+        <div class="template_msg">
+            <span class="msg_icon" id="back-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" height="25px" width="25px">
+                    <path d="M224 480h640a32 32 0 1 1 0 64H224a32 32 0 0 1 0-64z" fill="#000000"></path>
+                    <path d="m237.248 512 265.408 265.344a32 32 0 0 1-45.312 45.312l-288-288a32 32 0 0 1 0-45.312l288-288a32 32 0 1 1 45.312 45.312L237.248 512z" fill="#000000"></path>
+                </svg>
+            </span>
+            <span class="msg_header" id="template_header">템플릿을 선택하세요.</span>
+            <span id="del_icon" style="display:none;">
+                <img th:src="@{/icon/ev/close-icon.png}" src="/csm/icon/ev/close-icon.png" style="width:19px; cursor:pointer">
+            </span>
+        </div>
+        <div id="templateModalContent" class="template-list"></div>
+        <div class="templateModal_footer">
+            <div class="btn modal_btn2 listBtn" id="templateConfirm">미리보기</div>
+        </div>
+    </div>
+</div>
+
+<div class="modal4 normal">
+    <div class="modal_body4">
+        <div>
+            <img class="menu_icon" th:src="@{/img/alert_img.png}" src="/csm/img/alert_img.png">
+            <div class="menu_msg4">새로운 분류를 입력해주세요.</div>
+            <input type="text" class="modal-input" id="addCategoryName" name="cc_col_02" placeholder="분류 이름 입력">
+
+            <div id="checkboxContainer">
+                <label class="custom-checkbox">
+                    <input type="checkbox" id="isCheckbox" onclick="toggleCheckboxRadio('checkbox')">
+                    <span class="custom-checkbox-mark"></span>
+                    Checkbox
+                </label>
+                <label class="custom-checkbox">
+                    <input type="checkbox" id="isRadio" onclick="toggleCheckboxRadio('radio')">
+                    <span class="custom-checkbox-mark"></span>
+                    Radio Box
+                </label>
+                <label class="custom-checkbox">
+                    <input type="checkbox" id="isSelectbox" onclick="toggleSelectOptions()">
+                    <span class="custom-checkbox-mark"></span>
+                    Select Box
+                </label>
+                <label class="custom-checkbox">
+                    <input type="checkbox" id="isTextbox">
+                    <span class="custom-checkbox-mark"></span>
+                    Text Box
+                </label>
+            </div>
+
+            <div id="selectOptions" style="display: none;">
+                <input type="text" id="selectboxOptions" placeholder="선택박스 옵션(콤마로 구분)">
+            </div>
+
+            <div class="modal_footer4">
+                <div class="btn modal_btn2 listBtn" id="addbtn">확인</div>
+                <div class="btn pink_btn2 listBtn" onclick="closePopup4()">취소</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:replace="~{csm/Include/layout :: scripts}"></script>
+</body>
+</html>

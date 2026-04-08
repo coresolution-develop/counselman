@@ -1,0 +1,162 @@
+@charset "UTF-8";
+.category-section {
+    display: flex;
+    justify-content: space-between;
+}
+.category-container {
+    width: 30%;
+}
+.category-container h3 {
+	flex-grow: 1;
+    text-align: center;
+    margin: 0;
+    color: #545454;
+    font-size: 14px;
+    font-weight: 600;
+}
+.category-header {
+	display: flex;
+    align-items: center;
+    padding: 10px 0;
+    background: #eee;
+    border-radius: 5px;
+    color: #fff;
+    font-weight: 500;
+    position: relative;
+    height: 40px;
+    margin-bottom: 5px;
+}
+.category-header::before {
+    content: '';
+    width: 34px;
+}
+.category-header .settingDiv {
+    margin-right: 10px;
+    cursor: pointer;
+}
+.category-header .settingDiv img {
+    width: 24px;
+    height: 24px;
+}
+.category-container-wrap {
+	border: solid 1px #eaeaea;
+    border-radius: 5px;
+}
+#mainCategoryDiv, #subCategoryDiv, #optionCategoryDiv {
+	margin: 30px 40px;
+    text-align: left;
+}
+.custom-radio {
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    margin: 10px 0;
+    display: flex;
+    padding: 5px 0;
+    font-size: 14px;
+	font-weight: 400;
+    color: #474747;
+}
+.custom-radio input[type="radio"] {
+    display: none;
+}
+.custom-radio .custom-radio-mark {
+	width: 12px;
+    height: 12px;
+    border: 1px solid #06603A;
+    border-radius: 2px;
+    margin-right: 8px;
+    position: relative;
+}
+.custom-radio input[type="radio"]:checked+.custom-radio-mark {
+	background-color: #06603A;
+	background-image: url(/resources/icon/ev/check-icon.png);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 8px 8px;
+}
+
+.custom-radio .custom-radio-mark::after {
+	content: '';
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+/*	background: #fff;	가운데 컬러 */
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	opacity: 0;
+}
+
+.custom-radio input[type="radio"]:checked+.custom-radio-mark::after {
+	opacity: 1;
+}
+.cateButton {
+	display: flex;
+    justify-content: space-between;
+    margin: 0 30px 40px;
+}
+
+	
+#checkboxContainer {
+	display: flex;
+	justify-content: space-between;
+}
+.custom-checkbox {
+	display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 14px;
+    user-select: none;
+    margin: 8px 0;
+}
+.custom-checkbox input[type="checkbox"] {
+	display: none;
+}
+.custom-checkbox .custom-checkbox-mark {
+	width: 18px;
+    height: 18px;
+    border: 2px solid #143257;
+    border-radius: 5px;
+    margin-right: 8px;
+    position: relative;
+}
+.custom-checkbox input[type="checkbox"]:checked+.custom-checkbox-mark  {
+	background-color: #143257;
+}
+.custom-checkbox .custom-checkbox-mark::after  {
+	content: '';
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: #fff;	
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	opacity: 0;
+}
+.custom-checkbox input[type="checkbox"]:checked+.custom-checkbox-mark::after  {
+	opacity: 1;
+}
+.custom-radio img {
+    margin-left: auto; /* Push SVG to the end of the flex container */
+    margin-right: 8px; /* Add spacing between the SVG and the container edge */
+    opacity: 0; /* Initially hidden */
+    transition: opacity 0.2s; /* Smooth visibility transition */
+}
+
+.custom-radio:hover img {
+    opacity: 1; /* Make the icon visible */
+}
+
+
+
+
+
+
+
+
+
+

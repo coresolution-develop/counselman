@@ -1,0 +1,97 @@
+plugins {
+	id 'java'
+	id 'war'
+	id 'org.springframework.boot' version '3.4.10'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.coresolution'
+version = '0.0.1-SNAPSHOT'
+description = 'Demo project for Spring Boot'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-mail'
+	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.5'
+	implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
+
+	compileOnly 'org.projectlombok:lombok'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	runtimeOnly 'com.mysql:mysql-connector-j'
+	annotationProcessor 'org.projectlombok:lombok'
+
+	providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:3.0.5'
+	testImplementation 'org.springframework.security:spring-security-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+	implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
+	implementation 'org.hibernate.validator:hibernate-validator:8.0.2.Final'
+	implementation 'org.apache.poi:poi:5.2.3'
+	implementation 'org.apache.poi:poi-ooxml:5.2.3'
+	implementation 'org.apache.pdfbox:pdfbox:2.0.30'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.fork = false
+	options.forkOptions.jvmArgs.removeAll { it == '-XshowSettings:all' }
+}
+
+// bootWar 결과물은 프로파일별로 달라지지 않음
+// devWar / prodWar 는 bootWar 결과물을 복사해서 파일명만 바꾸는 편의 태스크
+tasks.register('devWar') {
+	dependsOn 'clean', 'bootWar'
+	group = 'build'
+	description = 'Build WAR for DEV deployment'
+
+	doLast {
+		def src = tasks.named('bootWar').get().archiveFile.get().asFile
+		copy {
+			from src
+			into "$buildDir/libs"
+			rename { 'csm-dev.war' }
+		}
+		println "DEV WAR created: ${buildDir}/libs/csm-dev.war"
+	}
+}
+
+tasks.register('prodWar') {
+	dependsOn 'clean', 'bootWar'
+	group = 'build'
+	description = 'Build WAR for PROD deployment'
+
+	doLast {
+		def src = tasks.named('bootWar').get().archiveFile.get().asFile
+		copy {
+			from src
+			into "$buildDir/libs"
+			rename { 'csm-prod.war' }
+		}
+		println "PROD WAR created: ${buildDir}/libs/csm-prod.war"
+	}
+}

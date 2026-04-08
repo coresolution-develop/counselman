@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="_csrf" th:content="${_csrf.token}">
+<meta name="_csrf_header" th:content="${_csrf.headerName}">
+<title>문자관리 : SOSYGE EASY-CRM</title>
+<link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+<link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+<link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+<link rel="stylesheet" th:href="@{/css/reset.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/style.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/spinner.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/admin/admin.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/admin/style.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/admin/smssetting.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/popup/popup.css}">
+</head>
+<body>
+<div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
+<div th:replace="~{csm/Include/layout :: nav_section2('smssetting', '', '', '')}"></div>
+<div class="main">
+  <div class="section">
+    <div class="content-mid">
+      <div class="section-mid">
+        <div class="smsTemplateDiv" style="width: 100%;" id="myTable">
+          <div class="sms-history-grid4">
+            <div class="grid-header4" style="grid-template-columns: 200px 1fr 1fr;">
+              <div>기관명</div>
+              <div>단가(SMS/LMS/MMS)</div>
+              <div>상태</div>
+            </div>
+          </div>
+          <div class="grid-body4">
+            <div class="grid-row4" th:if="${#lists.isEmpty(list)}">
+              <div>기관이 없습니다.</div>
+            </div>
+            <div class="grid-row4"
+                 th:each="l : ${list}"
+                 th:if="${l != null and !#strings.equalsIgnoreCase(l.id_col_03, 'core')}"
+                 th:attr="data-template-idx=${l.id_col_01},data-inst-code=${l.id_col_03},data-sms=${l.sms_price},data-lms=${l.lms_price},data-mms=${l.mms_price}">
+              <div th:text="${l.id_col_02}"></div>
+              <div th:text="|${l.sms_price} / ${l.lms_price} / ${l.mms_price}|"></div>
+              <div th:text="${l.id_col_04}"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="section-bot">
+        <div class="search-status-area">
+          <div><span>검색수 : <span class="count" th:text="|${instCount}건|"></span></span></div>
+          <div class="status-area">
+            <div class="section-btn">
+              <div class="btn counsel-btn delBtn" id="modi-price">단가수정</div>
+              <div class="section-btn btn newBtn pop-btn counsel-btn" id="new-price">단가등록</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="popup-wrap" id="price-all-modal" style="display:none;">
+  <div class="popup" style="max-width:520px;">
+    <div class="popup-head"><span class="head-title">전체 단가 등록</span></div>
+    <div class="popup-body">
+      <div class="body-content"><div class="body-contentbox">
+        <div><span class="content1">SMS :</span><input type="text" id="smspriceAll"></div>
+        <div><span class="content1">LMS :</span><input type="text" id="lmspriceAll"></div>
+        <div><span class="content1">MMS :</span><input type="text" id="mmspriceAll"></div>
+      </div></div>
+    </div>
+    <div class="popup-foot">
+      <span class="pop-btn close" id="price-all-cancel">취소</span>
+      <span class="pop-btn confirm" id="price-all-save">저장</span>
+    </div>
+  </div>
+</div>
+
+<div class="popup-wrap" id="price-one-modal" style="display:none;">
+  <div class="popup" style="max-width:520px;">
+    <div class="popup-head"><span class="head-title">기관 단가 수정</span></div>
+    <div class="popup-body">
+      <div class="body-content"><div class="body-contentbox">
+        <div><span class="content1">기관코드 :</span><span id="selected-inst-code"></span></div>
+        <div><span class="content1">SMS :</span><input type="text" id="smsprice"></div>
+        <div><span class="content1">LMS :</span><input type="text" id="lmsprice"></div>
+        <div><span class="content1">MMS :</span><input type="text" id="mmsprice"></div>
+      </div></div>
+    </div>
+    <div class="popup-foot">
+      <span class="pop-btn close" id="price-one-cancel">취소</span>
+      <span class="pop-btn confirm" id="price-one-save">저장</span>
+    </div>
+  </div>
+</div>
+<script th:src="@{/js/csm/core/admin/core-smssetting.js}"></script>
+</body>
+</html>

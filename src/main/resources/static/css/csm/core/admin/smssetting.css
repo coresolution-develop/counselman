@@ -1,0 +1,260 @@
+@charset "UTF-8";
+.category-section {
+    display: flex;
+    justify-content: space-between;
+}
+.category-container {
+    width: 30%;
+}
+.category-container h3 {
+	flex-grow: 1;
+    text-align: center;
+    margin: 0;
+    color: #545454;
+    font-size: 14px;
+    font-weight: 600;
+}
+.category-header {
+	display: flex;
+    align-items: center;
+    padding: 10px 0;
+    background: #eee;
+    border-radius: 5px;
+    color: #fff;
+    font-weight: 500;
+    position: relative;
+    height: 40px;
+    margin-bottom: 5px;
+}
+.category-header::before {
+    content: '';
+    width: 34px;
+}
+.category-header .settingDiv {
+    margin-right: 10px;
+    cursor: pointer;
+}
+.category-header .settingDiv img {
+    width: 24px;
+    height: 24px;
+}
+.category-container-wrap {
+	border: solid 1px #eaeaea;
+    border-radius: 5px;
+}
+#mainCategoryDiv, #subCategoryDiv, #optionCategoryDiv {
+	margin: 30px 40px;
+    text-align: left;
+}
+.custom-radio {
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    margin: 10px 0;
+    display: flex;
+    padding: 5px 0;
+    font-size: 14px;
+	font-weight: 400;
+    color: #474747;
+}
+.custom-radio input[type="radio"] {
+    display: none;
+}
+.custom-radio .custom-radio-mark {
+	width: 12px;
+    height: 12px;
+    border: 1px solid #06603A;
+    border-radius: 2px;
+    margin-right: 8px;
+    position: relative;
+}
+.custom-radio input[type="radio"]:checked+.custom-radio-mark {
+	background-color: #06603A;
+	background-image: url(/resources/icon/ev/check-icon.png);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 8px 8px;
+}
+
+.custom-radio .custom-radio-mark::after {
+	content: '';
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+/*	background: #fff;	가운데 컬러 */
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	opacity: 0;
+}
+
+.custom-radio input[type="radio"]:checked+.custom-radio-mark::after {
+	opacity: 1;
+}
+.cateButton {
+	display: flex;
+    justify-content: space-between;
+    margin: 0 30px 40px;
+}
+
+	
+#checkboxContainer {
+	display: flex;
+	justify-content: space-between;
+}
+.custom-checkbox {
+	display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 14px;
+    user-select: none;
+    margin: 8px 0;
+}
+.custom-checkbox input[type="checkbox"] {
+	display: none;
+}
+.custom-checkbox .custom-checkbox-mark {
+	width: 18px;
+    height: 18px;
+    border: 2px solid #143257;
+    border-radius: 5px;
+    margin-right: 8px;
+    position: relative;
+}
+.custom-checkbox input[type="checkbox"]:checked+.custom-checkbox-mark  {
+	background-color: #143257;
+}
+.custom-checkbox .custom-checkbox-mark::after  {
+	content: '';
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: #fff;	
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	opacity: 0;
+}
+.custom-checkbox input[type="checkbox"]:checked+.custom-checkbox-mark::after  {
+	opacity: 1;
+}
+.custom-radio img {
+    margin-left: auto; /* Push SVG to the end of the flex container */
+    margin-right: 8px; /* Add spacing between the SVG and the container edge */
+    opacity: 0; /* Initially hidden */
+    transition: opacity 0.2s; /* Smooth visibility transition */
+}
+
+.custom-radio:hover img {
+    opacity: 1; /* Make the icon visible */
+}
+.grid-row4:last-child {
+	border: none;
+}
+.grid-row4 div:nth-child(3) {
+	border-right: 1px solid #eee;
+}
+.grid-row4 div:last-child {
+	border: none;
+}
+.bill {
+	margin-top: 5px;
+}
+.bill-wrapper {
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 5px;
+    background: #fff;
+    font-size: .8rem;
+}
+
+.bill-area1 .title-label {
+	font-weight: 300;
+}
+.bill-area1 {
+	margin: 10px 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+.bill-area2 {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+.bill-area3 {
+	padding: 10px 0;
+	width: 100%;
+}
+.bill-contents-header {
+	display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+    text-align: center;
+    align-items: center;
+    height: 40px;
+    background-color: #EEE;
+    font-size: 12px;
+    font-weight: 600;
+    color: #545454;
+    border-radius: 5px;
+    width: 100%;
+}
+.bill-contents-body {
+	border: 1px solid #eee;
+    border-radius: 5px;
+    margin-top: 5px;
+}
+.bill-contents-row {
+	display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+    text-align: center;
+    align-items: center;
+    height: 40px;
+    font-size: 12px;
+    font-weight: 400;
+    color: #474747;
+    width: 100%;
+    border-bottom: 1px solid #eee;
+}
+.bill-contents-row:last-child {
+	border-bottom: none;
+}
+.bill-contents-row div {
+	border-right: 1px solid #eee;
+    padding: 11px;
+}
+.bill-contents-row div:last-child {
+	border-right: none;
+}
+select {
+    appearance: none;
+    background-image: url(/resources/icon/ev/arrow-icon.png);
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 9px;
+    padding: 8px 40px 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 120px;
+    color: #777;
+    font-weight: 400;
+    font-size: .8rem;
+    padding-left: 5px !important;
+}
+
+.bill-area2 div span{
+	margin-right: 5px;
+}
+
+.grid-header4 div div div {
+	padding: 10px 0 0 0;
+}
+#monthSelectorGlobal {
+	height: 25px;
+    margin-left: 5px;
+}
+.bill-contents-header idv {
+	padding: 15px;
+}

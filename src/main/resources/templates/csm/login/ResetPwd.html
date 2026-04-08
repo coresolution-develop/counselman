@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta name="_csrf" th:content="${_csrf.token}" />
+    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+    <meta charset="UTF-8">
+<link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>비밀번호설정 : SOSYGE EASY-CRM</title>
+
+    <link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+    <link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/modal.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/popup/pwd.css}">
+</head>
+<body>
+<div class="modal normal" id="errorModal">
+    <div class="modal_body">
+        <div>
+            <img class="menu_icon" th:src="@{/img/alert_img.png}" alt="alert">
+            <div class="menu_msg" id="errorMessage" th:text="${Msg}"></div>
+            <div class="modal_footer">
+                <div class="btn modal_btn" th:onclick="|closeErrorModalAndRedirect('${redirect}')|" id="confirmBtn2">
+                    확인
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block th:if="${Msg != null and !#strings.isEmpty(Msg)}">
+    <script th:inline="javascript">
+        $(document).ready(function() {
+            showErrorModal([[${Msg}]]);
+        });
+    </script>
+</th:block>
+
+<form th:if="${Msg == null or #strings.isEmpty(Msg)}" id="resetPwdForm" th:action="@{/ResetPwd}" method="post">
+    <div class="ManageUser"><h3>비밀번호 설정</h3></div>
+
+    <label for="user_password1">새 비밀번호<font color="red">*</font></label>
+    <input type="password" class="manageuser-modi pass" id="user_password1" name="us_col_03" required>
+
+    <label for="user_password2">새 비밀번호 확인<font color="red">*</font></label>
+    <input type="password" class="manageuser-modi pass" id="user_password2" required>
+
+    <input type="hidden" name="us_col_01" th:value="${us_col_01}">
+    <input type="hidden" name="inst" th:value="${inst}">
+    <input type="hidden" name="token" th:value="${token}">
+
+    <div class="ManageUser-button">
+        <button class="ManageUser-can" type="button" onclick="window.close()">취소</button>
+        <button class="ManageUser-cle" type="submit" style="margin-bottom:10px;">변경</button>
+    </div>
+</form>
+
+<div class="modal2 normal">
+    <div class="modal_body2">
+        <div>
+            <img class="menu_icon" th:src="@{/img/alert_img.png}" alt="alert">
+            <div class="menu_msg2"></div>
+            <div class="modal_footer2">
+                <div class="btn modal_btn" onclick="closePopup2()">
+                    확인
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal3 normal">
+    <div class="modal_body3">
+        <div>
+            <img class="menu_icon" th:src="@{/img/alert_img.png}" alt="alert">
+            <div class="menu_msg3"></div>
+            <div class="modal_footer3">
+                <div class="btn modal_btn2" id="confirmBtn">
+                    확인
+                </div>
+                <div class="btn pink_btn2" onclick="closePopup3()">
+                    취소
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+<script th:src="@{/js/csm/login/ResetPwd.js}"></script>
+</body>
+</html>

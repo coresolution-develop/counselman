@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="_csrf" th:content="${_csrf.token}">
+<meta name="_csrf_header" th:content="${_csrf.headerName}">
+<title>기관/사용자등록 : SOSYGE EASY-CRM</title>
+<meta property="og:title" content="상담관리시스템">
+<meta property="og:type" content="website">
+<meta property="og:url" content="http://csm.sosyge.net/csm/login">
+<meta property="og:image" th:content="@{/icon/ev/core_icon_big.png}" content="/icon/ev/core_icon_big.png">
+<meta property="og:description" content="병원상담관리시스템">
+<link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+<link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+<link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+<script th:src="@{/js/csm/core/admin/newuser.js}"></script>
+<link rel="stylesheet" th:href="@{/css/reset.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/style.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/spinner.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/admin/admin.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/admin/style.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/popup/popup.css}">
+</head>
+<body>
+<div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
+<div th:replace="~{csm/Include/layout :: nav_section2('admin', '', '', '')}"></div>
+<div class="main">
+  <div class="section">
+    <div class="content-top">
+      <div class="section-top">
+        <div class="content-inner">
+          <div class="inner-top">
+            <div class="inner-section">
+              <div class="inner-area">
+                <span style="cursor:pointer;" onclick="location.href='/csm/core/admin'">기관</span>
+                |
+                <span style="cursor:pointer; color: #06603A; font-weight: 500; margin: 5px; font-size: 12px;"
+                      onclick="location.href='/csm/core/user'">관리자</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="content-mid">
+      <div class="section-mid">
+        <div class="smsTemplateDiv" style="width: 100%;" id="myTable">
+          <div class="sms-history-grid3">
+            <div class="grid-header3">
+              <div>관리자명</div>
+              <div>기관코드</div>
+              <div>기관명</div>
+              <div>이메일</div>
+              <div>연락처</div>
+            </div>
+          </div>
+          <div class="grid-body3">
+            <div class="grid-row3" th:if="${#lists.isEmpty(user)}">
+              <div style="grid-column:1 / -1;">관리자 데이터가 없습니다.</div>
+            </div>
+            <div class="grid-row3" th:each="u : ${user}" th:if="${u != null}">
+              <div th:text="${u != null ? u.us_col_01 : ''}"></div>
+              <div th:text="${u != null ? u.us_col_02 : ''}"></div>
+              <div th:text="${u != null ? u.us_col_03 : ''}"></div>
+              <div th:text="${u != null ? u.us_col_06 : ''}"></div>
+              <div>
+                <span th:text="${u != null ? u.us_col_05 : ''}"></span>
+                <input type="hidden" name="id" th:value="${u != null ? u.id : ''}">
+                <input type="hidden" name="inst" th:value="${u != null ? u.us_col_02 : ''}">
+                <input type="hidden" name="userid" th:value="${u != null ? u.us_col_01 : ''}">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="section-bot">
+        <div>
+          <div class="search-status-area">
+            <div>
+              <span>검색수: <span th:text="|${instCount}건|"></span></span>
+            </div>
+            <div class="status-area">
+              <div class="section-btn">
+                <div class="btn delBtn btnw100 listBtn2" id="user-del">관리자삭제</div>
+                <div class="btn newBtn btnw100 listBtn2" id="user-new" onclick="openUserPopup()">관리자등록</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="popup-wrap" id="popup">
+  <div class="popup">
+    <div class="popup-head">
+      <span class="head-title" id="head-title">사용자 추가</span>
+    </div>
+    <form action="/csm/core/inst/post" method="post">
+      <div class="popup-body">
+        <div class="body-content">
+          <div class="body-contentbox">
+            <div>
+              <div><span class="content1">사용자명 :</span> <input type="text" id="us_col_02" name="us_col_02"> <span>(로그인 아이디)</span></div>
+              <div><span class="content1">비밀번호 :</span> <input type="password" id="us_col_03" name="us_col_03" autocomplete="off"> <span>(신규 비밀번호)</span></div>
+              <div><span class="content1">비번확인 :</span> <input type="password" id="us_col_03_h" name="id_col_03_h" autocomplete="off"> <span>(비밀번호 확인)</span></div>
+              <div>
+                <span class="content1">소속기관 :</span>
+                <select name="us_col_05" id="us_col_05">
+                  <option>선택하세요</option>
+                  <option th:each="l : ${list}" th:if="${l != null}" th:value="${l.id_col_02}" th:attr="data-col-03=${l.id_col_03}" th:text="${l.id_col_02}"></option>
+                </select>
+              </div>
+              <div>
+                <span class="content1">사용권한 :</span>
+                <select name="us_col_08" id="us_col_08">
+                  <option value="">선택하세요</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                </select>
+              </div>
+              <div>
+                <span class="content1">사용상태 :</span>
+                <select name="us_col_07" id="us_col_07">
+                  <option>선택하세요</option>
+                  <option value="y">y</option>
+                  <option value="n">n</option>
+                </select>
+              </div>
+              <div><span class="content1">비   고 :</span> <input type="text" id="us_col_06" name="us_col_06"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="popup-foot">
+        <span class="pop-btn close" id="close">취소</span>
+        <span class="pop-btn confirm" id="save">저장</span>
+      </div>
+    </form>
+  </div>
+</div>
+</body>
+<script>
+$('.menu1', $('.nav_section')).addClass('active');
+</script>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="_csrf" th:content="${_csrf.token}">
+<meta name="_csrf_header" th:content="${_csrf.headerName}">
+<title>관리자페이지 : SOSYGE EASY-CRM</title>
+<meta property="og:title" content="상담관리시스템">
+<meta property="og:type" content="website">
+<meta property="og:url" content="http://csm.sosyge.net/csm/login">
+<meta property="og:image" th:content="@{/icon/ev/core_icon_big.png}" content="/icon/ev/core_icon_big.png">
+<meta property="og:description" content="병원상담관리시스템">
+<link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+<link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+<link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+<script th:src="@{/js/csm/core/admin/admin.js}"></script>
+<link rel="stylesheet" th:href="@{/css/reset.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/style.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/spinner.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/admin/admin.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/admin/style.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/popup/popup.css}">
+</head>
+<body>
+<div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
+<div th:replace="~{csm/Include/layout :: nav_section2('admin', '', '', '')}"></div>
+<div class="main">
+  <div class="section">
+    <div class="content-top">
+      <div class="section-top">
+        <div class="content-inner">
+          <div class="inner-top">
+            <div class="inner-section">
+              <div class="inner-area">
+                <span style="cursor:pointer; color: #06603A; font-weight: 500; font-size: 12px;"
+                      onclick="location.href='/csm/core/admin'">기관</span>
+                 |
+                <span style="cursor:pointer; margin-left: 5px;" onclick="location.href='/csm/core/user'">관리자</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="content-mid">
+      <div class="section-mid">
+        <div class="smsTemplateDiv" style="width: 100%;" id="myTable">
+          <div class="sms-history-grid">
+            <div class="grid-header">
+              <div>기관코드</div>
+              <div>소속기관명</div>
+              <div>사업자번호</div>
+              <div>연락처(1)</div>
+              <div>연락처(2)</div>
+              <div>상태</div>
+            </div>
+          </div>
+          <div class="grid-body">
+            <div class="grid-row" th:if="${#lists.isEmpty(list)}">
+              <div style="grid-column:1 / -1;">기관 데이터가 없습니다.</div>
+            </div>
+            <div class="grid-row" th:each="l : ${list}" th:if="${l != null}">
+              <div th:text="${l != null ? l.id_col_03 : ''}"></div>
+              <div th:text="${l != null ? l.id_col_02 : ''}"></div>
+              <div th:text="${l != null ? l.id_col_09 : ''}"></div>
+              <div th:text="${l != null ? l.id_col_06 : ''}"></div>
+              <div th:text="${l != null ? l.id_col_07 : ''}"></div>
+              <div>
+                <span th:text="${l != null ? l.id_col_04 : ''}"></span>
+                <input type="hidden" th:value="${l != null ? l.id_col_01 : ''}" id="id_col_01">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="section-bot">
+        <div>
+          <div class="search-status-area">
+            <div>
+              <span>검색수: <span class="count" th:text="|${instCount}건|"></span></span>
+            </div>
+            <div class="status-area">
+              <div class="section-btn">
+                <div class="btn counsel-btn" id="user-del">기관삭제</div>
+                <div class="btn counsel-btn delBtn" id="user-modi" onclick="openInstModifyPopup()">수정</div>
+                <div class="btn newBtn pop-btn counsel-btn" id="user-new" onclick="openInstPopup()">기관등록</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+<script>
+$('.menu1', $('.nav_section')).addClass('active');
+</script>
+</html>

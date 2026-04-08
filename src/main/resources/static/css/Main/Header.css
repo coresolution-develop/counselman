@@ -1,0 +1,95 @@
+@charset "UTF-8";
+@import url('https://hangeul.pstatic.net/hangeul_static/css/nanum-square-neo.css');
+
+body {
+	font-family: 'NanumSquare', sans-serif;
+}
+
+.wrapper {
+	position: fixed;
+	top: 0;
+	width: 100%;
+	z-index: 1000; /* Ensure the header is on top */
+}
+
+.logo {
+	background-color: #1b304a;
+	position: relative;
+	width: 100%;
+	z-index: 1001; /* Ensure the logo is on top */
+}
+
+.home-icon {
+	position: absolute;
+	left: 27px;
+	top: 20px;
+	z-index: 1;
+}
+
+.home-icon>a>img {
+	width: 25px;
+	padding-top: 10px;
+}
+
+.logo-img {
+	align-items: center;
+	display: flex;
+	height: 90px;
+}
+
+.logo-img>img {
+	position: relative;
+	left: 50%;
+	transform: translate(-50%);
+	height: 30px;
+}
+
+.logout-img>a {
+	position: absolute;
+	right: 27px;
+	top: 18px;
+}
+
+.logout-img>a>img {
+	height: 25px;
+	padding-top: 13px;
+}
+
+.info-header {
+	position: absolute;
+	top: 35px;
+	right: 60px;
+	color: #dadada;
+}
+
+.info-header-item {
+	margin-right: 13px;
+}
+
+.info-header-item:not(:last-child)::after {
+	content: '|';
+	margin-left: 20px;
+	color: #dadada;
+}
+
+
+
+@media screen and (max-width: 1140px) {
+	.info-header{font-size:14px !important;}
+}
+
+@media screen and (max-width: 1000px){
+	.home-icon>a>img {padding-top:22px;}
+	.logo-img>img {top: 10px;}
+	.logout-img>a>img{padding-top: 25px;}
+	
+	.info-header{top: 11px !important; right: 14px !important;}
+	.info-header-item{font-size:13px; margin-right: 10px !important;}
+	.info-header-item:not(:last-child)::after {margin-left: 13px;}
+}
+
+@media screen and (max-width: 720px){
+	
+}
+
+

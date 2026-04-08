@@ -1,0 +1,118 @@
+@charset "UTF-8";
+:root {
+    --primary-color: #2f425a;
+    --primary-hover-color: #293a4f;
+    --background-color: #f7f7f7;
+    --text-color: #333;
+    --secondary-text-color: #555;
+    --logout-background: #2f425a;
+    --logout-hover-background: #293a4f;
+    --orange-color: #ffa200;
+    --table-header-color: #e0e6ed;
+    --table-header-font-color: #111111;
+}
+* {
+    box-sizing: border-box;
+}
+input[type="text"], select, input[type="number"], input[type="date"] {
+    padding: 5px;
+}
+.section {
+    border-radius: 10px;
+    background: #F9F9F9;
+    box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.10);
+    padding: 20px;
+    height: calc(100vh - 100px);
+}
+.content-top {
+    height: 0;
+    font-size: 14px;
+    background: #fff;
+    border: none;
+    display: flex;
+    align-items: center;
+    margin: 2px;
+    padding: 2px;
+    text-align: center;
+}
+.inner-area{
+    display: flex;
+    align-items: center;
+}
+.section-top {
+	    width: 100%;
+    height: 100%;
+}
+.content-inner {
+	display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    flex-wrap: wrap;
+    justify-content: space-evenly;
+    align-content: flex-end;
+}
+.inner-top {
+    width: auto;
+}
+.inner-area select, .inner-area .input-name, .inner-area .input-number, .inner-area .search-box, #setting, .search-mobile, 
+.log-area select
+{
+    border-radius: 5px;
+    background: #fff;
+    border: 1px solid #eaeaea;
+    font-size: 16px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 5px;
+}
+.search-box {
+    background-color: #2f425a !important;
+    color: #fff !important;
+    min-width: 52px;
+}
+
+table tr td, table tr th {
+	border: none;
+}
+thead {
+	color: var(--table-header-font-color);
+    font-size: 17px;
+    background: var(--table-header-color);
+}
+tbody td {
+    background-color: #fff;
+    font-size: 15px;
+    color: #696969;
+    height: 60px;
+    font-weight: normal;
+}
+#myTable, #logTable{
+	background: #eaeaea;
+	width: 100%;
+    border: solid 1px #eaeaea;
+    border-left: none;
+    border-right: none;
+}
+#myTable th, #myTable td, #logTable th, #logTable td {
+	white-space: nowrap; /* 텍스트 줄바꿈 방지 */
+    height: 50px;
+    border-bottom: 1px solid #ddd;
+    padding: 15px;
+    
+}
+
+.log-area {
+	border: none;
+}
+.content-bot {
+	height: calc(100% - 500px);
+}
+
+
+
+
+
+

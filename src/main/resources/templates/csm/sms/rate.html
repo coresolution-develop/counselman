@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="app-context" th:content="@{/}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>요금관리 : SOSYGE EASY-CRM</title>
+
+    <link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+    <link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+    <script th:src="@{/js/csm/admin/rate.js}" defer></script>
+
+    <link rel="stylesheet" th:href="@{/css/reset.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/sms/rate.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/popup/popup.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/spinner.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/modal.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
+
+    <script src="https://cdn.jsdelivr.net/npm/highcharts@12/highcharts.js"></script>
+    <script th:inline="javascript">
+        const thisMonth = {
+            sms: /*[[${thisMonthUsage != null and thisMonthUsage['sms'] != null ? thisMonthUsage['sms'] : 0}]]*/ 0,
+            lms: /*[[${thisMonthUsage != null and thisMonthUsage['lms'] != null ? thisMonthUsage['lms'] : 0}]]*/ 0,
+            mms: /*[[${thisMonthUsage != null and thisMonthUsage['mms'] != null ? thisMonthUsage['mms'] : 0}]]*/ 0
+        };
+
+        const lastMonth = {
+            sms: /*[[${lastMonthUsage != null and lastMonthUsage['sms'] != null ? lastMonthUsage['sms'] : 0}]]*/ 0,
+            lms: /*[[${lastMonthUsage != null and lastMonthUsage['lms'] != null ? lastMonthUsage['lms'] : 0}]]*/ 0,
+            mms: /*[[${lastMonthUsage != null and lastMonthUsage['mms'] != null ? lastMonthUsage['mms'] : 0}]]*/ 0
+        };
+
+        const totalThisMonth = thisMonth.sms + thisMonth.lms + thisMonth.mms;
+        const totalLastMonth = lastMonth.sms + lastMonth.lms + lastMonth.mms;
+    </script>
+
+    <style>
+        .selected-row { background-color: #f0f8ff !important; }
+        .selected-row * { background-color: #f0f8ff !important; }
+        .chart-card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            padding: 24px;
+            width: 100%;
+            max-width: 420px;
+            margin: 0 auto;
+            font-family: 'Pretendard', sans-serif;
+        }
+        .chart-title { font-weight: 600; font-size: 16px; margin-bottom: 12px; color: #333; }
+        .chart-legend-wrapper {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            font-size: 13px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+<div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
+<div th:replace="~{csm/Include/layout :: nav_section2('sms', ${endVar}, ${st}, ${kw})}"></div>
+
+<div class="main">
+    <div class="section">
+        <div class="content-top">
+            <div class="section-top">
+                <div class="section-menu">
+                    <span style="cursor: pointer;" th:onclick="|location.href='@{/smsSetting(page=1,perPageNum=10)}'|">상용구관리</span> |
+                    <span style="cursor: pointer;" th:onclick="|location.href='@{/cardsetting(page=1,perPageNum=10)}'|">서명관리</span> |
+                    <span style="cursor: pointer;" th:onclick="|location.href='@{/smslog(page=1,perPageNum=10)}'|">전송내역</span> |
+                    <span class="section-header" style="cursor: pointer;" th:onclick="|location.href='@{/rate}'|">요금관리</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-mid">
+            <div class="section-mid">
+                <div class="sms-section">
+                    <div class="sms-template-container">
+                        <div class="sms-header"><h3></h3></div>
+                        <div class="sms-container-wrap">
+                            <div class="smsTemplateDiv">
+                                <div class="sms-history-grid sms-history-grid2">
+                                    <div class="rate-wrapper">
+                                        <div class="rate-area1">
+                                            <div class="rate-top1"><span>실시간 요금</span></div>
+                                            <div class="rate-top2">
+                                                <span th:each="d : ${data}"
+                                                      th:text="|SMS : ${d['sms_price']}원  LMS : ${d['lms_price']}원  MMS : ${d['mms_price']}원|"></span>
+                                            </div>
+                                        </div>
+
+                                        <div class="rate-area2">
+                                            <div class="rate-contents">
+                                                <div class="rate-mid1"><span>이번달 사용하신 총 예상금액</span></div>
+                                                <div class="rate-mid2"><span th:text="|${thisMonthTotal}원|"></span></div>
+                                            </div>
+                                        </div>
+
+                                        <div class="rate-area3">
+                                            <div class="rate-contents2">
+                                                <div class="rate-bot1">
+                                                    <div><span>SMS</span></div>
+                                                    <div><span th:text="|${smsThisMonth}건|"></span></div>
+                                                    <div><span th:text="|${#numbers.formatDecimal(smsTotalThisMonth, 1, 2)}원|"></span></div>
+                                                </div>
+                                                <div class="rate-bot2">
+                                                    <div><span>LMS</span></div>
+                                                    <div><span th:text="|${lmsThisMonth}건|"></span></div>
+                                                    <div><span th:text="|${#numbers.formatDecimal(lmsTotalThisMonth, 1, 2)}원|"></span></div>
+                                                </div>
+                                                <div class="rate-bot3">
+                                                    <div><span>MMS</span></div>
+                                                    <div><span th:text="|${mmsThisMonth}건|"></span></div>
+                                                    <div><span th:text="|${#numbers.formatDecimal(mmsTotalThisMonth, 1, 2)}원|"></span></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="charts-wrapper">
+                                        <div class="smsPieChart" id="smsPieChart"></div>
+                                        <div class="summary-text">
+                                            <div style="margin-right: 10px;"><strong th:text="|이번 달 발송 건 : ${totalThisMonth}|"></strong></div>
+                                            <div>지난 달 발송 건 : <strong style="font-weight: 400;" th:text="${totalLastMonth}"></strong></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="bill">
+                                    <div class="bill-wrapper">
+                                        <div class="bill-area1">
+                                            <span>청구서 조회</span>
+                                            <div>
+                                                <select id="monthSelector">
+                                                    <option value="all">전체기간</option>
+                                                    <option th:each="m : ${monthlyUsage}"
+                                                            th:value="${m['month']}"
+                                                            th:text="${m['month']}"></option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="bill-area3">
+                                            <div class="bill-contents-header">
+                                                <div><span>사용년월</span></div>
+                                                <div><span>SMS건 수</span></div>
+                                                <div><span>단가</span></div>
+                                                <div><span>LMS건 수</span></div>
+                                                <div><span>단가</span></div>
+                                                <div><span>MMS건 수</span></div>
+                                                <div><span>단가</span></div>
+                                                <div><span>합계(부가세 별도)</span></div>
+                                            </div>
+                                            <div class="bill-contents-body" id="monthlyDetailContainer"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-bot"><div></div></div>
+</div>
+
+<div class="modal normal">
+    <div class="modal_body">
+        <div>
+            <div class="menu_msg">text</div>
+            <input type="text" style="margin-bottom: 10px;" class="modal-input" id="sms_title" name="sms_title" placeholder="상용구 이름을 입력하세요.">
+            <textarea style="height: 150px;" class="modal-input" id="sms_template" placeholder="추가할 상용구를 입력하세요."></textarea>
+            <div class="modal_footer">
+                <div class="btn modal_btn" id="templateSaveBtn">확인</div>
+                <div class="btn pink_btn2 listBtn" onclick="closeModal()">취소</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="spinner-overlay" style="display: none;">
+    <div class="spinner-container">
+        <div class="spinner"></div>
+        <p>잠시만 기다려주세요</p>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    const monthlyUsageUrl = /*[[@{/monthlyUsage}]]*/ '/monthlyUsage';
+
+    if (window.Highcharts && typeof window.Highcharts.chart === 'function') {
+        Highcharts.chart('smsPieChart', {
+            credits: { enabled: false },
+            chart: { type: 'pie', backgroundColor: null, renderTo: 'smsPieChart' },
+            title: { text: '' },
+            tooltip: { pointFormat: '{series.name}: <b>{point.y}건</b> ({point.percentage:.1f}%)' },
+            accessibility: { point: { valueSuffix: '건' } },
+            plotOptions: {
+                pie: {
+                    allowPointSelect: true,
+                    cursor: 'pointer',
+                    borderRadius: 6,
+                    dataLabels: { enabled: false },
+                    showInLegend: true
+                }
+            },
+            legend: {
+                layout: 'vertical', align: 'right', verticalAlign: 'middle',
+                symbolRadius: 999, symbolHeight: 10, symbolWidth: 10,
+                labelFormatter: function() { return `${this.name} : ${this.y}건`; },
+                itemMarginBottom: 10,
+                itemStyle: { fontSize: '13px' }
+            },
+            colors: ['#007bff', '#dc3545', '#6f42c1'],
+            series: [{
+                name: '이번 달',
+                colorByPoint: true,
+                data: [
+                    { name: 'SMS', y: thisMonth.sms },
+                    { name: 'LMS', y: thisMonth.lms },
+                    { name: 'MMS', y: thisMonth.mms }
+                ]
+            }]
+        });
+    } else {
+        console.error('[rate] Highcharts library is not loaded.');
+        const chartEl = document.getElementById('smsPieChart');
+        if (chartEl) {
+            chartEl.innerHTML = '<div style="padding:20px;text-align:center;color:#666;">차트 라이브러리 로드 실패</div>';
+        }
+    }
+
+    $(document).ready(function() {
+        $('#monthSelector').on('change', function() {
+            const selectedMonth = $(this).val();
+            $.ajax({
+                url: monthlyUsageUrl,
+                method: 'GET',
+                data: { month: selectedMonth },
+                success: function(data) {
+                    let html = '';
+                    if (Array.isArray(data)) {
+                        data.forEach(function(item) {
+                            html += `
+                                <div class="bill-contents-row">
+                                    <div><span>${item.month}</span></div>
+                                    <div><span>${item.sms}</span></div>
+                                    <div><span>${item.smsPrice}원</span></div>
+                                    <div><span>${item.lms}</span></div>
+                                    <div><span>${item.lmsPrice}원</span></div>
+                                    <div><span>${item.mms}</span></div>
+                                    <div><span>${item.mmsPrice}원</span></div>
+                                    <div><span>${item.total.toFixed(1)}원</span></div>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        html = `
+                            <div class="bill-contents-row">
+                                <div><span>${data.month}</span></div>
+                                <div><span>${data.sms}</span></div>
+                                <div><span>${data.smsPrice}원</span></div>
+                                <div><span>${data.lms}</span></div>
+                                <div><span>${data.lmsPrice}원</span></div>
+                                <div><span>${data.mms}</span></div>
+                                <div><span>${data.mmsPrice}원</span></div>
+                                <div><span>${data.total.toFixed(1)}원</span></div>
+                            </div>
+                        `;
+                    }
+                    $('#monthlyDetailContainer').html(html);
+                },
+                error: function() {
+                    alert('월별 데이터 조회 실패');
+                }
+            });
+        });
+
+        $('#monthSelector').trigger('change');
+    });
+</script>
+
+<script th:replace="~{csm/Include/layout :: scripts}"></script>
+</body>
+</html>

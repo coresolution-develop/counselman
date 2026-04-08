@@ -1,0 +1,51 @@
+@charset "UTF-8";
+@import url('https://hangeul.pstatic.net/hangeul_static/css/nanum-square-neo.css');
+
+/* 네비게이션(카테고리) */
+.nav_section {
+	width: 240px;
+	background: #2f425a;
+	color: #c3c3c3;
+	position: fixed;
+	height: 100%;
+	font-size: 18px;
+}
+
+.nav_section ul {
+	list-style-type: none;
+	padding: 0;
+	margin: 0;
+}
+
+.nav_link {
+	padding: 20px;
+	text-align: center;
+	cursor: pointer;
+}
+
+.nav_link:hover {
+	background: #1b304a;
+	color: #fff;
+}
+
+.nav_link .active a {
+	color: #fff;
+}
+
+.active {
+	border-left: 4px solid #00bec2;
+	background: #293a4f;
+	color: #fff;
+}
+
+.content {
+	margin-left: 260px;
+	padding: 20px;
+	width: calc(100% - 260px);
+}
+
+main {
+	margin-left: 240px;
+	margin-top: 90px;
+	padding: 10px 0;
+}

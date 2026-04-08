@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+<link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>전송내역 : SOSYGE EASY-CRM</title>
+
+    <link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+    <link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+    <script th:src="@{/js/csm/admin/smslog.js}"></script>
+
+    <link rel="stylesheet" th:href="@{/css/reset.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/sms/smssetting.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/popup/popup.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/spinner.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/modal.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
+
+    <style>
+        .main {
+            padding: 90px 20px 20px 20px;
+        }
+        .loading-spinner {
+            border: 4px solid #06603A;
+            border-radius: 50%;
+            border-top: 4px solid #fff;
+            width: 30px;
+            height: 30px;
+            margin-bottom: 20px;
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body>
+<div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
+<div th:replace="~{csm/Include/layout :: nav_section2('sms', ${endVar}, ${st}, ${kw})}"></div>
+
+<div class="main">
+    <div class="section-smslist">
+        <form id="searchForm" style="height: 100%;">
+            <div class="content-top">
+                <div class="section-top">
+                    <div class="section-menu">
+                        <span style="cursor: pointer;" onclick="location.href='/csm/smsSetting?page=1&perPageNum=10&comment='">상용구관리</span> |
+                        <span style="cursor: pointer;" onclick="location.href='/csm/cardsetting?page=1&perPageNum=10&comment='">서명관리</span> |
+                        <span class="section-header" style="cursor: pointer;" onclick="location.href='/csm/smslog?page=1&perPageNum=10&comment='">전송내역</span> |
+                        <span style="cursor: pointer;" onclick="location.href='/csm/rate'">요금관리</span>
+                    </div>
+                    <div class="section-btn">
+                        <div class="inner-section">
+                            <div class="inner-area">
+                                <input class="search-mobile" type="text" placeholder="검색어를 입력하세요"
+                                       id="keywordInput" name="keyword" th:value="${keyword}">
+                                <div class="btn search-box listBtn btnw100" id="searchBtn">검색</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-mid">
+                <div class="section-mid">
+                    <div class="sms-section">
+                        <div class="sms-history-container" style="height: 100%;">
+                            <div class="sms-header"><h3></h3></div>
+                            <div class="sms-container-wrap">
+                                <div class="smsHistoryDiv" style="height: 100%;">
+                                    <div class="sms-history-grid" style="height: 100%;">
+                                        <div class="grid-header2">
+                                            <div>발송일자</div>
+                                            <div>예약일자</div>
+                                            <div>발신번호</div>
+                                            <div>수신번호</div>
+                                            <div>상태</div>
+                                            <div>문자내용</div>
+                                        </div>
+                                        <div class="scroll-container">
+                                            <div class="grid-body2 template-list">
+                                                <div class="grid-row2" th:each="h : ${smsHistory}" th:attr="data-id=${h.id}">
+                                                    <div th:text="${h.created_at != null ? #temporals.format(h.created_at, 'yyyy-MM-dd HH:mm:ss') : ''}"></div>
+                                                    <div th:text="${h.reserve_time != null ? #temporals.format(h.reserve_time, 'yyyy-MM-dd HH:mm:ss') : ''}"></div>
+                                                    <div th:text="${h.from_phone}"></div>
+                                                    <div th:text="${h.to_phone}"></div>
+                                                    <div th:text="${h.status}"></div>
+                                                    <div th:text="${h.contents}"></div>
+                                                </div>
+                                                <div id="scrollDetector"></div>
+                                            </div>
+                                        </div>
+
+                                        <div id="loading" style="display: none; text-align: center; margin-top: 10px;">
+                                            <div class="lodaing-container" style="display: flex; justify-content: center; align-items: center;">
+                                                <div class="loading-spinner"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal normal">
+    <div class="modal_body">
+        <div>
+            <img class="menu_icon" th:src="@{/img/alert_img.png}" src="/csm/img/alert_img.png">
+            <div class="menu_msg">text</div>
+            <textarea style="height: 150px; font-size: 14px;" class="modal-input" id="sms_template" placeholder="추가할 상용구를 입력하세요."></textarea>
+            <div class="modal_footer">
+                <div class="btn modal_btn" id="templateInsertBtn">확인</div>
+                <div class="btn pink_btn2 listBtn" onclick="closePopup()">취소</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="spinner-overlay" style="display: none;">
+    <div class="spinner-container">
+        <div class="spinner"></div>
+        <p>잠시만 기다려주세요</p>
+    </div>
+</div>
+
+<script th:replace="~{csm/Include/layout :: scripts}"></script>
+</body>
+</html>

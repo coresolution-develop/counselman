@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="_csrf" th:content="${_csrf.token}">
+<meta name="_csrf_header" th:content="${_csrf.headerName}">
+<title>상담일지관리 : SOSYGE EASY-CRM</title>
+<link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+<link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+<link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+<link rel="stylesheet" th:href="@{/css/reset.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/style.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/spinner.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/admin/admin.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/admin/style.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/admin/setting.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/popup/popup.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/admin/settingpopup.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/admin/categorysetting-preview.css}">
+</head>
+<body>
+<div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
+<div th:replace="~{csm/Include/layout :: nav_section2('setting', '', '', '')}"></div>
+<div class="main">
+  <div class="section">
+    <div class="content-top">
+      <div class="section-top">
+        <div class="content-inner">
+          <div class="inner-top">
+            <div class="inner-section">
+              <div class="inner-area">
+                <span style="cursor:pointer;" onclick="location.href='/csm/core/setting'">템플릿 관리</span>
+                |
+                <span style="cursor:pointer; color: #06603A; font-weight: 500; margin: 5px; font-size: 12px;" onclick="location.href='/csm/core/categorysetting'">상담일지양식 관리</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="content-mid">
+      <div class="section-mid">
+        <div class="smsTemplateDiv" style="width: 100%;" id="myTable">
+          <div class="sms-history-grid4">
+            <div class="grid-header4">
+              <div>템플릿명</div>
+              <div>비고</div>
+              <div>상태</div>
+            </div>
+          </div>
+          <div class="grid-body4">
+            <div class="grid-row4" th:if="${#lists.isEmpty(template)}">
+              <div colspan="3">템플릿이 없습니다.</div>
+            </div>
+            <div class="grid-row4" th:each="t : ${template}" th:if="${t != null}" th:attr="data-template-idx=${t['idx']}">
+              <div th:text="${t['name']}"></div>
+              <div th:text="${t['description']}"></div>
+              <div th:text="${#strings.equalsIgnoreCase((t['del_yn']?:'N').toString(),'Y') ? '비활성화' : '활성화'}"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="section-bot">
+        <div class="search-status-area">
+          <div><span>검색수 : <span class="count" th:text="|${instCount}건|"></span></span></div>
+          <div class="status-area">
+            <div class="section-btn">
+              <div class="btn newBtn pop-btn counsel-btn" id="open-category-editor">등록/수정</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="preview-layout">
+        <div class="preview-left">
+          <div class="panel-title" id="preview-template-title">템플릿을 선택하세요</div>
+          <div class="preview-card">
+            <div class="preview-row">
+              <label>환자명</label><input type="text" disabled>
+              <label>성별</label><select disabled><option>선택하세요</option></select>
+              <label>현재계신곳</label><select disabled><option>선택하세요</option></select>
+              <label>보험유형</label><select disabled><option>선택하세요</option></select>
+            </div>
+            <div class="preview-row">
+              <label>생년월일</label><input type="text" placeholder="년도-월-일" disabled>
+              <label>나이(만)</label><input type="text" disabled>
+              <label>상담유입경로</label><select disabled><option>선택하세요</option></select>
+              <label>잠재고객</label><select disabled><option>선택하세요</option></select>
+            </div>
+          </div>
+          <div id="template-preview-left"></div>
+          <div class="preview-card">
+            <div class="preview-row full">
+              <label>현상태</label>
+              <textarea rows="4" disabled></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="preview-right">
+          <div class="panel-title">상담기록</div>
+          <div class="preview-card record-card">
+            <div class="record-row guardian-row">
+              <label>보호자명</label><input type="text" disabled>
+              <label>관계</label><input type="text" disabled>
+              <label>연락처</label>
+              <input type="text" placeholder="숫자만 입력해 주세요" disabled>
+              <button type="button" class="icon-btn clear-btn" disabled>&times;</button>
+              <button type="button" class="icon-btn plus-btn" disabled>+</button>
+            </div>
+          </div>
+          <div class="preview-card record-card">
+            <div class="record-row two-col">
+              <label>상담일자</label><input type="text" placeholder="년도-월-일" disabled>
+              <label>상담자</label>
+              <div class="inline-with-icon">
+                <input type="text" disabled>
+                <button type="button" class="icon-btn refresh-btn" disabled>&#8635;</button>
+              </div>
+            </div>
+            <div class="record-row two-col">
+              <label>방법</label><select disabled><option>선택하세요</option></select>
+              <label>결과</label><select disabled><option>선택하세요</option></select>
+            </div>
+            <div class="record-content">
+              <label>상담내용</label>
+              <textarea rows="6" disabled></textarea>
+            </div>
+          </div>
+          <div class="log-table">
+            <div>상담일자</div><div>방법</div><div>결과</div><div>상담자</div>
+          </div>
+          <button type="button" class="btn template-select-btn" id="template-apply-btn">템플릿 선택</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="category-editor-overlay" id="category-editor-overlay">
+      <div class="category-editor-panel">
+        <div class="category-editor-head">카테고리 추가</div>
+        <div class="category-editor-body">
+          <div class="editor-grid">
+            <section class="editor-col">
+              <div class="editor-col-title">대분류</div>
+              <div class="editor-list" id="editor-main-list"></div>
+              <div class="editor-actions">
+                <button type="button" class="editor-btn btn-outline" id="editor-main-del">- 삭제</button>
+                <button type="button" class="editor-btn btn-fill" id="editor-main-add">+ 추가</button>
+              </div>
+            </section>
+
+            <section class="editor-col">
+              <div class="editor-col-title">소분류</div>
+              <div class="editor-list" id="editor-sub-list"></div>
+              <div class="editor-actions">
+                <button type="button" class="editor-btn btn-outline" id="editor-sub-del">- 삭제</button>
+                <button type="button" class="editor-btn btn-fill" id="editor-sub-add">+ 추가</button>
+              </div>
+            </section>
+
+            <section class="editor-col">
+              <div class="editor-col-title">옵션</div>
+              <div class="editor-list" id="editor-option-list"></div>
+              <div class="editor-actions">
+                <button type="button" class="editor-btn btn-outline" id="editor-option-del">- 삭제</button>
+                <button type="button" class="editor-btn btn-fill" id="editor-option-add">+ 추가</button>
+              </div>
+            </section>
+          </div>
+        </div>
+        <div class="category-editor-foot">
+          <button type="button" class="foot-btn cancel" id="editor-cancel">취소</button>
+          <button type="button" class="foot-btn save" id="editor-save">저장</button>
+        </div>
+
+        <div class="editor-form-overlay" id="editor-form-overlay">
+          <div class="editor-form-modal">
+            <div class="editor-form-title" id="editor-form-title">항목 추가</div>
+            <div class="editor-form-row">
+              <label for="editor-form-name">이름</label>
+              <input type="text" id="editor-form-name" placeholder="이름을 입력하세요">
+            </div>
+
+            <div class="editor-form-row" id="editor-subtype-row">
+              <label>소분류 타입</label>
+              <div class="type-chip-group">
+                <button type="button" class="type-chip" data-type="checkbox">checkbox</button>
+                <button type="button" class="type-chip" data-type="radio">radio</button>
+                <button type="button" class="type-chip" data-type="text">text</button>
+                <button type="button" class="type-chip" data-type="select">select</button>
+              </div>
+            </div>
+
+            <div class="editor-form-row" id="editor-sub-option-row">
+              <label for="editor-form-options">옵션</label>
+              <input type="text" id="editor-form-options" placeholder="예: 옵션1, 옵션2, 옵션3">
+            </div>
+
+            <div class="editor-form-actions">
+              <button type="button" class="editor-btn btn-outline" id="editor-form-cancel">취소</button>
+              <button type="button" class="editor-btn btn-fill" id="editor-form-submit">확인</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script th:src="@{/js/csm/core/admin/core-categorysetting.js}"></script>
+</body>
+</html>

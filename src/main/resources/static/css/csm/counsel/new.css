@@ -1,0 +1,1589 @@
+.main {
+    padding: 70px 6px 100px 6px;
+    margin-left: 145px;
+	max-width: 2560px;
+	height: 100%;
+	width: calc(100% - 145px);
+}
+
+.pc-file-panel {
+    margin-bottom: 10px;
+    border: 1px solid #dbdbdb;
+    border-radius: 8px;
+    background: #fff;
+    padding: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.pc-audio-panel {
+    margin-bottom: 10px;
+    border: 1px solid #dbdbdb;
+    border-radius: 8px;
+    background: #fff;
+    padding: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.pc-audio-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.pc-audio-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #2f2f2f;
+}
+
+.record-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.pc-record-tools .counsel-file-btn {
+    min-width: 98px;
+    height: 34px;
+    font-size: 12px;
+}
+
+.recording-indicator {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #ffd7d7;
+    background: #fff4f4;
+    color: #b42318;
+    border-radius: 8px;
+    padding: 5px 8px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.recording-indicator.is-recording {
+    display: flex;
+}
+
+.recording-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #e11d48;
+    animation: recordPulse 1.1s ease-out infinite;
+}
+
+.recording-timer {
+    margin-left: 2px;
+    font-variant-numeric: tabular-nums;
+}
+
+@keyframes recordPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.45);
+    }
+    70% {
+        box-shadow: 0 0 0 7px rgba(225, 29, 72, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(225, 29, 72, 0);
+    }
+}
+
+.recording-status {
+    margin: 4px 2px 6px;
+    font-size: 12px;
+    color: #5a5a5a;
+}
+
+.record-preview {
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.audio-record-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.audio-record-item {
+    border: 1px solid #e7e7e7;
+    border-radius: 7px;
+    background: #fff;
+    padding: 8px;
+}
+
+.audio-record-item audio {
+    width: 100%;
+}
+
+.audio-record-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.audio-record-name {
+    font-size: 12px;
+    color: #444;
+    max-width: 70%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.audio-record-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.audio-record-retry,
+.audio-record-delete {
+    border-radius: 5px;
+    height: 26px;
+    padding: 0 8px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.16s ease;
+}
+
+.audio-record-retry {
+    border: 1px solid #06603A;
+    background: #fff;
+    color: #06603A;
+}
+
+.audio-record-retry:hover {
+    background: #f2fbf6;
+}
+
+.audio-record-delete {
+    border: 1px solid #cfcfcf;
+    background: #fff;
+    color: #5d5d5d;
+}
+
+.audio-record-delete:hover {
+    background: #f7f7f7;
+}
+
+.audio-record-transcript {
+    margin-top: 6px;
+    padding: 7px 8px;
+    border-radius: 6px;
+    background: #f7f9fc;
+    border: 1px solid #e5ecf5;
+    font-size: 12px;
+    color: #424242;
+    line-height: 1.4;
+    white-space: pre-wrap;
+}
+
+.counsel-file-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.counsel-file-btn {
+    min-width: 104px;
+    height: 34px;
+    margin: 0;
+    padding: 0 12px;
+    border: 1px solid #d2d2d2;
+    border-radius: 5px;
+    background: #fff;
+    color: #4f4f4f;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    transition: all 0.16s ease;
+}
+
+.pc-audio-panel .btn.counsel-file-btn:hover,
+.pc-file-panel .btn.counsel-file-btn:hover {
+    transform: translateY(-1px);
+}
+
+.pc-audio-panel .btn.counsel-file-btn:disabled,
+.pc-file-panel .btn.counsel-file-btn:disabled {
+    opacity: 0.55;
+    cursor: default;
+    transform: none;
+}
+
+#startRecordingBtn {
+    border-color: #06603A;
+    background: #06603A;
+    color: #fff;
+}
+
+#startRecordingBtn:hover {
+    background: #054f30;
+    border-color: #054f30;
+}
+
+#stopRecordingBtn {
+    border-color: #9B9B9B;
+    background: #9B9B9B;
+    color: #fff;
+}
+
+#stopRecordingBtn:not(:disabled) {
+    border-color: #cc2d2d;
+    background: #cc2d2d;
+    color: #fff;
+}
+
+#stopRecordingBtn:not(:disabled):hover {
+    border-color: #b32424;
+    background: #b32424;
+}
+
+#uploadAudioFileBtn,
+#uploadCounselFileBtn {
+    border-color: #06603A;
+    background: #fff;
+    color: #06603A;
+}
+
+#uploadAudioFileBtn:hover,
+#uploadCounselFileBtn:hover {
+    background: #f2fbf6;
+}
+
+#applyDiseaseMatchBtn {
+    border-color: #2f425a;
+    background: #2f425a;
+    color: #fff;
+}
+
+#applyDiseaseMatchBtn:hover {
+    border-color: #253547;
+    background: #253547;
+}
+
+.counsel-file-help {
+    font-size: 12px;
+    color: #6f6f6f;
+}
+
+.counsel-file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.counsel-file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border: 1px solid #ececec;
+    border-radius: 6px;
+    background: #fff;
+    padding: 7px 10px;
+}
+
+.counsel-file-link {
+    color: #265fbc;
+    text-decoration: underline;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+
+.counsel-file-size {
+    font-size: 12px;
+    color: #757575;
+    white-space: nowrap;
+}
+
+.counsel-file-apply {
+    border: 1px solid #06603A;
+    background: #fff;
+    border-radius: 5px;
+    color: #06603A;
+    font-size: 12px;
+    font-weight: 500;
+    height: 26px;
+    padding: 0 8px;
+    cursor: pointer;
+    transition: all 0.16s ease;
+}
+
+.counsel-file-apply:hover {
+    background: #f2fbf6;
+}
+
+.counsel-file-apply:disabled {
+    opacity: 0.65;
+    cursor: default;
+}
+
+.counsel-file-delete {
+    border: 1px solid #cfcfcf;
+    background: #fff;
+    border-radius: 5px;
+    color: #5d5d5d;
+    font-size: 12px;
+    font-weight: 500;
+    height: 26px;
+    padding: 0 8px;
+    cursor: pointer;
+    transition: all 0.16s ease;
+}
+
+.counsel-file-delete:hover {
+    background: #f7f7f7;
+}
+
+.counsel-file-status {
+    margin: 6px 2px 0;
+    font-size: 12px;
+    color: #5a5a5a;
+}
+
+.counsel-log {
+    border: 1px solid #d9e2ea;
+    border-radius: 10px;
+    background: #fff;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(47, 66, 90, 0.05);
+}
+
+.logs-header,
+.logs-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 0 10px;
+}
+
+.logs-header div,
+.logs-content div {
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.logs-header .date,
+.logs-content .date {
+    flex: 3;
+}
+
+.logs-header .method,
+.logs-content .method,
+.logs-header .result,
+.logs-content .result,
+.logs-header .counselor,
+.logs-content .counselor {
+    flex: 2;
+}
+
+.logs-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    height: 42px;
+    background: linear-gradient(180deg, #f6f8fa 0%, #eef2f6 100%);
+    border-bottom: 1px solid #d6dfe7;
+    font-weight: 600;
+    color: #2f425a;
+    font-size: 12px;
+}
+
+.logs-body {
+    max-height: 235px;
+    overflow-y: auto;
+    background: #fff;
+}
+
+.logs-body::-webkit-scrollbar {
+    width: 7px;
+}
+
+.logs-body::-webkit-scrollbar-thumb {
+    background: #cfd8e2;
+    border-radius: 4px;
+}
+
+.logs-body::-webkit-scrollbar-track {
+    background: #f4f7fa;
+}
+
+.logs-content {
+    min-height: 42px;
+    border-bottom: 1px solid #eef2f6;
+    font-weight: 400;
+    color: #495463;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.logs-content:hover {
+    background: #f4faf7;
+    border-bottom-color: #d8e7de;
+}
+
+.logs-content.is-active {
+    background: #edf8f2;
+    border-bottom-color: #cfe3d7;
+    box-shadow: inset 3px 0 0 #06603A;
+}
+
+.logs-content:last-child {
+    border-bottom: 0;
+}
+
+.logs-content div {
+    padding: 7px 4px;
+}
+
+.counsel-history-popup {
+    background: rgba(18, 27, 38, 0.44);
+    backdrop-filter: blur(2px);
+    z-index: 1100;
+}
+
+.counsel-history-popup .popup.counsel-history-dialog {
+    position: relative;
+    bottom: auto;
+    width: min(580px, calc(100vw - 28px));
+    max-height: calc(100vh - 48px);
+    height: auto;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #cfd9e2;
+    box-shadow: 0 22px 44px rgba(18, 27, 38, 0.24), 0 3px 10px rgba(18, 27, 38, 0.16);
+}
+
+.counsel-history-popup .popup-head {
+    justify-content: space-between;
+    padding: 0 14px;
+    background: linear-gradient(135deg, #06603A 0%, #2f425a 100%);
+}
+
+.counsel-history-popup .popup-head .head-title {
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+
+.counsel-history-popup .popup-body {
+    height: auto;
+    max-height: calc(100vh - 155px);
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f8 100%);
+}
+
+.counsel-history-popup .body-content {
+    height: auto;
+    max-height: calc(100vh - 175px);
+    overflow-y: auto;
+    padding: 12px;
+}
+
+.counsel-history-popup .body-contentbox {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border: 1px solid #dbe4ec;
+    border-radius: 10px;
+    background: #fff;
+    padding: 10px;
+}
+
+.counsel-history-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.counsel-history-popup .form-group {
+    margin-bottom: 0;
+}
+
+.counsel-history-popup .form-group label {
+    display: block;
+    margin-bottom: 4px;
+    color: #3f4f63;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.counsel-history-popup .form-group input[type="text"],
+.counsel-history-popup .form-group textarea {
+    width: 100%;
+    border: 1px solid #d2dbe4;
+    border-radius: 7px;
+    background: #fbfdff;
+    color: #2f3c4c;
+    font-size: 12px;
+    padding: 8px 10px;
+}
+
+.counsel-history-popup .form-group input[type="text"]:focus,
+.counsel-history-popup .form-group textarea:focus {
+    border-color: #0f7f51;
+    box-shadow: 0 0 0 2px rgba(6, 96, 58, 0.12);
+    outline: none;
+}
+
+.counsel-history-popup .form-group textarea {
+    resize: vertical;
+    min-height: 168px;
+    white-space: pre-wrap;
+    line-height: 1.52;
+}
+
+.counsel-history-extra {
+    display: flex;
+    gap: 8px;
+}
+
+.counsel-history-popup .popup-foot {
+    justify-content: flex-end;
+    padding: 8px 12px 10px;
+    border-top: 1px solid #d9e1e8;
+    background: #f6f9fb;
+}
+
+.counsel-history-popup .popup-foot .close {
+    min-width: 84px;
+    height: 34px;
+    margin: 0;
+    border-radius: 7px;
+    border: 1px solid #06603A;
+    background: #06603A;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.counsel-history-popup .popup-foot .close:hover {
+    background: #054f30;
+    border-color: #054f30;
+}
+
+.guardianContainer-log {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.counsel-history-popup .guardian-entry-log {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid #dbe4ec;
+    border-radius: 8px;
+    background: #f8fbff;
+}
+
+@media (max-width: 768px) {
+    .counsel-history-grid,
+    .counsel-history-popup .guardian-entry-log {
+        grid-template-columns: 1fr;
+    }
+}
+
+.mobile-section {
+	display: none;
+}
+
+.input-with-icon {
+    position: relative;
+    display: inline-block;
+    flex-shrink: 0;
+    width: calc(100% - 15px);
+    text-align: left;
+}
+
+.input-with-icon input[type="text"] {
+	width: 100%;
+}
+
+.input-with-icon img {
+    width: 12px;
+    height: auto;
+    position: absolute;
+    right: 58px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+}
+
+/* Center the container */
+.phone-container {
+	background-color: rgba(51, 51, 51, 0.5);
+    justify-content: center;
+    align-items: center;
+    position: fixed;
+	top: 0;
+	left: 0;
+    right: 0;
+    bottom: 0;
+    display: none;
+    padding: 15px;
+    z-index: 1001;
+}
+
+.phone-wrap {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 1000;
+	text-align: center;
+	background-color: #fff;
+	/* Optional: Background for container */
+	border-radius: 10px;
+	padding: 30px;
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+	/* Optional: Shadow for aesthetics */
+}
+
+.phone-space {
+	background: #f9f9f9;
+	border-radius: 30px;
+	padding: 30px 20px;
+	height: 650px;
+}
+
+.textarea-container {
+	width: 100%;
+}
+
+.textarea-container textarea {
+	width: 100%; /* Full width */
+	height: 50px; /* Adjust height */
+	resize: none;
+	border: 1px solid #DBDBDB;
+	outline: none;
+	padding: 10px;
+	font-size: 11px;
+	border-radius: 5px;
+	height: 210px;
+	color: #666;
+}
+
+/* textarea 내부에 스크롤바 */ 
+.textarea-container textarea::-webkit-scrollbar {
+    width: 10px;
+    height: 6px;
+    padding: 0 5px;
+}
+
+.textarea-container textarea::-webkit-scrollbar-thumb {
+    background: #DADADA;
+    border-radius: 10px;
+    background-clip: padding-box;
+    border: 2px solid transparent;
+}
+
+.textarea-container textarea::-webkit-scrollbar-track {
+    background: #fff;
+}
+
+.textarea-container textarea:placeholder {
+    color: #9F9F9F !important;
+    font-size: 14px;
+}
+
+#history-wrapper {
+	height: 650px;
+	overflow-y: auto;
+}
+
+#history-wrapper::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+    padding: 0 5px;
+}
+
+#history-wrapper::-webkit-scrollbar-thumb {
+    background: #DADADA;
+    border-radius: 4px;
+}
+
+#history-wrapper::-webkit-scrollbar-track {
+    background: #fff;
+}
+
+.sms-history {
+	border: 1px solid #DBDBDB;
+	border-radius: 5px;
+	color: #777;
+	font-size: 12px;
+	font-weight: 400;
+	padding: 0 10px;
+    margin-bottom: 10px;
+    text-align: left;
+    margin-right: 7px;
+    white-space: pre-line;
+}
+
+.sms-date {
+	padding-top: 5px;
+    border-top: 1px solid #DBDBDB;
+    color: #BBB;
+    font-size: 11px;
+    font-weight: 400;
+    margin-top: 10px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.btn-wrapper .send-button, .textarea-container .close-button {
+	padding: 5px 10px;
+	font-size: 14px;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+}
+
+.btn-wrapper .send-button {
+	background-color: #06603A;
+	color: white;
+	width: 120px;
+	height: 40px;
+	font-size: 14px;
+	margin: 0;
+	font-weight: 500;
+}
+
+.btn-wrapper .close-button {
+	display: flex;
+    align-items: center;
+    justify-content: center;
+	background-color: #9B9B9B;
+	color: white;
+	width: 120px;
+	height: 40px;
+	font-size: 14px;
+	margin-left: 15px;
+	font-weight: 500;
+}
+
+
+.textarea-container .close-button {
+	background-color: #f44336;
+	color: white;
+}
+
+.input-value-display {
+	margin-bottom: 20px;
+	padding: 8px 10px;
+	font-size: 1rem;
+	color: #777;
+	background-color: #fff;
+	border: 1px solid #DBDBDB;
+	border-radius: 5px;
+	word-break: break-word; /* Handles long input values */
+	text-align: left; /* Optional: Center-align text */
+	font-weight: 400;
+	gap: 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+.input-sms-reservation input[type="text"] {
+	width: 100%;
+	padding: 8px 10px;
+	font-size: 1rem;
+	color: #777;
+	background-color: #fff;
+	border: 1px solid #DBDBDB;
+	border-radius: 5px;
+	word-break: break-word; /* Handles long input values */
+	text-align: left; /* Optional: Center-align text */
+	height: 40px;
+	font-weight: 400;
+}
+
+.phone-wrapper {
+	display: flex;
+	gap: 20px;
+}
+
+.footer-wrapper {
+	margin-top: 60px;
+}
+
+.btn-wrapper {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 6px;
+}
+
+.btn-wrapper .sms-no {
+	display: flex;
+	align-items: center;
+	color: #777;
+	font-size: 14px;
+	font-weight: 400;
+}
+
+.sms-reservation {
+	display: flex;
+    align-items: center;
+	gap: 10px;
+}
+
+.sms-reservation .sms-title {
+	margin-bottom: 20px;
+	width: 120px;
+}
+
+.sms-titile-wrap {
+	display: flex;
+	gap: 10px;
+}
+
+.sms-name {
+	border: 1px solid #DBDBDB; 
+	background: #fff;
+    border-radius: 5px;
+    width: 45%;
+	height: 135px;
+/*     overflow: auto; */
+    padding: 5px 2px 5px 5px;
+    font-size: 11px;
+    font-weight: 400;
+    color: #777;
+}
+
+.sms-name::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+    padding: 0 5px;
+}
+
+/* new.html category area:
+   label 영역 + input/select 영역을 분리해 정렬 */
+.category-container .subcategory-list {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-gap: 5px 10px;
+    width: 100%;
+    font-size: 1rem;
+    align-items: center;
+    margin-left: 30px;
+}
+
+.category-container .subcategory-list > .input-wrapper {
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+}
+
+.category-container .subcategory-list > .input-wrapper > label,
+.category-container .subcategory-list > .input-wrapper > span {
+    grid-column: 1;
+    margin-right: 0;
+    white-space: nowrap;
+    color: #474747;
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+.category-container .subcategory-list > .input-wrapper > input[type="text"],
+.category-container .subcategory-list > .input-wrapper > select {
+    grid-column: 2;
+    width: 100%;
+    min-width: 0;
+}
+
+.category-container .subcategory-list > .input-wrapper input[type="checkbox"],
+.category-container .subcategory-list > .input-wrapper input[type="radio"] {
+    margin-right: 6px;
+}
+
+.sms-name::-webkit-scrollbar-thumb {
+    background: #DADADA;
+    border-radius: 4px;
+}
+
+.sms-name::-webkit-scrollbar-track {
+    background: #fff;
+}
+
+.sms-name textarea:placeholder {
+    color: #9F9F9F;
+    font-size: 13px;
+}
+.sms-scrollarea {
+	overflow: auto;
+	height: 100%;
+	padding: 5px;
+}
+
+.sms-scrollarea::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+    padding: 0 5px;
+}
+
+.sms-scrollarea::-webkit-scrollbar-thumb {
+    background: #DADADA;
+    border-radius: 4px;
+}
+
+.sms-scrollarea::-webkit-scrollbar-track {
+    background: #fff;
+}
+.sms-sub {
+	border: 1px solid #DBDBDB; 
+	background: #fff;
+    border-radius: 5px;
+    width: 55%;
+	height: 135px;
+    overflow: auto;
+    padding: 10px;
+    font-size: 11px;
+    font-weight: 400;
+    color: #777;
+}
+
+.sms-button {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: 10px;
+}
+
+.btn.btn-sms{
+	background-color: #06603A;
+	margin-top: 10px;
+	width: 65px;
+	height: 35px;
+	border-radius: 5px;
+	color: #FFF;
+	font-size: 14px;
+	font-weight: 500;
+}
+
+.input-sms-reservation {
+	width: 100%;
+}
+
+.reset_icon {
+    min-width: 25px;
+	width: 25px;
+	height: 25px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	border: 1px solid #c7cacf;
+	border-radius: 4px;
+	padding: 10px 0;
+	cursor: pointer;
+}
+
+.guardian-item {
+	text-align: left;
+	display: flex;
+	align-items: center;
+}
+
+
+.guardian-item input[type="text"] {
+	padding: 8px 10px;
+	font-size: 1rem;
+	color: #777;
+	background-color: #fff;
+	border: 1px solid #DBDBDB;
+	border-radius: 5px;
+	word-break: break-word; /* Handles long input values */
+	text-align: left; /* Optional: Center-align text */
+	height: 30px;
+	font-weight: 400;
+}
+
+.guardian-item span {
+	margin-right: 10px;	
+}
+
+.del_btn_wrapper {
+	position: absolute;
+	right: 10px;
+	top: 10px;
+	cursor: pointer;
+}
+
+.del_btn_wrapper img {
+	width: 20px;
+}
+
+.guardian-checkbox {
+	margin-right: 5px;
+}
+
+#byte-count {
+	color: #474747 !important;
+	font-size: 12px;
+	font-weight: 400;
+	display: flex;
+    align-items: center;
+}
+
+#byte-count.exceed {
+	color: red;
+}
+
+
+.closeBtn {
+	font-size: 24px;
+	font-weight: bold;
+	color: #000;
+	cursor: pointer;
+}
+
+.close {
+    font-size: 24px;
+    font-weight: bold;
+    color: #000;
+    cursor: pointer;
+    position: relative;
+    top: -42%;
+    right: -59%;
+    transform: translate(-50%, -50%);
+}
+
+.button-group {
+	display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 40px;
+}
+
+.button-group .btn {
+    width: 50%;
+    cursor: pointer;
+    text-align: center;
+    border-radius: 5px;
+    outline: none;
+	font-size: 16px;
+    font-weight: 500;
+}
+
+.button-group .btn.btn-save {
+	background-color: #06603A;
+	color: #fff;
+	padding: 10px 15px;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 14px;
+}
+
+.button-group .btn.btn-cancel {
+	background-color: #9B9B9B;
+	color: #fff;
+	padding: 10px 15px;
+	border: 1px solid #9B9B9B;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 14px;
+}
+
+#template-save-btn {
+	background-color: #06603A;
+	color: white;
+	height: 40px;
+	font-size: 14px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	width: 100%;
+	border-radius: 5px;
+	cursor: pointer;
+	font-weight: 500;
+}
+
+.type_90 {
+	background: #EEE;
+	margin-left: 5px;
+	margin-right: 6px;
+	color: #545454;
+	font-size: 12px;
+	display: inline-block;
+	padding: 3px 8px;
+	outline: 0 !important;
+	border-radius: 30px;
+	font-weight: 400;
+	width: 50px;
+    height: 25px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.type_2000 {
+	background: #ff1e1e;
+	margin-left: 5px;
+	margin-right: 6px;
+	color: #fff;
+	font-size: 14px;
+	display: inline-block;
+	padding: 3px 8px;
+	outline: 0 !important;
+	border-radius: 15px;
+}
+
+.modal-header::before {
+	content: '';
+	width: 13.55px;
+}
+
+table {
+	width: 100%;
+	border-collapse: collapse;
+	table-layout: fixed;
+}
+
+th, td {
+	border: 1px solid #000;
+	padding: 8px;
+	text-align: center;
+	font-size: 14px;
+	word-wrap: break-word;
+}
+
+th {
+	background-color: #f4f4f4;
+}
+
+caption {
+	font-size: 20px;
+	font-weight: bold;
+	margin-bottom: 10px;
+}
+
+.textarea-cell {
+	text-align: left;
+	padding: 10px;
+	vertical-align: top;
+}
+
+
+.counsel-area {
+	height: 100px;
+	min-height: auto;
+	text-align: left;
+	padding: 10px;
+}
+
+.add-guardian-btn {
+	width: 18px;
+	height: 18px;
+	font-size: 12px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	border-radius: 2px;
+	text-align: center;
+	border: 1px solid #06603A;
+	background: #06603A;
+	background-image: url("../../../icon/ev/sms-plus-icon.png");
+    background-repeat: no-repeat;
+    background-position: right 3px center;
+    background-size: 10px;
+	color: #fff;
+}
+
+.remove-input-btn {
+	width: 20px;
+	font-size: 12px;
+	height: 20px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	border-radius: 2px;
+	text-align: center;
+	background: #fff;
+	color: #fff;
+	margin: 0 5px 0 10px;
+	border: 1px solid #eee;
+	background-image: url("../../../icon/ev/sms-ne-icon.png");
+    background-repeat: no-repeat;
+    background-position: right 4px center;
+    background-size: 9px;
+}
+
+.modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.6);
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	z-index: 9999;
+}
+
+.modal-content {
+	background: #fff;
+	padding: 20px;
+	border-radius: 8px;
+	width: 400px;
+	box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.print-content {
+	max-height: 800px;
+	overflow-y: auto;
+}
+
+.print-modal {
+	display: none;
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background-color: rgba(0, 0, 0, 0.5);
+	justify-content: center;
+	align-items: center;
+	z-index: 1001;
+}
+
+.modal-content {
+	background-color: #fff;
+    padding: 20px 20px;
+    border-radius: 5px;
+    width: 60%;
+}
+
+.modal-content h2 {
+	margin: 0;
+	text-align: center;
+/*     font-size: 20px; */
+    font-weight: 600;
+    padding-top: 30px;
+    padding-bottom: 10px;
+    color: #474747;
+}
+
+.modal-header {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	position: relative;
+}
+
+.modal-header h2 {
+	margin: 0;
+	text-align: center;
+/* 	font-size: 22px; */
+	font-weight: bold;
+	margin-bottom: 10px;
+	border-bottom: 1px solid #000;
+	display: flex;
+	justify-content: center;
+}
+.print-wrap {
+	font-size: 1.6rem !important;
+}
+.tail-wrap {
+	display: none;
+}
+
+.counsel-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed; /* 열 너비를 고정 */
+}
+
+.menu {
+	background: #F0F1F4 !important;
+    padding: 8px;
+    border: 1px solid #ddd;
+    white-space: nowrap; /* 텍스트 줄바꿈 방지 */
+    font-size: 1.2rem;
+}
+
+.menu-data {
+    padding: 8px;
+    text-align: left;
+    border: 1px solid #ddd;
+    overflow: wrap; /* 긴 텍스트 줄바꿈 */
+    word-wrap: break-word; /* 단어 단위 줄바꿈 */
+    vertical-align: top; /* 데이터 상단 정렬 */
+    font-size: 1.1rem;
+}
+.counsel-section {
+	border: none;
+}
+.reservation-header {
+	border-top: none;
+}
+.counsel-area {
+    word-wrap: break-word;
+	font-size: 1.2rem;
+	padding: 0;
+	border: none;
+    border-bottom: 1px solid #ddd;
+}
+.counsel-area table {
+	font-size: 1.1rem !important;
+	width: 100%;
+	table-layout: fixed;
+    border-collapse: collapse;
+}
+.counsel-area table td {
+    padding: 3px; /* 텍스트가 너무 밀리지 않도록 */
+}
+strong {
+	font-weight: 400;
+}
+.counsel-table tr:nth-last-child(3) { /* "입원 예약 정보" 끝의 빈 행 */
+    border-bottom: none;
+}
+.counsel-table, .counsel-section {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+
+.counsel-table colgroup col {
+    width: auto; /* 기본값 유지 후 내용 조정 */
+}
+.counsel-area table tr {
+	border: none;
+}
+#reservation-hour, #reservation-minute {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 1rem;
+    color: #777;
+    background-color: #fff;
+    border: 1px solid #DBDBDB;
+    border-radius: 5px;
+    word-break: break-word;
+    text-align: left;
+    height: 40px;
+    font-weight: 400;
+}
+@media print {
+	#closeModal, .print-footer {
+		display: none; /* Hides the close button during printing */
+	}
+	/* Show only the #print section */
+	.print-modal, .print-modal * {
+		display: block !important;
+	}
+	/* Optional: remove any margins/padding if needed */
+	html, body {
+		margin: 0 !important;
+	    padding: 0 !important;
+	    width: 210mm; /* A4 폭 명시 */
+	    box-sizing: border-box;
+	    font-size: 0.8rem;
+	}
+	#print-title {
+		font-size: 1.6rem;
+	}
+	body {
+		margin: 0;
+		padding: 0;
+	}
+	.menu {
+		background: #F0F1F4 !important;
+		-webkit-print-color-adjust: exact;
+    	width: 100px;
+	}
+	.menu-data {
+        border: 1px solid #ddd;
+    }
+	table {
+		width: 100%;
+		border-collapse: collapse;
+		table-layout: fixed;
+	}
+	table, table tr {
+		border: none !important;
+	}
+	table td {
+		border: 1px solid #ddd !important;
+		border-collapse: collapse;
+	}
+	th, td {
+		padding: 8px;
+		text-align: center;
+		font-size: 1rem !important;
+		word-wrap: break-word;
+		page-break-inside: avoid;
+		page-break-after: auto;
+		border-collapse: collapse;
+	}
+	tbody {
+		display: table-row-group;
+	}
+	.modal-content, .print-area {
+		width: 180mm !important;
+        height: auto !important;
+        overflow: visible !important;
+        page-break-inside: avoid;
+        page-break-after: auto;
+        margin: 0 auto;
+        padding: 0;
+	}
+
+	/* If you have a fixed max-width, remove or override it, e.g.: */
+	.modal-content {
+		max-width: none !important;
+		border: none;
+        box-shadow: none;
+	}
+	@page {
+		margin: 25mm 5mm 10mm 5mm; /* 상하 25mm, 좌우 15mm */
+		size: A4 portrait; /* A4 크기, 세로 출력 */
+		padding: 0;
+	}
+	.tail-wrap {
+        display: block !important; /* 인쇄 시 표시 */
+        position: fixed; 
+        bottom: 0mm; /* 하단 여백 조정 */
+        left: 50%;
+        transform: translateX(-50%);
+        width: 200mm;
+        text-align: center; /* 가운데 정렬 */
+        padding: 5px 0;
+        margin:  0 auto;
+        box-sizing: border-box;
+    }
+    .print-tail {
+        text-align: center !important;
+        border: none !important;
+        font-size: 1rem !important;
+    }
+    .reservation-section {
+        page-break-before: auto;
+        page-break-inside: avoid;
+        page-break-after: auto;
+        border: none;
+    }
+    .reservation-header {
+        display: table-header-group; /* 각 페이지 상단에 반복 */
+		width: 180mm !important; /* 테이블 전체 너비 */
+		border-top: 1px solid #ddd !important; /* 단일 border-top */
+    }
+    .reservation-header td {
+        width: 200mm !important;
+        min-width: 200mm !important;
+        max-width: 200mm !important;
+    	border: none !important; /* 하위 td의 border 초기화 */
+        border-top: none !important; /* 중복 방지 */
+        border-right: 1px solid #ddd !important; /* 명시적 설정 */
+    	border-left: 1px solid #ddd !important;
+        box-sizing: border-box !important;
+    }
+    .counsel-section .reservation-header td {
+        border-bottom: 1px solid #ddd !important;
+        border-top: none !important;
+    }
+	.counsel-table {
+		width: 200mm !important; /* 좌우 여백 5mm씩 고려 */
+	    max-width: 200mm !important;
+	    margin: 0 auto; /* 좌우 중앙 정렬 */
+	    table-layout: fixed;
+	    box-sizing: border-box;
+	}
+	.counsel-header {
+        display: table-header-group;
+        width: 200mm !important; /* 테이블 전체 너비 */
+    }
+    .counsel-header td {
+        width: 200mm !important;
+        min-width: 200mm !important;
+        max-width: 200mm !important;
+        display: table-cell !important;
+        box-sizing: border-box !important;
+    }
+	.counsel-section {
+        page-break-before: auto; /* 상담내용 섹션이 페이지 중간에서 시작 가능 */
+        margin-bottom: 20mm; /* footer와 간격 확보 */
+    }
+	.counsel-area {
+		height: auto;
+        min-height: auto;
+        text-align: left;
+        page-break-inside: auto;
+        word-wrap: break-word;
+        border: none !important; /* counsel-area 전체 border 제거 */
+	}
+	.counsel-area table {
+        page-break-inside: avoid; /* 개별 상담 로그는 한 페이지에 유지 */
+        width: 100%;
+        border: none !important; /* 내부 테이블 border 제거 */
+    }
+	.counsel-area table td {
+        border: none !important; /* 내부 td border 제거 */
+    }
+    /* counsel-area의 특정 td border 제거 */
+    .counsel-area tr td[colspan="2"],
+    .counsel-area tr td[colspan="5"],
+    .counsel-area tr td[colspan="1"] {
+        border: 1px solid #ddd !important; /* 모든 border 제거 */
+    }
+	
+    /* 마지막 행의 상담내용 셀에 border-bottom 추가 */
+	.counsel-area table tr:last-child td {
+/* 	    border-bottom: none !important; */
+	}
+    
+    .reservation-header td[colspan="10"] {
+        border: none !important;
+        border-top: none !important; /* 중복 border-top 제거 */
+        border-left: 1px solid #ddd !important;
+        border-right: none !important;
+        width: 200mm !important;
+        box-sizing: border-box !important;
+    }
+    .reservation-section tr,
+    .counsel-section tr {
+    	border-right: 1px solid #ddd !important;
+    }
+    .reservation-header {
+        border: none !important;
+    }
+    .reservation-section tr td:last-child {
+/*         border-bottom: none; */
+    }
+    .counsel-section, .counsel-section tr, .counsel-section tr td {
+    	border-left: none !important;
+    	border-right: none !important;
+    }
+    .counsel-section .reservation-header td, .reservation-section .reservation-header td{
+    	border-right: 1px solid #ddd !important;
+    	border-top: 1px solid #ddd !important;
+    }
+    .counsel-area, .counsel-area-tr {
+    	border: none !important; 
+    }
+    .reservation-section tr td:last-child  {
+    	border-bottom: none;
+    }
+    .counsel-area table tr td {
+    	border: none !important;
+    	border-top: none !important;
+    }
+}
