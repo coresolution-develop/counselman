@@ -3,6 +3,7 @@ package com.coresolution.csm.serivce;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -38,6 +39,8 @@ import com.coresolution.csm.vo.Guardian;
 import com.coresolution.csm.vo.Instdata;
 import com.coresolution.csm.vo.Userdata;
 import com.coresolution.csm.vo.UserdataCs;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 
@@ -45,6 +48,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CsmAuthService {
     private static final Logger log = LoggerFactory.getLogger(CsmAuthService.class);
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
     private CsmMapper cs;
@@ -281,6 +285,21 @@ public class CsmAuthService {
                         + "contact_number_hash varbinary(32) default null"
                         + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+                "CREATE TABLE IF NOT EXISTS csm.counsel_admission_pledge_" + safe + " ("
+                        + "id bigint auto_increment primary key,"
+                        + "cs_idx int not null,"
+                        + "agreed_yn char(1) not null default 'N',"
+                        + "signer_name varchar(100) default null,"
+                        + "signer_relation varchar(50) default null,"
+                        + "signed_at varchar(19) default null,"
+                        + "pledge_text text,"
+                        + "signature_data longtext,"
+                        + "page_ink_data longtext,"
+                        + "created_at timestamp default current_timestamp,"
+                        + "updated_at timestamp default current_timestamp on update current_timestamp,"
+                        + "unique key uq_cs_idx (cs_idx)"
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
                 "CREATE TABLE IF NOT EXISTS csm.counsel_list_" + safe + " ("
                         + "idx int auto_increment primary key,"
                         + "coulmn varchar(50) default null,"
@@ -321,6 +340,19 @@ public class CsmAuthService {
                         + "file_size bigint default 0,"
                         + "duration_seconds decimal(10,3) default null,"
                         + "transcript longtext,"
+                        + "created_by varchar(100) default null,"
+                        + "created_at timestamp default current_timestamp,"
+                        + "updated_at timestamp default current_timestamp on update current_timestamp"
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+                "CREATE TABLE IF NOT EXISTS csm.counsel_file_" + safe + " ("
+                        + "id bigint auto_increment primary key,"
+                        + "cs_idx int default null,"
+                        + "temp_key varchar(80) default null,"
+                        + "original_filename varchar(255) not null,"
+                        + "stored_filename varchar(255) not null,"
+                        + "mime_type varchar(100) default null,"
+                        + "file_size bigint default 0,"
                         + "created_by varchar(100) default null,"
                         + "created_at timestamp default current_timestamp,"
                         + "updated_at timestamp default current_timestamp on update current_timestamp"
@@ -376,6 +408,90 @@ public class CsmAuthService {
         for (String ddl : ddls) {
             jdbcTemplate.execute(ddl);
         }
+        ensureAdmissionPledgeTable(safe);
+    }
+
+    public Map<String, Object> inspectCoreInstSchema(String inst) {
+        String safe = sanitizeInst(inst);
+        List<String> requiredTables = getRequiredCoreInstTables(safe);
+        List<String> missingTables = new ArrayList<>();
+        int existingTableCount = 0;
+
+        for (String tableName : requiredTables) {
+            if (tableExistsInCsm(tableName)) {
+                existingTableCount++;
+            } else {
+                missingTables.add(tableName);
+            }
+        }
+
+        List<String> missingColumns = new ArrayList<>();
+        String admissionPledgeTable = "counsel_admission_pledge_" + safe;
+        if (!missingTables.contains(admissionPledgeTable)
+                && !columnExistsInCsm(admissionPledgeTable, "page_ink_data")) {
+            missingColumns.add(admissionPledgeTable + ".page_ink_data");
+        }
+
+        Map<String, Object> out = new HashMap<>();
+        out.put("inst", safe);
+        out.put("required_table_count", requiredTables.size());
+        out.put("existing_table_count", existingTableCount);
+        out.put("missing_table_count", missingTables.size());
+        out.put("missing_tables", missingTables);
+        out.put("missing_column_count", missingColumns.size());
+        out.put("missing_columns", missingColumns);
+        out.put("ok", missingTables.isEmpty() && missingColumns.isEmpty());
+        return out;
+    }
+
+    public Map<String, Object> repairCoreInstSchema(String inst) {
+        String safe = sanitizeInst(inst);
+        Map<String, Object> before = inspectCoreInstSchema(safe);
+        createCoreInstSchemaTables(safe);
+        Map<String, Object> after = inspectCoreInstSchema(safe);
+        Map<String, Object> out = new HashMap<>();
+        out.put("inst", safe);
+        out.put("before_status", before);
+        out.put("after_status", after);
+        out.put("ok", Boolean.TRUE.equals(after.get("ok")));
+        return out;
+    }
+
+    private List<String> getRequiredCoreInstTables(String safeInst) {
+        return List.of(
+                "inst_data_" + safeInst,
+                "user_data_" + safeInst,
+                "counsel_category1_" + safeInst,
+                "counsel_category2_" + safeInst,
+                "counsel_category3_" + safeInst,
+                "counsel_data_" + safeInst,
+                "counsel_data_" + safeInst + "_entries",
+                "counsel_data_" + safeInst + "_guardians",
+                "counsel_admission_pledge_" + safeInst,
+                "counsel_list_" + safeInst,
+                "counsel_log_" + safeInst,
+                "counsel_log_guardians_" + safeInst,
+                "counsel_audio_" + safeInst,
+                "counsel_file_" + safeInst,
+                "message_templates_" + safeInst,
+                "transmission_history_" + safeInst,
+                "phone_number_" + safeInst,
+                "card_" + safeInst,
+                "sms_request_" + safeInst);
+    }
+
+    private boolean tableExistsInCsm(String tableName) {
+        String sql = "SELECT COUNT(*) FROM information_schema.TABLES "
+                + "WHERE TABLE_SCHEMA = 'csm' AND TABLE_NAME = ?";
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, tableName);
+        return count != null && count > 0;
+    }
+
+    private boolean columnExistsInCsm(String tableName, String columnName) {
+        String sql = "SELECT COUNT(*) FROM information_schema.COLUMNS "
+                + "WHERE TABLE_SCHEMA = 'csm' AND TABLE_NAME = ? AND COLUMN_NAME = ?";
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, tableName, columnName);
+        return count != null && count > 0;
     }
 
     private String sanitizeInst(String inst) {
@@ -891,6 +1007,232 @@ public class CsmAuthService {
         return counselData;
     }
 
+    public Map<String, Object> getAdmissionPledge(String inst, int csIdx) {
+        if (csIdx <= 0) {
+            return Collections.emptyMap();
+        }
+        String safe = sanitizeInst(inst);
+        ensureAdmissionPledgeTable(safe);
+
+        String sql = "SELECT cs_idx, agreed_yn, signer_name, signer_relation, signed_at, pledge_text, signature_data, page_ink_data "
+                + "FROM csm.counsel_admission_pledge_" + safe + " WHERE cs_idx = ? LIMIT 1";
+        List<Map<String, Object>> rows;
+        try {
+            rows = jdbcTemplate.queryForList(sql, csIdx);
+        } catch (Exception e) {
+            log.warn("[admission-pledge] select fail inst={}, cs_idx={}, err={}", safe, csIdx, e.toString());
+            return Collections.emptyMap();
+        }
+        if (rows.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, Object> row = rows.get(0);
+        Map<String, Object> out = new HashMap<>();
+        out.put("cs_idx", csIdx);
+        out.put("agreed_yn", normalizeYn(row.get("agreed_yn")));
+        out.put("signer_name", safeText(row.get("signer_name"), 100));
+        out.put("signer_relation", safeText(row.get("signer_relation"), 50));
+        out.put("signed_at", safeText(row.get("signed_at"), 19));
+        out.put("pledge_text", safeText(row.get("pledge_text"), 5000));
+        out.put("signature_data", safeText(row.get("signature_data"), 4_000_000));
+        out.put("page_ink_data", safeText(row.get("page_ink_data"), 3_000_000));
+        return out;
+    }
+
+    public int upsertAdmissionPledge(String inst, int csIdx, Map<String, Object> pledge) {
+        if (csIdx <= 0) {
+            return 0;
+        }
+        String safe = sanitizeInst(inst);
+        ensureAdmissionPledgeTable(safe);
+
+        String agreedYn = normalizeYn(pledge == null ? null : pledge.get("agreed_yn"));
+        String signerName = safeText(pledge == null ? null : pledge.get("signer_name"), 100);
+        String signerRelation = safeText(pledge == null ? null : pledge.get("signer_relation"), 50);
+        String signedAt = safeText(pledge == null ? null : pledge.get("signed_at"), 19);
+        String pledgeText = safeText(pledge == null ? null : pledge.get("pledge_text"), 5000);
+        String signatureData = safeText(pledge == null ? null : pledge.get("signature_data"), 4_000_000);
+        String pageInkData = safeText(pledge == null ? null : pledge.get("page_ink_data"), 3_000_000);
+        signatureData = normalizeAdmissionSignatureData(signatureData);
+        pageInkData = normalizePngData(pageInkData, 3_000_000);
+
+        String sql = "INSERT INTO csm.counsel_admission_pledge_" + safe
+                + " (cs_idx, agreed_yn, signer_name, signer_relation, signed_at, pledge_text, signature_data, page_ink_data) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+                + "ON DUPLICATE KEY UPDATE "
+                + "agreed_yn = VALUES(agreed_yn), "
+                + "signer_name = VALUES(signer_name), "
+                + "signer_relation = VALUES(signer_relation), "
+                + "signed_at = VALUES(signed_at), "
+                + "pledge_text = VALUES(pledge_text), "
+                + "signature_data = VALUES(signature_data), "
+                + "page_ink_data = VALUES(page_ink_data)";
+        try {
+            return jdbcTemplate.update(sql, csIdx, agreedYn, signerName, signerRelation, signedAt, pledgeText,
+                    signatureData, pageInkData);
+        } catch (Exception e) {
+            log.warn("[admission-pledge] upsert fail inst={}, cs_idx={}, err={}", safe, csIdx, e.toString());
+            return 0;
+        }
+    }
+
+    public int deleteAdmissionPledge(String inst, int csIdx) {
+        if (csIdx <= 0) {
+            return 0;
+        }
+        String safe = sanitizeInst(inst);
+        ensureAdmissionPledgeTable(safe);
+        String sql = "DELETE FROM csm.counsel_admission_pledge_" + safe + " WHERE cs_idx = ?";
+        try {
+            return jdbcTemplate.update(sql, csIdx);
+        } catch (Exception e) {
+            log.warn("[admission-pledge] delete fail inst={}, cs_idx={}, err={}", safe, csIdx, e.toString());
+            return 0;
+        }
+    }
+
+    private void ensureAdmissionPledgeTable(String safeInst) {
+        String sql = "CREATE TABLE IF NOT EXISTS csm.counsel_admission_pledge_" + safeInst + " ("
+                + "id bigint auto_increment primary key,"
+                + "cs_idx int not null,"
+                + "agreed_yn char(1) not null default 'N',"
+                + "signer_name varchar(100) default null,"
+                + "signer_relation varchar(50) default null,"
+                + "signed_at varchar(19) default null,"
+                + "pledge_text text,"
+                + "signature_data longtext,"
+                + "page_ink_data longtext,"
+                + "created_at timestamp default current_timestamp,"
+                + "updated_at timestamp default current_timestamp on update current_timestamp,"
+                + "unique key uq_cs_idx (cs_idx)"
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        try {
+            jdbcTemplate.execute(sql);
+            ensureAdmissionPledgeColumns(safeInst);
+        } catch (Exception e) {
+            log.warn("[admission-pledge] ensure table fail inst={}, err={}", safeInst, e.toString());
+        }
+    }
+
+    private void ensureAdmissionPledgeColumns(String safeInst) {
+        ensureAdmissionPledgeColumn(
+                safeInst,
+                "page_ink_data",
+                "ALTER TABLE csm.counsel_admission_pledge_" + safeInst + " ADD COLUMN page_ink_data longtext");
+    }
+
+    private void ensureAdmissionPledgeColumn(String safeInst, String columnName, String alterSql) {
+        String sql = "SELECT COUNT(*) FROM information_schema.COLUMNS "
+                + "WHERE TABLE_SCHEMA = 'csm' AND TABLE_NAME = ? AND COLUMN_NAME = ?";
+        String tableName = "counsel_admission_pledge_" + safeInst;
+        try {
+            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, tableName, columnName);
+            if (count != null && count > 0) {
+                return;
+            }
+            jdbcTemplate.execute(alterSql);
+        } catch (Exception e) {
+            log.warn("[admission-pledge] ensure column fail inst={}, col={}, err={}", safeInst, columnName,
+                    e.toString());
+        }
+    }
+
+    private String normalizeYn(Object value) {
+        String v = value == null ? "" : String.valueOf(value).trim();
+        return ("Y".equalsIgnoreCase(v) || "1".equals(v) || "true".equalsIgnoreCase(v) || "on".equalsIgnoreCase(v))
+                ? "Y"
+                : "N";
+    }
+
+    private String normalizeAdmissionSignatureData(String raw) {
+        String text = raw == null ? "" : String.valueOf(raw).trim();
+        if (text.isBlank()) {
+            return "";
+        }
+        if (isValidPngData(text, 1_500_000)) {
+            return text;
+        }
+        if (text.length() > 4_000_000) {
+            return "";
+        }
+        try {
+            JsonNode root = objectMapper.readTree(text);
+            if (root == null || !root.isObject()) {
+                return "";
+            }
+
+            String primary = extractFirstSignature(root, "primary", "main", "signer", "final_signature", "signature");
+            if (primary.isBlank()) {
+                return "";
+            }
+            String guardian = extractFirstSignature(root, "guardian", "guardian_signature", "primary_guardian");
+            String subGuardian = extractFirstSignature(root, "sub_guardian", "subGuardian", "sub_guardian_signature",
+                    "secondary_guardian");
+
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put("version", 2);
+            out.put("primary", primary);
+            if (!guardian.isBlank()) {
+                out.put("guardian", guardian);
+            }
+            if (!subGuardian.isBlank()) {
+                out.put("sub_guardian", subGuardian);
+            }
+
+            String normalized = objectMapper.writeValueAsString(out);
+            return normalized.length() <= 4_000_000 ? normalized : "";
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private String extractFirstSignature(JsonNode root, String... keys) {
+        if (root == null || keys == null) {
+            return "";
+        }
+        for (String key : keys) {
+            if (key == null || key.trim().isEmpty() || !root.has(key)) {
+                continue;
+            }
+            String value = root.path(key).asText("");
+            if (value != null) {
+                value = value.trim();
+            }
+            if (isValidPngData(value, 1_500_000)) {
+                return value;
+            }
+        }
+        return "";
+    }
+
+    private String normalizePngData(String raw, int maxLen) {
+        String text = raw == null ? "" : String.valueOf(raw).trim();
+        if (text.isBlank()) {
+            return "";
+        }
+        return isValidPngData(text, maxLen) ? text : "";
+    }
+
+    private boolean isValidPngData(String raw, int maxLen) {
+        String text = raw == null ? "" : String.valueOf(raw).trim();
+        if (text.isBlank()) {
+            return false;
+        }
+        if (!text.startsWith("data:image/png;base64,")) {
+            return false;
+        }
+        return text.length() <= maxLen;
+    }
+
+    private String safeText(Object value, int maxLen) {
+        String out = value == null ? "" : String.valueOf(value).trim();
+        if (out.length() <= maxLen) {
+            return out;
+        }
+        return out.substring(0, maxLen);
+    }
+
     public List<CounselDataEntry> getEntriesByInstAndCsIdx(String inst, int csIdx) {
         log.debug("[CsmAuthService] getEntriesByInstAndCsIdx inst={}, csIdx={}", inst, csIdx); // ★
         return cs.getEntriesByInstAndCsIdx(inst, csIdx);
@@ -930,6 +1272,14 @@ public class CsmAuthService {
 
     public List<Map<String, Object>> selectAdmissionTypeSuccessStats(Map<String, Object> params) {
         return cs.selectAdmissionTypeSuccessStats(params);
+    }
+
+    public List<Map<String, Object>> getCurrentLocationStats(Map<String, Object> params) {
+        return cs.getCurrentLocationStats(params);
+    }
+
+    public List<Map<String, Object>> getCurrentLocationSuccessStats(Map<String, Object> params) {
+        return cs.getCurrentLocationSuccessStats(params);
     }
 
     public List<Map<String, Object>> getNonAdmissionReasonStats(Map<String, Object> params) {

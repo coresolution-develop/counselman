@@ -14,6 +14,8 @@ const lastMonth = readNumberValue('lastMonth');
 let admissionTypeData = []; // 전체 데이터를 저장해두는 전역 변수
 let cachedAdmissionTypeData = [];
 let cachedAdmissionSuccessData = [];
+let cachedCurrentLocationData = [];
+let cachedCurrentLocationSuccessData = [];
 console.log("📌 날짜정보:", firstYear, firstMonth, lastYear, lastMonth);
 const COMMON_TYPE_COLORS = {
     '기타': '#C98282',      // 기타는 항상 이 색상
@@ -133,6 +135,32 @@ function loadStatistics(year, month, counselor = '') { // counselor 기본값은
 		},
 		error: function() {
 			alert('입원연계 성공 건수 조회 실패');
+		}
+	});
+
+	$.ajax({
+		url: '/csm/statisticsByCurrentLocation',
+		method: 'GET',
+		data: requestData,
+		success: function(data) {
+			cachedCurrentLocationData = data;
+			renderCurrentLocationTable(data);
+		},
+		error: function() {
+			alert('현재 계신곳 통계 조회 실패');
+		}
+	});
+
+	$.ajax({
+		url: '/csm/statisticsByCurrentLocationSuccess',
+		method: 'GET',
+		data: requestData,
+		success: function(data) {
+			cachedCurrentLocationSuccessData = data;
+			renderCurrentLocationSuccessTable(data);
+		},
+		error: function() {
+			alert('현재 계신곳 입원연계 성공 건수 조회 실패');
 		}
 	});
 
@@ -544,9 +572,7 @@ function renderAdmissionSuccessTypeChart(successData) {
 		data: months.map(month =>
 			filtered.find(d => d.month === month && d.type === type)?.count || 0
 		),
-		// 📌 여기에 색상을 할당합니다.
-		// COMMON_TYPE_COLORS 맵에서 해당 타입의 색상을 가져오고, 없으면 기본 색상을 할당합니다.
-		color: COMMON_TYPE_COLORS[type] || COMMON_TYPE_COLORS['default_color_1'] // 맵에 없는 타입에 대한 폴백 색상
+		color: getCommonTypeColor(type)
 	}));
     
     // console.log("Bar chart seriesData with colors:", seriesData); // 확인용
@@ -623,12 +649,16 @@ function renderAdmissionSuccessTypeChart(successData) {
 	});
 }
 function normalizeType(type) {
-    // type이 null, undefined, 또는 빈 문자열일 경우 '미지정'으로 통일
     if (!type || type.trim() === '') {
         return '미지정';
     }
-    // 그 외의 경우, 앞뒤 공백 제거 후 반환
     return type.trim();
+}
+
+function getCommonTypeColor(type) {
+	const normalized = normalizeType(type);
+	const baseType = normalized.split('/')[0].trim();
+	return COMMON_TYPE_COLORS[normalized] || COMMON_TYPE_COLORS[baseType] || COMMON_TYPE_COLORS['default_color_1'];
 }
 function renderAdmissionSuccessTypePieChart(successData) {
 	const months = [...new Set(successData.map(d => d.month))].sort();
@@ -647,7 +677,7 @@ function renderAdmissionSuccessTypePieChart(successData) {
 	const chartData = Object.keys(aggregatedData).map(name => ({
 		name: name,
 		y: aggregatedData[name],
-		color: COMMON_TYPE_COLORS[name] || COMMON_TYPE_COLORS['default_color_1'] // 정의된 색상이 없으면 기본 색상 사용
+		color: getCommonTypeColor(name)
 	})).filter(item => item.y > 0);
 	console.log("Final chartData for pie chart:", chartData); // 여기에 추가
 
@@ -1055,23 +1085,17 @@ function renderAdmissionStatsTable(successData, allData) {
     $('#admissionStatsTable').html(html);
 }
 
-function renderAdmissionTypeTable(data) {
-	const selectedCounselor = $('#counselorFilter').val();
+function renderCategorizedMonthlyTable({ containerId, data, typeLabel, ratioLabel }) {
+	if (!Array.isArray(data) || data.length === 0) {
+		$(containerId).html(`<thead><tr><th>${typeLabel}</th><th>데이터가 없습니다.</th></tr></thead>`);
+		return;
+	}
 
+	const selectedCounselor = $('#counselorFilter').val();
 	const normalizedData = data.map(d => ({
 		...d,
 		type: (d.type && d.type.trim()) ? d.type.trim() : '미지정'
 	}));
-
-	// 상담자 select 구성
-	if ($('#counselorFilter').children().length === 0) {
-		const counselors = [...new Set(normalizedData.map(row => row.counselor).filter(Boolean))].sort();
-		let options = '<option value="">전체 상담자</option>';
-		counselors.forEach(c => {
-			options += `<option value="${c}">${c}</option>`;
-		});
-		$('#counselorFilter').html(options);
-	}
 
 	const filtered = selectedCounselor
 		? normalizedData.filter(row => row.counselor === selectedCounselor)
@@ -1079,22 +1103,14 @@ function renderAdmissionTypeTable(data) {
 
 	const types = [...new Set(filtered.map(d => d.type))];
 	const months = [...new Set(filtered.map(d => d.month))].sort();
-	const formattedMonths = months.map(m => m.replace('-', '. '));
-	const lastMonthKey = months[months.length - 1];
-	const formattedLastMonth = lastMonthKey.replace('-', '. ');
+	if (months.length === 0) {
+		$(containerId).html(`<thead><tr><th>${typeLabel}</th><th>데이터가 없습니다.</th></tr></thead>`);
+		return;
+	}
 
 	const typeMonthCount = {};
 	const totalPerMonth = {};
-	const totalPerMonthAll = {};
 
-	// 전체 총합 계산 (전월대비용)
-	normalizedData.forEach(d => {
-		const month = d.month;
-		const count = d.count || 0;
-		totalPerMonthAll[month] = (totalPerMonthAll[month] || 0) + count;
-	});
-
-	// 필터된 상담자 기준 집계
 	filtered.forEach(d => {
 		const { type, month, count = 0 } = d;
 		if (!typeMonthCount[type]) typeMonthCount[type] = {};
@@ -1102,21 +1118,20 @@ function renderAdmissionTypeTable(data) {
 		totalPerMonth[month] = (totalPerMonth[month] || 0) + count;
 	});
 
-	// ⬇ 테이블 그리기
-	let html = `<thead><tr><th>연계유형</th>`;
-	formattedMonths.forEach(m => html += `<th>${m}</th>`);
-	html += `<th>입원유형별<br>입원연계비율</th><th>월평균 건수</th><th>총 건수</th></tr></thead><tbody>`;
-
+	const lastMonthKey = months[months.length - 1];
 	const totalAllLastMonth = totalPerMonth[lastMonthKey] || 0;
-
 	const ratioSumList = [];
+
+	let html = `<thead><tr><th>${typeLabel}</th>`;
+	months.forEach(month => html += `<th>${month.replace('-', '. ')}</th>`);
+	html += `<th>${ratioLabel}</th><th>월평균 건수</th><th>총 건수</th></tr></thead><tbody>`;
 
 	types.forEach(type => {
 		const rowData = typeMonthCount[type] || {};
 		let sum = 0;
 		html += `<tr><td>${type}</td>`;
-		months.forEach(m => {
-			const cnt = rowData[m] || 0;
+		months.forEach(month => {
+			const cnt = rowData[month] || 0;
 			sum += cnt;
 			html += `<td>${cnt}</td>`;
 		});
@@ -1124,54 +1139,45 @@ function renderAdmissionTypeTable(data) {
 		const ratio = totalAllLastMonth
 			? (((rowData[lastMonthKey] || 0) / totalAllLastMonth) * 100).toFixed(2)
 			: '-';
-
 		if (ratio !== '-') ratioSumList.push(parseFloat(ratio));
-
 		html += `<td>${ratio !== '-' ? ratio + '%' : '-'}</td><td>${avg}</td><td>${sum}</td></tr>`;
 	});
 
-	// 총건수 행
 	html += `<tr class="total"><td>총 건수</td>`;
 	let grandTotal = 0;
-	months.forEach(m => {
-		const sum = types.reduce((acc, t) => acc + (typeMonthCount[t]?.[m] || 0), 0);
+	months.forEach(month => {
+		const sum = types.reduce((acc, type) => acc + (typeMonthCount[type]?.[month] || 0), 0);
 		html += `<td>${sum}</td>`;
 		grandTotal += sum;
 	});
 
 	const totalRatioSum = ratioSumList.reduce((a, b) => a + b, 0).toFixed(2);
-
 	html += `<td>${totalRatioSum}%</td>`;
 	html += `<td>${(grandTotal / months.length).toFixed(2)}</td>`;
 	html += `<td>${grandTotal}</td></tr>`;
 
-	// 전월대비 증감건수
 	html += `<tr class="pmcount" style=""><td>전월대비 증감건수</td>`;
-	months.forEach((m, i) => {
-	    if (i === 0) {
-	        html += '<td>-</td>';
-	    } else {
-	        // 🚨 totalPerMonthAll 대신 totalPerMonth 사용
-	        const prev = totalPerMonth[months[i - 1]] || 0;
-	        const curr = totalPerMonth[m] || 0;
-	        const diff = curr - prev;
-	        const color = diff > 0 ? '#264272' : diff < 0 ? '#F99C11' : 'black';
-	        const symbol = diff > 0 ? '▲ ' : diff < 0 ? '▼ ' : '';
-	        html += `<td><span style="color:${color};">${symbol}${Math.abs(diff)}</span></td>`;
-	    }
-	});
-	html += `<td></td><td></td><td></td></tr>`;
-
-
-	// 전월대비 증감률
-	html += `<tr style="background-color:#f0f8ff;"><td>전월대비 증감률(%)</td>`;
-	months.forEach((m, i) => {
+	months.forEach((month, i) => {
 		if (i === 0) {
 			html += '<td>-</td>';
 		} else {
-			// 🚨 totalPerMonthAll 대신 totalPerMonth 사용
 			const prev = totalPerMonth[months[i - 1]] || 0;
-			const curr = totalPerMonth[m] || 0;
+			const curr = totalPerMonth[month] || 0;
+			const diff = curr - prev;
+			const color = diff > 0 ? '#264272' : diff < 0 ? '#F99C11' : 'black';
+			const symbol = diff > 0 ? '▲ ' : diff < 0 ? '▼ ' : '';
+			html += `<td><span style="color:${color};">${symbol}${Math.abs(diff)}</span></td>`;
+		}
+	});
+	html += `<td></td><td></td><td></td></tr>`;
+
+	html += `<tr style="background-color:#f0f8ff;"><td>전월대비 증감률(%)</td>`;
+	months.forEach((month, i) => {
+		if (i === 0) {
+			html += '<td>-</td>';
+		} else {
+			const prev = totalPerMonth[months[i - 1]] || 0;
+			const curr = totalPerMonth[month] || 0;
 			if (prev === 0) {
 				html += '<td>-</td>';
 			} else {
@@ -1185,7 +1191,16 @@ function renderAdmissionTypeTable(data) {
 	html += `<td></td><td></td><td></td></tr>`;
 
 	html += `</tbody>`;
-	$('#admissionTypeTable').html(html);
+	$(containerId).html(html);
+}
+
+function renderAdmissionTypeTable(data) {
+	renderCategorizedMonthlyTable({
+		containerId: '#admissionTypeTable',
+		data,
+		typeLabel: '유입경로',
+		ratioLabel: '유입경로별<br>입원연계비율'
+	});
 }
 // counselor select 동적 구성
 
@@ -1199,124 +1214,30 @@ function populateCounselorSelect(data) {
 	}
 }
 function renderAdmissionSuccessTypeTable(successData, typeData) {
-	const selectedCounselor = $('#counselorFilter').val();
-
-	// 🔹 type이 없으면 '미지정'으로 치환
-	const normalizedData = successData.map(d => ({
-		...d,
-		type: (d.type && d.type.trim()) ? d.type.trim() : '미지정'
-	}));
-
-	const filtered = selectedCounselor
-		? normalizedData.filter(row => row.counselor === selectedCounselor)
-		: normalizedData;
-
-	const types = [...new Set(filtered.map(d => d.type))];
-	const months = [...new Set(filtered.map(d => d.month))].sort();
-
-	const typeMonthCount = {};
-	const totalPerMonth = {};
-	const totalPerMonthAll = {};
-
-	// 전체 기준 월별 총합 (증감용)
-	normalizedData.forEach(d => {
-		const { month, count = 0 } = d;
-		totalPerMonthAll[month] = (totalPerMonthAll[month] || 0) + count;
+	renderCategorizedMonthlyTable({
+		containerId: '#admissionSuccessTypeTable',
+		data: successData,
+		typeLabel: '유입경로',
+		ratioLabel: '유입경로별<br>비율'
 	});
+}
 
-	// 필터 기준 집계
-	filtered.forEach(d => {
-		const { type, month, count = 0 } = d;
-		if (!typeMonthCount[type]) typeMonthCount[type] = {};
-		typeMonthCount[type][month] = (typeMonthCount[type][month] || 0) + count;
-		totalPerMonth[month] = (totalPerMonth[month] || 0) + count;
+function renderCurrentLocationTable(data) {
+	renderCategorizedMonthlyTable({
+		containerId: '#currentLocationTable',
+		data,
+		typeLabel: '현재계신곳',
+		ratioLabel: '현재계신곳별<br>입원연계비율'
 	});
+}
 
-	const lastMonthStr = months[months.length - 1] || '';
-	const formattedLastMonth = lastMonthStr.replace('-', '. ');
-
-	// 📌 테이블 렌더링
-	let html = '<thead><tr><th>연계유형</th>';
-	months.forEach(m => html += `<th>${m.replace('-', '. ')}</th>`);
-	html += `<th>미입원사유별<br>비율</th><th>월평균 건수</th><th>총 건수</th></tr></thead><tbody>`;
-
-	const lastMonth = months[months.length - 1];
-	const totalAllLastMonth = totalPerMonth[lastMonth] || 0;
-	const ratioSumList = [];
-
-	types.forEach(type => {
-		const rowData = typeMonthCount[type] || {};
-		let sum = 0;
-
-		html += `<tr><td>${type}</td>`;
-		months.forEach(m => {
-			const cnt = rowData[m] || 0;
-			sum += cnt;
-			html += `<td>${cnt}</td>`;
-		});
-
-		const avg = (sum / months.length).toFixed(2);
-		const ratio = totalAllLastMonth
-			? (((rowData[lastMonth] || 0) / totalAllLastMonth) * 100).toFixed(2)
-			: '-';
-
-		if (ratio !== '-') ratioSumList.push(parseFloat(ratio));
-
-		html += `<td>${ratio !== '-' ? ratio + '%' : '-'}</td><td>${avg}</td><td>${sum}</td></tr>`;
+function renderCurrentLocationSuccessTable(data) {
+	renderCategorizedMonthlyTable({
+		containerId: '#currentLocationSuccessTable',
+		data,
+		typeLabel: '현재계신곳',
+		ratioLabel: '현재계신곳별<br>비율'
 	});
-
-	// ✅ 총 건수 행 추가
-	html += `<tr class="total"><td>총 건수</td>`;
-	let grandTotal = 0;
-	months.forEach(m => {
-		const total = types.reduce((acc, t) => acc + (typeMonthCount[t]?.[m] || 0), 0);
-		html += `<td>${total}</td>`;
-		grandTotal += total;
-	});
-
-	const totalRatioSum = ratioSumList.reduce((a, b) => a + b, 0).toFixed(2);
-	html += `<td>${totalRatioSum}%</td>`;
-	html += `<td>${(grandTotal / months.length).toFixed(2)}</td>`;
-	html += `<td>${grandTotal}</td></tr>`;
-
-	// 📌 증감건수
-	html += `<tr class="pmcount" style=""><td>전월대비 증감건수</td>`;
-	months.forEach((m, i) => {
-		if (i === 0) {
-			html += '<td>-</td>';
-		} else {
-			const prev = totalPerMonthAll[months[i - 1]] || 0;
-			const curr = totalPerMonthAll[m] || 0;
-			const diff = curr - prev;
-			const color = diff > 0 ? '#264272' : diff < 0 ? '#F99C11' : 'black';
-			const symbol = diff > 0 ? '▲ ' : diff < 0 ? '▼ ' : '';
-			html += `<td><span style="color:${color};">${symbol}${Math.abs(diff)}</span></td>`;
-		}
-	});
-	html += '<td></td><td></td><td></td></tr>';
-
-	// 📌 증감률
-	html += '<tr style="background-color:#f0f8ff;"><td>전월대비 증감률(%)</td>';
-	months.forEach((m, i) => {
-		if (i === 0) {
-			html += '<td>-</td>';
-		} else {
-			const prev = totalPerMonthAll[months[i - 1]] || 0;
-			const curr = totalPerMonthAll[m] || 0;
-			if (prev === 0) {
-				html += '<td>-</td>';
-			} else {
-				const rate = (((curr - prev) / prev) * 100).toFixed(2);
-				const color = rate > 0 ? '#264272' : rate < 0 ? '#F99C11' : 'black';
-				const symbol = rate > 0 ? '▲ ' : rate < 0 ? '▼ ' : '';
-				html += `<td><span style="color:${color};">${symbol}${Math.abs(rate)}%</span></td>`;
-			}
-		}
-	});
-	html += '<td></td><td></td><td></td></tr>';
-
-	html += '</tbody>';
-	$('#admissionSuccessTypeTable').html(html);
 }
 
 

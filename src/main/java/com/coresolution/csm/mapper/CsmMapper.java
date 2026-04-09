@@ -715,6 +715,12 @@ public interface CsmMapper {
   @SelectProvider(type = StatisticsSqlProvider.class, method = "selectAdmissionTypeSuccessStats")
   List<Map<String, Object>> selectAdmissionTypeSuccessStats(Map<String, Object> params);
 
+  @SelectProvider(type = StatisticsSqlProvider.class, method = "getCurrentLocationStats")
+  List<Map<String, Object>> getCurrentLocationStats(Map<String, Object> params);
+
+  @SelectProvider(type = StatisticsSqlProvider.class, method = "getCurrentLocationSuccessStats")
+  List<Map<String, Object>> getCurrentLocationSuccessStats(Map<String, Object> params);
+
   @SelectProvider(type = StatisticsSqlProvider.class, method = "getNonAdmissionReasonStats")
   List<Map<String, Object>> getNonAdmissionReasonStats(Map<String, Object> params);
 
@@ -1075,8 +1081,7 @@ public interface CsmMapper {
       StringBuilder sb = new StringBuilder()
           .append("SELECT ")
           .append(" DATE_FORMAT(STR_TO_DATE(cs_col_16, '%Y-%m-%d'), '%Y-%m') AS month, ")
-          .append(" CASE WHEN TRIM(IFNULL(cs_col_08, '')) = '' THEN '미지정' ")
-          .append(" ELSE SUBSTRING_INDEX(TRIM(cs_col_08), ',', 1) END AS type, ")
+          .append(buildDetailedTypeExpression("cs_col_08")).append(" AS type, ")
           .append(" TRIM(cs_col_17) AS counselor, ")
           .append(" COUNT(*) AS count ")
           .append("FROM csm.counsel_data_").append(t).append(" ")
@@ -1096,8 +1101,48 @@ public interface CsmMapper {
       StringBuilder sb = new StringBuilder()
           .append("SELECT ")
           .append(" DATE_FORMAT(STR_TO_DATE(cs_col_16, '%Y-%m-%d'), '%Y-%m') AS month, ")
-          .append(" CASE WHEN TRIM(IFNULL(cs_col_08, '')) = '' THEN '미지정' ")
-          .append(" ELSE SUBSTRING_INDEX(TRIM(cs_col_08), ',', 1) END AS type, ")
+          .append(buildDetailedTypeExpression("cs_col_08")).append(" AS type, ")
+          .append(" TRIM(cs_col_17) AS counselor, ")
+          .append(" COUNT(*) AS count ")
+          .append("FROM csm.counsel_data_").append(t).append(" ")
+          .append("WHERE cs_col_19 = '입원완료' ")
+          .append(" AND cs_col_16 IS NOT NULL ");
+      appendInstNameFilter(sb, p);
+      sb.append(" AND STR_TO_DATE(cs_col_16, '%Y-%m-%d') BETWEEN ")
+          .append(" DATE_SUB(STR_TO_DATE(CONCAT(#{year}, '-', LPAD(#{month},2,'0'), '-01'), '%Y-%m-%d'), INTERVAL 12 MONTH) ")
+          .append(" AND LAST_DAY(STR_TO_DATE(CONCAT(#{year}, '-', LPAD(#{month},2,'0'), '-01'), '%Y-%m-%d')) ");
+      appendCounselorFilter(sb, p);
+      sb.append(" GROUP BY month, type, counselor ")
+          .append(" ORDER BY month ASC, type ASC, counselor ASC ");
+      return sb.toString();
+    }
+
+    public static String getCurrentLocationStats(Map<String, Object> p) {
+      String t = sanitizeInst((String) p.get("inst"));
+      StringBuilder sb = new StringBuilder()
+          .append("SELECT ")
+          .append(" DATE_FORMAT(STR_TO_DATE(cs_col_16, '%Y-%m-%d'), '%Y-%m') AS month, ")
+          .append(buildDetailedTypeExpression("cs_col_07")).append(" AS type, ")
+          .append(" TRIM(cs_col_17) AS counselor, ")
+          .append(" COUNT(*) AS count ")
+          .append("FROM csm.counsel_data_").append(t).append(" ")
+          .append("WHERE cs_col_16 IS NOT NULL ");
+      appendInstNameFilter(sb, p);
+      sb.append(" AND STR_TO_DATE(cs_col_16, '%Y-%m-%d') BETWEEN ")
+          .append(" DATE_SUB(STR_TO_DATE(CONCAT(#{year}, '-', LPAD(#{month},2,'0'), '-01'), '%Y-%m-%d'), INTERVAL 12 MONTH) ")
+          .append(" AND LAST_DAY(STR_TO_DATE(CONCAT(#{year}, '-', LPAD(#{month},2,'0'), '-01'), '%Y-%m-%d')) ");
+      appendCounselorFilter(sb, p);
+      sb.append(" GROUP BY month, type, counselor ")
+          .append(" ORDER BY month ASC, type ASC, counselor ASC ");
+      return sb.toString();
+    }
+
+    public static String getCurrentLocationSuccessStats(Map<String, Object> p) {
+      String t = sanitizeInst((String) p.get("inst"));
+      StringBuilder sb = new StringBuilder()
+          .append("SELECT ")
+          .append(" DATE_FORMAT(STR_TO_DATE(cs_col_16, '%Y-%m-%d'), '%Y-%m') AS month, ")
+          .append(buildDetailedTypeExpression("cs_col_07")).append(" AS type, ")
           .append(" TRIM(cs_col_17) AS counselor, ")
           .append(" COUNT(*) AS count ")
           .append("FROM csm.counsel_data_").append(t).append(" ")
@@ -1145,6 +1190,11 @@ public interface CsmMapper {
       if (instname instanceof String n && !n.isBlank()) {
         sb.append(" AND (cs_col_34 IS NULL OR cs_col_34 = #{instname}) ");
       }
+    }
+
+    private static String buildDetailedTypeExpression(String column) {
+      return "CASE WHEN TRIM(IFNULL(" + column + ", '')) = '' THEN '미지정' " +
+          "ELSE REPLACE(TRIM(" + column + "), ',', ' / ') END";
     }
 
     private static String sanitizeInst(String inst) {

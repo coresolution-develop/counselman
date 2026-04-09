@@ -142,7 +142,33 @@ a:link,a:visited,a:hover,a:active,a:focus{text-decoration:none;}
 *::-moz-selection{background-color:#000;color:#fff;}
 *::selection{background-color:#d0d6dd;color:#000;}
 
-::-webit-scrollbar{display:none;}
+/* Global scrollbar style (same as .category-container) */
+*{
+    scrollbar-width: thin;
+    scrollbar-color: #DADADA #F9F9F9;
+}
+*::-webkit-scrollbar{
+    width: 8px !important;
+    height: 8px !important;
+}
+*::-webkit-scrollbar-thumb{
+    background: #DADADA !important;
+    border-radius: 4px !important;
+}
+*::-webkit-scrollbar-track{
+    background: #F9F9F9 !important;
+}
+textarea::-webkit-scrollbar{
+    width: 8px !important;
+    height: 8px !important;
+}
+textarea::-webkit-scrollbar-thumb{
+    background: #DADADA !important;
+    border-radius: 4px !important;
+}
+textarea::-webkit-scrollbar-track{
+    background: #F9F9F9 !important;
+}
 
 
 

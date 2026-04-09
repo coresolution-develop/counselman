@@ -147,6 +147,8 @@ public class PageController {
     @Value("${app.counsel.list.hidden-columns:cs_idx,cs_col_01_hash}")
     private String counselListHiddenColumnsRaw;
     private static final String AES_KEY = "This is key!!!!!";
+    private static final String DEFAULT_ADMISSION_PLEDGE_TEXT = "본인은 입원 연계 및 상담을 위해 제공한 정보가 병원 입원 진행에 활용되는 것에 동의합니다. "
+            + "또한 상담 과정에서 안내받은 내용을 확인하였으며, 안내된 절차에 따라 성실히 협조할 것을 서약합니다.";
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newBuilder().build();
     private final AES128 aes = new AES128(AES_KEY);
@@ -555,6 +557,52 @@ public class PageController {
         }
         int result = cs.coreInstDelete(idCol01);
         return Map.of("result", result > 0 ? "1" : "0");
+    }
+
+    @PostMapping("core/inst/schema/status")
+    @ResponseBody
+    public Map<String, Object> coreInstSchemaStatus(
+            HttpSession session,
+            @RequestParam("instCode") String instCode) {
+        String inst = ensureInst(session);
+        if (!isCoreInst(inst)) {
+            return Map.of("result", "0", "msg", "권한 없음");
+        }
+        try {
+            Map<String, Object> status = cs.inspectCoreInstSchema(instCode);
+            Map<String, Object> response = new HashMap<>();
+            response.put("result", "1");
+            response.put("status", status);
+            return response;
+        } catch (IllegalArgumentException e) {
+            return Map.of("result", "0", "msg", "기관코드 형식이 올바르지 않습니다.");
+        } catch (Exception e) {
+            log.error("[core/inst/schema/status] fail instCode={}", instCode, e);
+            return Map.of("result", "0", "msg", "점검 중 오류가 발생했습니다.");
+        }
+    }
+
+    @PostMapping("core/inst/schema/repair")
+    @ResponseBody
+    public Map<String, Object> coreInstSchemaRepair(
+            HttpSession session,
+            @RequestParam("instCode") String instCode) {
+        String inst = ensureInst(session);
+        if (!isCoreInst(inst)) {
+            return Map.of("result", "0", "msg", "권한 없음");
+        }
+        try {
+            Map<String, Object> repairResult = cs.repairCoreInstSchema(instCode);
+            Map<String, Object> response = new HashMap<>();
+            response.put("result", "1");
+            response.put("repair", repairResult);
+            return response;
+        } catch (IllegalArgumentException e) {
+            return Map.of("result", "0", "msg", "기관코드 형식이 올바르지 않습니다.");
+        } catch (Exception e) {
+            log.error("[core/inst/schema/repair] fail instCode={}", instCode, e);
+            return Map.of("result", "0", "msg", "복구 중 오류가 발생했습니다.");
+        }
     }
 
     @PostMapping("core/modifyinst/post/{id_col_01}")
@@ -1538,6 +1586,64 @@ public class PageController {
     }
 
     @ResponseBody
+    @GetMapping("statisticsByCurrentLocation")
+    public ResponseEntity<?> statisticsByCurrentLocation(
+            @RequestParam int year,
+            @RequestParam int month,
+            @RequestParam(value = "counselor", defaultValue = "") String counselor,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("세션이 만료되었습니다.");
+        }
+        String instname = (String) session.getAttribute("instname");
+        if ((instname == null || instname.isBlank()) && session.getAttribute("userInfo") instanceof Userdata info) {
+            instname = info.getUs_col_05();
+        }
+        try {
+            Map<String, Object> params = new HashMap<>();
+            params.put("year", year);
+            params.put("month", month);
+            params.put("counselor", counselor);
+            params.put("inst", inst);
+            params.put("instname", instname);
+            return ResponseEntity.ok(cs.getCurrentLocationStats(params));
+        } catch (Exception e) {
+            log.error("statisticsByCurrentLocation error", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("현재 계신곳 통계 조회 실패");
+        }
+    }
+
+    @ResponseBody
+    @GetMapping("statisticsByCurrentLocationSuccess")
+    public ResponseEntity<?> statisticsByCurrentLocationSuccess(
+            @RequestParam int year,
+            @RequestParam int month,
+            @RequestParam(value = "counselor", defaultValue = "") String counselor,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("세션이 만료되었습니다.");
+        }
+        String instname = (String) session.getAttribute("instname");
+        if ((instname == null || instname.isBlank()) && session.getAttribute("userInfo") instanceof Userdata info) {
+            instname = info.getUs_col_05();
+        }
+        try {
+            Map<String, Object> params = new HashMap<>();
+            params.put("year", year);
+            params.put("month", month);
+            params.put("counselor", counselor);
+            params.put("inst", inst);
+            params.put("instname", instname);
+            return ResponseEntity.ok(cs.getCurrentLocationSuccessStats(params));
+        } catch (Exception e) {
+            log.error("statisticsByCurrentLocationSuccess error", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("현재 계신곳 입원연계 성공 통계 조회 실패");
+        }
+    }
+
+    @ResponseBody
     @GetMapping("statisticsNonAdmissionReason")
     public ResponseEntity<?> statisticsNonAdmissionReason(
             @RequestParam int year,
@@ -1611,19 +1717,31 @@ public class PageController {
                     Map.of("month", "월", "counselor", "상담자", "count", "건수"));
             writeMapSheet(
                     workbook,
-                    "3_상담연계유형월별",
+                    "3_상담유입경로월별",
                     cs.selectAdmissionTypeStats(params),
                     List.of("month", "type", "counselor", "count"),
-                    Map.of("month", "월", "type", "연계유형", "counselor", "상담자", "count", "건수"));
+                    Map.of("month", "월", "type", "상담유입경로", "counselor", "상담자", "count", "건수"));
             writeMapSheet(
                     workbook,
-                    "3-1_연계유형성공월별",
+                    "3-1_상담유입경로성공월별",
                     cs.selectAdmissionTypeSuccessStats(params),
                     List.of("month", "type", "counselor", "count"),
-                    Map.of("month", "월", "type", "연계유형", "counselor", "상담자", "count", "건수"));
+                    Map.of("month", "월", "type", "상담유입경로", "counselor", "상담자", "count", "건수"));
             writeMapSheet(
                     workbook,
-                    "4_미입원사유월별",
+                    "4_현재계신곳월별",
+                    cs.getCurrentLocationStats(params),
+                    List.of("month", "type", "counselor", "count"),
+                    Map.of("month", "월", "type", "현재계신곳", "counselor", "상담자", "count", "건수"));
+            writeMapSheet(
+                    workbook,
+                    "4-1_현재계신곳성공월별",
+                    cs.getCurrentLocationSuccessStats(params),
+                    List.of("month", "type", "counselor", "count"),
+                    Map.of("month", "월", "type", "현재계신곳", "counselor", "상담자", "count", "건수"));
+            writeMapSheet(
+                    workbook,
+                    "5_미입원사유월별",
                     cs.getNonAdmissionReasonStats(params),
                     List.of("month", "type", "count"),
                     Map.of("month", "월", "type", "미입원사유", "count", "건수"));
@@ -2364,6 +2482,7 @@ public class PageController {
             if (csIdx <= 0) {
                 return "";
             }
+            saveAdmissionPledgeFromRequest(inst, csIdx, request);
 
             for (CounselDataEntry entry : parseDynamicEntries(request, inst)) {
                 entry.setCs_idx((long) csIdx);
@@ -2406,6 +2525,7 @@ public class PageController {
             CounselData counselData = buildCounselDataFromRequest(request, inst);
             counselData.setCs_idx(csIdx);
             cs.updateCounselData(counselData);
+            saveAdmissionPledgeFromRequest(inst, csIdx, request);
 
             boolean hasDynamicFieldInput = request.getParameterMap().keySet().stream()
                     .anyMatch(k -> k != null && k.startsWith("field_"));
@@ -3933,6 +4053,133 @@ public class PageController {
         return counselData;
     }
 
+    private void saveAdmissionPledgeFromRequest(String inst, int csIdx, HttpServletRequest request) {
+        if (csIdx <= 0) {
+            return;
+        }
+
+        boolean required = "Y".equalsIgnoreCase(safeString(request.getParameter("admission_pledge_required")));
+        if (!required) {
+            cs.deleteAdmissionPledge(inst, csIdx);
+            return;
+        }
+
+        String agreedYn = "Y".equalsIgnoreCase(safeString(request.getParameter("admission_agreed_yn"))) ? "Y" : "N";
+        String signerName = safeString(request.getParameter("admission_signer_name")).trim();
+        if (signerName.isEmpty()) {
+            signerName = safeString(request.getParameter("cs_col_01")).trim();
+        }
+        String signerRelation = safeString(request.getParameter("admission_signer_relation")).trim();
+        String signedAt = safeString(request.getParameter("admission_signed_at")).trim();
+        if (signedAt.isEmpty()) {
+            signedAt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+        }
+        String pledgeText = safeString(request.getParameter("admission_pledge_text")).trim();
+        if (pledgeText.isEmpty()) {
+            pledgeText = DEFAULT_ADMISSION_PLEDGE_TEXT;
+        }
+        String signatureData = normalizeSignatureData(request.getParameter("admission_signature_data"));
+        String pageInkData = normalizePageInkData(request.getParameter("admission_page_ink_data"));
+
+        if (!"Y".equals(agreedYn)) {
+            log.warn("[admission-pledge] invalid input. clear row. inst={}, cs_idx={}", inst, csIdx);
+            cs.deleteAdmissionPledge(inst, csIdx);
+            return;
+        }
+
+        Map<String, Object> pledge = new HashMap<>();
+        pledge.put("agreed_yn", agreedYn);
+        pledge.put("signer_name", signerName);
+        pledge.put("signer_relation", signerRelation);
+        pledge.put("signed_at", signedAt);
+        pledge.put("pledge_text", pledgeText);
+        pledge.put("signature_data", signatureData);
+        pledge.put("page_ink_data", pageInkData);
+        cs.upsertAdmissionPledge(inst, csIdx, pledge);
+    }
+
+    private String normalizeSignatureData(String rawSignature) {
+        String signature = safeString(rawSignature).trim();
+        if (signature.isBlank()) {
+            return "";
+        }
+        if (isValidPngDataUrl(signature, 1_500_000)) {
+            return signature;
+        }
+        if (signature.length() > 4_000_000) {
+            return "";
+        }
+        try {
+            JsonNode node = objectMapper.readTree(signature);
+            if (node == null || !node.isObject()) {
+                return "";
+            }
+            String primary = firstValidSignatureImage(node, "primary", "main", "signer", "final_signature", "signature");
+            if (primary.isBlank()) {
+                return "";
+            }
+            String guardian = firstValidSignatureImage(node, "guardian", "guardian_signature", "primary_guardian");
+            String subGuardian = firstValidSignatureImage(node, "sub_guardian", "subGuardian", "sub_guardian_signature",
+                    "secondary_guardian");
+
+            ObjectNode out = objectMapper.createObjectNode();
+            out.put("version", 2);
+            out.put("primary", primary);
+            if (!guardian.isBlank()) {
+                out.put("guardian", guardian);
+            }
+            if (!subGuardian.isBlank()) {
+                out.put("sub_guardian", subGuardian);
+            }
+
+            String normalized = objectMapper.writeValueAsString(out);
+            return normalized.length() <= 4_000_000 ? normalized : "";
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private String normalizePageInkData(String rawPageInk) {
+        String pageInk = safeString(rawPageInk).trim();
+        if (pageInk.isBlank()) {
+            return "";
+        }
+        if (!isValidPngDataUrl(pageInk, 3_000_000)) {
+            return "";
+        }
+        return pageInk;
+    }
+
+    private String firstValidSignatureImage(JsonNode node, String... keys) {
+        if (node == null || keys == null) {
+            return "";
+        }
+        for (String key : keys) {
+            if (isBlank(key) || !node.has(key)) {
+                continue;
+            }
+            String value = safeString(node.path(key).asText()).trim();
+            if (isValidPngDataUrl(value, 1_500_000)) {
+                return value;
+            }
+        }
+        return "";
+    }
+
+    private boolean isValidPngDataUrl(String value, int maxLen) {
+        String text = safeString(value).trim();
+        if (text.isBlank()) {
+            return false;
+        }
+        if (!text.startsWith("data:image/png;base64,")) {
+            return false;
+        }
+        if (text.length() > maxLen) {
+            return false;
+        }
+        return true;
+    }
+
     private void saveCounselLogSnapshot(String inst, int csIdx, HttpServletRequest request) {
         try {
             String now = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
@@ -4199,6 +4446,45 @@ public class PageController {
     }
 
     /** 신규 페이지 (빈 폼) */
+    @GetMapping({ "counsel/admission-pledge", "/counsel/admission-pledge" })
+    public String counselAdmissionPledge(
+            @RequestParam(value = "csIdx", required = false) Integer csIdxParam,
+            @RequestParam(value = "draftKey", required = false) String draftKey,
+            @RequestParam(value = "returnUrl", required = false) String returnUrl,
+            @RequestParam(value = "patientName", required = false) String patientName,
+            @RequestParam(value = "gender", required = false) String gender,
+            @RequestParam(value = "birth", required = false) String birth,
+            @RequestParam(value = "chartNo", required = false) String chartNo,
+            @RequestParam(value = "room", required = false) String room,
+            @RequestParam(value = "phone", required = false) String phone,
+            Model model,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return "redirect:/login";
+        }
+
+        int csIdx = csIdxParam == null ? 0 : Math.max(0, csIdxParam);
+        Map<String, Object> admissionPledge = csIdx > 0
+                ? Optional.ofNullable(cs.getAdmissionPledge(inst, csIdx)).orElse(Collections.emptyMap())
+                : Collections.emptyMap();
+
+        model.addAttribute("inst", inst);
+        model.addAttribute("csIdx", csIdx);
+        model.addAttribute("draftKey", safeString(draftKey).trim());
+        model.addAttribute("returnUrl", normalizeInternalReturnUrl(returnUrl));
+        model.addAttribute("patientName", safeString(patientName).trim());
+        model.addAttribute("gender", safeString(gender).trim());
+        model.addAttribute("birth", safeString(birth).trim());
+        model.addAttribute("chartNo", safeString(chartNo).trim());
+        model.addAttribute("room", safeString(room).trim());
+        model.addAttribute("phone", safeString(phone).trim());
+        model.addAttribute("defaultAdmissionPledgeText", DEFAULT_ADMISSION_PLEDGE_TEXT);
+        model.addAttribute("admissionPledge", admissionPledge);
+        return "csm/counsel/admissionPledge";
+    }
+
+    /** 신규 페이지 (빈 폼) */
     @GetMapping({ "counsel/new", "/counsel/new" })
     public String counselNew(Model model, HttpSession session, HttpServletRequest req) {
         String inst = ensureInst(session);
@@ -4216,6 +4502,7 @@ public class PageController {
         model.addAttribute("guardians", Collections.emptyList());
         model.addAttribute("valueMap", Collections.emptyMap());
         model.addAttribute("cslog", Collections.emptyList());
+        model.addAttribute("admissionPledge", Collections.emptyMap());
         model.addAttribute("isEdit", false);
 
         // nav fragment 파라미터 기본값
@@ -4267,6 +4554,9 @@ public class PageController {
         List<CounselLog> counselLogs = normalizeCounselLogs(
                 Optional.ofNullable(cs.getCounselLog(inst, csIdx)).orElse(Collections.emptyList()));
         model.addAttribute("cslog", counselLogs);
+        Map<String, Object> admissionPledge = Optional.ofNullable(cs.getAdmissionPledge(inst, csIdx))
+                .orElse(Collections.emptyMap());
+        model.addAttribute("admissionPledge", admissionPledge);
 
         // 3) isEdit일 때만 추가 정보(복호화/보호자)
         if (isEdit) {
@@ -4980,6 +5270,17 @@ public class PageController {
 
     private static String safeString(String s) {
         return s == null ? "" : s;
+    }
+
+    private String normalizeInternalReturnUrl(String raw) {
+        String value = safeString(raw).trim();
+        if (value.isEmpty()) {
+            return "";
+        }
+        if (!value.startsWith("/") || value.startsWith("//")) {
+            return "";
+        }
+        return value;
     }
 
     private static String mask(String s) {

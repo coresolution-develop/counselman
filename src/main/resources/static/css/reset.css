@@ -42,3 +42,31 @@ button::-moz-focus-inner{border:0;padding:0;}
 /*a,img{outline:none;temp:expression(this.hideFocus=true);}*/
 hr{height:1px;margin:80px 0;border:none;color:#dedede;background:#dedede;} 
 a:link,a:visited,a:hover,a:active,a:focus{text-decoration:none; color: inherit;}
+
+/* Global scrollbar style */
+*{
+	scrollbar-width: thin;
+	scrollbar-color: #DADADA #F9F9F9;
+}
+*::-webkit-scrollbar{
+	width: 8px !important;
+	height: 8px !important;
+}
+*::-webkit-scrollbar-thumb{
+	background: #DADADA !important;
+	border-radius: 4px !important;
+}
+*::-webkit-scrollbar-track{
+	background: #F9F9F9 !important;
+}
+textarea::-webkit-scrollbar{
+	width: 8px !important;
+	height: 8px !important;
+}
+textarea::-webkit-scrollbar-thumb{
+	background: #DADADA !important;
+	border-radius: 4px !important;
+}
+textarea::-webkit-scrollbar-track{
+	background: #F9F9F9 !important;
+}

@@ -23,25 +23,31 @@
 	text-align: left;
 	cursor: pointer;
 	min-height: 50px;
-	padding: 15px 15px 15px 30px;
+	padding: 0;
 	display: flex;
 	align-items: center;
     font-size: 12px;
     font-weight: 400;
 }
 
+.nav_link > a,
 .nav_link > span,
 .nav_link > [data-base-url],
 .nav_link > .disabled-link {
-	display: inline-flex;
+	display: flex;
 	align-items: center;
 	justify-content: flex-start;
 	width: 100%;
-	height: 100%;
+	min-height: 50px;
+	padding: 15px 15px 15px 30px;
+	box-sizing: border-box;
 	font-size: 12px;
 	font-weight: 400;
+	color: inherit;
+	text-decoration: none;
 }
 
+.nav_link > a,
 .nav_link > [data-base-url] {
 	cursor: pointer;
 }

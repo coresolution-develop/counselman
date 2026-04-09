@@ -43,6 +43,22 @@
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
             <input type="hidden" id="audio_temp_key" name="audio_temp_key">
             <input type="hidden" id="file_temp_key" name="file_temp_key">
+            <input type="hidden" id="admission_pledge_required" name="admission_pledge_required"
+                   th:value="${csData.cs_col_19 == '입원완료' or csData.cs_col_19 == '입원예약' ? 'Y' : 'N'}">
+            <input type="hidden" id="admission_agreed_yn" name="admission_agreed_yn"
+                   th:value="${admissionPledge != null and admissionPledge['agreed_yn'] != null ? admissionPledge['agreed_yn'] : 'N'}">
+            <input type="hidden" id="admission_signature_data" name="admission_signature_data"
+                   th:value="${admissionPledge != null and admissionPledge['signature_data'] != null ? admissionPledge['signature_data'] : ''}">
+            <input type="hidden" id="admission_page_ink_data" name="admission_page_ink_data"
+                   th:value="${admissionPledge != null and admissionPledge['page_ink_data'] != null ? admissionPledge['page_ink_data'] : ''}">
+            <input type="hidden" id="admission_signer_name" name="admission_signer_name"
+                   th:value="${admissionPledge != null and admissionPledge['signer_name'] != null ? admissionPledge['signer_name'] : ''}">
+            <input type="hidden" id="admission_signer_relation" name="admission_signer_relation"
+                   th:value="${admissionPledge != null and admissionPledge['signer_relation'] != null ? admissionPledge['signer_relation'] : ''}">
+            <input type="hidden" id="admission_signed_at" name="admission_signed_at"
+                   th:value="${admissionPledge != null and admissionPledge['signed_at'] != null ? admissionPledge['signed_at'] : ''}">
+            <input type="hidden" id="admission_pledge_text" name="admission_pledge_text"
+                   th:value="${admissionPledge != null and admissionPledge['pledge_text'] != null ? admissionPledge['pledge_text'] : ''}">
             <input type="file" id="audioFileInput" accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac,.ac3" style="display:none;">
             <input type="file" id="counselFileInput" style="display:none;">
 
@@ -461,6 +477,14 @@
                     <textarea id="cs_col_32" name="cs_col_32" rows="7"
                               th:text="${csData != null and !#strings.isEmpty(csData.cs_col_32) ? csData.cs_col_32 : (!#lists.isEmpty(cslog) ? (cslog[0]['counsel_content'] != null ? cslog[0]['counsel_content'] : '') : '')}"></textarea>
                 </div>
+            </section>
+
+            <section class="block admission-pledge-launcher" id="admissionPledgeLauncher" style="display:none;"
+                     th:style="${csData.cs_col_19 == '입원완료' or csData.cs_col_19 == '입원예약' ? '' : 'display:none;'}">
+                <h2>입원서약서</h2>
+                <button type="button" id="openAdmissionPledgeBtn" class="mini-btn" style="width:100%;">입원서약서 페이지 열기</button>
+                <p id="admissionPledgeStatus" class="admission-pledge-status"
+                   th:text="${admissionPledge != null and admissionPledge['agreed_yn'] == 'Y' and admissionPledge['signature_data'] != null and !#strings.isEmpty(admissionPledge['signature_data']) ? '작성 완료' : '미작성'}">미작성</p>
             </section>
 
             <div class="mobile-print-log-source" style="display:none;">

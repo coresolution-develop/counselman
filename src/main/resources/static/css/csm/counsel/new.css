@@ -355,9 +355,25 @@
     color: #5a5a5a;
 }
 
+.admission-pledge-launcher {
+    margin-top: 10px;
+    border: 1px solid #d7e0e7;
+    border-radius: 8px;
+    background: #f8fbff;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.admission-pledge-status {
+    font-size: 12px;
+    color: #2f425a;
+    font-weight: 600;
+}
+
 .counsel-log {
     border: 1px solid #d9e2ea;
-    border-radius: 10px;
     background: #fff;
     overflow: hidden;
     box-shadow: 0 2px 10px rgba(47, 66, 90, 0.05);
@@ -399,11 +415,11 @@
     top: 0;
     z-index: 2;
     height: 42px;
-    background: linear-gradient(180deg, #f6f8fa 0%, #eef2f6 100%);
-    border-bottom: 1px solid #d6dfe7;
+    background: #EEE;
     font-weight: 600;
     color: #2f425a;
     font-size: 12px;
+    border-bottom: 2px solid #06603A;
 }
 
 .logs-body {

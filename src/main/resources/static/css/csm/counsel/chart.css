@@ -66,7 +66,7 @@ select {
 }
 #monthlyStatsTable, #monthlyMethodStatsTable, #admissionStatsTable, 
 #admissionTypeStatsTable, #admissionTypeTable, #admissionSuccessTypeTable,
-#nonAdmissionReasonTable {
+#currentLocationTable, #currentLocationSuccessTable, #nonAdmissionReasonTable {
     width: 100%;
     border-collapse: collapse;
     font-size: 12px;
@@ -74,7 +74,7 @@ select {
 }
 #monthlyStatsTable th, #monthlyMethodStatsTable th, #admissionStatsTable th,
 #admissionTypeStatsTable th, #admissionTypeTable th, #admissionSuccessTypeTable th,
-#nonAdmissionReasonTable th  {
+#currentLocationTable th, #currentLocationSuccessTable th, #nonAdmissionReasonTable th  {
     background-color: #eee;
     color: #545454;
     font-size: 12px;
@@ -92,7 +92,7 @@ select {
 }
 #monthlyStatsTable td, #monthlyMethodStatsTable td, #admissionStatsTable td,
 #admissionTypeStatsTable td, #admissionTypeTable td, #admissionSuccessTypeTable td,
-#nonAdmissionReasonTable td  {
+#currentLocationTable td, #currentLocationSuccessTable td, #nonAdmissionReasonTable td  {
     padding: 10px 0;
     text-align: center;
     border: 1px solid #eee;
@@ -115,6 +115,12 @@ select {
 #admissionSuccessTypeTable td:last-child,
 #admissionSuccessTypeTable td:nth-last-child(2),
 #admissionSuccessTypeTable td:nth-last-child(3), 
+#currentLocationTable td:last-child,
+#currentLocationTable td:nth-last-child(2),
+#currentLocationTable td:nth-last-child(3),
+#currentLocationSuccessTable td:last-child,
+#currentLocationSuccessTable td:nth-last-child(2),
+#currentLocationSuccessTable td:nth-last-child(3),
 #nonAdmissionReasonTable td:last-child,
 #nonAdmissionReasonTable td:nth-last-child(2),
 #nonAdmissionReasonTable td:nth-last-child(3)  {
@@ -125,6 +131,8 @@ select {
 #admissionStatsTable tr:nth-child(even) td,
 #admissionTypeTable tr:nth-child(even) td,
 #admissionSuccessTypeTable tr:nth-child(even) td,
+#currentLocationTable tr:nth-child(even) td,
+#currentLocationSuccessTable tr:nth-child(even) td,
 #nonAdmissionReasonTable tr:nth-child(even) td {
     background-color: #f9f9f9;
 }

@@ -143,6 +143,16 @@ td, th {
     color: #fff;
 }
 
+.section-bot .btn.counsel-btn.schemaCheckBtn {
+    background-color: #2f425a;
+    color: #fff;
+}
+
+.section-bot .btn.counsel-btn.schemaRepairBtn {
+    background-color: #06603A;
+    color: #fff;
+}
+
 .section-bot .btn.newBtn.pop-btn.counsel-btn {
     background-color: #06603A;
     color: #fff;

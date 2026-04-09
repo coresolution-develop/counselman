@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="app-context-path" th:content="@{/}" />
+    <title>입원 서약서</title>
+    <link rel="stylesheet" th:href="@{/css/csm/counsel/admissionPledge.css}">
+
+    <style>
+      @supports (-webkit-appearance: none) or (-moz-appearance: none) {
+        .checkbox-wrapper-13 input[type=checkbox] {
+          --active: #275EFE;
+          --active-inner: #fff;
+          --focus: 2px rgba(39, 94, 254, .3);
+          --border: #BBC1E1;
+          --border-hover: #275EFE;
+          --background: #fff;
+          --disabled: #F6F8FF;
+          --disabled-inner: #E1E6F9;
+          -webkit-appearance: none;
+          -moz-appearance: none;
+          height: 21px;
+          width: 21px;
+          outline: none;
+          display: inline-block;
+          vertical-align: top;
+          position: relative;
+          left: auto;
+          margin: 0;
+          cursor: pointer;
+          border: 1px solid var(--bc, var(--border));
+          background: var(--b, var(--background));
+          transition: background 0.3s, border-color 0.3s, box-shadow 0.2s;
+        }
+        .checkbox-wrapper-13 input[type=checkbox]:after {
+          content: "";
+          display: block;
+          left: 0;
+          top: 0;
+          position: absolute;
+          transition: transform var(--d-t, 0.3s) var(--d-t-e, ease), opacity var(--d-o, 0.2s);
+        }
+        .checkbox-wrapper-13 input[type=checkbox]:checked {
+          --b: var(--active);
+          --bc: var(--active);
+          --d-o: .3s;
+          --d-t: .6s;
+          --d-t-e: cubic-bezier(.2, .85, .32, 1.2);
+        }
+        .checkbox-wrapper-13 input[type=checkbox]:hover:not(:checked):not(:disabled) {
+          --bc: var(--border-hover);
+        }
+        .checkbox-wrapper-13 input[type=checkbox]:focus {
+          box-shadow: 0 0 0 var(--focus);
+        }
+        .checkbox-wrapper-13 input[type=checkbox]:not(.switch) {
+          border-radius: 7px;
+        }
+        .checkbox-wrapper-13 input[type=checkbox]:not(.switch):after {
+          width: 5px;
+          height: 9px;
+          border: 2px solid var(--active-inner);
+          border-top: 0;
+          border-left: 0;
+          left: 7px;
+          top: 4px;
+          opacity: var(--o, 0);
+          transform: rotate(var(--r, 20deg));
+        }
+        .checkbox-wrapper-13 input[type=checkbox]:not(.switch):checked {
+          --o: 1;
+          --r: 43deg;
+        }
+      }
+
+      .checkbox-wrapper-13 * {
+        box-sizing: inherit;
+      }
+      .checkbox-wrapper-13 *:before,
+      .checkbox-wrapper-13 *:after {
+        box-sizing: inherit;
+      }
+      span {
+          line-height: 30px;
+          margin-bottom: 5px;
+      }
+    </style>
+</head>
+<body class="ap-body">
+<main class="ap-page">
+    <section class="ap-toolbar normal">
+        <div class="checkbox-wrapper-13 ap-agree-wrap">
+            <input id="ap_agree" type="checkbox"
+                   th:checked="${admissionPledge != null and admissionPledge['agreed_yn'] == 'Y'}">
+            <label for="ap_agree">위 내용을 확인했고 입원 연계에 동의합니다.</label>
+        </div>
+        <div class="ap-pen-controls">
+            <label class="ap-pen-control">
+                펜 색상
+                <input type="color" id="ap_pen_color" value="#111827">
+            </label>
+            <label class="ap-pen-control">
+                펜 굵기
+                <input type="range" id="ap_pen_size" min="1" max="10" step="1" value="2">
+                <span id="ap_pen_size_view">2px</span>
+            </label>
+        </div>
+        <div class="ap-toolbar-actions">
+            <button type="button" class="ap-btn ap-btn-gray" id="ap_ink_mode_toggle">전체 필기: OFF</button>
+            <button type="button" class="ap-btn ap-btn-gray" id="ap_ink_clear">전체 필기 지우기</button>
+        </div>
+    </section>
+
+    <div id="ap_document_stage" class="ap-document-stage">
+        <section class="ap-paper" style="background-repeat: no-repeat;
+            background-position: center 0;
+            background-image: url('/img/background4.png');
+            background-size: 1246px;
+            min-width: 1280px;
+            margin: 0 auto;">
+
+            <input type="hidden" id="ap_signature_data"
+                   th:value="${admissionPledge != null and admissionPledge['signature_data'] != null ? admissionPledge['signature_data'] : ''}">
+            <input type="hidden" id="ap_page_ink_data"
+                   th:value="${admissionPledge != null and admissionPledge['page_ink_data'] != null ? admissionPledge['page_ink_data'] : ''}">
+            <input type="hidden" id="ap_signed_at"
+                   th:value="${admissionPledge != null and admissionPledge['signed_at'] != null ? admissionPledge['signed_at'] : ''}">
+            <textarea id="ap_pledge_text" class="ap-hidden-text"
+                      th:text="${admissionPledge != null and admissionPledge['pledge_text'] != null and !#strings.isEmpty(admissionPledge['pledge_text']) ? admissionPledge['pledge_text'] : defaultAdmissionPledgeText}"></textarea>
+
+            <h1 style="text-align: center; font-size: 30pt; padding-top: 70px;">입 원 서 약 서</h1>
+
+            <div class="bold" style="font-size: 16pt; color:#303030; display: flex; align-items: start; margin: 0 auto; width: 966px;">※ 환자의 인적사항</div>
+            <div style="text-align: center; margin-bottom: 20px;">
+                <table border="1" style="border-collapse: collapse; text-align: center; width: 966px; margin-left: auto; margin-right: auto;" >
+                    <tr>
+                        <td class="normal" width="170px" height="56px">성명</td>
+                        <td class="light" style="text-align: left;">
+                            <input id="ap_patient_name" style="margin-left: 33px;" type="text" th:value="${patientName}">
+                        </td>
+                        <td class="normal" width="170px" height="56px">차트번호</td>
+                        <td class="light" colspan="2" style="text-align: left;">
+                            <input id="ap_chart_no" style="margin-left: 33px;" type="text" th:value="${chartNo}">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="normal" height="56px">입원병실</td>
+                        <td class="light" style="text-align: left;">
+                            <input id="ap_room" style="margin-left: 33px;" type="text" th:value="${room}">
+                        </td>
+                        <td class="normal" height="56px">성별 </td>
+                        <td class="light" style="cursor: pointer;">
+                            <input type="radio" name="ap_gender" value="남성" id="ap_gender_m"
+                                   th:checked="${gender == '남성' or gender == '남'}"><label for="ap_gender_m" style="cursor: pointer;">남</label>
+                        </td>
+                        <td class="light" style="cursor: pointer;">
+                            <input type="radio" name="ap_gender" value="여성" id="ap_gender_f"
+                                   th:checked="${gender == '여성' or gender == '여'}"><label for="ap_gender_f" style="cursor: pointer;">여</label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="normal" height="56px">생년월일</td>
+                        <td class="light" style="text-align: left;">
+                            <input id="ap_birth" style="margin-left: 33px;" type="text" th:value="${birth}">
+                        </td>
+                        <td class="normal" height="56px">전화</td>
+                        <td class="light" colspan="2" style="text-align: left;">
+                            <input id="ap_phone" style="margin-left: 33px;" type="text" th:value="${phone}">
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="light ap-terms-block" style="font-size:14pt; color:#222222; width:966px; display: flex; align-items: start; flex-direction: column; margin: 0 auto;">
+                <span>&nbsp;본인(환자의 주보호자)은 귀 의료기관에서 제시한 제반 규칙을 준수함은 물론, 치료와 퇴원 등 의사 및 간호사(또는 직원)의 정당한 지시에 따르며, 아래의 내용을 읽고 서약 및 동의합니다.</span>
+                <span style="color:#f87b0c;">1. 입원 기간 중 예기치 않은 사고(골절, 타박상, 개방성 상처 등)나 응급상황 시 본원에서 치료할 수 없는 상태이거나 의료진 판단으로 응급처치 가능한 병원으로 전원을 요구할 수 있으며 또한 환자 및 보호자가 원할 경우 담당의사와 상의 후 타 병원으로 전원 할 수 있습니다.</span>
+                <span style="color:#f87b0c;">2. 노인은 골다공증, 피부의 약화로 쉽게 골절 또는 멍이 들 수 있으므로 의료기관의 정당한 진료지침이나 교육에 반하는 무단 외출・외박 등으로 인하여 발생하는 환자의 손해에 대한 책임은 원칙적으로 모두 환자에게 있습니다.</span>
+                <span>3. 진료 상 발생하는 모든 문제에 대하여 분쟁이 생겼을 때에는 『의료사고 피해구제 및 의료분쟁 조정 등에 관한 법률』에 의한 한국 의료분쟁조정중재원에 그 조정을 신청할 수 있음에 동의합니다.</span>
+                <span>4. 입원기간 동안 발생하는 진료비는 귀 의료기관에서 정하는 납부기한 내에 납부(연대보증인이 있는 경우에는 환자와 연대보증인이 연대하여 납부)하겠으며, 정당한 이유 없이 체납될 때에는 채권확보를 위한 법적조치에 이의가 없고, 만일 본건을 기초로 의료분쟁 등으로 소송을 제기할 경우 관할법원의 민사소송법에 따릅니다.</span>
+                <span>5. 입원기간 중에 환자 및 보호자가 귀 의료기관의 비품이나 기물을 고의 또는 과실로 파괴, 망실, 훼손한 때에는 이를 변상(현물, 현금)합니다.</span>
+                <span style="color:#f87b0c;">6. 입원기간 중 환자 또는 보호자 등이 소지 중인 현금, 기타 귀중품 및 개인소지품(완전틀니, 부분틀니 포함, 안경, 보청기등)은 귀 의료기관이 지정한 보관 장소가 있는 경우에는 보관 장소에 보관하고, 보관 장소가 따로 없는 경우에는 귀 의료기관이 지정한 직원에게 보관을 의뢰합니다. 이를 이행치 아니하여 분실 및 훼손되어 발생한 손해에 대하여는 귀 의료기관은 책임이 없습니다.</span>
+                <span>7. 개인정보 수집 및 활용 동의</span>
+                <span>본원은 진료 등을 위해 아래와 같은 최소한의 개인정보를 수집함. 진료를 위한 필요정보는 의료법에 따라 별도의 동의 없이 수집되며, 동의를 하지 않더라도 진료에는 불이익이 없음.</span>
+                <span>(1) 개인정보 수집항목 : (필수항목) 성명, 주소, 전화번호, 주민등록번호, 보험정보</span>
+                <span style="margin-bottom: 10px;">&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;&nbsp;(선택항목) 이메일, 문자메세지 서비스 수신 동의여부 </span>
+                <span style="margin-bottom: 10px;">(2) 개인정보 수집방법 : 진료 목적은 별도로 받지 않으며, 진료목적 외는 서면으로 수집</span>
+                <span style="margin-bottom: 10px;">(3) 개인정보의 수집 및 이용목적 : 진단/검진 예약, 조회 및 진료를 위한 본인 확인 절차 등</span>
+                <span style="margin-bottom: 20px;">(4) 개인정보의 보유 및 이용기간 : 개인정보의 수집목적 또는 제공받은 목적이 달성될 때 파기</span>
+
+                <span class="bold" style="color:#303030; font-size: 16pt;">※ 환자본인, 주보호자 및 부보호자에 대한 안내</span>
+                <span>1. 주보호자는 환자의 입원과 전원, 퇴원 등의 절차상 동의인 이며, 환자 상태의 급격한 변화, 낙상 등의 안전사고, 사망 등 환자입원생활에 관련된 사항에 대해 <b class="bold">일차적 연락대상</b>이며 타보호자는 <b>상담이 제한</b>됩니다. 주보호자 변경 시에는 주보호자변경요청서를 통해서만 가능합니다.</span>
+                <span>2. 주보호자 및 부보호자는 환자의 입원비용과 기타 제반 비용 발생 시 매월 <b>정산의 책임</b>을 지게 되며</span>
+                <span style="margin-bottom: 10px;">(보증채무최고액:30,000,000원 보증기간:3년), 2개월 미납시 본원은 퇴원권유 할 수 있습니다.</span>
+                <span>3. 주보호자는 환자의 입원기록 외 사본 발급 및 제증명 발급의 주체가 되며, 수혈동의서, 신체 보호대 동의서, 심폐소생술거부동의서, 낙상관련설명안내서, 병원비 등의 규정상 동의절차가 필요한 경우 <b>서명 대상자</b>가 됩니다.</span>
+                <span>4. 입원생활에 관련 법적 분쟁 발생 시 원칙적으로 환자 본인이 의료기관의 소송 상대방이 되며, 불가피할 경우 주보호자가 <b>법적 대리인</b>이 됩니다.</span>
+            </div>
+            <br>
+
+            <div style="text-align: center; margin-bottom: 27px;">
+                <table class="ap-guardian-table" style="text-align: center; width: 966px; margin-left: auto; margin-right: auto; border: 1px solid #c7c7c7;" >
+                    <colgroup>
+                        <col style="width:65px;">
+                        <col style="width:100px;">
+                        <col style="width:300px;">
+                        <col style="width:420px;">
+                        <col style="width:81px;">
+                    </colgroup>
+                    <tr style="height: 56px;">
+                        <td class="normal" rowspan="3" style="width:65px; text-align: center; background-color:#fafafa; border: 1px solid #c7c7c7;">주<br>보<br>호<br>자</td>
+                        <td class="normal" style="position: relative; width: 170px; border: 1px solid #dadada; border-top: inherit;">성 명</td>
+                        <td style="width:350px; text-align: left; border: 1px solid #dadada; border-top: inherit;">
+                            <input class="light ap-guardian-name-input" id="ap_guardian_name" style="margin-left: 20px; width:260px;" type="text"/>
+                        </td>
+                        <td class="normal ap-relation-cell" style="border: 1px solid #dadada; border-top: inherit;">
+                            <span class="ap-relation-label">(관계 :</span>
+                            <input class="light ap-relation-input" id="ap_guardian_relation" type="text"/>
+                            <span class="ap-relation-label">)</span>
+                        </td>
+                        <td class="ap-sign-cell">
+                            <div class="normal ap-sign-trigger" id="end1" data-signature-key="guardian">(서   명)</div>
+                            <img id="canvasImg1" class="ap-sign-image" src="" alt="주보호자 서명">
+                        </td>
+                    </tr>
+                    <tr style="height: 56px;">
+                        <td style="border: 1px solid #dadada;" class="normal">주 소</td>
+                        <td colspan="3" style="text-align: left; border: 1px solid #dadada; border-right: inherit;">
+                            <input class="light ap-address-input" id="ap_guardian_addr" style="margin-left: 20px; width:640px;" type="text"/>
+                        </td>
+                    </tr>
+                    <tr style="height: 56px;">
+                        <td style="border: 1px solid #dadada; border-left: inherit; border-bottom: inherit;" class="normal">휴대폰 번호</td>
+                        <td style="text-align: left;">
+                            <input class="light ap-phone-input" id="ap_guardian_phone" type="text" style="margin-left: 20px;" th:value="${phone}"/>
+                        </td>
+                        <td colspan="2" style="text-align: right;">
+                            <div class="checkbox-wrapper-13" style="margin-right: 21px;">
+                                <input id="ap_guardian_cost" type="checkbox" class="normal" value="주보호자 비용안내">
+                                <label for="ap_guardian_cost">비용안내</label>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 27px;">
+                <table class="normal ap-guardian-table" style="text-align: center; width: 966px; margin-left: auto; margin-right: auto; border: 1px solid #c7c7c7;" >
+                    <colgroup>
+                        <col style="width:65px;">
+                        <col style="width:100px;">
+                        <col style="width:300px;">
+                        <col style="width:420px;">
+                        <col style="width:81px;">
+                    </colgroup>
+                    <tr style="height: 56px;">
+                        <td rowspan="3" style="width:65px; background-color:#fafafa; text-align: center; border: 1px solid #c7c7c7;">부<br>보<br>호<br>자</td>
+                        <td style="position: relative; width: 170px; border: 1px solid #dadada; border-top: inherit;">성 명</td>
+                        <td style="width: 350px; text-align: left; border: 1px solid #dadada; border-top: inherit;">
+                            <input class="light ap-guardian-name-input" id="ap_sub_guardian_name" style="margin-left: 20px; width:260px;" type="text"/>
+                        </td>
+                        <td class="ap-relation-cell" style="border: 1px solid #dadada; border-top: inherit;">
+                            <span class="ap-relation-label">(관계 :</span>
+                            <input class="light ap-relation-input" id="ap_sub_guardian_relation" type="text"/>
+                            <span class="ap-relation-label">)</span>
+                        </td>
+                        <td class="ap-sign-cell">
+                            <div class="ap-sign-trigger" id="end2" data-signature-key="sub_guardian">(서   명)</div>
+                            <img id="canvasImg2" class="ap-sign-image" src="" alt="부보호자 서명">
+                        </td>
+                    </tr>
+                    <tr style="height: 56px;" class="normal">
+                        <td style="border: 1px solid #dadada;">주 소 </td>
+                        <td colspan="3" style="text-align: left; border: 1px solid #dadada; border-right: inherit;">
+                            <input class="light ap-address-input" id="ap_sub_guardian_addr" style="margin-left: 20px; width:640px;" type="text"/>
+                        </td>
+                    </tr>
+                    <tr style="height: 56px;" class="normal">
+                        <td style="border: 1px solid #dadada; border-left: inherit; border-bottom: inherit;">휴대폰 번호</td>
+                        <td style="text-align: left;">
+                            <input class="light ap-phone-input" id="ap_sub_guardian_phone" type="text" style="margin-left: 20px;"/>
+                        </td>
+                        <td colspan="2" style="text-align: right;">
+                            <div class="checkbox-wrapper-13" style="margin-right: 21px;">
+                                <input id="ap_sub_guardian_cost" type="checkbox" class="normal" value="부보호자 비용안내">
+                                <label for="ap_sub_guardian_cost">비용안내</label>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 27px;">
+                <div style="margin-bottom: 27px;">
+                    <table border="1" class="ap-reason-table" style="font-size:14pt; border-collapse: collapse; text-align: center; width: 966px; margin-left: auto; margin-right: auto; border: 1px solid #c7c7c7;" >
+                        <tr style="background-color: #fafafa;">
+                            <td colspan="3" style="height: 56px; text-align: left;" class="normal"><div style="margin-left: 21px;">환자가 아닌 보호자의 동의사유</div></td>
+                        </tr>
+                        <tr style="background-color: #ffffff;">
+                            <td colspan="3" style="text-align: left; padding: 14px 20px;">
+                                <div class="ap-reason-grid">
+                                    <div class="checkbox-wrapper-13 ap-reason-item">
+                                        <input id="ap_reason_1" type="checkbox" class="normal" value="환자의 신체적 정신적 장애로 의사결정 불가">
+                                        <label for="ap_reason_1">환자의 신체적 정신적 장애로 의사결정 불가</label>
+                                    </div>
+                                    <div class="checkbox-wrapper-13 ap-reason-item">
+                                        <input id="ap_reason_2" type="checkbox" class="normal" value="환자위임">
+                                        <label for="ap_reason_2">환자위임</label>
+                                    </div>
+                                    <div class="checkbox-wrapper-13 ap-reason-item">
+                                        <input id="ap_reason_3" type="checkbox" class="normal" value="응급 상황">
+                                        <label for="ap_reason_3">응급 상황</label>
+                                    </div>
+                                    <div class="checkbox-wrapper-13 ap-reason-item">
+                                        <input id="ap_reason_4" type="checkbox" class="normal" value="내용 설명 시 환자의 심신에 중대한 영향 우려">
+                                        <label for="ap_reason_4">내용 설명 시 환자의 심신에 중대한 영향 우려</label>
+                                    </div>
+                                    <div class="checkbox-wrapper-13 ap-reason-item">
+                                        <input id="ap_reason_5" type="checkbox" class="normal" value="미성년자">
+                                        <label for="ap_reason_5">미성년자</label>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div style="text-align: center; margin-bottom: 27px;">
+                    <table style="font-size:14pt; border-collapse: collapse; text-align: center; width: 966px; margin-left: auto; margin-right: auto; border: 1px solid #c7c7c7;" >
+                        <tr style="height: 56px; background-color: #fafafa;" class="normal">
+                            <td colspan="3" style="text-align: left; border-bottom: 1px solid #c7c7c7;">
+                                <div class="checkbox-wrapper-13">
+                                    <input style="font-size:14pt; margin-left: 21px;" id="ap_vip_room" type="checkbox" class="normal" value="상급병실">
+                                    <label for="ap_vip_room">상급병실(특실, 1인실, 2인실)의 이용 시 병실차액이 발생할 수 있습니다.</label>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr style="height: 56px; border-bottom: 1px solid #dadada; background-color: #ffffff;">
+                            <td style="text-align: center; width: 170px; border-right: 1px solid #dadada;">병실</td>
+                            <td style="text-align: center; width: 30%;">
+                                <input id="ap_vip_room_no" style="width:190px; text-align: right;" type="text" disabled="disabled"/> 호
+                            </td>
+                            <td style="text-align: right; color:#222222;" class="light">
+                                <div style="margin-right: 21px; display: flex; justify-content: right;">
+                                    <div class="checkbox-wrapper-13">
+                                        <input id="ap_vip_type_1" type="checkbox" class="normal" value="특실" disabled="disabled">
+                                        <label for="ap_vip_type_1">특실</label>&emsp;&emsp;
+                                    </div>
+                                    <div class="checkbox-wrapper-13">
+                                        <input id="ap_vip_type_2" type="checkbox" class="normal" value="1인실" disabled="disabled">
+                                        <label for="ap_vip_type_2">1인실</label>&emsp;&emsp;
+                                    </div>
+                                    <div class="checkbox-wrapper-13">
+                                        <input id="ap_vip_type_3" type="checkbox" class="normal" value="2인실" disabled="disabled">
+                                        <label for="ap_vip_type_3">2인실</label>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr style="height: 56px; border-bottom: 1px solid #dadada; background-color: #ffffff; color:#222222;">
+                            <td style="text-align: center; border-right: 1px solid #dadada;">비용</td>
+                            <td class="light" style="text-align: right;" colspan="2">1일당 : <input id="ap_vip_price" type="text" disabled="disabled"/></td>
+                        </tr>
+                        <tr style="height: 56px; background-color: #ffffff;">
+                            <td colspan="3" style="text-align: left;">
+                                <div style="margin-left: 21px;">상급병실 사용에 관련한 차액발생부분 설명을 듣고 동의함.</div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div style="position: relative;">
+                <div class="normal" style="text-align: right; position: relative; z-index: 1; color: #222222; width: 966px; height: 42px; margin: 0 auto; display: flex; justify-content: flex-end; align-items: center;">
+                    신청인 ( 관계 :
+                    <input id="ap_signer_relation" style="width:175px;" type="text"
+                           th:value="${admissionPledge != null and admissionPledge['signer_relation'] != null and !#strings.isEmpty(admissionPledge['signer_relation']) ? admissionPledge['signer_relation'] : '본인'}"/>) :
+                    <input id="ap_signer_name" style="width:100px;" type="text"
+                           th:value="${admissionPledge != null and admissionPledge['signer_name'] != null and !#strings.isEmpty(admissionPledge['signer_name']) ? admissionPledge['signer_name'] : patientName}"/>
+                    &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
+                    <div style="display: inline-block; position: relative;" id="end" class="ap-sign-trigger" data-signature-key="primary">
+                        ( 서&emsp;<img id="canvasImg" class="ap-sign-image ap-sign-image-final" src="" alt="신청인 서명">명 )
+                    </div>
+                </div>
+            </div>
+            <div class="ap-signed-at normal">서명일시: <span id="ap_signed_at_view"></span></div>
+            <br><br><br><br>
+        </section>
+        <canvas id="ap_page_ink_canvas" aria-label="문서 전체 필기"></canvas>
+        <img id="ap_page_ink_print_img" alt="문서 전체 필기 인쇄 레이어">
+    </div>
+
+    <div class="ap-action-row normal">
+        <button type="button" class="ap-btn ap-btn-gray" id="ap_clear_signature">서명 전체 지우기</button>
+        <button type="button" class="ap-btn ap-btn-gray" id="ap_cancel">취소</button>
+        <button type="button" class="ap-btn ap-btn-gray" id="ap_print">인쇄</button>
+        <button type="button" class="ap-btn ap-btn-primary" id="ap_apply">서명 완료 후 적용</button>
+    </div>
+</main>
+
+<div id="ap_signature_modal" class="ap-sign-modal" aria-hidden="true">
+    <div class="ap-sign-modal-body">
+        <div class="ap-sign-modal-title" id="ap_signature_modal_title">서명</div>
+        <div class="ap-sign-modal-desc">아래 공간에 서명하신 후 확인을 눌러 주세요.</div>
+        <canvas id="ap_signature_modal_canvas" width="780" height="340"></canvas>
+        <div class="ap-sign-modal-actions">
+            <button type="button" class="ap-btn ap-btn-gray" id="ap_signature_modal_clear">지우기</button>
+            <button type="button" class="ap-btn ap-btn-gray" id="ap_signature_modal_cancel">취소</button>
+            <button type="button" class="ap-btn ap-btn-primary" id="ap_signature_modal_apply">확인</button>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+window.ADMISSION_PLEDGE_BOOTSTRAP = {
+  csIdx: [[${csIdx}]],
+  draftKey: [[${draftKey}]],
+  returnUrl: [[${returnUrl}]],
+  defaultAdmissionPledgeText: [[${defaultAdmissionPledgeText}]],
+  admissionPledge: [[${admissionPledge}]]
+};
+</script>
+<script th:src="@{/js/csm/counsel/admissionPledge.js}"></script>
+</body>
+</html>

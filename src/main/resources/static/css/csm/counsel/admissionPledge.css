@@ -1,0 +1,465 @@
+@charset "UTF-8";
+@import url(https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@1.0/nanumsquare.css);
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #DADADA #F9F9F9;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #DADADA;
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #F9F9F9;
+}
+
+textarea::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+textarea::-webkit-scrollbar-thumb {
+  background: #DADADA;
+  border-radius: 4px;
+}
+
+textarea::-webkit-scrollbar-track {
+  background: #F9F9F9;
+}
+
+.ap-body {
+  margin: 0;
+  min-width: 1280px;
+  background: #f6f6f6;
+  color: #222;
+  font-family: 'NanumSquare', sans-serif;
+}
+
+.normal { font-weight: 400; }
+.bold { font-weight: 700; }
+.light { font-weight: 300; }
+
+table {
+  border-collapse: collapse;
+}
+
+input[type=text],
+input[type=number] {
+  border: none;
+  overflow: auto;
+  vertical-align: middle;
+  line-height: 26px;
+}
+
+.ap-page {
+  padding-bottom: 120px;
+}
+
+.ap-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  background: #fff;
+  border-bottom: 1px solid #ddd;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ap-agree-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+}
+
+.ap-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ap-pen-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ap-pen-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #2f425a;
+}
+
+.ap-pen-control input[type="color"] {
+  width: 34px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid #cfd6de;
+  background: #fff;
+}
+
+.ap-pen-control input[type="range"] {
+  width: 100px;
+}
+
+.ap-btn {
+  border: none;
+  border-radius: 5px;
+  height: 44px;
+  min-width: 132px;
+  padding: 0 14px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.ap-btn-gray {
+  background: #7b7b7b;
+  color: #fff;
+}
+
+.ap-btn-primary {
+  background: #2f425a;
+  color: #fff;
+}
+
+.ap-document-stage {
+  position: relative;
+  width: 1280px;
+  margin: 0 auto;
+}
+
+.ap-paper {
+  position: relative;
+  z-index: 10;
+}
+
+.ap-hidden-text {
+  display: none;
+}
+
+.ap-sign-cell {
+  width: 100px;
+  border: 1px solid #dadada;
+  border-top: inherit;
+  border-right: inherit;
+  position: relative;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.ap-sign-trigger {
+  display: inline-block;
+  position: relative;
+  z-index: 2;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ap-sign-trigger:hover {
+  color: #2f425a;
+}
+
+.ap-sign-trigger.is-disabled,
+.ap-sign-trigger.is-disabled:hover {
+  cursor: default;
+  color: inherit;
+}
+
+.ap-sign-image {
+  position: absolute;
+  z-index: 1;
+  width: 100px;
+  max-height: 72px;
+  top: -20px;
+  right: 0;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.ap-guardian-table td {
+  vertical-align: middle;
+}
+
+.ap-relation-cell {
+  text-align: left;
+  padding-left: 14px;
+  white-space: nowrap;
+}
+
+.ap-relation-label {
+  display: inline-block;
+}
+
+.ap-relation-input {
+  width: 150px;
+  text-align: left;
+}
+
+.ap-guardian-name-input {
+  width: 260px;
+}
+
+.ap-address-input {
+  width: 640px;
+}
+
+.ap-phone-input {
+  width: 260px;
+}
+
+.ap-reason-table td {
+  vertical-align: middle;
+}
+
+.ap-reason-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  row-gap: 12px;
+  column-gap: 20px;
+  align-items: center;
+}
+
+.ap-reason-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ap-reason-item label {
+  line-height: 1.3;
+  margin: 0;
+  word-break: keep-all;
+}
+
+.ap-sign-image-final {
+  width: 120px;
+  left: -16px;
+  top: -43px;
+  right: auto;
+  z-index: -1;
+}
+
+.ap-signed-at {
+  width: 966px;
+  margin: 10px auto 0;
+  text-align: right;
+  font-size: 14px;
+  color: #4d4d4d;
+}
+
+#ap_page_ink_canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 40;
+  pointer-events: none;
+  touch-action: none;
+  background: transparent;
+  border: none;
+  margin: 0;
+}
+
+#ap_page_ink_canvas.is-drawing {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+#ap_page_ink_print_img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  z-index: 19;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.ap-action-row {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 70;
+  background: #fff;
+  border-top: 1px solid #ddd;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+}
+
+.ap-sign-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(51, 51, 51, 0.7);
+}
+
+.ap-sign-modal.show {
+  display: flex;
+}
+
+.ap-sign-modal-body {
+  width: 860px;
+  max-width: calc(100vw - 40px);
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  padding: 24px;
+  text-align: center;
+}
+
+.ap-sign-modal-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.ap-sign-modal-desc {
+  font-size: 16px;
+  color: #555;
+  margin-bottom: 14px;
+}
+
+#ap_signature_modal_canvas {
+  width: 100%;
+  height: 340px;
+  background: #fafafa;
+  border: 1px solid #e1e1e1;
+  margin: 0;
+  touch-action: none;
+}
+
+.ap-sign-modal-actions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+@media (max-width: 1360px) {
+  .ap-body {
+    overflow-x: auto;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  html,
+  body {
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .ap-body {
+    min-width: 0 !important;
+    background: #fff !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .ap-toolbar,
+  .ap-action-row,
+  .ap-sign-modal {
+    display: none !important;
+  }
+
+  .ap-page {
+    padding: 0 !important;
+  }
+
+  .ap-document-stage {
+    position: relative !important;
+    left: 0 !important;
+    width: 966px !important;
+    margin: 0 auto !important;
+    overflow: hidden !important;
+    transform: none !important;
+    zoom: 1 !important;
+  }
+
+  .ap-paper {
+    width: 966px !important;
+    min-width: 966px !important;
+    background-position: center top !important;
+    background-size: 966px auto !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    forced-color-adjust: none !important;
+  }
+
+  .ap-terms-block {
+    display: block !important;
+  }
+
+  .ap-terms-block span {
+    display: block !important;
+  }
+
+  #ap_page_ink_canvas {
+    display: none !important;
+  }
+
+  #ap_page_ink_print_img {
+    /*
+      전체 필기 데이터는 1280px 캔버스 기준으로 저장됨.
+      print에서 966 본문으로 잘라 보여주기 위해 좌측 157px 오프셋 보정.
+      157 = (1280 - 966) / 2
+    */
+    left: -157px !important;
+    width: 1280px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    forced-color-adjust: none !important;
+    filter: none !important;
+  }
+
+  .ap-paper table,
+  .ap-paper tr,
+  .ap-paper td {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  .ap-guardian-table,
+  .ap-reason-table {
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+  }
+}

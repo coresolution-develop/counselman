@@ -7,7 +7,19 @@ document.addEventListener('DOMContentLoaded', function () {
   const birthInput = document.getElementById('cs_col_03');
   const ageInput = document.getElementById('cs_col_04');
   const counselDateInput = document.getElementById('cs_col_16');
+  const resultSelect = document.getElementById('cs_col_19');
   const counselContentInput = document.getElementById('cs_col_32');
+  const admissionPledgeLauncher = document.getElementById('admissionPledgeLauncher');
+  const openAdmissionPledgeBtn = document.getElementById('openAdmissionPledgeBtn');
+  const admissionPledgeStatus = document.getElementById('admissionPledgeStatus');
+  const admissionPledgeRequiredInput = document.getElementById('admission_pledge_required');
+  const admissionAgreedYnInput = document.getElementById('admission_agreed_yn');
+  const admissionSignerNameInput = document.getElementById('admission_signer_name');
+  const admissionSignerRelationInput = document.getElementById('admission_signer_relation');
+  const admissionSignedAtInput = document.getElementById('admission_signed_at');
+  const admissionPledgeTextInput = document.getElementById('admission_pledge_text');
+  const admissionSignatureInput = document.getElementById('admission_signature_data');
+  const admissionPageInkInput = document.getElementById('admission_page_ink_data');
 
   const startRecordingBtn = document.getElementById('startRecordingBtn');
   const stopRecordingBtn = document.getElementById('stopRecordingBtn');
@@ -24,6 +36,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const audioTempKeyInput = document.getElementById('audio_temp_key');
   const csIdxRaw = document.querySelector('input[name="cs_idx"]')?.value || '';
   const csIdx = /^\d+$/.test(csIdxRaw) ? Number(csIdxRaw) : null;
+  const defaultAdmissionPledgeText = '본인은 입원 연계 및 상담을 위해 제공한 정보가 병원 입원 진행에 활용되는 것에 동의합니다. 또한 상담 과정에서 안내받은 내용을 확인하였으며, 안내된 절차에 따라 성실히 협조할 것을 서약합니다.';
 
   const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content') || '';
   const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') || '';
@@ -61,6 +74,97 @@ document.addEventListener('DOMContentLoaded', function () {
   function todayYmd() {
     const d = new Date();
     return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  }
+
+  function nowDateTime() {
+    const d = new Date();
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+  }
+
+  function requiresAdmissionPledge(value) {
+    return value === '입원예약' || value === '입원완료';
+  }
+
+  function isPngDataUrl(value) {
+    return /^data:image\/png;base64,/.test(String(value || '').trim());
+  }
+
+  function extractPrimaryAdmissionSignature(raw) {
+    const text = String(raw || '').trim();
+    if (!text) return '';
+    if (isPngDataUrl(text)) return text;
+    try {
+      const parsed = JSON.parse(text);
+      if (!parsed || typeof parsed !== 'object') return '';
+      const candidates = [
+        parsed.primary,
+        parsed.main,
+        parsed.signer,
+        parsed.final_signature,
+        parsed.signature
+      ];
+      for (const candidate of candidates) {
+        const data = String(candidate || '').trim();
+        if (isPngDataUrl(data)) return data;
+      }
+      return '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function isAdmissionPledgeComplete() {
+    if ((admissionPledgeRequiredInput?.value || 'N') !== 'Y') {
+      return true;
+    }
+    return (admissionAgreedYnInput?.value || 'N') === 'Y';
+  }
+
+  function setAdmissionPledgeStatus() {
+    if (!admissionPledgeStatus) return;
+    if ((admissionPledgeRequiredInput?.value || 'N') !== 'Y') {
+      admissionPledgeStatus.textContent = '해당 없음';
+      return;
+    }
+    admissionPledgeStatus.textContent = isAdmissionPledgeComplete() ? '작성 완료' : '미작성';
+  }
+
+  function payloadCsIdx(payload) {
+    const raw = String(payload?.cs_idx ?? '').trim();
+    return /^\d+$/.test(raw) ? Number(raw) : 0;
+  }
+
+  function canApplyAdmissionPledgePayload(payload) {
+    const pIdx = payloadCsIdx(payload);
+    if (csIdx != null && csIdx > 0) {
+      return pIdx > 0 && pIdx === csIdx;
+    }
+    return pIdx === 0;
+  }
+
+  function toggleAdmissionPledgeLauncher(value) {
+    const required = requiresAdmissionPledge(value);
+    if (admissionPledgeRequiredInput) {
+      admissionPledgeRequiredInput.value = required ? 'Y' : 'N';
+    }
+    if (admissionPledgeLauncher) {
+      admissionPledgeLauncher.style.display = required ? '' : 'none';
+    }
+    setAdmissionPledgeStatus();
+  }
+
+  function applyAdmissionPledgePayload(payload) {
+    if (!payload || typeof payload !== 'object') return;
+    if (!canApplyAdmissionPledgePayload(payload)) return;
+    if (admissionPledgeRequiredInput) admissionPledgeRequiredInput.value = 'Y';
+    if (admissionAgreedYnInput) admissionAgreedYnInput.value = payload.agreed_yn === 'Y' ? 'Y' : 'N';
+    if (admissionSignerNameInput) admissionSignerNameInput.value = String(payload.signer_name || '').trim();
+    if (admissionSignerRelationInput) admissionSignerRelationInput.value = String(payload.signer_relation || '').trim();
+    if (admissionSignedAtInput) admissionSignedAtInput.value = String(payload.signed_at || '').trim();
+    if (admissionPledgeTextInput) admissionPledgeTextInput.value = String(payload.pledge_text || '').trim();
+    if (admissionSignatureInput) admissionSignatureInput.value = String(payload.signature_data || '').trim();
+    if (admissionPageInkInput) admissionPageInkInput.value = String(payload.page_ink_data || '').trim();
+    setAdmissionPledgeStatus();
   }
 
   function formatDateInput(value) {
@@ -416,6 +520,234 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const documentNo = printValue('cs_idx') || '-';
     const issuedAt = new Date().toLocaleString('ko-KR', { hour12: false });
+    const admissionRequired = printValue('admission_pledge_required') === 'Y';
+    const admissionSignature = printValue('admission_signature_data');
+    const admissionSignaturePreview = extractPrimaryAdmissionSignature(admissionSignature);
+    const admissionPageInk = printValue('admission_page_ink_data');
+
+    const readGuardianEntry = (entry) => ({
+      name: entry?.querySelector("input[name='cs_col_13[]']")?.value?.trim() || '',
+      relation: entry?.querySelector("input[name='cs_col_14[]']")?.value?.trim() || '',
+      phone: entry?.querySelector("input[name='cs_col_15[]']")?.value?.trim() || ''
+    });
+
+    const renderCheckedAttr = (checked) => (checked ? ' checked' : '');
+    const renderValueAttr = (value) => escapeHtml(String(value || '').trim());
+    const renderGuardianTable = (title, data, imageData, imageAlt) => {
+      const signImageMarkup = imageData
+        ? `<img class="ap-sign-image" src="${escapeHtml(imageData)}" alt="${escapeHtml(imageAlt)}">`
+        : '<img class="ap-sign-image" alt="" style="display:none;">';
+
+      return `
+        <div style="text-align: center; margin-bottom: 27px;">
+          <table class="ap-guardian-table" style="text-align: center; width: 966px; margin-left: auto; margin-right: auto; border: 1px solid #c7c7c7;">
+            <colgroup>
+              <col style="width:65px;">
+              <col style="width:100px;">
+              <col style="width:300px;">
+              <col style="width:420px;">
+              <col style="width:81px;">
+            </colgroup>
+            <tr style="height: 56px;">
+              <td class="normal" rowspan="3" style="width:65px; text-align: center; background-color:#fafafa; border: 1px solid #c7c7c7;">${title}</td>
+              <td class="normal" style="position: relative; width: 170px; border: 1px solid #dadada; border-top: inherit;">성 명</td>
+              <td style="width:350px; text-align: left; border: 1px solid #dadada; border-top: inherit;">
+                <input class="light ap-guardian-name-input" style="margin-left: 20px; width:260px;" type="text" readonly value="${renderValueAttr(data.name)}"/>
+              </td>
+              <td class="normal ap-relation-cell" style="border: 1px solid #dadada; border-top: inherit;">
+                <span class="ap-relation-label">(관계 :</span>
+                <input class="light ap-relation-input" type="text" readonly value="${renderValueAttr(data.relation)}"/>
+                <span class="ap-relation-label">)</span>
+              </td>
+              <td class="ap-sign-cell">
+                <div class="normal ap-sign-trigger is-disabled">(서   명)</div>
+                ${signImageMarkup}
+              </td>
+            </tr>
+            <tr style="height: 56px;">
+              <td style="border: 1px solid #dadada;" class="normal">주 소</td>
+              <td colspan="3" style="text-align: left; border: 1px solid #dadada; border-right: inherit;">
+                <input class="light ap-address-input" style="margin-left: 20px; width:640px;" type="text" readonly value=""/>
+              </td>
+            </tr>
+            <tr style="height: 56px;">
+              <td style="border: 1px solid #dadada; border-left: inherit; border-bottom: inherit;" class="normal">휴대폰 번호</td>
+              <td style="text-align: left;">
+                <input class="light ap-phone-input" type="text" style="margin-left: 20px;" readonly value="${renderValueAttr(data.phone)}"/>
+              </td>
+              <td colspan="2" style="text-align: right;">
+                <div class="checkbox-wrapper-13" style="margin-right: 21px;">
+                  <input type="checkbox" class="normal" disabled>
+                  <label>비용안내</label>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>`;
+    };
+
+    const buildAdmissionPledgePrintMarkup = () => {
+      const guardians = Array.from(document.querySelectorAll('.guardian-entry'));
+      const mainGuardian = readGuardianEntry(guardians[0]);
+      const subGuardian = readGuardianEntry(guardians[1]);
+      const gender = printSelectedText('cs_col_02');
+      const signerName = printValue('admission_signer_name') || printValue('cs_col_01');
+      const signerRelation = printValue('admission_signer_relation') || '본인';
+      const signedAt = printValue('admission_signed_at');
+      const backgroundUrl = `${APP_CTX}/img/background4.png`;
+      const primarySignatureImg = admissionSignaturePreview
+        ? `<img class="ap-sign-image ap-sign-image-final" src="${escapeHtml(admissionSignaturePreview)}" alt="신청인 서명">`
+        : '<img class="ap-sign-image ap-sign-image-final" alt="" style="display:none;">';
+      const pageInkMarkup = admissionPageInk
+        ? `<img alt="문서 전체 필기 인쇄 레이어" src="${escapeHtml(admissionPageInk)}" style="position:absolute; inset:0; left:-157px; width:1280px; height:100%; object-fit:fill; z-index:19; pointer-events:none; opacity:1; visibility:visible;">`
+        : '';
+
+      return `
+        <section class="journal-section" style="page-break-before: always;">
+          <h2 class="section-title">9. 입원서약서</h2>
+          <div class="ap-document-stage" style="position:relative; width:966px; margin:0 auto; overflow:hidden;">
+            <section class="ap-paper" style="background-repeat:no-repeat; background-position:center 0; background-image:url('${escapeHtml(backgroundUrl)}'); background-size:966px auto; width:966px; min-width:966px; margin:0 auto;">
+              <h1 style="text-align: center; font-size: 30pt; padding-top: 70px;">입 원 서 약 서</h1>
+
+              <div class="bold" style="font-size: 16pt; color:#303030; display: flex; align-items: start; margin: 0 auto; width: 966px;">※ 환자의 인적사항</div>
+              <div style="text-align: center; margin-bottom: 20px;">
+                <table border="1" style="border-collapse: collapse; text-align: center; width: 966px; margin-left: auto; margin-right: auto;">
+                  <tr>
+                    <td class="normal" width="170px" height="56px">성명</td>
+                    <td class="light" style="text-align: left;">
+                      <input style="margin-left: 33px;" type="text" readonly value="${renderValueAttr(printValue('cs_col_01'))}">
+                    </td>
+                    <td class="normal" width="170px" height="56px">차트번호</td>
+                    <td class="light" colspan="2" style="text-align: left;">
+                      <input style="margin-left: 33px;" type="text" readonly value="${renderValueAttr(printValue('cs_col_40'))}">
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="normal" height="56px">입원병실</td>
+                    <td class="light" style="text-align: left;">
+                      <input style="margin-left: 33px;" type="text" readonly value="${renderValueAttr(printValue('cs_col_38'))}">
+                    </td>
+                    <td class="normal" height="56px">성별 </td>
+                    <td class="light" style="cursor: pointer;">
+                      <input type="radio" disabled${renderCheckedAttr(gender === '남성' || gender === '남')}><label style="cursor: pointer;">남</label>
+                    </td>
+                    <td class="light" style="cursor: pointer;">
+                      <input type="radio" disabled${renderCheckedAttr(gender === '여성' || gender === '여')}><label style="cursor: pointer;">여</label>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="normal" height="56px">생년월일</td>
+                    <td class="light" style="text-align: left;">
+                      <input style="margin-left: 33px;" type="text" readonly value="${renderValueAttr(printValue('cs_col_03'))}">
+                    </td>
+                    <td class="normal" height="56px">전화</td>
+                    <td class="light" colspan="2" style="text-align: left;">
+                      <input style="margin-left: 33px;" type="text" readonly value="${renderValueAttr(mainGuardian.phone)}">
+                    </td>
+                  </tr>
+                </table>
+              </div>
+
+              <div class="light ap-terms-block" style="font-size:14pt; color:#222222; width:966px; display: flex; align-items: start; flex-direction: column; margin: 0 auto;">
+                <span>&nbsp;본인(환자의 주보호자)은 귀 의료기관에서 제시한 제반 규칙을 준수함은 물론, 치료와 퇴원 등 의사 및 간호사(또는 직원)의 정당한 지시에 따르며, 아래의 내용을 읽고 서약 및 동의합니다.</span>
+                <span style="color:#f87b0c;">1. 입원 기간 중 예기치 않은 사고(골절, 타박상, 개방성 상처 등)나 응급상황 시 본원에서 치료할 수 없는 상태이거나 의료진 판단으로 응급처치 가능한 병원으로 전원을 요구할 수 있으며 또한 환자 및 보호자가 원할 경우 담당의사와 상의 후 타 병원으로 전원 할 수 있습니다.</span>
+                <span style="color:#f87b0c;">2. 노인은 골다공증, 피부의 약화로 쉽게 골절 또는 멍이 들 수 있으므로 의료기관의 정당한 진료지침이나 교육에 반하는 무단 외출・외박 등으로 인하여 발생하는 환자의 손해에 대한 책임은 원칙적으로 모두 환자에게 있습니다.</span>
+                <span>3. 진료 상 발생하는 모든 문제에 대하여 분쟁이 생겼을 때에는 『의료사고 피해구제 및 의료분쟁 조정 등에 관한 법률』에 의한 한국 의료분쟁조정중재원에 그 조정을 신청할 수 있음에 동의합니다.</span>
+                <span>4. 입원기간 동안 발생하는 진료비는 귀 의료기관에서 정하는 납부기한 내에 납부(연대보증인이 있는 경우에는 환자와 연대보증인이 연대하여 납부)하겠으며, 정당한 이유 없이 체납될 때에는 채권확보를 위한 법적조치에 이의가 없고, 만일 본건을 기초로 의료분쟁 등으로 소송을 제기할 경우 관할법원의 민사소송법에 따릅니다.</span>
+                <span>5. 입원기간 중에 환자 및 보호자가 귀 의료기관의 비품이나 기물을 고의 또는 과실로 파괴, 망실, 훼손한 때에는 이를 변상(현물, 현금)합니다.</span>
+                <span style="color:#f87b0c;">6. 입원기간 중 환자 또는 보호자 등이 소지 중인 현금, 기타 귀중품 및 개인소지품(완전틀니, 부분틀니 포함, 안경, 보청기등)은 귀 의료기관이 지정한 보관 장소가 있는 경우에는 보관 장소에 보관하고, 보관 장소가 따로 없는 경우에는 귀 의료기관이 지정한 직원에게 보관을 의뢰합니다. 이를 이행치 아니하여 분실 및 훼손되어 발생한 손해에 대하여는 귀 의료기관은 책임이 없습니다.</span>
+                <span>7. 개인정보 수집 및 활용 동의</span>
+                <span>본원은 진료 등을 위해 아래와 같은 최소한의 개인정보를 수집함. 진료를 위한 필요정보는 의료법에 따라 별도의 동의 없이 수집되며, 동의를 하지 않더라도 진료에는 불이익이 없음.</span>
+                <span>(1) 개인정보 수집항목 : (필수항목) 성명, 주소, 전화번호, 주민등록번호, 보험정보</span>
+                <span style="margin-bottom: 10px;">&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;&nbsp;(선택항목) 이메일, 문자메세지 서비스 수신 동의여부 </span>
+                <span style="margin-bottom: 10px;">(2) 개인정보 수집방법 : 진료 목적은 별도로 받지 않으며, 진료목적 외는 서면으로 수집</span>
+                <span style="margin-bottom: 10px;">(3) 개인정보의 수집 및 이용목적 : 진단/검진 예약, 조회 및 진료를 위한 본인 확인 절차 등</span>
+                <span style="margin-bottom: 20px;">(4) 개인정보의 보유 및 이용기간 : 개인정보의 수집목적 또는 제공받은 목적이 달성될 때 파기</span>
+
+                <span class="bold" style="color:#303030; font-size: 16pt;">※ 환자본인, 주보호자 및 부보호자에 대한 안내</span>
+                <span>1. 주보호자는 환자의 입원과 전원, 퇴원 등의 절차상 동의인 이며, 환자 상태의 급격한 변화, 낙상 등의 안전사고, 사망 등 환자입원생활에 관련된 사항에 대해 <b class="bold">일차적 연락대상</b>이며 타보호자는 <b>상담이 제한</b>됩니다. 주보호자 변경 시에는 주보호자변경요청서를 통해서만 가능합니다.</span>
+                <span>2. 주보호자 및 부보호자는 환자의 입원비용과 기타 제반 비용 발생 시 매월 <b>정산의 책임</b>을 지게 되며</span>
+                <span style="margin-bottom: 10px;">(보증채무최고액:30,000,000원 보증기간:3년), 2개월 미납시 본원은 퇴원권유 할 수 있습니다.</span>
+                <span>3. 주보호자는 환자의 입원기록 외 사본 발급 및 제증명 발급의 주체가 되며, 수혈동의서, 신체 보호대 동의서, 심폐소생술거부동의서, 낙상관련설명안내서, 병원비 등의 규정상 동의절차가 필요한 경우 <b>서명 대상자</b>가 됩니다.</span>
+                <span>4. 입원생활에 관련 법적 분쟁 발생 시 원칙적으로 환자 본인이 의료기관의 소송 상대방이 되며, 불가피할 경우 주보호자가 <b>법적 대리인</b>이 됩니다.</span>
+              </div>
+              <br>
+
+              ${renderGuardianTable('주<br>보<br>호<br>자', mainGuardian, '', '주보호자 서명')}
+              ${renderGuardianTable('부<br>보<br>호<br>자', subGuardian, '', '부보호자 서명')}
+
+              <div style="text-align: center; margin-bottom: 27px;">
+                <div style="margin-bottom: 27px;">
+                  <table border="1" class="ap-reason-table" style="font-size:14pt; border-collapse: collapse; text-align: center; width: 966px; margin-left: auto; margin-right: auto; border: 1px solid #c7c7c7;">
+                    <tr style="background-color: #fafafa;">
+                      <td colspan="3" style="height: 56px; text-align: left;" class="normal"><div style="margin-left: 21px;">환자가 아닌 보호자의 동의사유</div></td>
+                    </tr>
+                    <tr style="background-color: #ffffff;">
+                      <td colspan="3" style="text-align: left; padding: 14px 20px;">
+                        <div class="ap-reason-grid">
+                          <div class="checkbox-wrapper-13 ap-reason-item"><input type="checkbox" class="normal" disabled><label>환자의 신체적 정신적 장애로 의사결정 불가</label></div>
+                          <div class="checkbox-wrapper-13 ap-reason-item"><input type="checkbox" class="normal" disabled><label>환자위임</label></div>
+                          <div class="checkbox-wrapper-13 ap-reason-item"><input type="checkbox" class="normal" disabled><label>응급 상황</label></div>
+                          <div class="checkbox-wrapper-13 ap-reason-item"><input type="checkbox" class="normal" disabled><label>내용 설명 시 환자의 심신에 중대한 영향 우려</label></div>
+                          <div class="checkbox-wrapper-13 ap-reason-item"><input type="checkbox" class="normal" disabled><label>미성년자</label></div>
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
+                </div>
+
+                <div style="text-align: center; margin-bottom: 27px;">
+                  <table style="font-size:14pt; border-collapse: collapse; text-align: center; width: 966px; margin-left: auto; margin-right: auto; border: 1px solid #c7c7c7;">
+                    <tr style="height: 56px; background-color: #fafafa;" class="normal">
+                      <td colspan="3" style="text-align: left; border-bottom: 1px solid #c7c7c7;">
+                        <div class="checkbox-wrapper-13">
+                          <input style="font-size:14pt; margin-left: 21px;" type="checkbox" class="normal" disabled>
+                          <label>상급병실(특실, 1인실, 2인실)의 이용 시 병실차액이 발생할 수 있습니다.</label>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr style="height: 56px; border-bottom: 1px solid #dadada; background-color: #ffffff;">
+                      <td style="text-align: center; width: 170px; border-right: 1px solid #dadada;">병실</td>
+                      <td style="text-align: center; width: 30%;"><input style="width:190px; text-align: right;" type="text" readonly value=""/> 호</td>
+                      <td style="text-align: right; color:#222222;" class="light">
+                        <div style="margin-right: 21px; display: flex; justify-content: right;">
+                          <div class="checkbox-wrapper-13"><input type="checkbox" class="normal" disabled><label>특실</label>&emsp;&emsp;</div>
+                          <div class="checkbox-wrapper-13"><input type="checkbox" class="normal" disabled><label>1인실</label>&emsp;&emsp;</div>
+                          <div class="checkbox-wrapper-13"><input type="checkbox" class="normal" disabled><label>2인실</label></div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr style="height: 56px; border-bottom: 1px solid #dadada; background-color: #ffffff; color:#222222;">
+                      <td style="text-align: center; border-right: 1px solid #dadada;">비용</td>
+                      <td class="light" style="text-align: right;" colspan="2">1일당 : <input type="text" readonly value=""/></td>
+                    </tr>
+                    <tr style="height: 56px; background-color: #ffffff;">
+                      <td colspan="3" style="text-align: left;"><div style="margin-left: 21px;">상급병실 사용에 관련한 차액발생부분 설명을 듣고 동의함.</div></td>
+                    </tr>
+                  </table>
+                </div>
+              </div>
+
+              <div style="position: relative;">
+                <div class="normal" style="text-align: right; position: relative; z-index: 20; color: #222222; width: 966px; height: 42px; margin: 0 auto; display: flex; justify-content: flex-end; align-items: center;">
+                  신청인 ( 관계 :
+                  <input style="width:175px;" type="text" readonly value="${renderValueAttr(signerRelation)}"/>) :
+                  <input style="width:100px;" type="text" readonly value="${renderValueAttr(signerName)}"/>
+                  &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
+                  <div style="display: inline-block; position: relative;" class="ap-sign-trigger is-disabled">
+                    ( 서&emsp;${primarySignatureImg}명 )
+                  </div>
+                </div>
+              </div>
+              <div class="ap-signed-at normal">서명일시: <span>${escapeHtml(printDisplayText(signedAt))}</span></div>
+              <br><br><br><br>
+            </section>
+            ${pageInkMarkup}
+          </div>
+        </section>`;
+    };
+
+    const admissionPledgeSection = admissionRequired ? buildAdmissionPledgePrintMarkup() : '';
 
     return `
       <div class="journal-doc">
@@ -513,6 +845,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <tbody>${historyRows || '<tr><td colspan="5" class="empty-cell">이력이 없습니다.</td></tr>'}</tbody>
           </table>
         </section>
+        ${admissionPledgeSection}
 
         <footer class="journal-sign">
           <div class="sign-box">
@@ -529,7 +862,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function openMobilePrintWindow() {
     const bodyHtml = buildMobilePrintHtmlFromForm();
-    const popup = window.open('', '_blank');
+    const popup = window.open('', '_blank', 'width=1280,height=1000,resizable=yes,scrollbars=yes');
     if (!popup) return;
 
     const printStyles = `
@@ -543,13 +876,17 @@ document.addEventListener('DOMContentLoaded', function () {
         font-family: "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
       }
       .print-page {
-        width: 210mm;
+        width: 1100px;
         margin: 12px auto;
         padding: 12mm;
         background: #fff;
         box-shadow: 0 4px 18px rgba(15, 23, 42, 0.08);
       }
       .journal-doc { font-size: 12px; line-height: 1.5; }
+      .print-page .ap-paper {
+        background-image: none !important;
+        background-color: #fff !important;
+      }
       .journal-header {
         display: flex;
         justify-content: space-between;
@@ -673,6 +1010,7 @@ document.addEventListener('DOMContentLoaded', function () {
         body { background: #fff; }
         .print-page {
           width: auto;
+          min-width: 0;
           margin: 0;
           padding: 0;
           box-shadow: none;
@@ -685,6 +1023,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <head>
           <title>상담일지출력</title>
           <meta charset="UTF-8">
+          <link rel="stylesheet" href="${APP_CTX}/css/csm/counsel/admissionPledge.css">
           <style>${printStyles}</style>
         </head>
         <body>
@@ -1568,6 +1907,79 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  if (resultSelect) {
+    toggleAdmissionPledgeLauncher(resultSelect.value);
+    resultSelect.addEventListener('change', function () {
+      toggleAdmissionPledgeLauncher(this.value);
+      if (requiresAdmissionPledge(this.value) && !isAdmissionPledgeComplete()) {
+        openAdmissionPledgeBtn?.click();
+      }
+    });
+  }
+  setAdmissionPledgeStatus();
+
+  if (admissionPledgeTextInput && !String(admissionPledgeTextInput.value || '').trim()) {
+    admissionPledgeTextInput.value = defaultAdmissionPledgeText;
+  }
+
+  const pendingPledge = sessionStorage.getItem('csm-admission-pledge-return');
+  if (pendingPledge) {
+    try {
+      applyAdmissionPledgePayload(JSON.parse(pendingPledge));
+    } catch (_) {
+      // no-op
+    }
+    sessionStorage.removeItem('csm-admission-pledge-return');
+  }
+
+  window.addEventListener('message', function (event) {
+    const message = event?.data;
+    if (!message || message.type !== 'csm-admission-pledge') return;
+    applyAdmissionPledgePayload(message.payload || {});
+  });
+
+  if (openAdmissionPledgeBtn) {
+    openAdmissionPledgeBtn.addEventListener('click', function () {
+      const resultValue = String(resultSelect?.value || '').trim();
+      if (!requiresAdmissionPledge(resultValue)) {
+        alert('입원완료 또는 입원예약일 때만 입원서약서를 작성할 수 있습니다.');
+        return;
+      }
+
+      const draftKey = `csm-admission-pledge-draft-${Date.now()}`;
+      const draftPayload = {
+        cs_idx: csIdx != null && csIdx > 0 ? csIdx : 0,
+        agreed_yn: admissionAgreedYnInput?.value || 'N',
+        signer_name: admissionSignerNameInput?.value || '',
+        signer_relation: admissionSignerRelationInput?.value || '',
+        signed_at: admissionSignedAtInput?.value || '',
+        pledge_text: admissionPledgeTextInput?.value || defaultAdmissionPledgeText,
+        signature_data: admissionSignatureInput?.value || '',
+        page_ink_data: admissionPageInkInput?.value || ''
+      };
+      sessionStorage.setItem(draftKey, JSON.stringify(draftPayload));
+
+      const params = new URLSearchParams();
+      if (csIdx != null && csIdx > 0) {
+        params.set('csIdx', String(csIdx));
+      }
+      params.set('draftKey', draftKey);
+      params.set('patientName', String(document.getElementById('cs_col_01')?.value || '').trim());
+      params.set('gender', String(document.getElementById('cs_col_02')?.value || '').trim());
+      params.set('birth', String(document.getElementById('cs_col_03')?.value || '').trim());
+      params.set('chartNo', String(document.getElementById('cs_col_40')?.value || '').trim());
+      params.set('room', String(document.getElementById('cs_col_38')?.value || '').trim());
+      params.set('phone', String(document.querySelector('input[name="cs_col_15[]"]')?.value || '').trim());
+      params.set('returnUrl', `${window.location.pathname}${window.location.search}`);
+
+      const url = `${APP_CTX}/counsel/admission-pledge?${params.toString()}`;
+      const popup = window.open(url, 'csmAdmissionPledge', 'width=1280,height=900,resizable=yes,scrollbars=yes');
+      if (!popup) {
+        window.location.href = url;
+      }
+    });
+  }
+
   bindAllPhoneMasks();
   bindFieldAutoCheck();
 
@@ -1641,6 +2053,26 @@ document.addEventListener('DOMContentLoaded', function () {
         e.preventDefault();
         alert('녹음이 진행 중입니다. 녹음을 중지한 뒤 저장해 주세요.');
         return;
+      }
+      if ((admissionPledgeRequiredInput?.value || 'N') === 'Y') {
+        if (!isAdmissionPledgeComplete()) {
+          e.preventDefault();
+          alert('입원서약서 페이지에서 서명 완료 후 저장해 주세요.');
+          openAdmissionPledgeBtn?.focus();
+          return;
+        }
+        if (!String(admissionSignerNameInput?.value || '').trim()) {
+          admissionSignerNameInput.value = String(document.getElementById('cs_col_01')?.value || '').trim();
+        }
+        if (admissionSignedAtInput && !admissionSignedAtInput.value) {
+          admissionSignedAtInput.value = nowDateTime();
+        }
+        if (admissionSignerRelationInput && !String(admissionSignerRelationInput.value || '').trim()) {
+          admissionSignerRelationInput.value = '본인';
+        }
+        if (admissionPledgeTextInput && !String(admissionPledgeTextInput.value || '').trim()) {
+          admissionPledgeTextInput.value = defaultAdmissionPledgeText;
+        }
       }
       showSpinner();
     });
