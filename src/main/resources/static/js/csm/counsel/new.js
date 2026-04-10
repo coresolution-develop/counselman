@@ -192,6 +192,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const resultSelect = document.getElementById('cs_col_19');
   const admissionPledgeLauncher = document.getElementById('admissionPledgeLauncher');
   const openAdmissionPledgeBtn = document.getElementById('openAdmissionPledgeBtn');
+  const openRoomBoardBtn = document.getElementById('openRoomBoardBtn');
   const admissionPledgeStatus = document.getElementById('admissionPledgeStatus');
   const admissionPledgeRequiredInput = document.getElementById('admission_pledge_required');
   const admissionAgreedYnInput = document.getElementById('admission_agreed_yn');
@@ -308,8 +309,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
   window.addEventListener('message', function (event) {
     const message = event?.data;
-    if (!message || message.type !== 'csm-admission-pledge') return;
-    applyAdmissionPledgePayload(message.payload || {});
+    if (!message) return;
+    if (message.type === 'csm-admission-pledge') {
+      applyAdmissionPledgePayload(message.payload || {});
+      return;
+    }
+    if (message.type === 'csm-room-board-select') {
+      const roomInput = document.getElementById('cs_col_38');
+      if (roomInput) {
+        roomInput.value = String(message.roomName || '').trim();
+      }
+    }
   });
 
   if (openAdmissionPledgeBtn) {
@@ -347,6 +357,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const url = `${APP_CTX}/counsel/admission-pledge?${params.toString()}`;
       const popup = window.open(url, 'csmAdmissionPledge', 'width=1280,height=900,resizable=yes,scrollbars=yes');
+      if (!popup) {
+        window.location.href = url;
+      }
+    });
+  }
+
+  if (openRoomBoardBtn) {
+    openRoomBoardBtn.addEventListener('click', function () {
+      const params = new URLSearchParams();
+      params.set('popup', '1');
+      params.set('patientName', String(document.getElementById('cs_col_01')?.value || '').trim());
+      params.set('gender', String(document.getElementById('cs_col_02')?.value || '').trim());
+      params.set('expectedDate', String(document.getElementById('cs_col_21')?.value || '').trim());
+      const url = `${APP_CTX}/room-board?${params.toString()}`;
+      const popup = window.open(url, 'csmRoomBoard', 'width=1500,height=900,resizable=yes,scrollbars=yes');
       if (!popup) {
         window.location.href = url;
       }

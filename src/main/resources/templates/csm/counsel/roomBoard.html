@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>병실현황판</title>
+    <link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+    <link rel="stylesheet" th:href="@{/css/reset.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/style.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
+    <style>
+        body.popup-mode { background:#f7fafc; }
+        .rb-wrap { padding:24px 28px 40px; }
+        .rb-toolbar, .rb-summary-card, .rb-ward-card { background:#fff; border:1px solid #dfe7ef; border-radius:14px; }
+        .rb-toolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:18px 20px; margin-bottom:20px; }
+        .rb-toolbar h1 { margin:0; font-size:24px; }
+        .rb-toolbar p { margin:6px 0 0; color:#667085; }
+        .rb-summary { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:12px; margin-bottom:20px; }
+        .rb-summary-card { padding:18px; }
+        .rb-summary-label { font-size:13px; color:#667085; }
+        .rb-summary-value { margin-top:10px; font-size:30px; font-weight:800; color:#18436b; }
+        .rb-selected { background:#fff8e8; border:1px solid #f6d48b; border-radius:12px; padding:14px 16px; margin-bottom:18px; }
+        .rb-selected strong { color:#9a6700; }
+        .rb-ward-card { margin-bottom:18px; overflow:hidden; }
+        .rb-ward-header { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:16px 18px; background:#f8fbfe; border-bottom:1px solid #edf2f7; }
+        .rb-ward-header h2 { margin:0; font-size:20px; }
+        .rb-ward-meta { color:#50657e; font-size:14px; }
+        .rb-table-wrap { overflow:auto; }
+        .rb-table { width:100%; border-collapse:collapse; min-width:1400px; }
+        .rb-table th, .rb-table td { border-bottom:1px solid #edf2f7; padding:10px 12px; font-size:13px; text-align:left; vertical-align:top; }
+        .rb-table th { background:#fcfdff; position:sticky; top:0; z-index:1; }
+        .rb-badge { display:inline-block; border-radius:999px; padding:4px 10px; background:#eef4fb; color:#1b3d61; font-size:12px; font-weight:700; }
+        .rb-available-good { color:#067647; font-weight:700; }
+        .rb-available-bad { color:#b42318; font-weight:700; }
+        .rb-slot-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:6px; min-width:320px; }
+        .rb-slot { border:1px solid #dfe7ef; border-radius:8px; padding:6px 8px; background:#fff; min-height:34px; }
+        .rb-slot-empty { color:#98a2b3; }
+        .rb-actions { display:flex; gap:8px; flex-wrap:wrap; }
+        .rb-btn { border:none; border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:700; font-size:14px; }
+        .rb-btn-primary { background:#1c6fd1; color:#fff; }
+        .rb-btn-light { background:#eef4fb; color:#1b3d61; }
+        .rb-btn-select { padding:6px 10px; background:#ecfdf3; color:#067647; }
+        @media (max-width: 1024px) { .rb-summary { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+        @media (max-width: 768px) { .rb-wrap { padding:16px; } .rb-summary { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body th:classappend="${popupMode} ? 'popup-mode' : ''">
+<th:block th:unless="${popupMode}">
+    <div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
+    <div th:replace="~{csm/Include/layout :: nav_section2('new', ${endVar}, ${st}, ${kw})}"></div>
+</th:block>
+
+<div class="rb-wrap">
+    <div class="rb-toolbar">
+        <div>
+            <h1>병실현황판</h1>
+            <p th:text="|기준일 ${board.snapshotDate} ${#strings.isEmpty(board.snapshotTime) ? '' : board.snapshotTime}|">기준일</p>
+        </div>
+        <div class="rb-actions">
+            <a th:if="${canManageRoomBoard and !popupMode}" class="rb-btn rb-btn-light" th:href="@{/admin/room-board}">관리 화면</a>
+            <button th:if="${popupMode}" type="button" class="rb-btn rb-btn-light" onclick="window.close()">닫기</button>
+        </div>
+    </div>
+
+    <div class="rb-selected" th:if="${popupMode and (!#strings.isEmpty(selectedPatientName) or !#strings.isEmpty(selectedGender))}">
+        <strong>입원상담 선택 대상</strong>
+        <span th:text="${selectedPatientName}"></span>
+        <span th:if="${!#strings.isEmpty(selectedGender)}" th:text="| / 성별 ${selectedGender}|"></span>
+        <span th:if="${!#strings.isEmpty(selectedExpectedDate)}" th:text="| / 예정일 ${selectedExpectedDate}|"></span>
+    </div>
+
+    <div class="rb-summary">
+        <div class="rb-summary-card">
+            <div class="rb-summary-label">허가병상수</div>
+            <div class="rb-summary-value" th:text="${board.totalLicensedBeds}">0</div>
+        </div>
+        <div class="rb-summary-card">
+            <div class="rb-summary-label">재원환자 수</div>
+            <div class="rb-summary-value" th:text="${board.totalOccupiedBeds}">0</div>
+        </div>
+        <div class="rb-summary-card">
+            <div class="rb-summary-label">입원 가능 수</div>
+            <div class="rb-summary-value" th:text="${board.totalAvailableBeds}">0</div>
+        </div>
+        <div class="rb-summary-card">
+            <div class="rb-summary-label">전체 가동률</div>
+            <div class="rb-summary-value" th:text="|${board.totalOccupancyRate}%|">0%</div>
+        </div>
+    </div>
+
+    <div class="rb-ward-card" th:each="ward : ${board.wards}">
+        <div class="rb-ward-header">
+            <h2 th:text="${ward.wardName}">1병동</h2>
+            <div class="rb-ward-meta"
+                 th:text="|허가병상 ${ward.licensedBeds} / 재원환자 ${ward.occupiedBeds} / 입원 가능 ${ward.availableBeds} / 가동률 ${ward.occupancyRate}%|"></div>
+        </div>
+        <div class="rb-table-wrap">
+            <table class="rb-table">
+                <thead>
+                <tr>
+                    <th>병실</th>
+                    <th>허가병상수</th>
+                    <th>성별</th>
+                    <th>재원환자 수</th>
+                    <th>입원 T.O</th>
+                    <th>가동률</th>
+                    <th>간병 형태</th>
+                    <th>예약 환자수</th>
+                    <th>입원 예정자</th>
+                    <th>상태구분</th>
+                    <th>재원환자 명단</th>
+                    <th>참고내용</th>
+                    <th th:if="${popupMode}">선택</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="room : ${ward.rooms}">
+                    <td><span class="rb-badge" th:text="${room.roomName}">101호</span></td>
+                    <td th:text="|${room.licensedBeds} bed|"></td>
+                    <td th:text="${room.genderSummary}"></td>
+                    <td th:text="|${room.occupiedCount} 명|"></td>
+                    <td>
+                        <span th:classappend="${room.availableCount > 0 ? 'rb-available-good' : 'rb-available-bad'}"
+                              th:text="${room.availableCount > 0 ? room.availableCount + '명 입원 가능!' : '만실'}"></span>
+                    </td>
+                    <td th:text="|${room.occupancyRate}%|"></td>
+                    <td th:text="${room.careType}"></td>
+                    <td th:text="|${room.reservationCount} 명|"></td>
+                    <td th:text="${room.reservationNames}"></td>
+                    <td th:text="${room.statusLabel}"></td>
+                    <td>
+                        <div class="rb-slot-grid">
+                            <div class="rb-slot"
+                                 th:each="slot : ${room.patientSlots}"
+                                 th:classappend="${slot == '-'} ? ' rb-slot-empty' : ''"
+                                 th:text="${slot}">-</div>
+                        </div>
+                    </td>
+                    <td th:text="${room.note}"></td>
+                    <td th:if="${popupMode}">
+                        <button type="button"
+                                class="rb-btn rb-btn-select room-select-btn"
+                                th:attr="data-room-name=${room.roomName}">
+                            선택
+                        </button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.ROOM_BOARD_POPUP_MODE = [[${popupMode}]];
+</script>
+<script th:src="@{/js/csm/counsel/roomBoard.js}"></script>
+</body>
+</html>

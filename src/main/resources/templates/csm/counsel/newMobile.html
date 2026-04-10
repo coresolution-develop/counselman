@@ -86,7 +86,7 @@
                    th:value="${!#strings.isEmpty(csData.cs_col_34) ? csData.cs_col_34 : (info != null ? info.us_col_05 : '')}">
             <input type="hidden" name="cs_col_35" th:value="${csData.cs_col_35}">
             <input type="hidden" name="cs_col_37" th:value="${csData.cs_col_37}">
-            <input type="hidden" name="cs_col_38" th:value="${csData.cs_col_38}">
+            <input type="hidden" name="cs_col_38" id="cs_col_38" th:value="${csData.cs_col_38}">
             <input type="hidden" name="cs_col_39" th:value="${csData.cs_col_39}">
             <input type="hidden" name="cs_col_40" th:value="${csData.cs_col_40}">
             <input type="hidden" name="cs_col_41" th:value="${csData.cs_col_41}">
@@ -485,6 +485,13 @@
                 <button type="button" id="openAdmissionPledgeBtn" class="mini-btn" style="width:100%;">입원서약서 페이지 열기</button>
                 <p id="admissionPledgeStatus" class="admission-pledge-status"
                    th:text="${admissionPledge != null and admissionPledge['agreed_yn'] == 'Y' and admissionPledge['signature_data'] != null and !#strings.isEmpty(admissionPledge['signature_data']) ? '작성 완료' : '미작성'}">미작성</p>
+            </section>
+
+            <section class="block">
+                <h2>병실현황판</h2>
+                <button type="button" id="openRoomBoardBtn" class="mini-btn" style="width:100%;">병실현황판 보기</button>
+                <p class="admission-pledge-status" id="selectedRoomStatus"
+                   th:text="${!#strings.isEmpty(csData.cs_col_38) ? '선택 병실: ' + csData.cs_col_38 : '선택된 병실 없음'}">선택된 병실 없음</p>
             </section>
 
             <div class="mobile-print-log-source" style="display:none;">

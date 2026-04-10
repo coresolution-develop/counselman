@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediPlat Services</title>
+    <link rel="stylesheet" th:href="@{/css/mediplat.css}">
+</head>
+<body>
+<header class="topbar">
+    <div>
+        <p class="eyebrow">MediPlat</p>
+        <h1>서비스 선택</h1>
+    </div>
+    <div class="topbar-actions">
+        <div class="user-meta">
+            <strong th:text="${user.displayName}">Platform Admin</strong>
+            <span th:text="${user.instCode + ' · ' + user.roleCode}">core · PLATFORM_ADMIN</span>
+        </div>
+        <a class="ghost-btn" th:if="${user.platformAdmin}" th:href="@{/admin}">관리</a>
+        <a class="ghost-btn" th:href="@{/logout}">로그아웃</a>
+    </div>
+</header>
+
+<main class="page-shell">
+    <section class="hero-card">
+        <div>
+            <p class="eyebrow">Available Services</p>
+            <h2>기관 권한에 따라 사용할 수 있는 서비스만 노출됩니다.</h2>
+        </div>
+    </section>
+
+    <section class="service-grid" th:if="${!#lists.isEmpty(services)}">
+        <a class="service-card" th:each="service : ${services}"
+           th:href="@{/launch/{serviceCode}(serviceCode=${service.serviceCode})}">
+            <span class="service-code" th:text="${service.serviceCode}">COUNSELMAN</span>
+            <strong th:text="${service.serviceName}">CounselMan</strong>
+            <p th:text="${service.description}">기관별 상담관리 서비스</p>
+            <span class="service-link">서비스 열기</span>
+        </a>
+    </section>
+
+    <section class="empty-card" th:if="${#lists.isEmpty(services)}">
+        사용 가능한 서비스가 없습니다. 플랫폼 관리자에게 권한을 요청해 주세요.
+    </section>
+</main>
+</body>
+</html>

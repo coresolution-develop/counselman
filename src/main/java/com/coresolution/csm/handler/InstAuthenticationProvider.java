@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -39,12 +40,17 @@ public class InstAuthenticationProvider implements AuthenticationProvider {
         String inst = cs.resolveInst(inputInst);
         if (inst == null)
             throw new BadCredentialsException("유효하지 않은 기관코드입니다.");
+        if (!cs.isInstitutionAvailable(inst))
+            throw new DisabledException("현재 기관은 CounselMan 사용이 중지되었습니다.");
 
         // 이후 enc 비번으로 카운트/정보 조회
         String enc = aes128.encrypt(rawPassword);
         int cnt = cs.loginCount(inst, username, enc);
         if (cnt < 1)
             throw new BadCredentialsException("아이디/비밀번호/기관코드가 올바르지 않습니다.");
+        Userdata info = cs.loadUserInfo(inst, username);
+        if (!cs.isUserAvailable(info))
+            throw new DisabledException("사용 가능한 계정이 아닙니다.");
 
         // 정규화된 inst를 다시 details에 태워둠(세션/후속 로직에서 사용)
         var auth = new UsernamePasswordAuthenticationToken(

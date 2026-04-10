@@ -1,9 +1,11 @@
 package com.coresolution.csm.serivce;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +17,12 @@ public class CsmEmailService {
     @Autowired
     private JavaMailSender mailSender;
 
+    @Value("${spring.mail.host:}")
+    private String mailHost;
+
+    @Value("${spring.mail.username:}")
+    private String mailUsername;
+
     public void sendPasswordResetLink(
             String to,
             String resetLink,
@@ -22,11 +30,23 @@ public class CsmEmailService {
             String userInstitution,
             String userId,
             String instName) {
+        if (!StringUtils.hasText(mailHost)) {
+            log.error("[sendPasswordResetLink] mail host is not configured. to={}, userId={}, inst={}",
+                    to, userId, userInstitution);
+            throw new IllegalStateException("메일 서버가 설정되지 않았습니다.");
+        }
+        if (!StringUtils.hasText(mailUsername)) {
+            log.error("[sendPasswordResetLink] mail username is not configured. to={}, userId={}, inst={}",
+                    to, userId, userInstitution);
+            throw new IllegalStateException("메일 계정이 설정되지 않았습니다.");
+        }
+
         MimeMessage message = mailSender.createMimeMessage();
         try {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setTo(to);
             helper.setSubject("코어솔루션 카운셀맨 시스템의 비밀번호 설정 안내.");
+            helper.setFrom(mailUsername);
 
             String htmlMsg = "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0; padding: 20px; border: 1px solid #ddd;'>"
                     + "<h3 style='color: #333; border-bottom: 1px solid #ddd; padding-bottom: 10px;'>코어솔루션 카운셀맨 시스템</h3>"

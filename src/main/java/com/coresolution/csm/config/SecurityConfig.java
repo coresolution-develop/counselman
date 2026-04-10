@@ -2,6 +2,7 @@ package com.coresolution.csm.config;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,7 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.util.StringUtils;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -23,8 +25,12 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableWebSecurity
 public class SecurityConfig {
 
+        @Value("${mediplat.platform.base-url:http://localhost:8082}")
+        private String mediplatPlatformBaseUrl;
+
         private static final String[] PUBLIC_PATHS = {
                         "/login", "/login/**", "/csm/login", "/csm/login/**",
+                        "/mediplat/sso/entry", "/csm/mediplat/sso/entry",
                         "/findpwd", "/findpwd/**", "/csm/findpwd", "/csm/findpwd/**",
                         "/ResetPwd", "/ResetPwd/**", "/csm/ResetPwd", "/csm/ResetPwd/**",
                         "/api/external/SMSRequest", "/csm/api/external/SMSRequest",
@@ -81,9 +87,21 @@ public class SecurityConfig {
                                 // ★ 폼 로그인 필터가 /login/post를 가로채지 않도록 비활성화
                                 .formLogin(form -> form.disable())
                                 .httpBasic(basic -> basic.disable())
-                                .logout(l -> l.logoutUrl("/logout").logoutSuccessUrl("/login").permitAll());
+                                .logout(l -> l.logoutUrl("/logout")
+                                                .logoutSuccessUrl(resolveMediplatRedirectUrl())
+                                                .permitAll());
                 return http.build();
 
+        }
+
+        private String resolveMediplatRedirectUrl() {
+                String normalized = StringUtils.hasText(mediplatPlatformBaseUrl)
+                                ? mediplatPlatformBaseUrl.trim()
+                                : "http://localhost:8082";
+                while (normalized.endsWith("/")) {
+                        normalized = normalized.substring(0, normalized.length() - 1);
+                }
+                return normalized.isBlank() ? "http://localhost:8082" : normalized;
         }
 
         @Bean

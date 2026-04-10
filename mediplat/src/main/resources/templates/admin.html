@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediPlat Admin</title>
+    <link rel="stylesheet" th:href="@{/css/mediplat.css}">
+</head>
+<body>
+<header class="topbar">
+    <div>
+        <p class="eyebrow">MediPlat Admin</p>
+        <h1>플랫폼 관리</h1>
+    </div>
+    <div class="topbar-actions">
+        <a class="ghost-btn" th:href="@{/services}">서비스 선택</a>
+        <a class="ghost-btn" th:href="@{/logout}">로그아웃</a>
+    </div>
+</header>
+
+<main class="page-shell admin-shell">
+    <div class="message success" th:if="${message != null}" th:text="${message}">완료</div>
+    <div class="message error" th:if="${error != null}" th:text="${error}">오류</div>
+
+    <section class="admin-grid">
+        <div class="admin-card">
+            <div class="section-head">
+                <h2>기관 등록</h2>
+                <p>플랫폼 최고 관리자는 기관만 등록하고 사용 상태를 관리합니다.</p>
+            </div>
+            <form method="post" th:action="@{/admin/institutions}" class="stack-form">
+                <input name="instCode" type="text" placeholder="기관코드" required>
+                <input name="instName" type="text" placeholder="기관명" required>
+                <select name="useYn">
+                    <option value="Y">사용</option>
+                    <option value="N">중지</option>
+                </select>
+                <button type="submit">기관 저장</button>
+            </form>
+            <div class="table-list">
+                <div class="list-row list-head"><span>코드</span><span>기관명</span><span>상태</span></div>
+                <div class="list-row" th:each="institution : ${institutions}">
+                    <span th:text="${institution.instCode}">core</span>
+                    <span th:text="${institution.instName}">MediPlat Platform</span>
+                    <span th:text="${institution.useYn}">Y</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-card admin-card-wide">
+            <div class="section-head">
+                <h2>서비스 등록</h2>
+                <p>연동 서비스의 진입 URL과 기본 이동 경로를 등록합니다.</p>
+            </div>
+            <form method="post" th:action="@{/admin/services}" class="grid-form">
+                <input name="serviceCode" type="text" placeholder="서비스코드" required>
+                <input name="serviceName" type="text" placeholder="서비스명" required>
+                <input name="baseUrl" type="text" placeholder="http://localhost:8081/csm" required>
+                <input name="ssoEntryPath" type="text" placeholder="/mediplat/sso/entry" value="/mediplat/sso/entry">
+                <input name="userTarget" type="text" placeholder="/counsel/list?page=1&perPageNum=10&comment=" required>
+                <input name="adminTarget" type="text" placeholder="/core/admin" required>
+                <input name="description" type="text" placeholder="설명">
+                <input name="displayOrder" type="number" placeholder="순서" value="0">
+                <select name="useYn">
+                    <option value="Y">사용</option>
+                    <option value="N">중지</option>
+                </select>
+                <button type="submit">서비스 저장</button>
+            </form>
+            <div class="table-list">
+                <div class="list-row list-head list-row-service"><span>코드</span><span>이름</span><span>Base URL</span><span>상태</span></div>
+                <div class="list-row list-row-service" th:each="service : ${services}">
+                    <span th:text="${service.serviceCode}">COUNSELMAN</span>
+                    <span th:text="${service.serviceName}">CounselMan</span>
+                    <span th:text="${service.baseUrl}">http://localhost:8081/csm</span>
+                    <span th:text="${service.useYn}">Y</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-card admin-card-wide">
+            <div class="section-head">
+                <h2>기관별 서비스 권한</h2>
+                <p>기관 등록 후 어떤 서비스를 사용할 수 있는지만 지정하면 됩니다.</p>
+            </div>
+            <form method="get" th:action="@{/admin}" class="inline-form">
+                <select name="instCode">
+                    <option th:each="institution : ${institutions}"
+                            th:value="${institution.instCode}"
+                            th:text="${institution.instName + ' (' + institution.instCode + ')'}"
+                            th:selected="${institution.instCode == selectedInstCode}">
+                        기관
+                    </option>
+                </select>
+                <button type="submit">기관 조회</button>
+            </form>
+            <form method="post" th:action="@{/admin/access}" class="stack-form">
+                <input type="hidden" name="instCode" th:value="${selectedInstCode}">
+                <label class="checkbox-row" th:each="service : ${services}">
+                    <input type="checkbox" name="enabledServiceCodes" th:value="${service.serviceCode}"
+                           th:checked="${#lists.contains(enabledServiceCodes, service.serviceCode)}">
+                    <span th:text="${service.serviceName + ' (' + service.serviceCode + ')'}">CounselMan</span>
+                </label>
+                <button type="submit">권한 저장</button>
+            </form>
+        </div>
+    </section>
+</main>
+</body>
+</html>

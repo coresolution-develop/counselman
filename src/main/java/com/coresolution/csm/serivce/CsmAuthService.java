@@ -105,6 +105,31 @@ public class CsmAuthService {
         return cnt == null ? 0 : cnt;
     }
 
+    public boolean isInstitutionAvailable(String inst) {
+        if (inst == null || inst.isBlank()) {
+            return false;
+        }
+        if ("core".equalsIgnoreCase(inst.trim())) {
+            return true;
+        }
+        Instdata instdata = cs.coreInstFindByCode(inst.trim());
+        if (instdata == null) {
+            return true;
+        }
+        return !"n".equalsIgnoreCase(instdata.getId_col_04());
+    }
+
+    public boolean isUserAvailable(Userdata info) {
+        if (info == null) {
+            return false;
+        }
+        if ("n".equalsIgnoreCase(info.getUs_col_07())) {
+            return false;
+        }
+        Integer userStatus = info.getUs_col_09();
+        return userStatus == null || userStatus != 2;
+    }
+
     public List<CounselData> searchCounselData(Criteria cri) {
         return cs.searchCounselData(cri);
     }

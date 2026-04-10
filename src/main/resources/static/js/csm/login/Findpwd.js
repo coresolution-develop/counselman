@@ -69,6 +69,11 @@ document.addEventListener('DOMContentLoaded', function() {
 			error: function (error) {
 				hideSpinner();
 	            console.log('Error:', error);
+				const message = error?.responseJSON?.msg
+					|| error?.responseText
+					|| '비밀번호 변경 요청 중 오류가 발생했습니다.';
+				$('#result').css('color', 'red');
+				$('#result').html(message);
 				
 			}
 		});

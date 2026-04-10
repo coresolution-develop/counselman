@@ -1,4 +1,10 @@
 $(document).ready(function() {
+	const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute("content");
+	const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute("content");
+	if (csrfToken && csrfHeader) {
+		$.ajaxSetup({ headers: { [csrfHeader]: csrfToken } });
+	}
+
 	// 드롭다운 토글
 	$(".drop-down .selected a").click(function(e) {
 		e.preventDefault();

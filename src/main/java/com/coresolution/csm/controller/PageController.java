@@ -54,6 +54,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.stereotype.Controller;
+import org.springframework.util.StringUtils;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -118,6 +119,9 @@ import lombok.extern.slf4j.Slf4j;
 public class PageController {
     @Autowired
     private CsmAuthService cs;
+
+    @Value("${mediplat.platform.base-url:http://localhost:8082}")
+    private String mediplatPlatformBaseUrl;
     @Autowired
     private CsmPasswordResetTokenService tokenService;
     @Autowired
@@ -278,7 +282,17 @@ public class PageController {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         new SecurityContextLogoutHandler().logout(request, response, auth);
         SecurityContextHolder.clearContext();
-        return "redirect:/login";
+        return "redirect:" + resolveMediplatRedirectUrl();
+    }
+
+    private String resolveMediplatRedirectUrl() {
+        String normalized = StringUtils.hasText(mediplatPlatformBaseUrl)
+                ? mediplatPlatformBaseUrl.trim()
+                : "http://localhost:8082";
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized.isBlank() ? "http://localhost:8082" : normalized;
     }
 
     @GetMapping({ "admin", "/admin", "admin/", "/admin/" })
@@ -403,23 +417,7 @@ public class PageController {
         if (!isCoreInst(inst)) {
             return "redirect:/login";
         }
-        Userdata info = ensureUserInfo(session, inst);
-        List<UserdataCs> user = Optional.ofNullable(cs.userSelectCs())
-                .orElse(Collections.emptyList())
-                .stream()
-                .filter(Objects::nonNull)
-                .toList();
-        log.info("coreUserPage user list size={}", user.size());
-        List<Instdata> list = Optional.ofNullable(cs.coreInstSelect())
-                .orElse(Collections.emptyList())
-                .stream()
-                .filter(Objects::nonNull)
-                .toList();
-        model.addAttribute("info", info);
-        model.addAttribute("user", user);
-        model.addAttribute("list", list);
-        model.addAttribute("instCount", user.size());
-        return "csm/core/admin/newuser";
+        return "redirect:/core/admin";
     }
 
     @GetMapping({ "core/setting", "/core/setting" })
@@ -493,15 +491,7 @@ public class PageController {
         if (!isCoreInst(inst)) {
             return "redirect:/login";
         }
-        model.addAttribute("info", ensureUserInfo(session, inst));
-        List<Instdata> list = Optional.ofNullable(cs.coreInstSelect())
-                .orElse(Collections.emptyList())
-                .stream()
-                .filter(Objects::nonNull)
-                .toList();
-        log.info("coreNewUserPopup inst list size={}", list.size());
-        model.addAttribute("list", list);
-        return "csm/core/admin/newuserPopup";
+        return "redirect:/core/admin";
     }
 
     @GetMapping({ "core/modifyinstPopup", "/core/modifyinstPopup" })

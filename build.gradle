@@ -65,7 +65,7 @@ tasks.withType(JavaCompile).configureEach {
 // bootWar 결과물은 프로파일별로 달라지지 않음
 // devWar / prodWar 는 bootWar 결과물을 복사해서 파일명만 바꾸는 편의 태스크
 tasks.register('devWar') {
-	dependsOn 'clean', 'bootWar'
+	dependsOn 'bootWar'
 	group = 'build'
 	description = 'Build WAR for DEV deployment'
 
@@ -81,7 +81,7 @@ tasks.register('devWar') {
 }
 
 tasks.register('prodWar') {
-	dependsOn 'clean', 'bootWar'
+	dependsOn 'bootWar'
 	group = 'build'
 	description = 'Build WAR for PROD deployment'
 

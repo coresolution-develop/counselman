@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}" />
+    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+    <title>병실현황판 관리</title>
+    <link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+    <link rel="stylesheet" th:href="@{/css/reset.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/style.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/admin/style.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/admin/admin.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
+    <style>
+        .rb-admin { padding: 24px 28px 40px; }
+        .rb-card { background:#fff; border:1px solid #dfe7ef; border-radius:14px; padding:20px; margin-bottom:20px; }
+        .rb-card h2 { margin:0 0 14px; font-size:20px; }
+        .rb-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:12px; }
+        .rb-field { display:flex; flex-direction:column; gap:6px; }
+        .rb-field label { font-size:13px; font-weight:700; color:#38506a; }
+        .rb-field input, .rb-field select, .rb-field textarea { width:100%; border:1px solid #c7d5e4; border-radius:10px; padding:10px 12px; font-size:14px; }
+        .rb-field textarea { min-height:120px; resize:vertical; }
+        .rb-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+        .rb-btn { border:none; border-radius:10px; padding:10px 16px; font-size:14px; font-weight:700; cursor:pointer; }
+        .rb-btn-primary { background:#1c6fd1; color:#fff; }
+        .rb-btn-light { background:#eef4fb; color:#1b3d61; }
+        .rb-btn-danger { background:#fef0f0; color:#b42318; }
+        .rb-table-wrap { overflow:auto; border:1px solid #dfe7ef; border-radius:12px; }
+        .rb-table { width:100%; border-collapse:collapse; min-width:1200px; }
+        .rb-table th, .rb-table td { border-bottom:1px solid #edf2f7; padding:10px 12px; text-align:left; font-size:13px; vertical-align:top; }
+        .rb-table th { background:#f8fbfe; position:sticky; top:0; z-index:1; }
+        .rb-row-selected { background:#eef6ff; }
+        .rb-inline { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .rb-preview { max-height:300px; overflow:auto; border:1px solid #dfe7ef; border-radius:12px; }
+        .rb-preview table { width:100%; border-collapse:collapse; }
+        .rb-preview th, .rb-preview td { font-size:12px; border-bottom:1px solid #edf2f7; padding:8px 10px; }
+        .rb-note { color:#667085; font-size:13px; margin-top:10px; line-height:1.6; }
+        @media (max-width: 1200px) { .rb-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+        @media (max-width: 768px) { .rb-grid { grid-template-columns: 1fr; } .rb-admin { padding:16px; } }
+    </style>
+</head>
+<body>
+<div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
+<div th:replace="~{csm/Include/layout :: nav_section2('admin', ${endVar}, ${st}, ${kw})}"></div>
+
+<div class="main rb-admin">
+    <div class="rb-card">
+        <div class="rb-inline" style="justify-content:space-between;">
+            <div>
+                <h2>병실현황판 관리</h2>
+                <p class="rb-note">병실 기준정보, EMR 붙여넣기 가져오기, 업로드 이력을 한 화면에서 관리합니다.</p>
+            </div>
+            <div class="rb-inline">
+                <a class="rb-btn rb-btn-light" th:href="@{/room-board}" target="_blank">현황판 보기</a>
+                <a class="rb-btn rb-btn-light" th:href="@{/admin}">관리자 페이지</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="rb-card">
+        <h2>EMR 데이터 가져오기</h2>
+        <div class="rb-grid">
+            <div class="rb-field">
+                <label for="sourceType">원본 유형</label>
+                <select id="sourceType">
+                    <option value="EXCEL_DETAIL">재원환자상세조회 엑셀</option>
+                    <option value="CLICKSOFT">클릭소프트 병실현황판</option>
+                </select>
+            </div>
+            <div class="rb-field">
+                <label for="snapshotDate">기준일</label>
+                <input id="snapshotDate" type="date">
+            </div>
+            <div class="rb-field">
+                <label for="snapshotTime">기준시간</label>
+                <input id="snapshotTime" type="time">
+            </div>
+            <div class="rb-field">
+                <label>&nbsp;</label>
+                <div class="rb-actions" style="margin-top:0;">
+                    <button type="button" id="previewImportBtn" class="rb-btn rb-btn-light">미리보기</button>
+                    <button type="button" id="saveImportBtn" class="rb-btn rb-btn-primary">가져오기 저장</button>
+                </div>
+            </div>
+        </div>
+        <div class="rb-field" style="margin-top:12px;">
+            <label for="rawText">붙여넣기 데이터</label>
+            <textarea id="rawText" placeholder="EMR에서 복사한 데이터를 그대로 붙여넣으세요."></textarea>
+        </div>
+        <p id="importMessage" class="rb-note"></p>
+        <div class="rb-preview" id="previewWrap" style="display:none;">
+            <table>
+                <thead>
+                <tr>
+                    <th>병동</th>
+                    <th>병실</th>
+                    <th>환자번호</th>
+                    <th>환자명</th>
+                    <th>성별</th>
+                    <th>나이</th>
+                    <th>입원일자</th>
+                    <th>의사</th>
+                    <th>유형</th>
+                    <th>메모</th>
+                </tr>
+                </thead>
+                <tbody id="previewBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="rb-card">
+        <h2>병실 기준정보 설정</h2>
+        <form th:action="@{/admin/room-board/room/save}" method="post" id="roomConfigForm">
+            <input type="hidden" name="id" id="roomConfigId">
+            <div class="rb-grid">
+                <div class="rb-field">
+                    <label for="wardName">병동</label>
+                    <input type="text" name="wardName" id="wardName" required>
+                </div>
+                <div class="rb-field">
+                    <label for="roomName">병실</label>
+                    <input type="text" name="roomName" id="roomName" required>
+                </div>
+                <div class="rb-field">
+                    <label for="startDate">개시일자</label>
+                    <input type="date" name="startDate" id="startDate" required>
+                </div>
+                <div class="rb-field">
+                    <label for="endDate">종료일자</label>
+                    <input type="date" name="endDate" id="endDate" required>
+                </div>
+                <div class="rb-field">
+                    <label for="licensedBeds">허가병상수</label>
+                    <input type="number" name="licensedBeds" id="licensedBeds" min="1" required>
+                </div>
+                <div class="rb-field">
+                    <label for="careType">간병형태</label>
+                    <input type="text" name="careType" id="careType">
+                </div>
+                <div class="rb-field">
+                    <label for="nursingCost">간병비용</label>
+                    <input type="text" name="nursingCost" id="nursingCost">
+                </div>
+                <div class="rb-field">
+                    <label for="useYn">유효여부</label>
+                    <select name="useYn" id="useYn">
+                        <option value="Y">유효</option>
+                        <option value="N">종료</option>
+                    </select>
+                </div>
+                <div class="rb-field">
+                    <label for="statusWalk">거동</label>
+                    <select name="statusWalk" id="statusWalk">
+                        <option value="N">미사용</option>
+                        <option value="Y">사용</option>
+                    </select>
+                </div>
+                <div class="rb-field">
+                    <label for="statusDiaper">기저귀</label>
+                    <select name="statusDiaper" id="statusDiaper">
+                        <option value="N">미사용</option>
+                        <option value="Y">사용</option>
+                    </select>
+                </div>
+                <div class="rb-field">
+                    <label for="statusOxygen">산소</label>
+                    <select name="statusOxygen" id="statusOxygen">
+                        <option value="N">미사용</option>
+                        <option value="Y">사용</option>
+                    </select>
+                </div>
+                <div class="rb-field">
+                    <label for="statusSuction">석션</label>
+                    <select name="statusSuction" id="statusSuction">
+                        <option value="N">미사용</option>
+                        <option value="Y">사용</option>
+                    </select>
+                </div>
+            </div>
+            <div class="rb-field" style="margin-top:12px;">
+                <label for="note">참고내용</label>
+                <textarea name="note" id="note"></textarea>
+            </div>
+            <div class="rb-actions">
+                <button type="submit" class="rb-btn rb-btn-primary">저장</button>
+                <button type="button" class="rb-btn rb-btn-light" id="resetFormBtn">새로 입력</button>
+            </div>
+        </form>
+        <div class="rb-table-wrap" style="margin-top:16px;">
+            <table class="rb-table" id="roomConfigTable">
+                <thead>
+                <tr>
+                    <th>병동</th>
+                    <th>병실</th>
+                    <th>기간</th>
+                    <th>병상수</th>
+                    <th>간병형태</th>
+                    <th>상태구분</th>
+                    <th>비용</th>
+                    <th>참고</th>
+                    <th>유효</th>
+                    <th>처리</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:if="${#lists.isEmpty(roomConfigs)}">
+                    <td colspan="10">등록된 병실 기준정보가 없습니다.</td>
+                </tr>
+                <tr th:each="item : ${roomConfigs}" class="room-config-row"
+                    th:attr="data-id=${item.id},data-ward-name=${item.wardName},data-room-name=${item.roomName},
+                             data-start-date=${item.startDate},data-end-date=${item.endDate},data-licensed-beds=${item.licensedBeds},
+                             data-care-type=${item.careType},data-status-walk=${item.statusWalk},data-status-diaper=${item.statusDiaper},
+                             data-status-oxygen=${item.statusOxygen},data-status-suction=${item.statusSuction},
+                             data-nursing-cost=${item.nursingCost},data-note=${item.note},data-use-yn=${item.useYn}">
+                    <td th:text="${item.wardName}">1병동</td>
+                    <td th:text="${item.roomName}">101호</td>
+                    <td th:text="${item.startDate + ' ~ ' + item.endDate}"></td>
+                    <td th:text="${item.licensedBeds}"></td>
+                    <td th:text="${item.careType}"></td>
+                    <td th:text="${item.statusLabel}"></td>
+                    <td th:text="${item.nursingCost}"></td>
+                    <td th:text="${item.note}"></td>
+                    <td th:text="${item.useYn == 'Y' ? '유효' : '종료'}"></td>
+                    <td>
+                        <form th:action="@{/admin/room-board/room/delete}" method="post" onsubmit="return confirm('삭제하시겠습니까?');">
+                            <input type="hidden" name="id" th:value="${item.id}">
+                            <button type="submit" class="rb-btn rb-btn-danger" style="padding:6px 10px;">삭제</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="rb-card">
+        <h2>업로드 이력</h2>
+        <div class="rb-table-wrap">
+            <table class="rb-table">
+                <thead>
+                <tr>
+                    <th>기준일</th>
+                    <th>기준시간</th>
+                    <th>원본유형</th>
+                    <th>업로드 사용자</th>
+                    <th>업로드시각</th>
+                    <th>상태</th>
+                    <th>메시지</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:if="${#lists.isEmpty(snapshotHistory)}">
+                    <td colspan="7">업로드 이력이 없습니다.</td>
+                </tr>
+                <tr th:each="snap : ${snapshotHistory}">
+                    <td th:text="${snap.snapshotDate}"></td>
+                    <td th:text="${snap.snapshotTime}"></td>
+                    <td th:text="${snap.sourceType}"></td>
+                    <td th:text="${snap.uploadedBy}"></td>
+                    <td th:text="${snap.uploadedAt}"></td>
+                    <td th:text="${snap.parseStatus}"></td>
+                    <td th:text="${snap.parseMessage}"></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script th:replace="~{csm/Include/layout :: scripts}"></script>
+<script th:src="@{/js/csm/admin/roomBoardAdmin.js}"></script>
+</body>
+</html>
