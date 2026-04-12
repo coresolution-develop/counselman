@@ -23,6 +23,18 @@ document.addEventListener('DOMContentLoaded', function () {
   const admissionPledgeTextInput = document.getElementById('admission_pledge_text');
   const admissionSignatureInput = document.getElementById('admission_signature_data');
   const admissionPageInkInput = document.getElementById('admission_page_ink_data');
+  const admissionGuardianNameInput = document.getElementById('admission_guardian_name');
+  const admissionGuardianRelationInput = document.getElementById('admission_guardian_relation');
+  const admissionGuardianAddrInput = document.getElementById('admission_guardian_addr');
+  const admissionGuardianPhoneInput = document.getElementById('admission_guardian_phone');
+  const admissionGuardianCostYnInput = document.getElementById('admission_guardian_cost_yn');
+  const admissionSubGuardianNameInput = document.getElementById('admission_sub_guardian_name');
+  const admissionSubGuardianRelationInput = document.getElementById('admission_sub_guardian_relation');
+  const admissionSubGuardianAddrInput = document.getElementById('admission_sub_guardian_addr');
+  const admissionSubGuardianPhoneInput = document.getElementById('admission_sub_guardian_phone');
+  const admissionSubGuardianCostYnInput = document.getElementById('admission_sub_guardian_cost_yn');
+  const clovaSttAvailable = (document.getElementById('clova_stt_available')?.value || 'N') === 'Y';
+  const openAiSummaryAvailable = (document.getElementById('openai_summary_available')?.value || 'N') === 'Y';
 
   const startRecordingBtn = document.getElementById('startRecordingBtn');
   const stopRecordingBtn = document.getElementById('stopRecordingBtn');
@@ -92,28 +104,41 @@ document.addEventListener('DOMContentLoaded', function () {
     return /^data:image\/png;base64,/.test(String(value || '').trim());
   }
 
-  function extractPrimaryAdmissionSignature(raw) {
+  function extractAdmissionSignatureBundle(raw) {
     const text = String(raw || '').trim();
-    if (!text) return '';
-    if (isPngDataUrl(text)) return text;
+    if (!text) return { primary: '', guardian: '', sub_guardian: '' };
+    if (isPngDataUrl(text)) {
+      return { primary: text, guardian: '', sub_guardian: '' };
+    }
     try {
       const parsed = JSON.parse(text);
-      if (!parsed || typeof parsed !== 'object') return '';
-      const candidates = [
-        parsed.primary,
-        parsed.main,
-        parsed.signer,
-        parsed.final_signature,
-        parsed.signature
-      ];
-      for (const candidate of candidates) {
-        const data = String(candidate || '').trim();
-        if (isPngDataUrl(data)) return data;
-      }
-      return '';
+      if (!parsed || typeof parsed !== 'object') return { primary: '', guardian: '', sub_guardian: '' };
+      const readFirst = (...candidates) => {
+        for (const candidate of candidates) {
+          const data = String(candidate || '').trim();
+          if (isPngDataUrl(data)) return data;
+        }
+        return '';
+      };
+      return {
+        primary: readFirst(parsed.primary, parsed.main, parsed.signer, parsed.final_signature, parsed.signature),
+        guardian: readFirst(parsed.guardian, parsed.guardian_signature, parsed.primary_guardian),
+        sub_guardian: readFirst(parsed.sub_guardian, parsed.subGuardian, parsed.sub_guardian_signature, parsed.secondary_guardian)
+      };
     } catch (_) {
-      return '';
+      return { primary: '', guardian: '', sub_guardian: '' };
     }
+  }
+  function extractPrimaryAdmissionSignature(raw) {
+    return extractAdmissionSignatureBundle(raw).primary;
+  }
+  function readCurrentGuardianEntry(index) {
+    const entry = Array.from(document.querySelectorAll('.guardian-entry'))[index];
+    return {
+      name: entry?.querySelector("input[name='cs_col_13[]']")?.value?.trim() || '',
+      relation: entry?.querySelector("input[name='cs_col_14[]']")?.value?.trim() || '',
+      phone: entry?.querySelector("input[name='cs_col_15[]']")?.value?.trim() || ''
+    };
   }
 
   function isAdmissionPledgeComplete() {
@@ -168,6 +193,16 @@ document.addEventListener('DOMContentLoaded', function () {
     if (admissionPledgeTextInput) admissionPledgeTextInput.value = String(payload.pledge_text || '').trim();
     if (admissionSignatureInput) admissionSignatureInput.value = String(payload.signature_data || '').trim();
     if (admissionPageInkInput) admissionPageInkInput.value = String(payload.page_ink_data || '').trim();
+    if (admissionGuardianNameInput) admissionGuardianNameInput.value = String(payload.guardian_name || '').trim();
+    if (admissionGuardianRelationInput) admissionGuardianRelationInput.value = String(payload.guardian_relation || '').trim();
+    if (admissionGuardianAddrInput) admissionGuardianAddrInput.value = String(payload.guardian_addr || '').trim();
+    if (admissionGuardianPhoneInput) admissionGuardianPhoneInput.value = String(payload.guardian_phone || '').trim();
+    if (admissionGuardianCostYnInput) admissionGuardianCostYnInput.value = payload.guardian_cost_yn === 'Y' ? 'Y' : 'N';
+    if (admissionSubGuardianNameInput) admissionSubGuardianNameInput.value = String(payload.sub_guardian_name || '').trim();
+    if (admissionSubGuardianRelationInput) admissionSubGuardianRelationInput.value = String(payload.sub_guardian_relation || '').trim();
+    if (admissionSubGuardianAddrInput) admissionSubGuardianAddrInput.value = String(payload.sub_guardian_addr || '').trim();
+    if (admissionSubGuardianPhoneInput) admissionSubGuardianPhoneInput.value = String(payload.sub_guardian_phone || '').trim();
+    if (admissionSubGuardianCostYnInput) admissionSubGuardianCostYnInput.value = payload.sub_guardian_cost_yn === 'Y' ? 'Y' : 'N';
     setAdmissionPledgeStatus();
   }
 
@@ -525,14 +560,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const documentNo = printValue('cs_idx') || '-';
     const issuedAt = new Date().toLocaleString('ko-KR', { hour12: false });
     const admissionRequired = printValue('admission_pledge_required') === 'Y';
-    const admissionSignature = printValue('admission_signature_data');
-    const admissionSignaturePreview = extractPrimaryAdmissionSignature(admissionSignature);
     const admissionPageInk = printValue('admission_page_ink_data');
 
     const readGuardianEntry = (entry) => ({
       name: entry?.querySelector("input[name='cs_col_13[]']")?.value?.trim() || '',
       relation: entry?.querySelector("input[name='cs_col_14[]']")?.value?.trim() || '',
-      phone: entry?.querySelector("input[name='cs_col_15[]']")?.value?.trim() || ''
+      phone: entry?.querySelector("input[name='cs_col_15[]']")?.value?.trim() || '',
+      addr: '',
+      costYn: false
     });
 
     const renderCheckedAttr = (checked) => (checked ? ' checked' : '');
@@ -571,7 +606,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <tr style="height: 56px;">
               <td style="border: 1px solid #dadada;" class="normal">주 소</td>
               <td colspan="3" style="text-align: left; border: 1px solid #dadada; border-right: inherit;">
-                <input class="light ap-address-input" style="margin-left: 20px; width:640px;" type="text" readonly value=""/>
+                <input class="light ap-address-input" style="margin-left: 20px; width:640px;" type="text" readonly value="${renderValueAttr(data.addr)}"/>
               </td>
             </tr>
             <tr style="height: 56px;">
@@ -581,7 +616,7 @@ document.addEventListener('DOMContentLoaded', function () {
               </td>
               <td colspan="2" style="text-align: right;">
                 <div class="checkbox-wrapper-13" style="margin-right: 21px;">
-                  <input type="checkbox" class="normal" disabled>
+                  <input type="checkbox" class="normal" disabled${renderCheckedAttr(!!data.costYn)}>
                   <label>비용안내</label>
                 </div>
               </td>
@@ -592,16 +627,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const buildAdmissionPledgePrintMarkup = () => {
       const guardians = Array.from(document.querySelectorAll('.guardian-entry'));
-      const mainGuardian = readGuardianEntry(guardians[0]);
-      const subGuardian = readGuardianEntry(guardians[1]);
+      const mainGuardianFallback = readGuardianEntry(guardians[0]);
+      const subGuardianFallback = readGuardianEntry(guardians[1]);
+      const mainGuardian = {
+        name: printValue('admission_guardian_name') || mainGuardianFallback.name,
+        relation: printValue('admission_guardian_relation') || mainGuardianFallback.relation,
+        addr: printValue('admission_guardian_addr'),
+        phone: printValue('admission_guardian_phone') || mainGuardianFallback.phone,
+        costYn: printValue('admission_guardian_cost_yn') === 'Y'
+      };
+      const subGuardian = {
+        name: printValue('admission_sub_guardian_name') || subGuardianFallback.name,
+        relation: printValue('admission_sub_guardian_relation') || subGuardianFallback.relation,
+        addr: printValue('admission_sub_guardian_addr'),
+        phone: printValue('admission_sub_guardian_phone') || subGuardianFallback.phone,
+        costYn: printValue('admission_sub_guardian_cost_yn') === 'Y'
+      };
       const gender = printSelectedText('cs_col_02');
       const signerName = printValue('admission_signer_name') || printValue('cs_col_01');
       const signerRelation = printValue('admission_signer_relation') || '본인';
       const signedAt = printValue('admission_signed_at');
       const backgroundUrl = `${APP_CTX}/img/background4.png`;
-      const primarySignatureImg = admissionSignaturePreview
-        ? `<img class="ap-sign-image ap-sign-image-final" src="${escapeHtml(admissionSignaturePreview)}" alt="신청인 서명">`
-        : '<img class="ap-sign-image ap-sign-image-final" alt="" style="display:none;">';
+      const primarySignatureImg = '<img class="ap-sign-image ap-sign-image-final" alt="" style="display:none;">';
       const pageInkMarkup = admissionPageInk
         ? `<img alt="문서 전체 필기 인쇄 레이어" src="${escapeHtml(admissionPageInk)}" style="position:absolute; inset:0; left:-157px; width:1280px; height:100%; object-fit:fill; z-index:19; pointer-events:none; opacity:1; visibility:visible;">`
         : '';
@@ -1314,16 +1361,22 @@ document.addEventListener('DOMContentLoaded', function () {
     const summary = String(item?.summaryText || '').trim();
     const transcript = String(item?.transcript || '').trim();
     const mode = audioPreviewMode(item);
+    const mimeType = String(item?.mimeType || '').trim().toLowerCase();
+    const canRetry = clovaSttAvailable && !mimeType.includes('webm');
     const helperMessage = transcript
-      ? '원문은 저장되어 있습니다. 필요할 때만 요약을 생성합니다.'
-      : '텍스트 재시도 후 요약을 생성할 수 있습니다.';
+      ? (openAiSummaryAvailable ? '원문은 저장되어 있습니다. 필요할 때만 요약을 생성합니다.' : '원문은 저장되어 있습니다.')
+      : (!clovaSttAvailable
+        ? '음성 전사 설정이 없어 텍스트 재시도를 사용할 수 없습니다.'
+        : (canRetry
+          ? '텍스트 재시도 후 요약을 생성할 수 있습니다.'
+          : '이 녹음은 webm 포맷이라 텍스트 재시도를 지원하지 않습니다.'));
 
     return `
       <div class="counsel-preview-card" data-view="${escapeHtml(mode)}">
         <div class="counsel-preview-toolbar">
           ${summary ? `<button type="button" class="counsel-preview-toggle" data-view-target="summary">요약 보기</button>` : ''}
           ${transcript ? `<button type="button" class="counsel-preview-toggle" data-view-target="source">원문 보기</button>` : ''}
-          ${transcript && !summary ? `<button type="button" class="counsel-preview-generate audio-record-summary" data-audio-id="${escapeHtml(item.id)}">요약 생성</button>` : ''}
+          ${transcript && !summary && openAiSummaryAvailable ? `<button type="button" class="counsel-preview-generate audio-record-summary" data-audio-id="${escapeHtml(item.id)}">요약 생성</button>` : ''}
         </div>
         ${summary ? `<div class="counsel-preview-body counsel-preview-summary">${escapeHtml(summary)}</div>` : ''}
         ${transcript ? `<div class="counsel-preview-body counsel-preview-source">${escapeHtml(transcript)}</div>` : ''}
@@ -1339,6 +1392,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function generateCounselSummary() {
     if (!counselContentInput) return;
+    if (!openAiSummaryAvailable) {
+      setRecordingStatus('OpenAI API 키 설정 후 상담 요약을 사용할 수 있습니다.', true);
+      return;
+    }
     if (isRecording) {
       setRecordingStatus('녹음 중에는 요약을 생성할 수 없습니다.', true);
       return;
@@ -1463,12 +1520,14 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       audioRecordListEl.innerHTML = list.map((item) => {
         const transcript = String(item.transcript || '').trim();
+        const mimeType = String(item.mimeType || '').trim().toLowerCase();
+        const canRetry = clovaSttAvailable && !mimeType.includes('webm');
         return `
           <div class="audio-record-item" data-audio-id="${escapeHtml(item.id)}">
             <div class="audio-record-meta">
               <div class="audio-record-name">${escapeHtml(item.originalFilename || `record-${item.id}`)}</div>
               <div class="audio-record-actions">
-                ${!transcript ? `<button type="button" class="audio-record-retry" data-audio-id="${escapeHtml(item.id)}">텍스트 재시도</button>` : ''}
+                ${!transcript && canRetry ? `<button type="button" class="audio-record-retry" data-audio-id="${escapeHtml(item.id)}">텍스트 재시도</button>` : ''}
                 <button type="button" class="audio-record-delete" data-audio-id="${escapeHtml(item.id)}">삭제</button>
               </div>
             </div>
@@ -1502,6 +1561,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function retryTranscription(audioId, retryBtn) {
     if (!audioId) return;
+    if (!clovaSttAvailable) {
+      setRecordingStatus('클로바 STT 설정 후 텍스트 재시도를 사용할 수 있습니다.', true);
+      return;
+    }
     if (retryBtn) {
       retryBtn.disabled = true;
       retryBtn.textContent = '재시도 중...';
@@ -1549,6 +1612,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function generateAudioSummary(audioId, summaryBtn) {
     if (!audioId) return;
+    if (!openAiSummaryAvailable) {
+      setRecordingStatus('OpenAI API 키 설정 후 녹취 요약을 사용할 수 있습니다.', true);
+      return;
+    }
     if (summaryBtn) {
       summaryBtn.disabled = true;
       summaryBtn.textContent = '요약 중...';
@@ -1828,21 +1895,32 @@ document.addEventListener('DOMContentLoaded', function () {
     try {
       mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const options = {};
-      const candidates = [
+      const preferredCandidates = [
         'audio/mp4',
         'audio/ogg;codecs=opus',
         'audio/ogg',
-        'audio/wav',
+        'audio/wav'
+      ];
+      const fallbackCandidates = [
         'audio/webm;codecs=opus',
         'audio/webm'
       ];
-      const matchedType = candidates.find((type) => {
+      let matchedType = preferredCandidates.find((type) => {
         try {
           return MediaRecorder.isTypeSupported(type);
         } catch (_) {
           return false;
         }
       });
+      if (!matchedType) {
+        matchedType = fallbackCandidates.find((type) => {
+          try {
+            return MediaRecorder.isTypeSupported(type);
+          } catch (_) {
+            return false;
+          }
+        });
+      }
       if (matchedType) {
         options.mimeType = matchedType;
       }
@@ -1890,7 +1968,12 @@ document.addEventListener('DOMContentLoaded', function () {
       startSpeechRecognition();
       startRecordingBtn.disabled = true;
       stopRecordingBtn.disabled = false;
-      setRecordingStatus('녹음 중...');
+      const recordingMimeType = String(mediaRecorder.mimeType || matchedType || '').trim().toLowerCase();
+      if (recordingMimeType.includes('webm')) {
+        setRecordingStatus('이 브라우저는 webm 녹음만 지원해 텍스트 재시도는 제한됩니다.', true);
+      } else {
+        setRecordingStatus('녹음 중...');
+      }
     } catch (e) {
       setRecordingStatus('마이크 권한이 필요합니다.', true);
       if (mediaStream) {
@@ -1991,6 +2074,10 @@ document.addEventListener('DOMContentLoaded', function () {
   if (admissionPledgeTextInput && !String(admissionPledgeTextInput.value || '').trim()) {
     admissionPledgeTextInput.value = defaultAdmissionPledgeText;
   }
+  if (generateSummaryBtn && !openAiSummaryAvailable) {
+    generateSummaryBtn.disabled = true;
+    generateSummaryBtn.title = 'OpenAI API 키 설정 후 사용 가능합니다.';
+  }
 
   const pendingPledge = sessionStorage.getItem('csm-admission-pledge-return');
   if (pendingPledge) {
@@ -2028,11 +2115,23 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       const draftKey = `csm-admission-pledge-draft-${Date.now()}`;
+      const currentGuardian = readCurrentGuardianEntry(0);
+      const currentSubGuardian = readCurrentGuardianEntry(1);
       const draftPayload = {
         cs_idx: csIdx != null && csIdx > 0 ? csIdx : 0,
         agreed_yn: admissionAgreedYnInput?.value || 'N',
         signer_name: admissionSignerNameInput?.value || '',
         signer_relation: admissionSignerRelationInput?.value || '',
+        guardian_name: admissionGuardianNameInput?.value || currentGuardian.name,
+        guardian_relation: admissionGuardianRelationInput?.value || currentGuardian.relation,
+        guardian_addr: admissionGuardianAddrInput?.value || '',
+        guardian_phone: admissionGuardianPhoneInput?.value || currentGuardian.phone,
+        guardian_cost_yn: admissionGuardianCostYnInput?.value || 'N',
+        sub_guardian_name: admissionSubGuardianNameInput?.value || currentSubGuardian.name,
+        sub_guardian_relation: admissionSubGuardianRelationInput?.value || currentSubGuardian.relation,
+        sub_guardian_addr: admissionSubGuardianAddrInput?.value || '',
+        sub_guardian_phone: admissionSubGuardianPhoneInput?.value || currentSubGuardian.phone,
+        sub_guardian_cost_yn: admissionSubGuardianCostYnInput?.value || 'N',
         signed_at: admissionSignedAtInput?.value || '',
         pledge_text: admissionPledgeTextInput?.value || defaultAdmissionPledgeText,
         signature_data: admissionSignatureInput?.value || '',
@@ -2112,7 +2211,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
   }
-  if (generateSummaryBtn) {
+  if (generateSummaryBtn && openAiSummaryAvailable) {
     generateSummaryBtn.addEventListener('click', generateCounselSummary);
   }
 

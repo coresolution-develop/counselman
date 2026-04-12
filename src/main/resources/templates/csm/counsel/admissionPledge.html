@@ -210,11 +210,13 @@
                         <td class="normal" rowspan="3" style="width:65px; text-align: center; background-color:#fafafa; border: 1px solid #c7c7c7;">주<br>보<br>호<br>자</td>
                         <td class="normal" style="position: relative; width: 170px; border: 1px solid #dadada; border-top: inherit;">성 명</td>
                         <td style="width:350px; text-align: left; border: 1px solid #dadada; border-top: inherit;">
-                            <input class="light ap-guardian-name-input" id="ap_guardian_name" style="margin-left: 20px; width:260px;" type="text"/>
+                            <input class="light ap-guardian-name-input" id="ap_guardian_name" style="margin-left: 20px; width:260px;" type="text"
+                                   th:value="${admissionPledge != null and admissionPledge['guardian_name'] != null ? admissionPledge['guardian_name'] : ''}"/>
                         </td>
                         <td class="normal ap-relation-cell" style="border: 1px solid #dadada; border-top: inherit;">
                             <span class="ap-relation-label">(관계 :</span>
-                            <input class="light ap-relation-input" id="ap_guardian_relation" type="text"/>
+                            <input class="light ap-relation-input" id="ap_guardian_relation" type="text"
+                                   th:value="${admissionPledge != null and admissionPledge['guardian_relation'] != null ? admissionPledge['guardian_relation'] : ''}"/>
                             <span class="ap-relation-label">)</span>
                         </td>
                         <td class="ap-sign-cell">
@@ -225,17 +227,20 @@
                     <tr style="height: 56px;">
                         <td style="border: 1px solid #dadada;" class="normal">주 소</td>
                         <td colspan="3" style="text-align: left; border: 1px solid #dadada; border-right: inherit;">
-                            <input class="light ap-address-input" id="ap_guardian_addr" style="margin-left: 20px; width:640px;" type="text"/>
+                            <input class="light ap-address-input" id="ap_guardian_addr" style="margin-left: 20px; width:640px;" type="text"
+                                   th:value="${admissionPledge != null and admissionPledge['guardian_addr'] != null ? admissionPledge['guardian_addr'] : ''}"/>
                         </td>
                     </tr>
                     <tr style="height: 56px;">
                         <td style="border: 1px solid #dadada; border-left: inherit; border-bottom: inherit;" class="normal">휴대폰 번호</td>
                         <td style="text-align: left;">
-                            <input class="light ap-phone-input" id="ap_guardian_phone" type="text" style="margin-left: 20px;" th:value="${phone}"/>
+                            <input class="light ap-phone-input" id="ap_guardian_phone" type="text" style="margin-left: 20px;"
+                                   th:value="${admissionPledge != null and admissionPledge['guardian_phone'] != null and !#strings.isEmpty(admissionPledge['guardian_phone']) ? admissionPledge['guardian_phone'] : phone}"/>
                         </td>
                         <td colspan="2" style="text-align: right;">
                             <div class="checkbox-wrapper-13" style="margin-right: 21px;">
-                                <input id="ap_guardian_cost" type="checkbox" class="normal" value="주보호자 비용안내">
+                                <input id="ap_guardian_cost" type="checkbox" class="normal" value="주보호자 비용안내"
+                                       th:checked="${admissionPledge != null and admissionPledge['guardian_cost_yn'] == 'Y'}">
                                 <label for="ap_guardian_cost">비용안내</label>
                             </div>
                         </td>
@@ -256,11 +261,13 @@
                         <td rowspan="3" style="width:65px; background-color:#fafafa; text-align: center; border: 1px solid #c7c7c7;">부<br>보<br>호<br>자</td>
                         <td style="position: relative; width: 170px; border: 1px solid #dadada; border-top: inherit;">성 명</td>
                         <td style="width: 350px; text-align: left; border: 1px solid #dadada; border-top: inherit;">
-                            <input class="light ap-guardian-name-input" id="ap_sub_guardian_name" style="margin-left: 20px; width:260px;" type="text"/>
+                            <input class="light ap-guardian-name-input" id="ap_sub_guardian_name" style="margin-left: 20px; width:260px;" type="text"
+                                   th:value="${admissionPledge != null and admissionPledge['sub_guardian_name'] != null ? admissionPledge['sub_guardian_name'] : ''}"/>
                         </td>
                         <td class="ap-relation-cell" style="border: 1px solid #dadada; border-top: inherit;">
                             <span class="ap-relation-label">(관계 :</span>
-                            <input class="light ap-relation-input" id="ap_sub_guardian_relation" type="text"/>
+                            <input class="light ap-relation-input" id="ap_sub_guardian_relation" type="text"
+                                   th:value="${admissionPledge != null and admissionPledge['sub_guardian_relation'] != null ? admissionPledge['sub_guardian_relation'] : ''}"/>
                             <span class="ap-relation-label">)</span>
                         </td>
                         <td class="ap-sign-cell">
@@ -271,17 +278,20 @@
                     <tr style="height: 56px;" class="normal">
                         <td style="border: 1px solid #dadada;">주 소 </td>
                         <td colspan="3" style="text-align: left; border: 1px solid #dadada; border-right: inherit;">
-                            <input class="light ap-address-input" id="ap_sub_guardian_addr" style="margin-left: 20px; width:640px;" type="text"/>
+                            <input class="light ap-address-input" id="ap_sub_guardian_addr" style="margin-left: 20px; width:640px;" type="text"
+                                   th:value="${admissionPledge != null and admissionPledge['sub_guardian_addr'] != null ? admissionPledge['sub_guardian_addr'] : ''}"/>
                         </td>
                     </tr>
                     <tr style="height: 56px;" class="normal">
                         <td style="border: 1px solid #dadada; border-left: inherit; border-bottom: inherit;">휴대폰 번호</td>
                         <td style="text-align: left;">
-                            <input class="light ap-phone-input" id="ap_sub_guardian_phone" type="text" style="margin-left: 20px;"/>
+                            <input class="light ap-phone-input" id="ap_sub_guardian_phone" type="text" style="margin-left: 20px;"
+                                   th:value="${admissionPledge != null and admissionPledge['sub_guardian_phone'] != null ? admissionPledge['sub_guardian_phone'] : ''}"/>
                         </td>
                         <td colspan="2" style="text-align: right;">
                             <div class="checkbox-wrapper-13" style="margin-right: 21px;">
-                                <input id="ap_sub_guardian_cost" type="checkbox" class="normal" value="부보호자 비용안내">
+                                <input id="ap_sub_guardian_cost" type="checkbox" class="normal" value="부보호자 비용안내"
+                                       th:checked="${admissionPledge != null and admissionPledge['sub_guardian_cost_yn'] == 'Y'}">
                                 <label for="ap_sub_guardian_cost">비용안내</label>
                             </div>
                         </td>

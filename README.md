@@ -54,6 +54,7 @@ git pull origin main
 - `spring.datasource.url`
 - `spring.datasource.username`
 - `spring.datasource.password`
+- `MEDIPLAT_DATASOURCE_*`
 - `login.aes-key`
 - `mediplat.sso.shared-secret`
 - `platform.counselman.datasource.*`
@@ -182,6 +183,7 @@ curl -I http://127.0.0.1:8082/login
 
 ## 12. 참고 사항
 
-- `mediplat/mediplat/data/` 아래 H2 파일은 런타임 생성 데이터이며 Git에 포함하지 않습니다.
+- `mediplat` 플랫폼 설정 데이터는 기본적으로 공유 MySQL의 `mp_*` 테이블에 저장됩니다.
+- 다른 저장소를 쓰고 싶으면 `MEDIPLAT_DATASOURCE_URL`, `MEDIPLAT_DATASOURCE_USERNAME`, `MEDIPLAT_DATASOURCE_PASSWORD`로 분리할 수 있습니다.
 - 서버용 설정(`nginx`, `systemd`, `Tomcat`, `SSL 인증서`)은 로컬 실행에 포함되지 않습니다.
 - 다른 PC에서 실행 시에도 DB 접속 정보와 SSO secret 값만 맞으면 동일하게 사용할 수 있습니다.

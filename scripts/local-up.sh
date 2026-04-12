@@ -8,6 +8,33 @@ MEDIPLAT_PORT="${MEDIPLAT_PORT:-8082}"
 CSM_PID=""
 MEDIPLAT_PID=""
 
+ensure_java17() {
+  local java_home_candidate=""
+
+  if [[ -n "${JAVA_HOME:-}" ]] && [[ -x "${JAVA_HOME}/bin/java" ]]; then
+    local current_major
+    current_major="$("${JAVA_HOME}/bin/java" -version 2>&1 | awk -F '"' '/version/ {print $2}' | cut -d. -f1)"
+    if [[ "${current_major}" == "17" || "${current_major}" == "18" || "${current_major}" == "19" || "${current_major}" == "20" || "${current_major}" == "21" ]]; then
+      export PATH="${JAVA_HOME}/bin:${PATH}"
+      return
+    fi
+  fi
+
+  if [[ -d "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home" ]]; then
+    java_home_candidate="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+  elif command -v /usr/libexec/java_home >/dev/null 2>&1; then
+    java_home_candidate="$(/usr/libexec/java_home -v 17 2>/dev/null || true)"
+  fi
+
+  if [[ -z "${java_home_candidate}" || ! -x "${java_home_candidate}/bin/java" ]]; then
+    echo "[java] Java 17 not found. Install OpenJDK 17 first."
+    exit 1
+  fi
+
+  export JAVA_HOME="${java_home_candidate}"
+  export PATH="${JAVA_HOME}/bin:${PATH}"
+}
+
 check_port() {
   local port="$1"
   local name="$2"
@@ -71,12 +98,14 @@ monitor_processes() {
 
 trap cleanup EXIT INT TERM
 
+ensure_java17
 check_port "${CSM_PORT}" "csm"
 check_port "${MEDIPLAT_PORT}" "mediplat"
 
 echo "Starting local services..."
 echo "- CounselMan : http://localhost:${CSM_PORT}/csm/login"
 echo "- MediPlat   : http://localhost:${MEDIPLAT_PORT}/login"
+echo "- JAVA_HOME  : ${JAVA_HOME}"
 
 start_csm
 start_mediplat

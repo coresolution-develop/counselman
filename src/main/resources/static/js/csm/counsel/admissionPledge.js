@@ -12,6 +12,16 @@
   const signedAtInput = document.getElementById('ap_signed_at');
   const signedAtView = document.getElementById('ap_signed_at_view');
   const patientNameInput = document.getElementById('ap_patient_name');
+  const guardianNameInput = document.getElementById('ap_guardian_name');
+  const guardianRelationInput = document.getElementById('ap_guardian_relation');
+  const guardianAddrInput = document.getElementById('ap_guardian_addr');
+  const guardianPhoneInput = document.getElementById('ap_guardian_phone');
+  const guardianCostInput = document.getElementById('ap_guardian_cost');
+  const subGuardianNameInput = document.getElementById('ap_sub_guardian_name');
+  const subGuardianRelationInput = document.getElementById('ap_sub_guardian_relation');
+  const subGuardianAddrInput = document.getElementById('ap_sub_guardian_addr');
+  const subGuardianPhoneInput = document.getElementById('ap_sub_guardian_phone');
+  const subGuardianCostInput = document.getElementById('ap_sub_guardian_cost');
 
   const signatureInput = document.getElementById('ap_signature_data');
   const clearSignatureBtn = document.getElementById('ap_clear_signature');
@@ -590,6 +600,17 @@
     const signerRelation = String(payload.signer_relation || '').trim();
     if (signerRelation && signerRelationInput) signerRelationInput.value = signerRelation;
 
+    if (guardianNameInput) guardianNameInput.value = String(payload.guardian_name || '').trim();
+    if (guardianRelationInput) guardianRelationInput.value = String(payload.guardian_relation || '').trim();
+    if (guardianAddrInput) guardianAddrInput.value = String(payload.guardian_addr || '').trim();
+    if (guardianPhoneInput) guardianPhoneInput.value = String(payload.guardian_phone || '').trim();
+    if (guardianCostInput) guardianCostInput.checked = String(payload.guardian_cost_yn || '').trim() === 'Y';
+    if (subGuardianNameInput) subGuardianNameInput.value = String(payload.sub_guardian_name || '').trim();
+    if (subGuardianRelationInput) subGuardianRelationInput.value = String(payload.sub_guardian_relation || '').trim();
+    if (subGuardianAddrInput) subGuardianAddrInput.value = String(payload.sub_guardian_addr || '').trim();
+    if (subGuardianPhoneInput) subGuardianPhoneInput.value = String(payload.sub_guardian_phone || '').trim();
+    if (subGuardianCostInput) subGuardianCostInput.checked = String(payload.sub_guardian_cost_yn || '').trim() === 'Y';
+
     const signedAt = String(payload.signed_at || '').trim();
     if (signedAt && signedAtInput) {
       signedAtInput.value = signedAt;
@@ -725,6 +746,16 @@
   function buildPayload() {
     const signerName = String(signerNameInput?.value || '').trim() || String(patientNameInput?.value || '').trim();
     const signerRelation = String(signerRelationInput?.value || '').trim() || '본인';
+    const guardianName = String(guardianNameInput?.value || '').trim();
+    const guardianRelation = String(guardianRelationInput?.value || '').trim();
+    const guardianAddr = String(guardianAddrInput?.value || '').trim();
+    const guardianPhone = String(guardianPhoneInput?.value || '').trim();
+    const guardianCostYn = guardianCostInput?.checked ? 'Y' : 'N';
+    const subGuardianName = String(subGuardianNameInput?.value || '').trim();
+    const subGuardianRelation = String(subGuardianRelationInput?.value || '').trim();
+    const subGuardianAddr = String(subGuardianAddrInput?.value || '').trim();
+    const subGuardianPhone = String(subGuardianPhoneInput?.value || '').trim();
+    const subGuardianCostYn = subGuardianCostInput?.checked ? 'Y' : 'N';
     const signedAt = String(signedAtInput?.value || '').trim() || nowDateTime();
     const pledgeText = String(pledgeTextInput?.value || '').trim() || defaultPledgeText;
     const csIdxValue = /^\d+$/.test(String(bootstrap.csIdx || '').trim()) ? Number(bootstrap.csIdx) : 0;
@@ -742,6 +773,16 @@
       agreed_yn: agreeCheckbox && agreeCheckbox.checked ? 'Y' : 'N',
       signer_name: signerName,
       signer_relation: signerRelation,
+      guardian_name: guardianName,
+      guardian_relation: guardianRelation,
+      guardian_addr: guardianAddr,
+      guardian_phone: guardianPhone,
+      guardian_cost_yn: guardianCostYn,
+      sub_guardian_name: subGuardianName,
+      sub_guardian_relation: subGuardianRelation,
+      sub_guardian_addr: subGuardianAddr,
+      sub_guardian_phone: subGuardianPhone,
+      sub_guardian_cost_yn: subGuardianCostYn,
       signed_at: signedAt,
       pledge_text: pledgeText,
       signature_data: String(signatureInput.value || '').trim(),

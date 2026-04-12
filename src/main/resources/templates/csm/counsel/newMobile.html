@@ -44,6 +44,8 @@
             <input type="hidden" id="audio_temp_key" name="audio_temp_key">
             <input type="hidden" id="file_temp_key" name="file_temp_key">
             <input type="hidden" id="module_admission_pledge_enabled" th:value="${moduleAdmissionPledgeEnabled ? 'Y' : 'N'}">
+            <input type="hidden" id="clova_stt_available" th:value="${clovaSpeechConfigured ? 'Y' : 'N'}">
+            <input type="hidden" id="openai_summary_available" th:value="${openAiConfigured ? 'Y' : 'N'}">
             <input type="hidden" id="admission_pledge_required" name="admission_pledge_required"
                    th:value="${moduleAdmissionPledgeEnabled and (csData.cs_col_19 == '입원완료' or csData.cs_col_19 == '입원예약') ? 'Y' : 'N'}">
             <input type="hidden" id="admission_agreed_yn" name="admission_agreed_yn"
@@ -60,6 +62,26 @@
                    th:value="${admissionPledge != null and admissionPledge['signed_at'] != null ? admissionPledge['signed_at'] : ''}">
             <input type="hidden" id="admission_pledge_text" name="admission_pledge_text"
                    th:value="${admissionPledge != null and admissionPledge['pledge_text'] != null ? admissionPledge['pledge_text'] : ''}">
+            <input type="hidden" id="admission_guardian_name" name="admission_guardian_name"
+                   th:value="${admissionPledge != null and admissionPledge['guardian_name'] != null ? admissionPledge['guardian_name'] : ''}">
+            <input type="hidden" id="admission_guardian_relation" name="admission_guardian_relation"
+                   th:value="${admissionPledge != null and admissionPledge['guardian_relation'] != null ? admissionPledge['guardian_relation'] : ''}">
+            <input type="hidden" id="admission_guardian_addr" name="admission_guardian_addr"
+                   th:value="${admissionPledge != null and admissionPledge['guardian_addr'] != null ? admissionPledge['guardian_addr'] : ''}">
+            <input type="hidden" id="admission_guardian_phone" name="admission_guardian_phone"
+                   th:value="${admissionPledge != null and admissionPledge['guardian_phone'] != null ? admissionPledge['guardian_phone'] : ''}">
+            <input type="hidden" id="admission_guardian_cost_yn" name="admission_guardian_cost_yn"
+                   th:value="${admissionPledge != null and admissionPledge['guardian_cost_yn'] != null ? admissionPledge['guardian_cost_yn'] : 'N'}">
+            <input type="hidden" id="admission_sub_guardian_name" name="admission_sub_guardian_name"
+                   th:value="${admissionPledge != null and admissionPledge['sub_guardian_name'] != null ? admissionPledge['sub_guardian_name'] : ''}">
+            <input type="hidden" id="admission_sub_guardian_relation" name="admission_sub_guardian_relation"
+                   th:value="${admissionPledge != null and admissionPledge['sub_guardian_relation'] != null ? admissionPledge['sub_guardian_relation'] : ''}">
+            <input type="hidden" id="admission_sub_guardian_addr" name="admission_sub_guardian_addr"
+                   th:value="${admissionPledge != null and admissionPledge['sub_guardian_addr'] != null ? admissionPledge['sub_guardian_addr'] : ''}">
+            <input type="hidden" id="admission_sub_guardian_phone" name="admission_sub_guardian_phone"
+                   th:value="${admissionPledge != null and admissionPledge['sub_guardian_phone'] != null ? admissionPledge['sub_guardian_phone'] : ''}">
+            <input type="hidden" id="admission_sub_guardian_cost_yn" name="admission_sub_guardian_cost_yn"
+                   th:value="${admissionPledge != null and admissionPledge['sub_guardian_cost_yn'] != null ? admissionPledge['sub_guardian_cost_yn'] : 'N'}">
             <input type="file" id="audioFileInput" accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac,.ac3" style="display:none;">
             <input type="file" id="counselFileInput" style="display:none;">
 
@@ -485,7 +507,7 @@
                 <h2>입원서약서</h2>
                 <button type="button" id="openAdmissionPledgeBtn" class="mini-btn" style="width:100%;">입원서약서 페이지 열기</button>
                 <p id="admissionPledgeStatus" class="admission-pledge-status"
-                   th:text="${admissionPledge != null and admissionPledge['agreed_yn'] == 'Y' and admissionPledge['signature_data'] != null and !#strings.isEmpty(admissionPledge['signature_data']) ? '작성 완료' : '미작성'}">미작성</p>
+                   th:text="${admissionPledge != null and admissionPledge['agreed_yn'] == 'Y' ? '작성 완료' : '미작성'}">미작성</p>
             </section>
 
             <section class="block" th:if="${moduleRoomBoardEnabled}">
@@ -520,7 +542,9 @@
                     <button th:if="${moduleCounselAudioEnabled}" type="button" id="stopRecordingBtn" class="mini-btn" disabled>녹음 중지</button>
                     <button th:if="${moduleCounselAudioEnabled}" type="button" id="uploadAudioFileBtn" class="mini-btn upload-btn">파일 업로드</button>
                     <button th:if="${moduleCounselAudioEnabled}" type="button" id="applyDiseaseMatchBtn" class="mini-btn">커스텀 매칭</button>
-                    <button type="button" id="generateSummaryBtn" class="mini-btn summary-btn">상담 요약</button>
+                    <button type="button" id="generateSummaryBtn" class="mini-btn summary-btn"
+                            th:disabled="${!openAiConfigured}"
+                            th:title="${!openAiConfigured ? 'OpenAI API 키 설정 후 사용 가능합니다.' : ''}">상담 요약</button>
                 </div>
                 <p th:if="${moduleCounselAudioEnabled}" id="recordingStatus" class="recording-status">대기 중</p>
             </div>

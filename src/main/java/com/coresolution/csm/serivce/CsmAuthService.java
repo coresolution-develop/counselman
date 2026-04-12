@@ -316,6 +316,16 @@ public class CsmAuthService {
                         + "agreed_yn char(1) not null default 'N',"
                         + "signer_name varchar(100) default null,"
                         + "signer_relation varchar(50) default null,"
+                        + "guardian_name varchar(100) default null,"
+                        + "guardian_relation varchar(50) default null,"
+                        + "guardian_addr varchar(255) default null,"
+                        + "guardian_phone varchar(50) default null,"
+                        + "guardian_cost_yn char(1) not null default 'N',"
+                        + "sub_guardian_name varchar(100) default null,"
+                        + "sub_guardian_relation varchar(50) default null,"
+                        + "sub_guardian_addr varchar(255) default null,"
+                        + "sub_guardian_phone varchar(50) default null,"
+                        + "sub_guardian_cost_yn char(1) not null default 'N',"
                         + "signed_at varchar(19) default null,"
                         + "pledge_text text,"
                         + "signature_data longtext,"
@@ -455,6 +465,46 @@ public class CsmAuthService {
         if (!missingTables.contains(admissionPledgeTable)
                 && !columnExistsInCsm(admissionPledgeTable, "page_ink_data")) {
             missingColumns.add(admissionPledgeTable + ".page_ink_data");
+        }
+        if (!missingTables.contains(admissionPledgeTable)
+                && !columnExistsInCsm(admissionPledgeTable, "guardian_name")) {
+            missingColumns.add(admissionPledgeTable + ".guardian_name");
+        }
+        if (!missingTables.contains(admissionPledgeTable)
+                && !columnExistsInCsm(admissionPledgeTable, "guardian_relation")) {
+            missingColumns.add(admissionPledgeTable + ".guardian_relation");
+        }
+        if (!missingTables.contains(admissionPledgeTable)
+                && !columnExistsInCsm(admissionPledgeTable, "guardian_addr")) {
+            missingColumns.add(admissionPledgeTable + ".guardian_addr");
+        }
+        if (!missingTables.contains(admissionPledgeTable)
+                && !columnExistsInCsm(admissionPledgeTable, "guardian_phone")) {
+            missingColumns.add(admissionPledgeTable + ".guardian_phone");
+        }
+        if (!missingTables.contains(admissionPledgeTable)
+                && !columnExistsInCsm(admissionPledgeTable, "guardian_cost_yn")) {
+            missingColumns.add(admissionPledgeTable + ".guardian_cost_yn");
+        }
+        if (!missingTables.contains(admissionPledgeTable)
+                && !columnExistsInCsm(admissionPledgeTable, "sub_guardian_name")) {
+            missingColumns.add(admissionPledgeTable + ".sub_guardian_name");
+        }
+        if (!missingTables.contains(admissionPledgeTable)
+                && !columnExistsInCsm(admissionPledgeTable, "sub_guardian_relation")) {
+            missingColumns.add(admissionPledgeTable + ".sub_guardian_relation");
+        }
+        if (!missingTables.contains(admissionPledgeTable)
+                && !columnExistsInCsm(admissionPledgeTable, "sub_guardian_addr")) {
+            missingColumns.add(admissionPledgeTable + ".sub_guardian_addr");
+        }
+        if (!missingTables.contains(admissionPledgeTable)
+                && !columnExistsInCsm(admissionPledgeTable, "sub_guardian_phone")) {
+            missingColumns.add(admissionPledgeTable + ".sub_guardian_phone");
+        }
+        if (!missingTables.contains(admissionPledgeTable)
+                && !columnExistsInCsm(admissionPledgeTable, "sub_guardian_cost_yn")) {
+            missingColumns.add(admissionPledgeTable + ".sub_guardian_cost_yn");
         }
 
         Map<String, Object> out = new HashMap<>();
@@ -1039,7 +1089,10 @@ public class CsmAuthService {
         String safe = sanitizeInst(inst);
         ensureAdmissionPledgeTable(safe);
 
-        String sql = "SELECT cs_idx, agreed_yn, signer_name, signer_relation, signed_at, pledge_text, signature_data, page_ink_data "
+        String sql = "SELECT cs_idx, agreed_yn, signer_name, signer_relation, "
+                + "guardian_name, guardian_relation, guardian_addr, guardian_phone, guardian_cost_yn, "
+                + "sub_guardian_name, sub_guardian_relation, sub_guardian_addr, sub_guardian_phone, sub_guardian_cost_yn, "
+                + "signed_at, pledge_text, signature_data, page_ink_data "
                 + "FROM csm.counsel_admission_pledge_" + safe + " WHERE cs_idx = ? LIMIT 1";
         List<Map<String, Object>> rows;
         try {
@@ -1058,6 +1111,16 @@ public class CsmAuthService {
         out.put("agreed_yn", normalizeYn(row.get("agreed_yn")));
         out.put("signer_name", safeText(row.get("signer_name"), 100));
         out.put("signer_relation", safeText(row.get("signer_relation"), 50));
+        out.put("guardian_name", safeText(row.get("guardian_name"), 100));
+        out.put("guardian_relation", safeText(row.get("guardian_relation"), 50));
+        out.put("guardian_addr", safeText(row.get("guardian_addr"), 255));
+        out.put("guardian_phone", safeText(row.get("guardian_phone"), 50));
+        out.put("guardian_cost_yn", normalizeYn(row.get("guardian_cost_yn")));
+        out.put("sub_guardian_name", safeText(row.get("sub_guardian_name"), 100));
+        out.put("sub_guardian_relation", safeText(row.get("sub_guardian_relation"), 50));
+        out.put("sub_guardian_addr", safeText(row.get("sub_guardian_addr"), 255));
+        out.put("sub_guardian_phone", safeText(row.get("sub_guardian_phone"), 50));
+        out.put("sub_guardian_cost_yn", normalizeYn(row.get("sub_guardian_cost_yn")));
         out.put("signed_at", safeText(row.get("signed_at"), 19));
         out.put("pledge_text", safeText(row.get("pledge_text"), 5000));
         out.put("signature_data", safeText(row.get("signature_data"), 4_000_000));
@@ -1075,6 +1138,16 @@ public class CsmAuthService {
         String agreedYn = normalizeYn(pledge == null ? null : pledge.get("agreed_yn"));
         String signerName = safeText(pledge == null ? null : pledge.get("signer_name"), 100);
         String signerRelation = safeText(pledge == null ? null : pledge.get("signer_relation"), 50);
+        String guardianName = safeText(pledge == null ? null : pledge.get("guardian_name"), 100);
+        String guardianRelation = safeText(pledge == null ? null : pledge.get("guardian_relation"), 50);
+        String guardianAddr = safeText(pledge == null ? null : pledge.get("guardian_addr"), 255);
+        String guardianPhone = safeText(pledge == null ? null : pledge.get("guardian_phone"), 50);
+        String guardianCostYn = normalizeYn(pledge == null ? null : pledge.get("guardian_cost_yn"));
+        String subGuardianName = safeText(pledge == null ? null : pledge.get("sub_guardian_name"), 100);
+        String subGuardianRelation = safeText(pledge == null ? null : pledge.get("sub_guardian_relation"), 50);
+        String subGuardianAddr = safeText(pledge == null ? null : pledge.get("sub_guardian_addr"), 255);
+        String subGuardianPhone = safeText(pledge == null ? null : pledge.get("sub_guardian_phone"), 50);
+        String subGuardianCostYn = normalizeYn(pledge == null ? null : pledge.get("sub_guardian_cost_yn"));
         String signedAt = safeText(pledge == null ? null : pledge.get("signed_at"), 19);
         String pledgeText = safeText(pledge == null ? null : pledge.get("pledge_text"), 5000);
         String signatureData = safeText(pledge == null ? null : pledge.get("signature_data"), 4_000_000);
@@ -1083,19 +1156,34 @@ public class CsmAuthService {
         pageInkData = normalizePngData(pageInkData, 3_000_000);
 
         String sql = "INSERT INTO csm.counsel_admission_pledge_" + safe
-                + " (cs_idx, agreed_yn, signer_name, signer_relation, signed_at, pledge_text, signature_data, page_ink_data) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+                + " (cs_idx, agreed_yn, signer_name, signer_relation, "
+                + "guardian_name, guardian_relation, guardian_addr, guardian_phone, guardian_cost_yn, "
+                + "sub_guardian_name, sub_guardian_relation, sub_guardian_addr, sub_guardian_phone, sub_guardian_cost_yn, "
+                + "signed_at, pledge_text, signature_data, page_ink_data) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
                 + "ON DUPLICATE KEY UPDATE "
                 + "agreed_yn = VALUES(agreed_yn), "
                 + "signer_name = VALUES(signer_name), "
                 + "signer_relation = VALUES(signer_relation), "
+                + "guardian_name = VALUES(guardian_name), "
+                + "guardian_relation = VALUES(guardian_relation), "
+                + "guardian_addr = VALUES(guardian_addr), "
+                + "guardian_phone = VALUES(guardian_phone), "
+                + "guardian_cost_yn = VALUES(guardian_cost_yn), "
+                + "sub_guardian_name = VALUES(sub_guardian_name), "
+                + "sub_guardian_relation = VALUES(sub_guardian_relation), "
+                + "sub_guardian_addr = VALUES(sub_guardian_addr), "
+                + "sub_guardian_phone = VALUES(sub_guardian_phone), "
+                + "sub_guardian_cost_yn = VALUES(sub_guardian_cost_yn), "
                 + "signed_at = VALUES(signed_at), "
                 + "pledge_text = VALUES(pledge_text), "
                 + "signature_data = VALUES(signature_data), "
                 + "page_ink_data = VALUES(page_ink_data)";
         try {
-            return jdbcTemplate.update(sql, csIdx, agreedYn, signerName, signerRelation, signedAt, pledgeText,
-                    signatureData, pageInkData);
+            return jdbcTemplate.update(sql, csIdx, agreedYn, signerName, signerRelation,
+                    guardianName, guardianRelation, guardianAddr, guardianPhone, guardianCostYn,
+                    subGuardianName, subGuardianRelation, subGuardianAddr, subGuardianPhone, subGuardianCostYn,
+                    signedAt, pledgeText, signatureData, pageInkData);
         } catch (Exception e) {
             log.warn("[admission-pledge] upsert fail inst={}, cs_idx={}, err={}", safe, csIdx, e.toString());
             return 0;
@@ -1124,6 +1212,16 @@ public class CsmAuthService {
                 + "agreed_yn char(1) not null default 'N',"
                 + "signer_name varchar(100) default null,"
                 + "signer_relation varchar(50) default null,"
+                + "guardian_name varchar(100) default null,"
+                + "guardian_relation varchar(50) default null,"
+                + "guardian_addr varchar(255) default null,"
+                + "guardian_phone varchar(50) default null,"
+                + "guardian_cost_yn char(1) not null default 'N',"
+                + "sub_guardian_name varchar(100) default null,"
+                + "sub_guardian_relation varchar(50) default null,"
+                + "sub_guardian_addr varchar(255) default null,"
+                + "sub_guardian_phone varchar(50) default null,"
+                + "sub_guardian_cost_yn char(1) not null default 'N',"
                 + "signed_at varchar(19) default null,"
                 + "pledge_text text,"
                 + "signature_data longtext,"
@@ -1145,6 +1243,46 @@ public class CsmAuthService {
                 safeInst,
                 "page_ink_data",
                 "ALTER TABLE csm.counsel_admission_pledge_" + safeInst + " ADD COLUMN page_ink_data longtext");
+        ensureAdmissionPledgeColumn(
+                safeInst,
+                "guardian_name",
+                "ALTER TABLE csm.counsel_admission_pledge_" + safeInst + " ADD COLUMN guardian_name varchar(100) default null");
+        ensureAdmissionPledgeColumn(
+                safeInst,
+                "guardian_relation",
+                "ALTER TABLE csm.counsel_admission_pledge_" + safeInst + " ADD COLUMN guardian_relation varchar(50) default null");
+        ensureAdmissionPledgeColumn(
+                safeInst,
+                "guardian_addr",
+                "ALTER TABLE csm.counsel_admission_pledge_" + safeInst + " ADD COLUMN guardian_addr varchar(255) default null");
+        ensureAdmissionPledgeColumn(
+                safeInst,
+                "guardian_phone",
+                "ALTER TABLE csm.counsel_admission_pledge_" + safeInst + " ADD COLUMN guardian_phone varchar(50) default null");
+        ensureAdmissionPledgeColumn(
+                safeInst,
+                "guardian_cost_yn",
+                "ALTER TABLE csm.counsel_admission_pledge_" + safeInst + " ADD COLUMN guardian_cost_yn char(1) not null default 'N'");
+        ensureAdmissionPledgeColumn(
+                safeInst,
+                "sub_guardian_name",
+                "ALTER TABLE csm.counsel_admission_pledge_" + safeInst + " ADD COLUMN sub_guardian_name varchar(100) default null");
+        ensureAdmissionPledgeColumn(
+                safeInst,
+                "sub_guardian_relation",
+                "ALTER TABLE csm.counsel_admission_pledge_" + safeInst + " ADD COLUMN sub_guardian_relation varchar(50) default null");
+        ensureAdmissionPledgeColumn(
+                safeInst,
+                "sub_guardian_addr",
+                "ALTER TABLE csm.counsel_admission_pledge_" + safeInst + " ADD COLUMN sub_guardian_addr varchar(255) default null");
+        ensureAdmissionPledgeColumn(
+                safeInst,
+                "sub_guardian_phone",
+                "ALTER TABLE csm.counsel_admission_pledge_" + safeInst + " ADD COLUMN sub_guardian_phone varchar(50) default null");
+        ensureAdmissionPledgeColumn(
+                safeInst,
+                "sub_guardian_cost_yn",
+                "ALTER TABLE csm.counsel_admission_pledge_" + safeInst + " ADD COLUMN sub_guardian_cost_yn char(1) not null default 'N'");
     }
 
     private void ensureAdmissionPledgeColumn(String safeInst, String columnName, String alterSql) {

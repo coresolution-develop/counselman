@@ -12,6 +12,8 @@ document.addEventListener('DOMContentLoaded', function () {
   const audioTempKeyInput = document.getElementById('audio_temp_key');
   const counselContentInput = document.getElementById('cs_col_32');
   const counselForm = document.getElementById('counselForm');
+  const clovaSttAvailable = (document.getElementById('clova_stt_available')?.value || 'N') === 'Y';
+  const openAiSummaryAvailable = (document.getElementById('openai_summary_available')?.value || 'N') === 'Y';
 
   if (!startRecordingBtn || !stopRecordingBtn || !uploadAudioFileBtn || !audioFileInput || !audioTempKeyInput) {
     return;
@@ -50,6 +52,15 @@ document.addEventListener('DOMContentLoaded', function () {
       .replace(/'/g, '&#39;');
   }
 
+  function normalizeAudioMimeType(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  function supportsAudioRetranscription(item) {
+    if (!clovaSttAvailable) return false;
+    return !normalizeAudioMimeType(item?.mimeType).includes('webm');
+  }
+
   function audioPreviewMode(item) {
     const summary = String(item?.summaryText || '').trim();
     const transcript = String(item?.transcript || '').trim();
@@ -63,15 +74,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const transcript = String(item?.transcript || '').trim();
     const mode = audioPreviewMode(item);
     const helperMessage = transcript
-      ? '원문은 저장되어 있습니다. 필요할 때만 요약을 생성합니다.'
-      : '텍스트 재시도 후 요약을 생성할 수 있습니다.';
+      ? (openAiSummaryAvailable ? '원문은 저장되어 있습니다. 필요할 때만 요약을 생성합니다.' : '원문은 저장되어 있습니다.')
+      : (!clovaSttAvailable
+        ? '음성 전사 설정이 없어 텍스트 재시도를 사용할 수 없습니다.'
+        : (supportsAudioRetranscription(item)
+          ? '텍스트 재시도 후 요약을 생성할 수 있습니다.'
+          : '이 녹음은 webm 포맷이라 텍스트 재시도를 지원하지 않습니다.'));
 
     return `
       <div class="counsel-preview-card" data-view="${escapeHtml(mode)}">
         <div class="counsel-preview-toolbar">
           ${summary ? `<button type="button" class="counsel-preview-toggle" data-view-target="summary">요약 보기</button>` : ''}
           ${transcript ? `<button type="button" class="counsel-preview-toggle" data-view-target="source">원문 보기</button>` : ''}
-          ${transcript && !summary ? `<button type="button" class="counsel-preview-generate audio-record-summary" data-audio-id="${escapeHtml(item.id)}">요약 생성</button>` : ''}
+          ${transcript && !summary && openAiSummaryAvailable ? `<button type="button" class="counsel-preview-generate audio-record-summary" data-audio-id="${escapeHtml(item.id)}">요약 생성</button>` : ''}
         </div>
         ${summary ? `<div class="counsel-preview-body counsel-preview-summary">${escapeHtml(summary)}</div>` : ''}
         ${transcript ? `<div class="counsel-preview-body counsel-preview-source">${escapeHtml(transcript)}</div>` : ''}
@@ -477,12 +492,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
       audioRecordListEl.innerHTML = list.map((item) => {
         const transcript = String(item.transcript || '').trim();
+        const canRetry = supportsAudioRetranscription(item);
         return `
           <div class="audio-record-item" data-audio-id="${escapeHtml(item.id)}">
             <div class="audio-record-meta">
               <div class="audio-record-name">${escapeHtml(item.originalFilename || `record-${item.id}`)}</div>
               <div class="audio-record-actions">
-                ${!transcript ? `<button type="button" class="audio-record-retry" data-audio-id="${escapeHtml(item.id)}">텍스트 재시도</button>` : ''}
+                ${!transcript && canRetry ? `<button type="button" class="audio-record-retry" data-audio-id="${escapeHtml(item.id)}">텍스트 재시도</button>` : ''}
                 <button type="button" class="audio-record-delete" data-audio-id="${escapeHtml(item.id)}">삭제</button>
               </div>
             </div>
@@ -517,6 +533,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function retryTranscription(audioId, retryBtn) {
     if (!audioId) return;
+    if (!clovaSttAvailable) {
+      setRecordingStatus('클로바 STT 설정 후 텍스트 재시도를 사용할 수 있습니다.', true);
+      return;
+    }
     if (retryBtn) {
       retryBtn.disabled = true;
       retryBtn.textContent = '재시도 중...';
@@ -564,6 +584,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function generateAudioSummary(audioId, summaryBtn) {
     if (!audioId) return;
+    if (!openAiSummaryAvailable) {
+      setRecordingStatus('OpenAI API 키 설정 후 요약을 생성할 수 있습니다.', true);
+      return;
+    }
     if (summaryBtn) {
       summaryBtn.disabled = true;
       summaryBtn.textContent = '요약 중...';
@@ -795,7 +819,9 @@ document.addEventListener('DOMContentLoaded', function () {
         'audio/mp4',
         'audio/ogg;codecs=opus',
         'audio/ogg',
-        'audio/wav',
+        'audio/wav'
+      ];
+      const fallbackMimeTypes = [
         'audio/webm;codecs=opus',
         'audio/webm'
       ];
@@ -805,6 +831,14 @@ document.addEventListener('DOMContentLoaded', function () {
         if (window.MediaRecorder.isTypeSupported && window.MediaRecorder.isTypeSupported(mime)) {
           recorderOptions = { mimeType: mime };
           break;
+        }
+      }
+      if (!recorderOptions.mimeType) {
+        for (const mime of fallbackMimeTypes) {
+          if (window.MediaRecorder.isTypeSupported && window.MediaRecorder.isTypeSupported(mime)) {
+            recorderOptions = { mimeType: mime };
+            break;
+          }
         }
       }
 
@@ -848,7 +882,12 @@ document.addEventListener('DOMContentLoaded', function () {
       stopRecordingBtn.disabled = false;
       setRecordingIndicatorActive(true);
       startSpeechRecognition();
-      setRecordingStatus('녹음 중...');
+      const recordingMimeType = normalizeAudioMimeType(mediaRecorder.mimeType || recorderOptions.mimeType || '');
+      if (recordingMimeType.includes('webm')) {
+        setRecordingStatus('이 브라우저는 webm 녹음만 지원해 텍스트 재시도는 제한됩니다.', true);
+      } else {
+        setRecordingStatus('녹음 중...');
+      }
     } catch (_) {
       isRecording = false;
       startRecordingBtn.disabled = false;

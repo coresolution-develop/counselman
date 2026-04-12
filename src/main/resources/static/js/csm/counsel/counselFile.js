@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const fileStatusEl = document.getElementById('counselFileStatus');
   const fileTempKeyInput = document.getElementById('file_temp_key');
   const counselContentInput = document.getElementById('cs_col_32');
+  const openAiSummaryAvailable = (document.getElementById('openai_summary_available')?.value || 'N') === 'Y';
   const csIdxRaw = document.querySelector('input[name="cs_idx"]')?.value || '';
   const csIdx = /^\d+$/.test(csIdxRaw) ? Number(csIdxRaw) : null;
 
@@ -88,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const extracted = String(item?.extractedText || '').trim();
     const mode = previewMode(item);
     const helperMessage = extracted
-      ? '원문은 저장되어 있습니다. 필요할 때만 요약을 생성합니다.'
+      ? (openAiSummaryAvailable ? '원문은 저장되어 있습니다. 필요할 때만 요약을 생성합니다.' : '원문은 저장되어 있습니다.')
       : '문서 원문은 내용적용 또는 요약 생성 시 자동으로 추출됩니다.';
 
     return `
@@ -96,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="counsel-preview-toolbar">
           ${summary ? `<button type="button" class="counsel-preview-toggle" data-view-target="summary">요약 보기</button>` : ''}
           ${extracted ? `<button type="button" class="counsel-preview-toggle" data-view-target="source">원문 보기</button>` : ''}
-          ${!summary ? `<button type="button" class="counsel-preview-generate counsel-file-summary" data-file-id="${escapeHtml(item.id)}">요약 생성</button>` : ''}
+          ${!summary && openAiSummaryAvailable ? `<button type="button" class="counsel-preview-generate counsel-file-summary" data-file-id="${escapeHtml(item.id)}">요약 생성</button>` : ''}
         </div>
         ${summary ? `<div class="counsel-preview-body counsel-preview-summary">${escapeHtml(summary)}</div>` : ''}
         ${extracted ? `<div class="counsel-preview-body counsel-preview-source">${escapeHtml(extracted)}</div>` : ''}
@@ -541,6 +542,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function generateCounselFileSummary(fileId, summaryBtn) {
     if (!fileId) return;
+    if (!openAiSummaryAvailable) {
+      setFileStatus('OpenAI API 키 설정 후 문서 요약을 생성할 수 있습니다.', true);
+      return;
+    }
     if (summaryBtn) {
       summaryBtn.disabled = true;
       summaryBtn.textContent = '요약 중...';

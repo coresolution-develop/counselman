@@ -25,12 +25,12 @@
     <section class="admin-grid">
         <div class="admin-card">
             <div class="section-head">
-                <h2>기관 등록</h2>
-                <p>플랫폼 최고 관리자는 기관만 등록하고 사용 상태를 관리합니다.</p>
+                <h2>기관 상태 관리</h2>
+                <p>CounselMan 기관은 자동으로 표시되며, 여기서는 플랫폼용 이름과 사용 상태만 보정합니다.</p>
             </div>
             <form method="post" th:action="@{/admin/institutions}" class="stack-form">
                 <input name="instCode" type="text" placeholder="기관코드" required>
-                <input name="instName" type="text" placeholder="기관명" required>
+                <input name="instName" type="text" placeholder="기관명 미입력 시 CounselMan 이름 사용">
                 <select name="useYn">
                     <option value="Y">사용</option>
                     <option value="N">중지</option>
@@ -81,7 +81,7 @@
         <div class="admin-card admin-card-wide">
             <div class="section-head">
                 <h2>기관별 서비스 권한</h2>
-                <p>기관 등록 후 어떤 서비스를 사용할 수 있는지만 지정하면 됩니다.</p>
+                <p>로그인은 계정 기준으로 허용되며, 여기서 선택한 서비스만 실제로 노출됩니다.</p>
             </div>
             <form method="get" th:action="@{/admin}" class="inline-form">
                 <select name="instCode">

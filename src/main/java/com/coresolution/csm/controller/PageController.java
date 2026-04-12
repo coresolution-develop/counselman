@@ -4334,6 +4334,18 @@ public class PageController {
             signerName = safeString(request.getParameter("cs_col_01")).trim();
         }
         String signerRelation = safeString(request.getParameter("admission_signer_relation")).trim();
+        String guardianName = safeString(request.getParameter("admission_guardian_name")).trim();
+        String guardianRelation = safeString(request.getParameter("admission_guardian_relation")).trim();
+        String guardianAddr = safeString(request.getParameter("admission_guardian_addr")).trim();
+        String guardianPhone = safeString(request.getParameter("admission_guardian_phone")).trim();
+        String guardianCostYn = "Y".equalsIgnoreCase(safeString(request.getParameter("admission_guardian_cost_yn"))) ? "Y"
+                : "N";
+        String subGuardianName = safeString(request.getParameter("admission_sub_guardian_name")).trim();
+        String subGuardianRelation = safeString(request.getParameter("admission_sub_guardian_relation")).trim();
+        String subGuardianAddr = safeString(request.getParameter("admission_sub_guardian_addr")).trim();
+        String subGuardianPhone = safeString(request.getParameter("admission_sub_guardian_phone")).trim();
+        String subGuardianCostYn = "Y".equalsIgnoreCase(safeString(request.getParameter("admission_sub_guardian_cost_yn"))) ? "Y"
+                : "N";
         String signedAt = safeString(request.getParameter("admission_signed_at")).trim();
         if (signedAt.isEmpty()) {
             signedAt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
@@ -4355,6 +4367,16 @@ public class PageController {
         pledge.put("agreed_yn", agreedYn);
         pledge.put("signer_name", signerName);
         pledge.put("signer_relation", signerRelation);
+        pledge.put("guardian_name", guardianName);
+        pledge.put("guardian_relation", guardianRelation);
+        pledge.put("guardian_addr", guardianAddr);
+        pledge.put("guardian_phone", guardianPhone);
+        pledge.put("guardian_cost_yn", guardianCostYn);
+        pledge.put("sub_guardian_name", subGuardianName);
+        pledge.put("sub_guardian_relation", subGuardianRelation);
+        pledge.put("sub_guardian_addr", subGuardianAddr);
+        pledge.put("sub_guardian_phone", subGuardianPhone);
+        pledge.put("sub_guardian_cost_yn", subGuardianCostYn);
         pledge.put("signed_at", signedAt);
         pledge.put("pledge_text", pledgeText);
         pledge.put("signature_data", signatureData);
@@ -5126,6 +5148,16 @@ public class PageController {
                 Boolean.TRUE.equals(featureStates.get(ModuleFeatureService.FEATURE_ADMISSION_PLEDGE)));
         model.addAttribute("moduleCounselFileEnabled",
                 Boolean.TRUE.equals(featureStates.get(ModuleFeatureService.FEATURE_COUNSEL_FILE)));
+        model.addAttribute("clovaSpeechConfigured", isClovaSpeechConfigured());
+        model.addAttribute("openAiConfigured", isOpenAiConfigured());
+    }
+
+    private boolean isClovaSpeechConfigured() {
+        return !resolveClovaInvokeEndpoint().isBlank() && !safeString(clovaSecretKey).trim().isBlank();
+    }
+
+    private boolean isOpenAiConfigured() {
+        return !safeString(openAiApiKey).trim().isBlank();
     }
 
     /** 세션에 inst가 없으면 인증정보에서 복구 시도 */

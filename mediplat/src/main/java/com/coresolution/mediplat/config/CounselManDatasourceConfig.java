@@ -31,7 +31,7 @@ public class CounselManDatasourceConfig {
         HikariDataSource dataSource = properties.initializeDataSourceBuilder()
                 .type(HikariDataSource.class)
                 .build();
-        dataSource.setPoolName("mediplat-h2");
+        dataSource.setPoolName("mediplat-store");
         dataSource.setMaximumPoolSize(5);
         dataSource.setMinimumIdle(1);
         return dataSource;

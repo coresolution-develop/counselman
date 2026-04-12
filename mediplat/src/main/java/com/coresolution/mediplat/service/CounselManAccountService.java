@@ -55,6 +55,39 @@ public class CounselManAccountService {
         return new AuthenticatedUser(resolvedInst, normalizedUsername, displayName);
     }
 
+    public List<CounselManInstitution> listInstitutions() {
+        return counselManJdbcTemplate.query("""
+                SELECT id_col_03, id_col_02, COALESCE(NULLIF(id_col_04, ''), 'Y') AS use_yn
+                FROM inst_data_cs
+                WHERE id_col_03 IS NOT NULL
+                  AND TRIM(id_col_03) <> ''
+                ORDER BY CASE WHEN LOWER(id_col_03) = 'core' THEN 0 ELSE 1 END,
+                         id_col_02 ASC,
+                         id_col_03 ASC
+                """, (rs, rowNum) -> new CounselManInstitution(
+                        normalizeInstCode(rs.getString("id_col_03")),
+                        normalizeInstitutionName(rs.getString("id_col_02"), rs.getString("id_col_03")),
+                        normalizeYn(rs.getString("use_yn"))));
+    }
+
+    public CounselManInstitution findInstitution(String instCode) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        if (!StringUtils.hasText(normalizedInstCode)) {
+            return null;
+        }
+        List<CounselManInstitution> institutions = counselManJdbcTemplate.query("""
+                SELECT id_col_03, id_col_02, COALESCE(NULLIF(id_col_04, ''), 'Y') AS use_yn
+                FROM inst_data_cs
+                WHERE LOWER(id_col_03) = LOWER(?)
+                LIMIT 1
+                """, (rs, rowNum) -> new CounselManInstitution(
+                        normalizeInstCode(rs.getString("id_col_03")),
+                        normalizeInstitutionName(rs.getString("id_col_02"), rs.getString("id_col_03")),
+                        normalizeYn(rs.getString("use_yn"))),
+                normalizedInstCode);
+        return institutions.isEmpty() ? null : institutions.get(0);
+    }
+
     private String resolveInst(String rawInstCode) {
         if (!StringUtils.hasText(rawInstCode)) {
             return null;
@@ -147,6 +180,28 @@ public class CounselManAccountService {
         return StringUtils.hasText(username) ? username.trim() : null;
     }
 
+    private String normalizeInstCode(String instCode) {
+        if (!StringUtils.hasText(instCode)) {
+            return null;
+        }
+        String normalized = instCode.trim();
+        if ("core".equalsIgnoreCase(normalized)) {
+            return "core";
+        }
+        return normalized.toUpperCase(Locale.ROOT);
+    }
+
+    private String normalizeInstitutionName(String institutionName, String instCode) {
+        if (StringUtils.hasText(institutionName)) {
+            return institutionName.trim();
+        }
+        return normalizeInstCode(instCode);
+    }
+
+    private String normalizeYn(String useYn) {
+        return "N".equalsIgnoreCase(useYn) ? "N" : "Y";
+    }
+
     private String sanitizeInst(String instCode) {
         if (!StringUtils.hasText(instCode) || !instCode.matches("^[A-Za-z0-9_]{2,32}$")) {
             throw new IllegalArgumentException("유효하지 않은 기관코드입니다.");
@@ -177,5 +232,11 @@ public class CounselManAccountService {
             String instCode,
             String username,
             String displayName) {
+    }
+
+    public record CounselManInstitution(
+            String instCode,
+            String instName,
+            String useYn) {
     }
 }

@@ -204,6 +204,16 @@ document.addEventListener('DOMContentLoaded', function () {
   const admissionPledgeTextInput = document.getElementById('admission_pledge_text');
   const admissionSignatureInput = document.getElementById('admission_signature_data');
   const admissionPageInkInput = document.getElementById('admission_page_ink_data');
+  const admissionGuardianNameInput = document.getElementById('admission_guardian_name');
+  const admissionGuardianRelationInput = document.getElementById('admission_guardian_relation');
+  const admissionGuardianAddrInput = document.getElementById('admission_guardian_addr');
+  const admissionGuardianPhoneInput = document.getElementById('admission_guardian_phone');
+  const admissionGuardianCostYnInput = document.getElementById('admission_guardian_cost_yn');
+  const admissionSubGuardianNameInput = document.getElementById('admission_sub_guardian_name');
+  const admissionSubGuardianRelationInput = document.getElementById('admission_sub_guardian_relation');
+  const admissionSubGuardianAddrInput = document.getElementById('admission_sub_guardian_addr');
+  const admissionSubGuardianPhoneInput = document.getElementById('admission_sub_guardian_phone');
+  const admissionSubGuardianCostYnInput = document.getElementById('admission_sub_guardian_cost_yn');
   const currentCsIdxRaw = String(document.querySelector('input[name="cs_idx"]')?.value || '').trim();
   const currentCsIdx = /^\d+$/.test(currentCsIdxRaw) ? Number(currentCsIdxRaw) : 0;
   const defaultAdmissionPledgeText = '본인은 입원 연계 및 상담을 위해 제공한 정보가 병원 입원 진행에 활용되는 것에 동의합니다. 또한 상담 과정에서 안내받은 내용을 확인하였으며, 안내된 절차에 따라 성실히 협조할 것을 서약합니다.';
@@ -214,28 +224,39 @@ document.addEventListener('DOMContentLoaded', function () {
   };
   const requiresAdmissionPledge = (value) => value === '입원예약' || value === '입원완료';
   const isPngDataUrl = (value) => /^data:image\/png;base64,/.test(String(value || '').trim());
-  const extractPrimaryAdmissionSignature = (raw) => {
+  const extractAdmissionSignatureBundle = (raw) => {
     const text = String(raw || '').trim();
-    if (!text) return '';
-    if (isPngDataUrl(text)) return text;
+    if (!text) return { primary: '', guardian: '', sub_guardian: '' };
+    if (isPngDataUrl(text)) {
+      return { primary: text, guardian: '', sub_guardian: '' };
+    }
     try {
       const parsed = JSON.parse(text);
-      if (!parsed || typeof parsed !== 'object') return '';
-      const candidates = [
-        parsed.primary,
-        parsed.main,
-        parsed.signer,
-        parsed.final_signature,
-        parsed.signature
-      ];
-      for (const candidate of candidates) {
-        const data = String(candidate || '').trim();
-        if (isPngDataUrl(data)) return data;
-      }
-      return '';
+      if (!parsed || typeof parsed !== 'object') return { primary: '', guardian: '', sub_guardian: '' };
+      const readFirst = (...candidates) => {
+        for (const candidate of candidates) {
+          const data = String(candidate || '').trim();
+          if (isPngDataUrl(data)) return data;
+        }
+        return '';
+      };
+      return {
+        primary: readFirst(parsed.primary, parsed.main, parsed.signer, parsed.final_signature, parsed.signature),
+        guardian: readFirst(parsed.guardian, parsed.guardian_signature, parsed.primary_guardian),
+        sub_guardian: readFirst(parsed.sub_guardian, parsed.subGuardian, parsed.sub_guardian_signature, parsed.secondary_guardian)
+      };
     } catch (_) {
-      return '';
+      return { primary: '', guardian: '', sub_guardian: '' };
     }
+  };
+  const extractPrimaryAdmissionSignature = (raw) => extractAdmissionSignatureBundle(raw).primary;
+  const readCurrentGuardianEntry = (index) => {
+    const entry = Array.from(document.querySelectorAll('.guardian-entry'))[index];
+    return {
+      name: entry?.querySelector("input[name='cs_col_13[]']")?.value?.trim() || '',
+      relation: entry?.querySelector("input[name='cs_col_14[]']")?.value?.trim() || '',
+      phone: entry?.querySelector("input[name='cs_col_15[]']")?.value?.trim() || ''
+    };
   };
   const isAdmissionPledgeComplete = () => {
     if ((admissionPledgeRequiredInput?.value || 'N') !== 'Y') {
@@ -284,6 +305,16 @@ document.addEventListener('DOMContentLoaded', function () {
     if (admissionPledgeTextInput) admissionPledgeTextInput.value = String(payload.pledge_text || '').trim();
     if (admissionSignatureInput) admissionSignatureInput.value = String(payload.signature_data || '').trim();
     if (admissionPageInkInput) admissionPageInkInput.value = String(payload.page_ink_data || '').trim();
+    if (admissionGuardianNameInput) admissionGuardianNameInput.value = String(payload.guardian_name || '').trim();
+    if (admissionGuardianRelationInput) admissionGuardianRelationInput.value = String(payload.guardian_relation || '').trim();
+    if (admissionGuardianAddrInput) admissionGuardianAddrInput.value = String(payload.guardian_addr || '').trim();
+    if (admissionGuardianPhoneInput) admissionGuardianPhoneInput.value = String(payload.guardian_phone || '').trim();
+    if (admissionGuardianCostYnInput) admissionGuardianCostYnInput.value = payload.guardian_cost_yn === 'Y' ? 'Y' : 'N';
+    if (admissionSubGuardianNameInput) admissionSubGuardianNameInput.value = String(payload.sub_guardian_name || '').trim();
+    if (admissionSubGuardianRelationInput) admissionSubGuardianRelationInput.value = String(payload.sub_guardian_relation || '').trim();
+    if (admissionSubGuardianAddrInput) admissionSubGuardianAddrInput.value = String(payload.sub_guardian_addr || '').trim();
+    if (admissionSubGuardianPhoneInput) admissionSubGuardianPhoneInput.value = String(payload.sub_guardian_phone || '').trim();
+    if (admissionSubGuardianCostYnInput) admissionSubGuardianCostYnInput.value = payload.sub_guardian_cost_yn === 'Y' ? 'Y' : 'N';
     setAdmissionPledgeStatus();
   };
 
@@ -338,11 +369,23 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       const draftKey = `csm-admission-pledge-draft-${Date.now()}`;
+      const currentGuardian = readCurrentGuardianEntry(0);
+      const currentSubGuardian = readCurrentGuardianEntry(1);
       const draftPayload = {
         cs_idx: currentCsIdx > 0 ? currentCsIdx : 0,
         agreed_yn: admissionAgreedYnInput?.value || 'N',
         signer_name: admissionSignerNameInput?.value || '',
         signer_relation: admissionSignerRelationInput?.value || '',
+        guardian_name: admissionGuardianNameInput?.value || currentGuardian.name,
+        guardian_relation: admissionGuardianRelationInput?.value || currentGuardian.relation,
+        guardian_addr: admissionGuardianAddrInput?.value || '',
+        guardian_phone: admissionGuardianPhoneInput?.value || currentGuardian.phone,
+        guardian_cost_yn: admissionGuardianCostYnInput?.value || 'N',
+        sub_guardian_name: admissionSubGuardianNameInput?.value || currentSubGuardian.name,
+        sub_guardian_relation: admissionSubGuardianRelationInput?.value || currentSubGuardian.relation,
+        sub_guardian_addr: admissionSubGuardianAddrInput?.value || '',
+        sub_guardian_phone: admissionSubGuardianPhoneInput?.value || currentSubGuardian.phone,
+        sub_guardian_cost_yn: admissionSubGuardianCostYnInput?.value || 'N',
         signed_at: admissionSignedAtInput?.value || '',
         pledge_text: admissionPledgeTextInput?.value || defaultAdmissionPledgeText,
         signature_data: admissionSignatureInput?.value || '',
@@ -1070,14 +1113,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const documentNo = valueByName('cs_idx') || '-';
     const issuedAt = new Date().toLocaleString('ko-KR', { hour12: false });
     const admissionRequired = valueByName('admission_pledge_required') === 'Y';
-    const admissionSignature = valueByName('admission_signature_data');
-    const admissionSignaturePreview = extractPrimaryAdmissionSignature(admissionSignature);
     const admissionPageInk = valueByName('admission_page_ink_data');
 
     const readGuardianEntry = (entry) => ({
       name: entry?.querySelector("input[name='cs_col_13[]']")?.value?.trim() || '',
       relation: entry?.querySelector("input[name='cs_col_14[]']")?.value?.trim() || '',
-      phone: entry?.querySelector("input[name='cs_col_15[]']")?.value?.trim() || ''
+      phone: entry?.querySelector("input[name='cs_col_15[]']")?.value?.trim() || '',
+      addr: '',
+      costYn: false
     });
 
     const renderCheckedAttr = (checked) => (checked ? ' checked' : '');
@@ -1116,7 +1159,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <tr style="height: 56px;">
               <td style="border: 1px solid #dadada;" class="normal">주 소</td>
               <td colspan="3" style="text-align: left; border: 1px solid #dadada; border-right: inherit;">
-                <input class="light ap-address-input" style="margin-left: 20px; width:640px;" type="text" readonly value=""/>
+                <input class="light ap-address-input" style="margin-left: 20px; width:640px;" type="text" readonly value="${renderValueAttr(data.addr)}"/>
               </td>
             </tr>
             <tr style="height: 56px;">
@@ -1126,7 +1169,7 @@ document.addEventListener('DOMContentLoaded', function () {
               </td>
               <td colspan="2" style="text-align: right;">
                 <div class="checkbox-wrapper-13" style="margin-right: 21px;">
-                  <input type="checkbox" class="normal" disabled>
+                  <input type="checkbox" class="normal" disabled${renderCheckedAttr(!!data.costYn)}>
                   <label>비용안내</label>
                 </div>
               </td>
@@ -1137,16 +1180,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const buildAdmissionPledgePrintMarkup = () => {
       const guardians = Array.from(document.querySelectorAll('.guardian-entry'));
-      const mainGuardian = readGuardianEntry(guardians[0]);
-      const subGuardian = readGuardianEntry(guardians[1]);
+      const mainGuardianFallback = readGuardianEntry(guardians[0]);
+      const subGuardianFallback = readGuardianEntry(guardians[1]);
+      const mainGuardian = {
+        name: valueByName('admission_guardian_name') || mainGuardianFallback.name,
+        relation: valueByName('admission_guardian_relation') || mainGuardianFallback.relation,
+        addr: valueByName('admission_guardian_addr'),
+        phone: valueByName('admission_guardian_phone') || mainGuardianFallback.phone,
+        costYn: valueByName('admission_guardian_cost_yn') === 'Y'
+      };
+      const subGuardian = {
+        name: valueByName('admission_sub_guardian_name') || subGuardianFallback.name,
+        relation: valueByName('admission_sub_guardian_relation') || subGuardianFallback.relation,
+        addr: valueByName('admission_sub_guardian_addr'),
+        phone: valueByName('admission_sub_guardian_phone') || subGuardianFallback.phone,
+        costYn: valueByName('admission_sub_guardian_cost_yn') === 'Y'
+      };
       const gender = selectedText('cs_col_02');
       const signerName = valueByName('admission_signer_name') || val('cs_col_01');
       const signerRelation = valueByName('admission_signer_relation') || '본인';
       const signedAt = valueByName('admission_signed_at');
       const backgroundUrl = `${APP_CTX}/img/background4.png`;
-      const primarySignatureImg = admissionSignaturePreview
-        ? `<img class="ap-sign-image ap-sign-image-final" src="${escapeHtml(admissionSignaturePreview)}" alt="신청인 서명">`
-        : '<img class="ap-sign-image ap-sign-image-final" alt="" style="display:none;">';
+      const primarySignatureImg = '<img class="ap-sign-image ap-sign-image-final" alt="" style="display:none;">';
       const pageInkMarkup = admissionPageInk
         ? `<img alt="문서 전체 필기 인쇄 레이어" src="${escapeHtml(admissionPageInk)}" style="position:absolute; inset:0; left:-157px; width:1280px; height:100%; object-fit:fill; z-index:19; pointer-events:none; opacity:1; visibility:visible;">`
         : '';
