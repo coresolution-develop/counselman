@@ -12,39 +12,106 @@
     <link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
     <link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
     <style>
-        body.popup-mode { background:#f7fafc; }
+        body { background:#fbfbfb; }
+        body.popup-mode { background:#f4f8f5; }
         .rb-wrap { padding:24px 28px 40px; }
-        .rb-toolbar, .rb-summary-card, .rb-ward-card { background:#fff; border:1px solid #dfe7ef; border-radius:14px; }
-        .rb-toolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:18px 20px; margin-bottom:20px; }
-        .rb-toolbar h1 { margin:0; font-size:24px; }
-        .rb-toolbar p { margin:6px 0 0; color:#667085; }
+        body:not(.popup-mode) .rb-wrap {
+            padding: 90px 24px 48px;
+            margin-left: 145px;
+            width: calc(100% - 145px);
+            max-width: 2560px;
+            min-height: 100vh;
+            box-sizing: border-box;
+            background: linear-gradient(180deg, #eef6f0 0%, #f7faf8 240px, #fbfbfb 100%);
+        }
+        .rb-toolbar, .rb-summary-card, .rb-ward-card {
+            background:#fff;
+            border:1px solid #d6e6da;
+            border-radius:16px;
+            box-shadow: 0 12px 28px rgba(5, 64, 30, 0.06);
+        }
+        .rb-toolbar {
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:16px;
+            padding:22px 24px;
+            margin-bottom:20px;
+            background: linear-gradient(135deg, #05401E 0%, #0b6b33 100%);
+            border-color: transparent;
+            color:#f7fff9;
+        }
+        .rb-toolbar h1 { margin:0; font-size:26px; color:#fff; }
+        .rb-toolbar p { margin:6px 0 0; color:rgba(247, 255, 249, 0.82); }
         .rb-summary { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:12px; margin-bottom:20px; }
         .rb-summary-card { padding:18px; }
-        .rb-summary-label { font-size:13px; color:#667085; }
-        .rb-summary-value { margin-top:10px; font-size:30px; font-weight:800; color:#18436b; }
-        .rb-selected { background:#fff8e8; border:1px solid #f6d48b; border-radius:12px; padding:14px 16px; margin-bottom:18px; }
+        .rb-summary-label { font-size:13px; color:#4b6352; }
+        .rb-summary-value { margin-top:10px; font-size:30px; font-weight:800; color:#05401E; }
+        .rb-selected {
+            background:#fff8e8;
+            border:1px solid #f6d48b;
+            border-radius:12px;
+            padding:14px 16px;
+            margin-bottom:18px;
+            box-shadow: 0 10px 24px rgba(154, 103, 0, 0.06);
+        }
         .rb-selected strong { color:#9a6700; }
         .rb-ward-card { margin-bottom:18px; overflow:hidden; }
-        .rb-ward-header { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:16px 18px; background:#f8fbfe; border-bottom:1px solid #edf2f7; }
-        .rb-ward-header h2 { margin:0; font-size:20px; }
-        .rb-ward-meta { color:#50657e; font-size:14px; }
+        .rb-ward-header {
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:10px;
+            padding:16px 18px;
+            background:#f1f7f3;
+            border-bottom:1px solid #e4efe6;
+        }
+        .rb-ward-header h2 { margin:0; font-size:20px; color:#05401E; }
+        .rb-ward-meta { color:#3d5e48; font-size:14px; }
         .rb-table-wrap { overflow:auto; }
         .rb-table { width:100%; border-collapse:collapse; min-width:1400px; }
-        .rb-table th, .rb-table td { border-bottom:1px solid #edf2f7; padding:10px 12px; font-size:13px; text-align:left; vertical-align:top; }
-        .rb-table th { background:#fcfdff; position:sticky; top:0; z-index:1; }
-        .rb-badge { display:inline-block; border-radius:999px; padding:4px 10px; background:#eef4fb; color:#1b3d61; font-size:12px; font-weight:700; }
+        .rb-table th, .rb-table td { border-bottom:1px solid #edf3ef; padding:10px 12px; font-size:13px; text-align:left; vertical-align:top; }
+        .rb-table th { background:#f8fcf9; color:#1d5131; position:sticky; top:0; z-index:1; }
+        .rb-badge {
+            display:inline-block;
+            border-radius:999px;
+            padding:4px 10px;
+            background:#eef7f0;
+            color:#0b5a2a;
+            font-size:12px;
+            font-weight:700;
+            border:1px solid #c8decf;
+        }
         .rb-available-good { color:#067647; font-weight:700; }
         .rb-available-bad { color:#b42318; font-weight:700; }
         .rb-slot-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:6px; min-width:320px; }
-        .rb-slot { border:1px solid #dfe7ef; border-radius:8px; padding:6px 8px; background:#fff; min-height:34px; }
+        .rb-slot { border:1px solid #d6e6da; border-radius:8px; padding:6px 8px; background:#fff; min-height:34px; }
         .rb-slot-empty { color:#98a2b3; }
         .rb-actions { display:flex; gap:8px; flex-wrap:wrap; }
-        .rb-btn { border:none; border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:700; font-size:14px; }
-        .rb-btn-primary { background:#1c6fd1; color:#fff; }
-        .rb-btn-light { background:#eef4fb; color:#1b3d61; }
-        .rb-btn-select { padding:6px 10px; background:#ecfdf3; color:#067647; }
+        .rb-btn {
+            border:none;
+            border-radius:10px;
+            padding:10px 14px;
+            cursor:pointer;
+            font-weight:700;
+            font-size:14px;
+            text-decoration:none;
+        }
+        .rb-btn-primary { background:linear-gradient(312deg, #05401E 20.34%, #005424 155.45%); color:#fff; }
+        .rb-btn-light { background:#eef7f0; color:#0b5a2a; border:1px solid #c8decf; }
+        .rb-toolbar .rb-btn-light { background:rgba(255,255,255,0.12); color:#fff; border:1px solid rgba(255,255,255,0.22); }
+        .rb-btn-select { padding:6px 10px; background:#ecfdf3; color:#067647; border:1px solid #b7ebcb; }
         @media (max-width: 1024px) { .rb-summary { grid-template-columns: repeat(2, minmax(0,1fr)); } }
-        @media (max-width: 768px) { .rb-wrap { padding:16px; } .rb-summary { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) {
+            .rb-wrap { padding:16px; }
+            body:not(.popup-mode) .rb-wrap {
+                padding: 78px 16px 32px;
+                margin-left: 0;
+                width: 100%;
+            }
+            .rb-summary { grid-template-columns: 1fr; }
+            .rb-toolbar { padding:18px 16px; }
+        }
     </style>
 </head>
 <body th:classappend="${popupMode} ? 'popup-mode' : ''">

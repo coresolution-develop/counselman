@@ -12,6 +12,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('roomConfigForm');
   const previewWrap = document.getElementById('previewWrap');
   const previewBody = document.getElementById('previewBody');
+  const roomConfigPreviewWrap = document.getElementById('roomConfigPreviewWrap');
+  const roomConfigPreviewBody = document.getElementById('roomConfigPreviewBody');
+  const roomConfigRawText = document.getElementById('roomConfigRawText');
+  const roomConfigPasteMessage = document.getElementById('roomConfigPasteMessage');
   const rawText = document.getElementById('rawText');
   const snapshotDate = document.getElementById('snapshotDate');
   const snapshotTime = document.getElementById('snapshotTime');
@@ -99,6 +103,32 @@ document.addEventListener('DOMContentLoaded', () => {
     importMessage.textContent = `${data.message || '미리보기 완료'} / 인식 ${data.parsedCount || 0}건`;
   };
 
+  const renderRoomConfigPreview = (data) => {
+    roomConfigPreviewBody.innerHTML = '';
+    const rows = Array.isArray(data.rows) ? data.rows : [];
+    if (!rows.length) {
+      roomConfigPreviewWrap.style.display = 'none';
+      roomConfigPasteMessage.textContent = data.message || '미리보기 데이터가 없습니다.';
+      return;
+    }
+    rows.forEach((row) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${row.wardName || ''}</td>
+        <td>${row.roomName || ''}</td>
+        <td>${row.startDate || ''} ~ ${row.endDate || ''}</td>
+        <td>${row.licensedBeds || ''}</td>
+        <td>${row.careType || ''}</td>
+        <td>${row.statusLabel || ''}</td>
+        <td>${row.nursingCost || ''}</td>
+        <td>${row.note || ''}</td>
+      `;
+      roomConfigPreviewBody.appendChild(tr);
+    });
+    roomConfigPreviewWrap.style.display = '';
+    roomConfigPasteMessage.textContent = `${data.message || '미리보기 완료'} / 인식 ${data.parsedCount || 0}건`;
+  };
+
   document.getElementById('previewImportBtn')?.addEventListener('click', async () => {
     if (!rawText.value.trim()) {
       alert('붙여넣기 데이터를 입력해 주세요.');
@@ -136,6 +166,50 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     alert(`가져오기 완료: ${data.parsedCount || 0}건`);
+    window.location.reload();
+  });
+
+  const buildRoomConfigPayload = () => new URLSearchParams({
+    rawText: roomConfigRawText?.value || ''
+  });
+
+  document.getElementById('previewRoomConfigPasteBtn')?.addEventListener('click', async () => {
+    if (!roomConfigRawText?.value.trim()) {
+      alert('병실 기준정보 붙여넣기 데이터를 입력해 주세요.');
+      return;
+    }
+    const response = await fetch('/csm/admin/room-board/room-config/preview', {
+      method: 'POST',
+      headers: requestHeaders,
+      body: buildRoomConfigPayload().toString()
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      alert(data.message || '병실 기준정보 미리보기에 실패했습니다.');
+      return;
+    }
+    renderRoomConfigPreview(data);
+  });
+
+  document.getElementById('saveRoomConfigPasteBtn')?.addEventListener('click', async () => {
+    if (!roomConfigRawText?.value.trim()) {
+      alert('병실 기준정보 붙여넣기 데이터를 입력해 주세요.');
+      return;
+    }
+    if (!confirm('현재 병실 기준정보 붙여넣기 데이터를 저장하시겠습니까?')) {
+      return;
+    }
+    const response = await fetch('/csm/admin/room-board/room-config/save', {
+      method: 'POST',
+      headers: requestHeaders,
+      body: buildRoomConfigPayload().toString()
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      alert(data.message || '병실 기준정보 일괄 저장에 실패했습니다.');
+      return;
+    }
+    alert(`병실 기준정보 저장 완료: ${data.parsedCount || 0}건`);
     window.location.reload();
   });
 });

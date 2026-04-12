@@ -365,6 +365,75 @@ body {
     white-space: pre-wrap;
 }
 
+.counsel-preview-card {
+    margin-top: 8px;
+    border: 1px solid #dce8df;
+    border-radius: 8px;
+    background: #fbfefc;
+    padding: 8px;
+}
+
+.counsel-preview-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.counsel-preview-toggle,
+.counsel-preview-generate {
+    border-radius: 6px;
+    font-size: 11px;
+    height: 26px;
+    padding: 0 8px;
+    cursor: pointer;
+}
+
+.counsel-preview-toggle {
+    border: 1px solid #d8d8d8;
+    background: #fff;
+    color: #4d4d4d;
+}
+
+.counsel-preview-generate {
+    border: 1px solid var(--brand-green);
+    background: #f4fbf7;
+    color: var(--brand-green);
+}
+
+.counsel-preview-body,
+.counsel-preview-empty {
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+.counsel-preview-body {
+    display: none;
+    border: 1px solid #e2ece5;
+    border-radius: 7px;
+    background: #fff;
+    padding: 8px 9px;
+    color: #33413a;
+}
+
+.counsel-preview-summary {
+    background: #f4fbf7;
+    border-color: #d7eadf;
+}
+
+.counsel-preview-empty {
+    display: none;
+    color: #6b756f;
+    padding: 2px 2px 0;
+}
+
+.counsel-preview-card[data-view="summary"] .counsel-preview-summary,
+.counsel-preview-card[data-view="source"] .counsel-preview-source,
+.counsel-preview-card[data-view="empty"] .counsel-preview-empty {
+    display: block;
+}
+
 .counsel-file-panel {
     margin-bottom: 8px;
     border: 1px solid #e8e8e8;
@@ -393,13 +462,26 @@ body {
 
 .counsel-file-item {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: stretch;
     gap: 8px;
     border: 1px solid #ececec;
     border-radius: 6px;
     background: #fff;
     padding: 6px 8px;
+}
+
+.counsel-file-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.counsel-file-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
 }
 
 .counsel-file-link {

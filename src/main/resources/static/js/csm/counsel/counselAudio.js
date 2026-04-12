@@ -50,6 +50,41 @@ document.addEventListener('DOMContentLoaded', function () {
       .replace(/'/g, '&#39;');
   }
 
+  function audioPreviewMode(item) {
+    const summary = String(item?.summaryText || '').trim();
+    const transcript = String(item?.transcript || '').trim();
+    if (summary) return 'summary';
+    if (transcript) return 'source';
+    return 'empty';
+  }
+
+  function renderAudioPreview(item) {
+    const summary = String(item?.summaryText || '').trim();
+    const transcript = String(item?.transcript || '').trim();
+    const mode = audioPreviewMode(item);
+    const helperMessage = transcript
+      ? '원문은 저장되어 있습니다. 필요할 때만 요약을 생성합니다.'
+      : '텍스트 재시도 후 요약을 생성할 수 있습니다.';
+
+    return `
+      <div class="counsel-preview-card" data-view="${escapeHtml(mode)}">
+        <div class="counsel-preview-toolbar">
+          ${summary ? `<button type="button" class="counsel-preview-toggle" data-view-target="summary">요약 보기</button>` : ''}
+          ${transcript ? `<button type="button" class="counsel-preview-toggle" data-view-target="source">원문 보기</button>` : ''}
+          ${transcript && !summary ? `<button type="button" class="counsel-preview-generate audio-record-summary" data-audio-id="${escapeHtml(item.id)}">요약 생성</button>` : ''}
+        </div>
+        ${summary ? `<div class="counsel-preview-body counsel-preview-summary">${escapeHtml(summary)}</div>` : ''}
+        ${transcript ? `<div class="counsel-preview-body counsel-preview-source">${escapeHtml(transcript)}</div>` : ''}
+        <div class="counsel-preview-empty">${escapeHtml(helperMessage)}</div>
+      </div>
+    `;
+  }
+
+  function updatePreviewMode(card, mode) {
+    if (!card || !mode) return;
+    card.setAttribute('data-view', mode);
+  }
+
   function ensureAudioTempKey() {
     let key = String(audioTempKeyInput.value || '').trim();
     if (!key) {
@@ -452,7 +487,7 @@ document.addEventListener('DOMContentLoaded', function () {
               </div>
             </div>
             <audio controls preload="none" src="${escapeHtml(item.streamUrl)}"></audio>
-            ${transcript ? `<div class="audio-record-transcript">${escapeHtml(transcript)}</div>` : ''}
+            ${renderAudioPreview(item)}
           </div>
         `;
       }).join('');
@@ -523,6 +558,37 @@ document.addEventListener('DOMContentLoaded', function () {
       if (retryBtn) {
         retryBtn.disabled = false;
         retryBtn.textContent = '텍스트 재시도';
+      }
+    }
+  }
+
+  async function generateAudioSummary(audioId, summaryBtn) {
+    if (!audioId) return;
+    if (summaryBtn) {
+      summaryBtn.disabled = true;
+      summaryBtn.textContent = '요약 중...';
+    }
+    setRecordingStatus('녹취 요약 생성 중...');
+
+    try {
+      const response = await fetch(`${CONTEXT_PATH}/counsel/audio/summary/${encodeURIComponent(audioId)}`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: csrfHeaders()
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        setRecordingStatus(data?.message || '녹취 요약 생성 실패', true);
+        return;
+      }
+      setRecordingStatus(data?.cached ? '저장된 녹취 요약을 불러왔습니다.' : '녹취 요약 생성 완료');
+      await fetchAudioList();
+    } catch (_) {
+      setRecordingStatus('녹취 요약 생성 중 오류', true);
+    } finally {
+      if (summaryBtn) {
+        summaryBtn.disabled = false;
+        summaryBtn.textContent = '요약 생성';
       }
     }
   }
@@ -847,6 +913,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
   if (audioRecordListEl) {
     audioRecordListEl.addEventListener('click', function (e) {
+      const previewToggle = e.target.closest('.counsel-preview-toggle');
+      if (previewToggle) {
+        const card = previewToggle.closest('.counsel-preview-card');
+        const targetView = String(previewToggle.getAttribute('data-view-target') || '').trim();
+        if (!card || !targetView) return;
+        updatePreviewMode(card, targetView);
+        return;
+      }
+
+      const summaryBtn = e.target.closest('.audio-record-summary');
+      if (summaryBtn) {
+        const audioId = summaryBtn.getAttribute('data-audio-id');
+        if (!audioId) return;
+        generateAudioSummary(audioId, summaryBtn);
+        return;
+      }
+
       const retryBtn = e.target.closest('.audio-record-retry');
       if (retryBtn) {
         const audioId = retryBtn.getAttribute('data-audio-id');

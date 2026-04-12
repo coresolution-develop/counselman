@@ -83,8 +83,9 @@
                 <input type="hidden" id="inst" name="inst" th:value="${inst}"/>
                 <input type="hidden" id="audio_temp_key" name="audio_temp_key">
                 <input type="hidden" id="file_temp_key" name="file_temp_key">
+                <input type="hidden" id="module_admission_pledge_enabled" th:value="${moduleAdmissionPledgeEnabled ? 'Y' : 'N'}">
                 <input type="hidden" id="admission_pledge_required" name="admission_pledge_required"
-                    th:value="${csData.cs_col_19 == '입원완료' or csData.cs_col_19 == '입원예약' ? 'Y' : 'N'}">
+                    th:value="${moduleAdmissionPledgeEnabled and (csData.cs_col_19 == '입원완료' or csData.cs_col_19 == '입원예약') ? 'Y' : 'N'}">
                 <input type="hidden" id="admission_agreed_yn" name="admission_agreed_yn"
                     th:value="${admissionPledge != null and admissionPledge['agreed_yn'] != null ? admissionPledge['agreed_yn'] : 'N'}">
                 <input type="hidden" id="admission_signature_data" name="admission_signature_data"
@@ -555,10 +556,29 @@
            id="cs_col_38"
            th:value="${csData.cs_col_38}" />
   </div>
-  <div class="form-group" style="display:flex; align-items:flex-end;">
-    <button type="button" id="openRoomBoardBtn" class="btn counsel-file-btn">병실현황판 보기</button>
-  </div>
 </div>
+                                                    <div class="admission-support-panel"
+                                                         th:if="${moduleRoomBoardEnabled or moduleAdmissionPledgeEnabled}">
+                                                        <div class="admission-support-item"
+                                                             th:if="${moduleRoomBoardEnabled}">
+                                                            <div class="admission-support-head">병실 선택</div>
+                                                            <div class="admission-support-body">
+                                                                <button type="button" id="openRoomBoardBtn" class="btn counsel-file-btn admission-support-btn">병실현황판 보기</button>
+                                                                <span id="selectedRoomStatus" class="admission-support-status"
+                                                                      th:text="${!#strings.isEmpty(csData.cs_col_38) ? '선택 병실: ' + csData.cs_col_38 : '선택된 병실 없음'}">선택된 병실 없음</span>
+                                                            </div>
+                                                        </div>
+                                                        <div th:if="${moduleAdmissionPledgeEnabled}" id="admissionPledgeLauncher" class="admission-support-item admission-pledge-launcher"
+                                                            style="display:none;"
+                                                            th:style="${csData.cs_col_19 == '입원완료' or csData.cs_col_19 == '입원예약' ? '' : 'display:none;'}">
+                                                            <div class="admission-support-head">입원서약서</div>
+                                                            <div class="admission-support-body">
+                                                                <button type="button" id="openAdmissionPledgeBtn" class="btn counsel-file-btn admission-support-btn">입원서약서 페이지 열기</button>
+                                                                <span id="admissionPledgeStatus" class="admission-support-status admission-pledge-status"
+                                                                    th:text="${admissionPledge != null and admissionPledge['agreed_yn'] == 'Y' and admissionPledge['signature_data'] != null and !#strings.isEmpty(admissionPledge['signature_data']) ? '작성 완료' : '미작성'}">미작성</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                     <div id="noAdmissionReason"
      style="display: none;"
      th:style="${#strings.isEmpty(csData.cs_col_20) ? 'display:none;' : ''}">
@@ -575,20 +595,12 @@
     </select>
   </div>
 </div>
-
-                                                    <div id="admissionPledgeLauncher" class="admission-pledge-launcher"
-                                                        style="display:none;"
-                                                        th:style="${csData.cs_col_19 == '입원완료' or csData.cs_col_19 == '입원예약' ? '' : 'display:none;'}">
-                                                        <button type="button" id="openAdmissionPledgeBtn" class="btn counsel-file-btn">입원서약서 페이지 열기</button>
-                                                        <span id="admissionPledgeStatus" class="admission-pledge-status"
-                                                            th:text="${admissionPledge != null and admissionPledge['agreed_yn'] == 'Y' and admissionPledge['signature_data'] != null and !#strings.isEmpty(admissionPledge['signature_data']) ? '작성 완료' : '미작성'}">미작성</span>
-                                                    </div>
                                                 </div>
                                             </div>
                                             <div class="right-container">
                                                 <div class="right-custom">
                                                     <div class="right-customname">상담내용</div>
-                                                    <div class="pc-audio-panel">
+                                                    <div class="pc-audio-panel" th:if="${moduleCounselAudioEnabled}">
                                                         <div class="pc-audio-header">
                                                             <div class="pc-audio-title">음성 녹음</div>
                                                             <div id="recordingIndicator" class="recording-indicator" aria-live="polite">
@@ -607,7 +619,7 @@
                                                         <audio id="recordPreview" controls class="record-preview" style="display:none;"></audio>
                                                         <div id="audioRecordList" class="audio-record-list"></div>
                                                     </div>
-                                                    <div class="counsel-file-panel pc-file-panel">
+                                                    <div class="counsel-file-panel pc-file-panel" th:if="${moduleCounselFileEnabled}">
                                                         <div class="counsel-file-actions">
                                                             <button type="button" id="uploadCounselFileBtn" class="btn counsel-file-btn">서류 업로드</button>
                                                             <span class="counsel-file-help">소견서/PDF/이미지/문서 첨부</span>

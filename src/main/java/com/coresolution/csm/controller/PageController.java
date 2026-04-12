@@ -82,6 +82,7 @@ import com.coresolution.csm.config.InstDetails;
 import com.coresolution.csm.serivce.CounselListService;
 import com.coresolution.csm.serivce.CsmAuthService;
 import com.coresolution.csm.serivce.CsmEmailService;
+import com.coresolution.csm.serivce.ModuleFeatureService;
 import com.coresolution.csm.serivce.CsmPasswordResetTokenService;
 import com.coresolution.csm.serivce.ExternalSmsGatewayService;
 import com.coresolution.csm.serivce.SmsService;
@@ -132,6 +133,8 @@ public class PageController {
     private ExternalSmsGatewayService externalSmsGatewayService;
     @Autowired
     private CounselListService counselListService;
+    @Autowired
+    private ModuleFeatureService moduleFeatureService;
     @Value("${app.counsel.audio.base-dir:${user.home}/csm-audio}")
     private String counselAudioBaseDir;
     @Value("${app.counsel.file.base-dir:${user.home}/csm-counsel-files}")
@@ -432,9 +435,16 @@ public class PageController {
                 .stream()
                 .filter(Objects::nonNull)
                 .toList();
+        List<Instdata> institutions = Optional.ofNullable(cs.coreInstSelect())
+                .orElse(Collections.emptyList())
+                .stream()
+                .filter(Objects::nonNull)
+                .toList();
         model.addAttribute("info", info);
         model.addAttribute("template", template);
         model.addAttribute("instCount", template.size());
+        model.addAttribute("moduleFeatures", moduleFeatureService.getFeatureDefinitions());
+        model.addAttribute("moduleFeatureRows", moduleFeatureService.getFeatureRows(institutions));
         return "csm/core/admin/setting";
     }
 
@@ -746,6 +756,34 @@ public class PageController {
         }
         int result = cs.coreTemplateDelete(idx);
         return Map.of("result", result > 0 ? "1" : "0");
+    }
+
+    @PostMapping("core/setting/moduleFeatureUpdate")
+    @ResponseBody
+    public Map<String, Object> coreModuleFeatureUpdate(
+            HttpSession session,
+            @RequestBody Map<String, Object> body) {
+        String inst = ensureInst(session);
+        if (!isCoreInst(inst)) {
+            return Map.of("result", "0", "message", "권한 없음");
+        }
+        String instCode = Objects.toString(body.get("instCode"), "").trim();
+        String featureCode = Objects.toString(body.get("featureCode"), "").trim();
+        boolean enabled = Boolean.parseBoolean(Objects.toString(body.get("enabled"), "false"));
+        Userdata info = ensureUserInfo(session, inst);
+        try {
+            moduleFeatureService.updateFeature(
+                    instCode,
+                    featureCode,
+                    enabled,
+                    info == null ? "" : safeString(info.getUs_col_02()).trim());
+            return Map.of("result", "1");
+        } catch (IllegalArgumentException e) {
+            return Map.of("result", "0", "message", e.getMessage());
+        } catch (Exception e) {
+            log.error("[core/setting/moduleFeatureUpdate] fail instCode={}, featureCode={}", instCode, featureCode, e);
+            return Map.of("result", "0", "message", "기능 상태 변경 중 오류가 발생했습니다.");
+        }
     }
 
     @PostMapping("core/smssetting/priceInsert")
@@ -2487,8 +2525,12 @@ public class PageController {
                 cs.insertGuardian(inst, guardian);
             }
             saveCounselLogSnapshot(inst, csIdx, request);
-            bindPendingCounselAudio(inst, csIdx, request);
-            bindPendingCounselFiles(inst, csIdx, request);
+            if (isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_AUDIO)) {
+                bindPendingCounselAudio(inst, csIdx, request);
+            }
+            if (isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_FILE)) {
+                bindPendingCounselFiles(inst, csIdx, request);
+            }
             return "redirect:/counsel/list";
         } catch (Exception e) {
             log.error("[counsel] save fail inst={}", inst, e);
@@ -2537,8 +2579,12 @@ public class PageController {
                 cs.insertGuardian(inst, guardian);
             }
             saveCounselLogSnapshot(inst, csIdx, request);
-            bindPendingCounselAudio(inst, csIdx, request);
-            bindPendingCounselFiles(inst, csIdx, request);
+            if (isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_AUDIO)) {
+                bindPendingCounselAudio(inst, csIdx, request);
+            }
+            if (isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_FILE)) {
+                bindPendingCounselFiles(inst, csIdx, request);
+            }
             return "redirect:/counsel/list";
         } catch (Exception e) {
             log.error("[counselupdate] update fail inst={}, cs_idx={}", inst, csIdx, e);
@@ -2574,6 +2620,9 @@ public class PageController {
         String inst = ensureInst(session);
         if (inst == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success", false, "message", "세션 만료"));
+        }
+        if (!isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_AUDIO)) {
+            return featureDisabledResponse("녹음 기능이 비활성화되었습니다.");
         }
         if (audio == null || audio.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "업로드할 음성 파일이 없습니다."));
@@ -2658,6 +2707,9 @@ public class PageController {
         if (inst == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success", false, "message", "세션 만료"));
         }
+        if (!isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_AUDIO)) {
+            return featureDisabledResponse("녹음 기능이 비활성화되었습니다.");
+        }
 
         try {
             String normalizedTempKey = sanitizeTempKey(tempKey);
@@ -2680,6 +2732,9 @@ public class PageController {
         String inst = ensureInst(session);
         if (inst == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("세션 만료");
+        }
+        if (!isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_AUDIO)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("녹음 기능이 비활성화되었습니다.");
         }
         if (audioId <= 0) {
             return ResponseEntity.badRequest().body("invalid audio id");
@@ -2740,6 +2795,9 @@ public class PageController {
         if (inst == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success", false, "message", "세션 만료"));
         }
+        if (!isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_AUDIO)) {
+            return featureDisabledResponse("녹음 기능이 비활성화되었습니다.");
+        }
         if (audioId <= 0) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "invalid audio id"));
         }
@@ -2777,6 +2835,9 @@ public class PageController {
         String inst = ensureInst(session);
         if (inst == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success", false, "message", "세션 만료"));
+        }
+        if (!isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_AUDIO)) {
+            return featureDisabledResponse("녹음 기능이 비활성화되었습니다.");
         }
         if (audioId <= 0) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "invalid audio id"));
@@ -2851,6 +2912,9 @@ public class PageController {
         if (inst == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success", false, "message", "세션 만료"));
         }
+        if (!isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_FILE)) {
+            return featureDisabledResponse("파일 업로드 기능이 비활성화되었습니다.");
+        }
         if (file == null || file.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "업로드할 파일이 없습니다."));
         }
@@ -2902,10 +2966,11 @@ public class PageController {
             }
 
             String extractedText = extractTextFromCounselFile(target, originalFilename, mimeType);
-            Map<String, Object> payload = toCounselFilePayload(row, request);
             if (!extractedText.isBlank()) {
-                payload.put("extractedText", extractedText);
+                cs.updateCounselFileExtractedText(inst, fileId, extractedText);
+                row = cs.getCounselFileById(inst, fileId);
             }
+            Map<String, Object> payload = toCounselFilePayload(row, request);
             return ResponseEntity.ok(Map.of("success", true, "item", payload));
         } catch (Exception e) {
             log.error("[counsel/file/upload] fail inst={}, csIdx={}", inst, csIdx, e);
@@ -2923,6 +2988,9 @@ public class PageController {
         String inst = ensureInst(session);
         if (inst == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success", false, "message", "세션 만료"));
+        }
+        if (!isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_FILE)) {
+            return featureDisabledResponse("파일 업로드 기능이 비활성화되었습니다.");
         }
         try {
             String normalizedTempKey = sanitizeTempKey(tempKey);
@@ -2944,6 +3012,9 @@ public class PageController {
         String inst = ensureInst(session);
         if (inst == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("세션 만료");
+        }
+        if (!isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_FILE)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("파일 업로드 기능이 비활성화되었습니다.");
         }
         if (fileId <= 0) {
             return ResponseEntity.badRequest().body("invalid file id");
@@ -3004,6 +3075,9 @@ public class PageController {
         if (inst == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success", false, "message", "세션 만료"));
         }
+        if (!isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_FILE)) {
+            return featureDisabledResponse("파일 업로드 기능이 비활성화되었습니다.");
+        }
         if (fileId <= 0) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "invalid file id"));
         }
@@ -3041,6 +3115,9 @@ public class PageController {
         if (inst == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success", false, "message", "세션 만료"));
         }
+        if (!isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_FILE)) {
+            return featureDisabledResponse("파일 업로드 기능이 비활성화되었습니다.");
+        }
         if (fileId <= 0) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "invalid file id"));
         }
@@ -3073,6 +3150,7 @@ public class PageController {
                         "success", false,
                         "message", "문서에서 텍스트를 추출하지 못했습니다."));
             }
+            cs.updateCounselFileExtractedText(inst, fileId, extractedText);
 
             return ResponseEntity.ok(Map.of(
                     "success", true,
@@ -3114,6 +3192,152 @@ public class PageController {
                 "success", true,
                 "summary", summary,
                 "provider", "openai"));
+    }
+
+    @PostMapping({ "counsel/audio/summary/{audioId}", "/counsel/audio/summary/{audioId}" })
+    @ResponseBody
+    public ResponseEntity<?> generateCounselAudioSummary(
+            @PathVariable("audioId") long audioId,
+            HttpSession session,
+            HttpServletRequest request) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success", false, "message", "세션 만료"));
+        }
+        if (!isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_AUDIO)) {
+            return featureDisabledResponse("녹음 기능이 비활성화되었습니다.");
+        }
+        if (audioId <= 0) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "invalid audio id"));
+        }
+
+        try {
+            Map<String, Object> row = cs.getCounselAudioById(inst, audioId);
+            if (row == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("success", false, "message", "not found"));
+            }
+
+            String currentSummary = objectString(row.get("summary_text")).trim();
+            if (!currentSummary.isBlank()) {
+                return ResponseEntity.ok(Map.of(
+                        "success", true,
+                        "summary", currentSummary,
+                        "item", toCounselAudioPayload(row, request),
+                        "cached", true));
+            }
+
+            String transcript = objectString(row.get("transcript")).trim();
+            if (transcript.isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("success", false, "message", "요약할 녹취 원문이 없습니다."));
+            }
+            if (openAiApiKey == null || openAiApiKey.isBlank()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                        "success", false,
+                        "message", "OpenAI API 키가 설정되지 않았습니다."));
+            }
+
+            String filename = objectString(row.get("original_filename")).trim();
+            String summary = summarizeAttachmentWithOpenAi("녹취", transcript, filename);
+            if (summary.isBlank()) {
+                return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of(
+                        "success", false,
+                        "message", "요약 생성에 실패했습니다. 잠시 후 다시 시도해 주세요."));
+            }
+
+            cs.updateCounselAudioSummary(inst, audioId, summary);
+            Map<String, Object> updated = cs.getCounselAudioById(inst, audioId);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "summary", summary,
+                    "item", toCounselAudioPayload(updated, request),
+                    "cached", false));
+        } catch (Exception e) {
+            log.error("[counsel/audio/summary] fail inst={}, audioId={}", inst, audioId, e);
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", "요약 생성 중 오류"));
+        }
+    }
+
+    @PostMapping({ "counsel/file/summary/{fileId}", "/counsel/file/summary/{fileId}" })
+    @ResponseBody
+    public ResponseEntity<?> generateCounselFileSummary(
+            @PathVariable("fileId") long fileId,
+            HttpSession session,
+            HttpServletRequest request) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success", false, "message", "세션 만료"));
+        }
+        if (!isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_FILE)) {
+            return featureDisabledResponse("파일 업로드 기능이 비활성화되었습니다.");
+        }
+        if (fileId <= 0) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "invalid file id"));
+        }
+
+        try {
+            Map<String, Object> row = cs.getCounselFileById(inst, fileId);
+            if (row == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("success", false, "message", "not found"));
+            }
+
+            String currentSummary = objectString(row.get("summary_text")).trim();
+            if (!currentSummary.isBlank()) {
+                return ResponseEntity.ok(Map.of(
+                        "success", true,
+                        "summary", currentSummary,
+                        "item", toCounselFilePayload(row, request),
+                        "cached", true));
+            }
+
+            String extractedText = objectString(row.get("extracted_text")).trim();
+            if (extractedText.isBlank()) {
+                String storedFilename = objectString(row.get("stored_filename")).trim();
+                Path baseDir = resolveCounselFileDir(inst);
+                Path file = storedFilename.isEmpty() ? null : baseDir.resolve(storedFilename).normalize();
+                if (file == null || !file.startsWith(baseDir) || !Files.exists(file) || !Files.isRegularFile(file)) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                            .body(Map.of("success", false, "message", "file not found"));
+                }
+                extractedText = extractTextFromCounselFile(
+                        file,
+                        objectString(row.get("original_filename")),
+                        objectString(row.get("mime_type")));
+                if (extractedText.isBlank()) {
+                    return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                            .body(Map.of("success", false, "message", "문서에서 텍스트를 추출하지 못했습니다."));
+                }
+                cs.updateCounselFileExtractedText(inst, fileId, extractedText);
+                row = cs.getCounselFileById(inst, fileId);
+            }
+
+            if (openAiApiKey == null || openAiApiKey.isBlank()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                        "success", false,
+                        "message", "OpenAI API 키가 설정되지 않았습니다."));
+            }
+
+            String filename = objectString(row.get("original_filename")).trim();
+            String summary = summarizeAttachmentWithOpenAi("첨부문서", extractedText, filename);
+            if (summary.isBlank()) {
+                return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of(
+                        "success", false,
+                        "message", "요약 생성에 실패했습니다. 잠시 후 다시 시도해 주세요."));
+            }
+
+            cs.updateCounselFileSummary(inst, fileId, summary);
+            Map<String, Object> updated = cs.getCounselFileById(inst, fileId);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "summary", summary,
+                    "item", toCounselFilePayload(updated, request),
+                    "cached", false));
+        } catch (Exception e) {
+            log.error("[counsel/file/summary] fail inst={}, fileId={}", inst, fileId, e);
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", "요약 생성 중 오류"));
+        }
     }
 
     @PostMapping("counsel/ListSetting")
@@ -3402,6 +3626,7 @@ public class PageController {
         out.put("fileSize", parseLongObject(row.get("file_size"), 0L));
         out.put("durationSeconds", row.get("duration_seconds"));
         out.put("transcript", objectString(row.get("transcript")));
+        out.put("summaryText", objectString(row.get("summary_text")));
         out.put("createdBy", objectString(row.get("created_by")));
         out.put("createdAt", row.get("created_at"));
         out.put("updatedAt", row.get("updated_at"));
@@ -3423,6 +3648,8 @@ public class PageController {
         out.put("storedFilename", objectString(row.get("stored_filename")));
         out.put("mimeType", objectString(row.get("mime_type")));
         out.put("fileSize", parseLongObject(row.get("file_size"), 0L));
+        out.put("extractedText", objectString(row.get("extracted_text")));
+        out.put("summaryText", objectString(row.get("summary_text")));
         out.put("createdBy", objectString(row.get("created_by")));
         out.put("createdAt", row.get("created_at"));
         out.put("updatedAt", row.get("updated_at"));
@@ -3798,21 +4025,36 @@ public class PageController {
     }
 
     private String summarizeCounselWithOpenAi(String content) {
+        String clipped = clipSummarySourceText(content, 12000);
+        if (clipped.isBlank()) {
+            return "";
+        }
+        return summarizeWithOpenAi(buildCounselSummaryPrompt(clipped), 500);
+    }
+
+    private String summarizeAttachmentWithOpenAi(String sourceType, String content, String filename) {
+        String clipped = clipSummarySourceText(content, 12000);
+        if (clipped.isBlank()) {
+            return "";
+        }
+        return summarizeWithOpenAi(buildAttachmentSummaryPrompt(sourceType, clipped, filename), 500);
+    }
+
+    private String summarizeWithOpenAi(String prompt, int maxOutputTokens) {
         String endpoint = resolveOpenAiResponsesEndpoint();
         String apiKey = safeString(openAiApiKey).trim();
         if (endpoint.isBlank() || apiKey.isBlank()) {
             return "";
         }
-
-        String clipped = clipSummarySourceText(content, 12000);
-        if (clipped.isBlank()) {
+        String normalizedPrompt = safeString(prompt).trim();
+        if (normalizedPrompt.isBlank()) {
             return "";
         }
 
         try {
             ObjectNode body = objectMapper.createObjectNode();
             body.put("model", safeString(openAiModel).isBlank() ? "gpt-4.1-mini" : safeString(openAiModel).trim());
-            body.put("max_output_tokens", 500);
+            body.put("max_output_tokens", maxOutputTokens);
 
             ArrayNode input = body.putArray("input");
             ObjectNode message = input.addObject();
@@ -3820,7 +4062,7 @@ public class PageController {
             ArrayNode messageContents = message.putArray("content");
             ObjectNode text = messageContents.addObject();
             text.put("type", "input_text");
-            text.put("text", buildCounselSummaryPrompt(clipped));
+            text.put("text", normalizedPrompt);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(endpoint))
@@ -3893,6 +4135,35 @@ public class PageController {
 
                 상담 내용:
                 """ + content;
+    }
+
+    private String buildAttachmentSummaryPrompt(String sourceType, String content, String filename) {
+        String kind = safeString(sourceType).isBlank() ? "첨부자료" : safeString(sourceType).trim();
+        String safeFilename = safeString(filename).trim();
+        return """
+                너는 입원상담 보조자료 요약 도우미다.
+                아래 %s 원문을 한국어로 간결하게 요약해라.
+
+                출력 형식(각 항목 한 줄):
+                핵심내용: ...
+                환자상태: ...
+                위험요소: ...
+                입원판단포인트: ...
+                추가확인사항: ...
+
+                규칙:
+                - 근거 없는 추측은 금지.
+                - 원문에 없는 정보는 쓰지 말 것.
+                - 정보가 없으면 "미확인"으로 작성.
+                - 5줄 이외의 설명은 출력하지 말 것.
+                - 파일명이 있으면 문맥 파악에만 참고하고, 파일명만으로 추정하지 말 것.
+
+                파일명:
+                %s
+
+                원문:
+                %s
+                """.formatted(kind, safeFilename.isBlank() ? "미확인" : safeFilename, content);
     }
 
     private String extractSummaryFromOpenAiResponse(String responseBody) {
@@ -4045,6 +4316,9 @@ public class PageController {
 
     private void saveAdmissionPledgeFromRequest(String inst, int csIdx, HttpServletRequest request) {
         if (csIdx <= 0) {
+            return;
+        }
+        if (!isModuleEnabled(inst, ModuleFeatureService.FEATURE_ADMISSION_PLEDGE)) {
             return;
         }
 
@@ -4453,6 +4727,9 @@ public class PageController {
         if (inst == null) {
             return "redirect:/login";
         }
+        if (!isModuleEnabled(inst, ModuleFeatureService.FEATURE_ADMISSION_PLEDGE)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "입원서약서 기능이 비활성화되었습니다.");
+        }
 
         int csIdx = csIdxParam == null ? 0 : Math.max(0, csIdxParam);
         Map<String, Object> admissionPledge = csIdx > 0
@@ -4483,6 +4760,7 @@ public class PageController {
 
         Userdata userinfo = ensureUserInfo(session, inst);
         populateCommon(model, inst, userinfo);
+        populateModuleFeatureModel(model, inst);
 
         // 신규 화면 렌더에 필요한 기본 모델값
         model.addAttribute("inst", inst);
@@ -4517,6 +4795,7 @@ public class PageController {
 
         Userdata userinfo = (Userdata) session.getAttribute("userInfo");
         populateCommon(model, inst, userinfo);
+        populateModuleFeatureModel(model, inst);
 
         model.addAttribute("cs_idx", csIdx);
         var username = auth.getName();
@@ -4837,6 +5116,18 @@ public class PageController {
         return null;
     }
 
+    private void populateModuleFeatureModel(Model model, String inst) {
+        Map<String, Boolean> featureStates = moduleFeatureService.getFeatureStateMap(inst);
+        model.addAttribute("moduleRoomBoardEnabled",
+                Boolean.TRUE.equals(featureStates.get(ModuleFeatureService.FEATURE_ROOM_BOARD)));
+        model.addAttribute("moduleCounselAudioEnabled",
+                Boolean.TRUE.equals(featureStates.get(ModuleFeatureService.FEATURE_COUNSEL_AUDIO)));
+        model.addAttribute("moduleAdmissionPledgeEnabled",
+                Boolean.TRUE.equals(featureStates.get(ModuleFeatureService.FEATURE_ADMISSION_PLEDGE)));
+        model.addAttribute("moduleCounselFileEnabled",
+                Boolean.TRUE.equals(featureStates.get(ModuleFeatureService.FEATURE_COUNSEL_FILE)));
+    }
+
     /** 세션에 inst가 없으면 인증정보에서 복구 시도 */
     private String ensureInst(HttpSession session) {
         Object v = session.getAttribute("inst");
@@ -4866,6 +5157,16 @@ public class PageController {
 
     private boolean isCoreInst(String inst) {
         return inst != null && "core".equalsIgnoreCase(inst.trim());
+    }
+
+    private boolean isModuleEnabled(String inst, String featureCode) {
+        return moduleFeatureService.isEnabled(inst, featureCode);
+    }
+
+    private ResponseEntity<Map<String, Object>> featureDisabledResponse(String message) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                "success", false,
+                "message", message));
     }
 
     private String loginRedirectPath(HttpServletRequest request) {

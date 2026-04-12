@@ -1531,8 +1531,20 @@ public class CsmAuthService {
         return count != null && count > 0;
     }
 
+    private void ensureTableColumn(String schemaName, String tableName, String columnName, String alterSql) {
+        try {
+            if (hasColumn(schemaName, tableName, columnName)) {
+                return;
+            }
+            jdbcTemplate.execute(alterSql);
+        } catch (Exception e) {
+            log.warn("[schema] ensure column fail table={}, col={}, err={}", tableName, columnName, e.toString());
+        }
+    }
+
     private void ensureCounselAudioTable(String inst) {
         String safe = sanitizeInst(inst);
+        String tableName = "counsel_audio_" + safe;
         String ddl = "CREATE TABLE IF NOT EXISTS csm.counsel_audio_" + safe + " ("
                 + "id bigint auto_increment primary key,"
                 + "cs_idx int default null,"
@@ -1548,6 +1560,8 @@ public class CsmAuthService {
                 + "updated_at timestamp default current_timestamp on update current_timestamp"
                 + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
         jdbcTemplate.execute(ddl);
+        ensureTableColumn("csm", tableName, "summary_text",
+                "ALTER TABLE csm." + tableName + " ADD COLUMN summary_text longtext");
     }
 
     public long insertCounselAudio(
@@ -1609,12 +1623,12 @@ public class CsmAuthService {
         ensureCounselAudioTable(inst);
         String safe = sanitizeInst(inst);
         if (csIdx != null && csIdx > 0) {
-            String sql = "SELECT id, cs_idx, temp_key, original_filename, stored_filename, mime_type, file_size, duration_seconds, transcript, created_by, created_at, updated_at "
+            String sql = "SELECT id, cs_idx, temp_key, original_filename, stored_filename, mime_type, file_size, duration_seconds, transcript, summary_text, created_by, created_at, updated_at "
                     + "FROM csm.counsel_audio_" + safe + " WHERE cs_idx = ? ORDER BY id DESC";
             return jdbcTemplate.queryForList(sql, csIdx);
         }
         if (tempKey != null && !tempKey.isBlank()) {
-            String sql = "SELECT id, cs_idx, temp_key, original_filename, stored_filename, mime_type, file_size, duration_seconds, transcript, created_by, created_at, updated_at "
+            String sql = "SELECT id, cs_idx, temp_key, original_filename, stored_filename, mime_type, file_size, duration_seconds, transcript, summary_text, created_by, created_at, updated_at "
                     + "FROM csm.counsel_audio_" + safe + " WHERE temp_key = ? ORDER BY id DESC";
             return jdbcTemplate.queryForList(sql, tempKey.trim());
         }
@@ -1627,7 +1641,7 @@ public class CsmAuthService {
         }
         ensureCounselAudioTable(inst);
         String safe = sanitizeInst(inst);
-        String sql = "SELECT id, cs_idx, temp_key, original_filename, stored_filename, mime_type, file_size, duration_seconds, transcript, created_by, created_at, updated_at "
+        String sql = "SELECT id, cs_idx, temp_key, original_filename, stored_filename, mime_type, file_size, duration_seconds, transcript, summary_text, created_by, created_at, updated_at "
                 + "FROM csm.counsel_audio_" + safe + " WHERE id = ? LIMIT 1";
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, audioId);
         return rows.isEmpty() ? null : rows.get(0);
@@ -1644,8 +1658,18 @@ public class CsmAuthService {
 
         ensureCounselAudioTable(inst);
         String safe = sanitizeInst(inst);
-        String sql = "UPDATE csm.counsel_audio_" + safe + " SET transcript = ? WHERE id = ?";
+        String sql = "UPDATE csm.counsel_audio_" + safe + " SET transcript = ?, summary_text = '' WHERE id = ?";
         return jdbcTemplate.update(sql, normalized, audioId);
+    }
+
+    public int updateCounselAudioSummary(String inst, long audioId, String summaryText) {
+        if (audioId <= 0) {
+            return 0;
+        }
+        ensureCounselAudioTable(inst);
+        String safe = sanitizeInst(inst);
+        String sql = "UPDATE csm.counsel_audio_" + safe + " SET summary_text = ? WHERE id = ?";
+        return jdbcTemplate.update(sql, Optional.ofNullable(summaryText).orElse("").trim(), audioId);
     }
 
     public int deleteCounselAudioById(String inst, long audioId) {
@@ -1660,6 +1684,7 @@ public class CsmAuthService {
 
     private void ensureCounselFileTable(String inst) {
         String safe = sanitizeInst(inst);
+        String tableName = "counsel_file_" + safe;
         String ddl = "CREATE TABLE IF NOT EXISTS csm.counsel_file_" + safe + " ("
                 + "id bigint auto_increment primary key,"
                 + "cs_idx int default null,"
@@ -1673,6 +1698,10 @@ public class CsmAuthService {
                 + "updated_at timestamp default current_timestamp on update current_timestamp"
                 + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
         jdbcTemplate.execute(ddl);
+        ensureTableColumn("csm", tableName, "extracted_text",
+                "ALTER TABLE csm." + tableName + " ADD COLUMN extracted_text longtext");
+        ensureTableColumn("csm", tableName, "summary_text",
+                "ALTER TABLE csm." + tableName + " ADD COLUMN summary_text longtext");
     }
 
     public long insertCounselFile(
@@ -1726,12 +1755,12 @@ public class CsmAuthService {
         ensureCounselFileTable(inst);
         String safe = sanitizeInst(inst);
         if (csIdx != null && csIdx > 0) {
-            String sql = "SELECT id, cs_idx, temp_key, original_filename, stored_filename, mime_type, file_size, created_by, created_at, updated_at "
+            String sql = "SELECT id, cs_idx, temp_key, original_filename, stored_filename, mime_type, file_size, extracted_text, summary_text, created_by, created_at, updated_at "
                     + "FROM csm.counsel_file_" + safe + " WHERE cs_idx = ? ORDER BY id DESC";
             return jdbcTemplate.queryForList(sql, csIdx);
         }
         if (tempKey != null && !tempKey.isBlank()) {
-            String sql = "SELECT id, cs_idx, temp_key, original_filename, stored_filename, mime_type, file_size, created_by, created_at, updated_at "
+            String sql = "SELECT id, cs_idx, temp_key, original_filename, stored_filename, mime_type, file_size, extracted_text, summary_text, created_by, created_at, updated_at "
                     + "FROM csm.counsel_file_" + safe + " WHERE temp_key = ? ORDER BY id DESC";
             return jdbcTemplate.queryForList(sql, tempKey.trim());
         }
@@ -1744,10 +1773,30 @@ public class CsmAuthService {
         }
         ensureCounselFileTable(inst);
         String safe = sanitizeInst(inst);
-        String sql = "SELECT id, cs_idx, temp_key, original_filename, stored_filename, mime_type, file_size, created_by, created_at, updated_at "
+        String sql = "SELECT id, cs_idx, temp_key, original_filename, stored_filename, mime_type, file_size, extracted_text, summary_text, created_by, created_at, updated_at "
                 + "FROM csm.counsel_file_" + safe + " WHERE id = ? LIMIT 1";
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, fileId);
         return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    public int updateCounselFileExtractedText(String inst, long fileId, String extractedText) {
+        if (fileId <= 0) {
+            return 0;
+        }
+        ensureCounselFileTable(inst);
+        String safe = sanitizeInst(inst);
+        String sql = "UPDATE csm.counsel_file_" + safe + " SET extracted_text = ?, summary_text = '' WHERE id = ?";
+        return jdbcTemplate.update(sql, Optional.ofNullable(extractedText).orElse(""), fileId);
+    }
+
+    public int updateCounselFileSummary(String inst, long fileId, String summaryText) {
+        if (fileId <= 0) {
+            return 0;
+        }
+        ensureCounselFileTable(inst);
+        String safe = sanitizeInst(inst);
+        String sql = "UPDATE csm.counsel_file_" + safe + " SET summary_text = ? WHERE id = ?";
+        return jdbcTemplate.update(sql, Optional.ofNullable(summaryText).orElse("").trim(), fileId);
     }
 
     public int deleteCounselFileById(String inst, long fileId) {

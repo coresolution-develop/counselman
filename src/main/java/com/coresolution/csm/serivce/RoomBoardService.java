@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.coresolution.csm.vo.RoomBoardImportResult;
 import com.coresolution.csm.vo.RoomBoardImportRow;
 import com.coresolution.csm.vo.RoomBoardRoomConfig;
+import com.coresolution.csm.vo.RoomBoardRoomConfigPasteResult;
 import com.coresolution.csm.vo.RoomBoardRoomView;
 import com.coresolution.csm.vo.RoomBoardSnapshot;
 import com.coresolution.csm.vo.RoomBoardView;
@@ -161,83 +162,49 @@ public class RoomBoardService {
         ensureTables(inst);
         String safe = sanitizeInst(inst);
         long id = config.getId() == null ? 0L : config.getId();
-        String roomName = normalizeRoomName(config.getRoomName());
-        String wardName = safeText(config.getWardName(), 50);
-        if (wardName.isBlank() || roomName.isBlank()) {
-            throw new IllegalArgumentException("병동과 병실은 필수입니다.");
-        }
-        LocalDate startDate = parseDate(config.getStartDate(), LocalDate.now());
-        LocalDate endDate = parseDate(config.getEndDate(), LocalDate.of(9999, 12, 31));
-        int licensedBeds = config.getLicensedBeds() == null ? 0 : Math.max(0, config.getLicensedBeds());
-        if (licensedBeds <= 0) {
-            throw new IllegalArgumentException("허가병상수는 1 이상이어야 합니다.");
-        }
+        PreparedRoomConfig prepared = prepareRoomConfig(config);
         if (id > 0) {
-            String sql = """
-                    UPDATE csm.room_board_room_master_%s
-                       SET ward_name=?,
-                           room_name=?,
-                           start_date=?,
-                           end_date=?,
-                           licensed_beds=?,
-                           care_type=?,
-                           status_walk=?,
-                           status_diaper=?,
-                           status_oxygen=?,
-                           status_suction=?,
-                           nursing_cost=?,
-                           note=?,
-                           use_yn=?,
-                           updated_by=?
-                     WHERE rbm_id=?
-                    """.formatted(safe);
-            jdbcTemplate.update(sql,
-                    wardName,
-                    roomName,
-                    startDate,
-                    endDate,
-                    licensedBeds,
-                    safeText(config.getCareType(), 100),
-                    normalizeYn(config.getStatusWalk()),
-                    normalizeYn(config.getStatusDiaper()),
-                    normalizeYn(config.getStatusOxygen()),
-                    normalizeYn(config.getStatusSuction()),
-                    safeText(config.getNursingCost(), 100),
-                    safeText(config.getNote(), 500),
-                    normalizeYn(config.getUseYn()),
-                    safeText(username, 100),
-                    id);
+            updateRoomConfig(safe, id, prepared, username);
             return;
         }
-        String sql = """
-                INSERT INTO csm.room_board_room_master_%s
-                (ward_name, room_name, start_date, end_date, licensed_beds, care_type,
-                 status_walk, status_diaper, status_oxygen, status_suction,
-                 nursing_cost, note, use_yn, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """.formatted(safe);
-        jdbcTemplate.update(sql,
-                wardName,
-                roomName,
-                startDate,
-                endDate,
-                licensedBeds,
-                safeText(config.getCareType(), 100),
-                normalizeYn(config.getStatusWalk()),
-                normalizeYn(config.getStatusDiaper()),
-                normalizeYn(config.getStatusOxygen()),
-                normalizeYn(config.getStatusSuction()),
-                safeText(config.getNursingCost(), 100),
-                safeText(config.getNote(), 500),
-                normalizeYn(config.getUseYn()),
-                safeText(username, 100),
-                safeText(username, 100));
+        insertRoomConfig(safe, prepared, username);
     }
 
     public void deleteRoomConfig(String inst, long id) {
         ensureTables(inst);
         String safe = sanitizeInst(inst);
         jdbcTemplate.update("DELETE FROM csm.room_board_room_master_" + safe + " WHERE rbm_id = ?", id);
+    }
+
+    public RoomBoardRoomConfigPasteResult previewRoomConfigPaste(String inst, String rawText) {
+        ensureTables(inst);
+        RoomBoardRoomConfigPasteResult result = new RoomBoardRoomConfigPasteResult();
+        List<String[]> rows = parseRawRows(rawText);
+        if (rows.isEmpty()) {
+            result.setMessage("붙여넣기 데이터가 없습니다.");
+            return result;
+        }
+
+        List<RoomBoardRoomConfig> parsed = parseRoomConfigRows(rows);
+        result.setRows(parsed);
+        result.setParsedCount(parsed.size());
+        result.setSkippedCount(Math.max(0, rows.size() - parsed.size()));
+        result.setMessage(parsed.isEmpty() ? "인식된 병실 기준정보가 없습니다." : "병실 기준정보 미리보기 생성 완료");
+        return result;
+    }
+
+    @Transactional
+    public RoomBoardRoomConfigPasteResult saveRoomConfigPaste(String inst, String rawText, String username) {
+        ensureTables(inst);
+        String safe = sanitizeInst(inst);
+        RoomBoardRoomConfigPasteResult preview = previewRoomConfigPaste(safe, rawText);
+        if (preview.getParsedCount() <= 0) {
+            throw new IllegalArgumentException("저장할 병실 기준정보가 없습니다.");
+        }
+        for (RoomBoardRoomConfig item : preview.getRows()) {
+            upsertRoomConfigByPeriod(safe, item, username);
+        }
+        return preview;
     }
 
     public List<RoomBoardSnapshot> getSnapshotHistory(String inst, int limit) {
@@ -289,9 +256,17 @@ public class RoomBoardService {
             return result;
         }
 
-        List<RoomBoardImportRow> parsed = "CLICKSOFT".equalsIgnoreCase(sourceType)
-                ? parseClicksoftRows(rows)
-                : parseExcelDetailRows(rows, wardByRoom);
+        String effectiveSourceType = detectSourceType(sourceType, rows);
+        result.setSourceType(effectiveSourceType);
+
+        List<RoomBoardImportRow> parsed;
+        if ("CLICKSOFT".equalsIgnoreCase(effectiveSourceType)) {
+            parsed = parseClicksoftRows(rows);
+        } else if ("ROOM_SLOT".equalsIgnoreCase(effectiveSourceType)) {
+            parsed = parseRoomSlotRows(rows);
+        } else {
+            parsed = parseExcelDetailRows(rows, wardByRoom);
+        }
 
         parsed = parsed.stream()
                 .filter(row -> !safeText(row.getRoomName(), 50).isBlank())
@@ -402,7 +377,7 @@ public class RoomBoardService {
             room.setNote(safeText(config.getNote(), 500));
             room.setGenderSummary(buildGenderSummary(roomPatients));
             room.setReservationNames(String.join(", ", reservationNames));
-            room.setPatientSlots(buildPatientSlots(roomPatients, Math.max(licensedBeds, 8)));
+            room.setPatientSlots(buildPatientSlots(roomPatients, reservationNames, Math.max(licensedBeds, 8)));
 
             RoomBoardWardView ward = wardMap.computeIfAbsent(wardName, key -> {
                 RoomBoardWardView item = new RoomBoardWardView();
@@ -526,7 +501,7 @@ public class RoomBoardService {
         String safe = sanitizeInst(inst);
         Map<String, List<String>> out = new HashMap<>();
         String sql = """
-                SELECT cs_idx, HEX(cs_col_01) AS patient_name_hex, cs_col_38, cs_col_21
+                SELECT cs_idx, cs_col_01 AS patient_name_hex, cs_col_38, cs_col_21
                   FROM csm.counsel_data_%s
                  WHERE cs_col_19 = '입원예약'
                    AND cs_col_38 IS NOT NULL
@@ -555,11 +530,20 @@ public class RoomBoardService {
         return out;
     }
 
-    private List<String> buildPatientSlots(List<Map<String, Object>> roomPatients, int size) {
+    private List<String> buildPatientSlots(List<Map<String, Object>> roomPatients, List<String> reservationNames, int size) {
         List<String> slots = roomPatients.stream()
                 .map(row -> safeText(row.get("patient_name"), 100))
                 .filter(name -> !name.isBlank())
                 .collect(Collectors.toCollection(ArrayList::new));
+        if (reservationNames != null && !reservationNames.isEmpty()) {
+            for (String reservationName : reservationNames) {
+                String name = safeText(reservationName, 100);
+                if (name.isBlank()) {
+                    continue;
+                }
+                slots.add(name + " (예약)");
+            }
+        }
         while (slots.size() < size) {
             slots.add("-");
         }
@@ -632,10 +616,89 @@ public class RoomBoardService {
             return List.of();
         }
         return Arrays.stream(rawText.replace("\r", "").split("\n"))
-                .map(String::trim)
-                .filter(line -> !line.isBlank())
-                .map(line -> line.split("\t", -1))
+                .map(line -> line.replace('\u00A0', ' '))
+                .map(line -> line.replace("\u2007", " "))
+                .map(line -> line.replace("\u202F", " "))
+                .map(String::stripTrailing)
+                .filter(line -> !line.strip().isBlank())
+                .map(this::splitRawLine)
                 .collect(Collectors.toList());
+    }
+
+    private String[] splitRawLine(String line) {
+        if (line == null) {
+            return new String[0];
+        }
+        if (line.contains("\t")) {
+            return line.strip().split("\t", -1);
+        }
+        return line.trim().split("\\s{2,}", -1);
+    }
+
+    private List<RoomBoardRoomConfig> parseRoomConfigRows(List<String[]> rows) {
+        List<RoomBoardRoomConfig> out = new ArrayList<>();
+        for (String[] row : rows) {
+            if (isRoomConfigHeaderRow(row)) {
+                continue;
+            }
+            RoomBoardRoomConfig item = parseRoomConfigRow(row);
+            if (item != null) {
+                out.add(item);
+            }
+        }
+        return out;
+    }
+
+    private RoomBoardRoomConfig parseRoomConfigRow(String[] row) {
+        if (row == null || row.length == 0) {
+            return null;
+        }
+        String wardName = safeText(getCell(row, 0), 50);
+        String roomName = normalizeRoomName(getCell(row, 1));
+        LocalDate startDate = parseDate(getCell(row, 2), null);
+        LocalDate endDate = parseDate(getCell(row, 3), null);
+        int licensedBeds = parseInt(getCell(row, 4), 0);
+
+        if (wardName.isBlank() && roomName.isBlank() && startDate == null && endDate == null && licensedBeds == 0) {
+            return null;
+        }
+        if (wardName.isBlank() || roomName.isBlank() || startDate == null || endDate == null || licensedBeds <= 0) {
+            return null;
+        }
+
+        List<String> tailValues = extractRoomConfigTailValues(row);
+        RoomBoardRoomConfig item = new RoomBoardRoomConfig();
+        item.setWardName(wardName);
+        item.setRoomName(roomName);
+        item.setStartDate(startDate.format(DATE_FMT));
+        item.setEndDate(endDate.format(DATE_FMT));
+        item.setLicensedBeds(licensedBeds);
+        item.setCareType(safeText(getCell(row, 5), 100));
+        item.setStatusWalk(normalizeBooleanYn(getCell(row, 7)));
+        item.setStatusDiaper(normalizeBooleanYn(getCell(row, 8)));
+        item.setStatusOxygen(normalizeBooleanYn(getCell(row, 9)));
+        item.setStatusSuction(normalizeBooleanYn(getCell(row, 10)));
+        item.setNursingCost(tailValues.size() > 0 ? safeText(tailValues.get(0), 100) : "");
+        item.setNote(tailValues.size() > 1 ? safeText(tailValues.get(1), 500) : "");
+        item.setUseYn("Y");
+        return item;
+    }
+
+    private boolean isRoomConfigHeaderRow(String[] row) {
+        return hasExactToken(row, "병동", "병실구성", "개시일자", "허가병상수")
+                || hasExactToken(row, "상태구분", "간병 비용", "참고내용");
+    }
+
+    private List<String> extractRoomConfigTailValues(String[] row) {
+        List<String> out = new ArrayList<>();
+        for (int i = 11; i < row.length; i++) {
+            String value = safeText(row[i], 500);
+            if (value.isBlank() || isBooleanCell(value)) {
+                continue;
+            }
+            out.add(value);
+        }
+        return out;
     }
 
     private List<RoomBoardImportRow> parseExcelDetailRows(List<String[]> rows, Map<String, String> wardByRoom) {
@@ -691,6 +754,51 @@ public class RoomBoardService {
         return out;
     }
 
+    private List<RoomBoardImportRow> parseRoomSlotRows(List<String[]> rows) {
+        List<RoomBoardImportRow> out = new ArrayList<>();
+        for (String[] row : rows) {
+            String slotCode = safeText(getCell(row, 0), 100);
+            String patientName = safeText(getCell(row, 3), 100);
+            if (slotCode.isBlank() || patientName.isBlank()) {
+                continue;
+            }
+
+            ParsedSlot parsedSlot = parseSlotCode(slotCode);
+            if (parsedSlot == null) {
+                continue;
+            }
+
+            RoomBoardImportRow item = new RoomBoardImportRow();
+            item.setWardName(parsedSlot.wardName());
+            item.setRoomName(parsedSlot.roomName());
+            item.setDoctorName(getCell(row, 2));
+            item.setPatientName(patientName);
+            item.setPatientNo(getCell(row, 4));
+            item.setPatientType(getCell(row, 5));
+            item.setAge(getCell(row, 6));
+            item.setGender(getCell(row, 7));
+            item.setAdmissionDate(getCell(row, 8));
+            item.setMemo("");
+            out.add(item);
+        }
+        return out;
+    }
+
+    private String detectSourceType(String sourceType, List<String[]> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return sourceType;
+        }
+        String requested = safeText(sourceType, 30);
+        if ("CLICKSOFT".equalsIgnoreCase(requested) || "ROOM_SLOT".equalsIgnoreCase(requested)) {
+            return requested;
+        }
+        String firstCell = safeText(getCell(rows.get(0), 0), 100);
+        if (looksLikeRoomSlotCode(firstCell)) {
+            return "ROOM_SLOT";
+        }
+        return requested.isBlank() ? "EXCEL_DETAIL" : requested;
+    }
+
     private boolean hasAnyToken(String[] row, String... tokens) {
         if (row == null || row.length == 0) {
             return false;
@@ -699,6 +807,22 @@ public class RoomBoardService {
         for (String token : tokens) {
             if (joined.contains(token)) {
                 return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasExactToken(String[] row, String... tokens) {
+        if (row == null || row.length == 0 || tokens == null || tokens.length == 0) {
+            return false;
+        }
+        for (String cell : row) {
+            String normalized = safeText(cell, 100).replace(" ", "");
+            for (String token : tokens) {
+                String normalizedToken = safeText(token, 100).replace(" ", "");
+                if (!normalized.isBlank() && normalized.equals(normalizedToken)) {
+                    return true;
+                }
             }
         }
         return false;
@@ -744,6 +868,32 @@ public class RoomBoardService {
         return value;
     }
 
+    private ParsedSlot parseSlotCode(String slotCode) {
+        String[] parts = safeText(slotCode, 100).split("-");
+        if (parts.length < 2) {
+            return null;
+        }
+        String wardName = safeText(parts[0], 50);
+        String rawRoom = safeText(parts[1], 20).replaceAll("[^0-9]", "");
+        if (wardName.isBlank() || rawRoom.isBlank()) {
+            return null;
+        }
+        int roomNumber = parseInt(rawRoom, -1);
+        if (roomNumber <= 0) {
+            return null;
+        }
+        return new ParsedSlot(wardName, roomNumber + "호");
+    }
+
+    private boolean looksLikeRoomSlotCode(String value) {
+        String normalized = safeText(value, 100);
+        return normalized.matches(".+?-\\d{4}-\\d{2}");
+    }
+
+    private String normalizeBooleanYn(String value) {
+        return isTruthy(value) ? "Y" : "N";
+    }
+
     private String normalizeYn(String value) {
         return "Y".equalsIgnoreCase(safeText(value, 1)) ? "Y" : "N";
     }
@@ -782,6 +932,30 @@ public class RoomBoardService {
             }
         }
         return "";
+    }
+
+    private boolean isBooleanCell(String value) {
+        String normalized = safeText(value, 20).toUpperCase(Locale.ROOT);
+        return normalized.equals("TRUE") || normalized.equals("FALSE")
+                || normalized.equals("Y") || normalized.equals("N");
+    }
+
+    private boolean isTruthy(String value) {
+        String normalized = safeText(value, 20).toUpperCase(Locale.ROOT);
+        return normalized.equals("TRUE") || normalized.equals("Y")
+                || normalized.equals("1") || normalized.equals("사용");
+    }
+
+    private int parseInt(String value, int defaultValue) {
+        String normalized = safeText(value, 20).replaceAll("[^0-9-]", "");
+        if (normalized.isBlank()) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(normalized);
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
     }
 
     private LocalDate parseDate(String value, LocalDate defaultValue) {
@@ -826,5 +1000,147 @@ public class RoomBoardService {
             data[i / 2] = (byte) Integer.parseInt(hex.substring(i, i + 2), 16);
         }
         return data;
+    }
+
+    private void upsertRoomConfigByPeriod(String inst, RoomBoardRoomConfig config, String username) {
+        String safe = sanitizeInst(inst);
+        PreparedRoomConfig prepared = prepareRoomConfig(config);
+        String selectSql = """
+                SELECT rbm_id
+                  FROM csm.room_board_room_master_%s
+                 WHERE ward_name=?
+                   AND room_name=?
+                   AND start_date=?
+                   AND end_date=?
+                 LIMIT 1
+                """.formatted(safe);
+        List<Long> ids = jdbcTemplate.query(selectSql,
+                (rs, rowNum) -> rs.getLong("rbm_id"),
+                prepared.wardName(),
+                prepared.roomName(),
+                prepared.startDate(),
+                prepared.endDate());
+        if (ids.isEmpty()) {
+            insertRoomConfig(safe, prepared, username);
+            return;
+        }
+        updateRoomConfig(safe, ids.get(0), prepared, username);
+    }
+
+    private PreparedRoomConfig prepareRoomConfig(RoomBoardRoomConfig config) {
+        String roomName = normalizeRoomName(config.getRoomName());
+        String wardName = safeText(config.getWardName(), 50);
+        if (wardName.isBlank() || roomName.isBlank()) {
+            throw new IllegalArgumentException("병동과 병실은 필수입니다.");
+        }
+        LocalDate startDate = parseDate(config.getStartDate(), null);
+        LocalDate endDate = parseDate(config.getEndDate(), null);
+        if (startDate == null || endDate == null) {
+            throw new IllegalArgumentException("개시일자와 종료일자를 확인해 주세요.");
+        }
+        int licensedBeds = config.getLicensedBeds() == null ? 0 : Math.max(0, config.getLicensedBeds());
+        if (licensedBeds <= 0) {
+            throw new IllegalArgumentException("허가병상수는 1 이상이어야 합니다.");
+        }
+        return new PreparedRoomConfig(
+                wardName,
+                roomName,
+                startDate,
+                endDate,
+                licensedBeds,
+                safeText(config.getCareType(), 100),
+                normalizeYn(config.getStatusWalk()),
+                normalizeYn(config.getStatusDiaper()),
+                normalizeYn(config.getStatusOxygen()),
+                normalizeYn(config.getStatusSuction()),
+                safeText(config.getNursingCost(), 100),
+                safeText(config.getNote(), 500),
+                normalizeYn(config.getUseYn()));
+    }
+
+    private void insertRoomConfig(String inst, PreparedRoomConfig config, String username) {
+        String safe = sanitizeInst(inst);
+        String sql = """
+                INSERT INTO csm.room_board_room_master_%s
+                (ward_name, room_name, start_date, end_date, licensed_beds, care_type,
+                 status_walk, status_diaper, status_oxygen, status_suction,
+                 nursing_cost, note, use_yn, created_by, updated_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """.formatted(safe);
+        jdbcTemplate.update(sql,
+                config.wardName(),
+                config.roomName(),
+                config.startDate(),
+                config.endDate(),
+                config.licensedBeds(),
+                config.careType(),
+                config.statusWalk(),
+                config.statusDiaper(),
+                config.statusOxygen(),
+                config.statusSuction(),
+                config.nursingCost(),
+                config.note(),
+                config.useYn(),
+                safeText(username, 100),
+                safeText(username, 100));
+    }
+
+    private void updateRoomConfig(String inst, long id, PreparedRoomConfig config, String username) {
+        String safe = sanitizeInst(inst);
+        String sql = """
+                UPDATE csm.room_board_room_master_%s
+                   SET ward_name=?,
+                       room_name=?,
+                       start_date=?,
+                       end_date=?,
+                       licensed_beds=?,
+                       care_type=?,
+                       status_walk=?,
+                       status_diaper=?,
+                       status_oxygen=?,
+                       status_suction=?,
+                       nursing_cost=?,
+                       note=?,
+                       use_yn=?,
+                       updated_by=?
+                 WHERE rbm_id=?
+                """.formatted(safe);
+        jdbcTemplate.update(sql,
+                config.wardName(),
+                config.roomName(),
+                config.startDate(),
+                config.endDate(),
+                config.licensedBeds(),
+                config.careType(),
+                config.statusWalk(),
+                config.statusDiaper(),
+                config.statusOxygen(),
+                config.statusSuction(),
+                config.nursingCost(),
+                config.note(),
+                config.useYn(),
+                safeText(username, 100),
+                id);
+    }
+
+    private record PreparedRoomConfig(
+            String wardName,
+            String roomName,
+            LocalDate startDate,
+            LocalDate endDate,
+            int licensedBeds,
+            String careType,
+            String statusWalk,
+            String statusDiaper,
+            String statusOxygen,
+            String statusSuction,
+            String nursingCost,
+            String note,
+            String useYn) {
+    }
+
+    private record ParsedSlot(
+            String wardName,
+            String roomName) {
     }
 }

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import com.coresolution.csm.config.InstDetails;
 import com.coresolution.csm.serivce.CsmAuthService;
+import com.coresolution.csm.serivce.ModuleFeatureService;
 import com.coresolution.csm.serivce.RoomBoardService;
 import com.coresolution.csm.serivce.SmsService;
 import com.coresolution.csm.vo.Counsel_phone;
@@ -33,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class RoomBoardController {
     private final RoomBoardService roomBoardService;
+    private final ModuleFeatureService moduleFeatureService;
     private final CsmAuthService cs;
     private final SmsService ss;
 
@@ -48,6 +50,11 @@ public class RoomBoardController {
         String inst = ensureInst(session);
         if (inst == null) {
             return "redirect:/login";
+        }
+        if (!isRoomBoardEnabled(inst)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "병실현황판 기능이 비활성화되었습니다.");
         }
         Userdata userinfo = ensureUserInfo(session, inst);
         populateCommon(model, inst, userinfo);
@@ -69,6 +76,11 @@ public class RoomBoardController {
         if (inst == null) {
             return "redirect:/login";
         }
+        if (!isRoomBoardEnabled(inst)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "병실현황판 기능이 비활성화되었습니다.");
+        }
         Userdata userinfo = ensureUserInfo(session, inst);
         if (!canManageRoomBoard(userinfo)) {
             return "redirect:/admin";
@@ -89,6 +101,9 @@ public class RoomBoardController {
         if (inst == null) {
             return "redirect:/login";
         }
+        if (!isRoomBoardEnabled(inst)) {
+            return "redirect:/admin";
+        }
         Userdata userinfo = ensureUserInfo(session, inst);
         if (!canManageRoomBoard(userinfo)) {
             return "redirect:/admin";
@@ -103,12 +118,64 @@ public class RoomBoardController {
         if (inst == null) {
             return "redirect:/login";
         }
+        if (!isRoomBoardEnabled(inst)) {
+            return "redirect:/admin";
+        }
         Userdata userinfo = ensureUserInfo(session, inst);
         if (!canManageRoomBoard(userinfo)) {
             return "redirect:/admin";
         }
         roomBoardService.deleteRoomConfig(inst, id);
         return "redirect:/admin/room-board";
+    }
+
+    @PostMapping({ "admin/room-board/room-config/preview", "/admin/room-board/room-config/preview" })
+    public ResponseEntity<?> previewRoomConfigPaste(
+            @RequestParam("rawText") String rawText,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "로그인이 필요합니다."));
+        }
+        if (!isRoomBoardEnabled(inst)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "병실현황판 기능이 비활성화되었습니다."));
+        }
+        Userdata userinfo = ensureUserInfo(session, inst);
+        if (!canManageRoomBoard(userinfo)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "권한이 없습니다."));
+        }
+        try {
+            return ResponseEntity.ok(roomBoardService.previewRoomConfigPaste(inst, rawText));
+        } catch (Exception e) {
+            log.warn("[room-board] room config preview fail inst={}, err={}", inst, e.toString());
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PostMapping({ "admin/room-board/room-config/save", "/admin/room-board/room-config/save" })
+    public ResponseEntity<?> saveRoomConfigPaste(
+            @RequestParam("rawText") String rawText,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "로그인이 필요합니다."));
+        }
+        if (!isRoomBoardEnabled(inst)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "병실현황판 기능이 비활성화되었습니다."));
+        }
+        Userdata userinfo = ensureUserInfo(session, inst);
+        if (!canManageRoomBoard(userinfo)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "권한이 없습니다."));
+        }
+        try {
+            return ResponseEntity.ok(roomBoardService.saveRoomConfigPaste(
+                    inst,
+                    rawText,
+                    userinfo == null ? "" : userinfo.getUs_col_02()));
+        } catch (Exception e) {
+            log.warn("[room-board] room config save fail inst={}, err={}", inst, e.toString());
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 
     @PostMapping({ "admin/room-board/import/preview", "/admin/room-board/import/preview" })
@@ -121,6 +188,9 @@ public class RoomBoardController {
         String inst = ensureInst(session);
         if (inst == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "로그인이 필요합니다."));
+        }
+        if (!isRoomBoardEnabled(inst)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "병실현황판 기능이 비활성화되었습니다."));
         }
         Userdata userinfo = ensureUserInfo(session, inst);
         if (!canManageRoomBoard(userinfo)) {
@@ -144,6 +214,9 @@ public class RoomBoardController {
         String inst = ensureInst(session);
         if (inst == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "로그인이 필요합니다."));
+        }
+        if (!isRoomBoardEnabled(inst)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "병실현황판 기능이 비활성화되었습니다."));
         }
         Userdata userinfo = ensureUserInfo(session, inst);
         if (!canManageRoomBoard(userinfo)) {
@@ -207,6 +280,10 @@ public class RoomBoardController {
         }
         Integer grade = userinfo.getUs_col_08();
         return grade != null && (grade == 1 || grade == 2);
+    }
+
+    private boolean isRoomBoardEnabled(String inst) {
+        return moduleFeatureService.isEnabled(inst, ModuleFeatureService.FEATURE_ROOM_BOARD);
     }
 
     private void populateCommon(Model model, String inst, Userdata userinfo) {

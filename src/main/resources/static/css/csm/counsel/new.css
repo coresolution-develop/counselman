@@ -187,6 +187,81 @@
     white-space: pre-wrap;
 }
 
+.counsel-preview-card {
+    margin-top: 8px;
+    border: 1px solid #dce8df;
+    border-radius: 8px;
+    background: #fbfefc;
+    padding: 8px;
+}
+
+.counsel-preview-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.counsel-preview-toggle,
+.counsel-preview-generate {
+    border-radius: 6px;
+    height: 28px;
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.counsel-preview-toggle {
+    border: 1px solid #d0d7dd;
+    background: #fff;
+    color: #41505f;
+}
+
+.counsel-preview-generate {
+    border: 1px solid #06603A;
+    background: #f4fbf7;
+    color: #06603A;
+}
+
+.counsel-preview-body,
+.counsel-preview-empty {
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+.counsel-preview-body {
+    display: none;
+    border: 1px solid #e2ece5;
+    border-radius: 7px;
+    background: #fff;
+    padding: 9px 10px;
+    color: #2f3e35;
+}
+
+.counsel-preview-summary {
+    background: #f4fbf7;
+    border-color: #d7eadf;
+}
+
+.counsel-preview-empty {
+    display: none;
+    color: #6b756f;
+    padding: 2px 2px 0;
+}
+
+.counsel-preview-card[data-view="summary"] .counsel-preview-summary,
+.counsel-preview-card[data-view="source"] .counsel-preview-source,
+.counsel-preview-card[data-view="empty"] .counsel-preview-empty {
+    display: block;
+}
+
+.counsel-preview-card[data-view="summary"] .counsel-preview-empty,
+.counsel-preview-card[data-view="source"] .counsel-preview-empty {
+    display: none;
+}
+
 .counsel-file-actions {
     display: flex;
     align-items: center;
@@ -285,13 +360,26 @@
 
 .counsel-file-item {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: stretch;
     gap: 8px;
     border: 1px solid #ececec;
     border-radius: 6px;
     background: #fff;
     padding: 7px 10px;
+}
+
+.counsel-file-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.counsel-file-buttons {
+    display: flex;
+    gap: 6px;
+    align-self: flex-end;
 }
 
 .counsel-file-link {
@@ -356,20 +444,70 @@
 }
 
 .admission-pledge-launcher {
-    margin-top: 10px;
+    margin-top: 0;
+}
+
+.admission-pledge-status {
+    color: #0b5b33;
+}
+
+.admission-support-panel {
+    margin: 10px 7px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.admission-support-item {
     border: 1px solid #d7e0e7;
-    border-radius: 8px;
-    background: #f8fbff;
-    padding: 8px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #fbfefd 0%, #f4faf6 100%);
+    padding: 10px 12px;
+    box-shadow: 0 1px 4px rgba(6, 96, 58, 0.06);
+}
+
+.admission-support-head {
+    margin-bottom: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #335344;
+}
+
+.admission-support-body {
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
-.admission-pledge-status {
+.admission-support-btn {
+    min-width: 148px;
+    height: 36px;
+    border-radius: 8px;
+    border-color: #06603A;
+    color: #06603A;
+    font-weight: 700;
+    background: #fff;
+}
+
+.admission-support-btn:hover {
+    background: #f3fbf6;
+    border-color: #054f30;
+    color: #054f30;
+}
+
+.admission-support-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: #eef7f1;
+    border: 1px solid #d7eadf;
+    color: #2f5b43;
     font-size: 12px;
-    color: #2f425a;
-    font-weight: 600;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
 }
 
 .counsel-log {

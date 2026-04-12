@@ -15,31 +15,84 @@
     <link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
     <link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
     <style>
-        .rb-admin { padding: 24px 28px 40px; }
-        .rb-card { background:#fff; border:1px solid #dfe7ef; border-radius:14px; padding:20px; margin-bottom:20px; }
-        .rb-card h2 { margin:0 0 14px; font-size:20px; }
+        .main.rb-admin {
+            padding: 90px 24px 48px;
+            margin-left: 145px;
+            max-width: 2560px;
+            min-height: 100vh;
+            height: auto;
+            box-sizing: border-box;
+            background: linear-gradient(180deg, #eef6f0 0%, #f7faf8 220px, #fbfbfb 100%);
+        }
+        .rb-card {
+            background: #fff;
+            border: 1px solid #d6e6da;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 12px 28px rgba(5, 64, 30, 0.06);
+        }
+        .rb-card h2 { margin:0 0 14px; font-size:20px; color:#05401E; }
         .rb-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:12px; }
         .rb-field { display:flex; flex-direction:column; gap:6px; }
-        .rb-field label { font-size:13px; font-weight:700; color:#38506a; }
-        .rb-field input, .rb-field select, .rb-field textarea { width:100%; border:1px solid #c7d5e4; border-radius:10px; padding:10px 12px; font-size:14px; }
+        .rb-field label { font-size:13px; font-weight:700; color:#1d5131; }
+        .rb-field input, .rb-field select, .rb-field textarea {
+            width:100%;
+            border:1px solid #bfd4c5;
+            border-radius:10px;
+            padding:10px 12px;
+            font-size:14px;
+            background:#fcfefd;
+            transition:border-color .18s ease, box-shadow .18s ease;
+        }
+        .rb-field input:focus, .rb-field select:focus, .rb-field textarea:focus {
+            outline:none;
+            border-color:#0b6b33;
+            box-shadow:0 0 0 4px rgba(11, 107, 51, 0.12);
+        }
         .rb-field textarea { min-height:120px; resize:vertical; }
         .rb-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
-        .rb-btn { border:none; border-radius:10px; padding:10px 16px; font-size:14px; font-weight:700; cursor:pointer; }
-        .rb-btn-primary { background:#1c6fd1; color:#fff; }
-        .rb-btn-light { background:#eef4fb; color:#1b3d61; }
-        .rb-btn-danger { background:#fef0f0; color:#b42318; }
-        .rb-table-wrap { overflow:auto; border:1px solid #dfe7ef; border-radius:12px; }
+        .rb-btn {
+            border:none;
+            border-radius:10px;
+            padding:10px 16px;
+            font-size:14px;
+            font-weight:700;
+            cursor:pointer;
+            text-decoration:none;
+        }
+        .rb-btn-primary { background:linear-gradient(312deg, #05401E 20.34%, #005424 155.45%); color:#fff; }
+        .rb-btn-light { background:#eef7f0; color:#0b5a2a; border:1px solid #c8decf; }
+        .rb-btn-danger { background:#fff3f1; color:#b42318; border:1px solid #f3c7c2; }
+        .rb-table-wrap { overflow:auto; border:1px solid #d6e6da; border-radius:12px; background:#fff; }
         .rb-table { width:100%; border-collapse:collapse; min-width:1200px; }
-        .rb-table th, .rb-table td { border-bottom:1px solid #edf2f7; padding:10px 12px; text-align:left; font-size:13px; vertical-align:top; }
-        .rb-table th { background:#f8fbfe; position:sticky; top:0; z-index:1; }
-        .rb-row-selected { background:#eef6ff; }
+        .rb-table th, .rb-table td { border-bottom:1px solid #edf3ef; padding:10px 12px; text-align:left; font-size:13px; vertical-align:top; }
+        .rb-table th { background:#f1f7f3; color:#19492a; position:sticky; top:0; z-index:1; }
+        .rb-row-selected { background:#edf7ef; }
         .rb-inline { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-        .rb-preview { max-height:300px; overflow:auto; border:1px solid #dfe7ef; border-radius:12px; }
+        .rb-preview { max-height:300px; overflow:auto; border:1px solid #d6e6da; border-radius:12px; background:#fff; }
         .rb-preview table { width:100%; border-collapse:collapse; }
-        .rb-preview th, .rb-preview td { font-size:12px; border-bottom:1px solid #edf2f7; padding:8px 10px; }
-        .rb-note { color:#667085; font-size:13px; margin-top:10px; line-height:1.6; }
+        .rb-preview th, .rb-preview td { font-size:12px; border-bottom:1px solid #edf3ef; padding:8px 10px; }
+        .rb-split { display:grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap:16px; align-items:start; }
+        .rb-note { color:#4b6352; font-size:13px; margin-top:10px; line-height:1.6; }
+        .rb-hero {
+            background: linear-gradient(135deg, #05401E 0%, #0b6b33 100%);
+            border-color: transparent;
+            color: #f7fff9;
+        }
+        .rb-hero h2 { color: #fff; }
+        .rb-hero .rb-note { color: rgba(247, 255, 249, 0.82); margin-top: 6px; }
+        .rb-hero .rb-btn-light {
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.22);
+        }
         @media (max-width: 1200px) { .rb-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
-        @media (max-width: 768px) { .rb-grid { grid-template-columns: 1fr; } .rb-admin { padding:16px; } }
+        @media (max-width: 1024px) { .rb-split { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) {
+            .rb-grid { grid-template-columns: 1fr; }
+            .main.rb-admin { padding: 78px 16px 32px; margin-left: 0; }
+        }
     </style>
 </head>
 <body>
@@ -47,7 +100,7 @@
 <div th:replace="~{csm/Include/layout :: nav_section2('admin', ${endVar}, ${st}, ${kw})}"></div>
 
 <div class="main rb-admin">
-    <div class="rb-card">
+    <div class="rb-card rb-hero">
         <div class="rb-inline" style="justify-content:space-between;">
             <div>
                 <h2>병실현황판 관리</h2>
@@ -68,6 +121,7 @@
                 <select id="sourceType">
                     <option value="EXCEL_DETAIL">재원환자상세조회 엑셀</option>
                     <option value="CLICKSOFT">클릭소프트 병실현황판</option>
+                    <option value="ROOM_SLOT">병실 슬롯 원본 데이터</option>
                 </select>
             </div>
             <div class="rb-field">
@@ -114,6 +168,37 @@
 
     <div class="rb-card">
         <h2>병실 기준정보 설정</h2>
+        <div class="rb-split">
+            <div>
+                <div class="rb-field">
+                    <label for="roomConfigRawText">기준정보 일괄 붙여넣기</label>
+                    <textarea id="roomConfigRawText" placeholder="시트에서 병동~참고내용 영역을 전체 복사해서 그대로 붙여넣으세요. 헤더와 빈 행은 자동으로 무시합니다."></textarea>
+                </div>
+                <div class="rb-actions">
+                    <button type="button" id="previewRoomConfigPasteBtn" class="rb-btn rb-btn-light">미리보기</button>
+                    <button type="button" id="saveRoomConfigPasteBtn" class="rb-btn rb-btn-primary">일괄 저장</button>
+                </div>
+                <p id="roomConfigPasteMessage" class="rb-note">같은 병실과 같은 기간의 기존 병실 기준정보는 재붙여넣기 시 갱신됩니다.</p>
+            </div>
+            <div class="rb-preview" id="roomConfigPreviewWrap" style="display:none;">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>병동</th>
+                        <th>병실</th>
+                        <th>기간</th>
+                        <th>병상수</th>
+                        <th>간병형태</th>
+                        <th>상태구분</th>
+                        <th>간병비용</th>
+                        <th>참고내용</th>
+                    </tr>
+                    </thead>
+                    <tbody id="roomConfigPreviewBody"></tbody>
+                </table>
+            </div>
+        </div>
+        <p class="rb-note">개별 수정이나 보정이 필요하면 아래 입력폼을 사용하세요.</p>
         <form th:action="@{/admin/room-board/room/save}" method="post" id="roomConfigForm">
             <input type="hidden" name="id" id="roomConfigId">
             <div class="rb-grid">

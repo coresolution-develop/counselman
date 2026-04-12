@@ -191,8 +191,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const resultSelect = document.getElementById('cs_col_19');
   const admissionPledgeLauncher = document.getElementById('admissionPledgeLauncher');
+  const admissionPledgeModuleEnabled = (document.getElementById('module_admission_pledge_enabled')?.value || 'Y') === 'Y';
   const openAdmissionPledgeBtn = document.getElementById('openAdmissionPledgeBtn');
   const openRoomBoardBtn = document.getElementById('openRoomBoardBtn');
+  const selectedRoomStatus = document.getElementById('selectedRoomStatus');
   const admissionPledgeStatus = document.getElementById('admissionPledgeStatus');
   const admissionPledgeRequiredInput = document.getElementById('admission_pledge_required');
   const admissionAgreedYnInput = document.getElementById('admission_agreed_yn');
@@ -261,7 +263,7 @@ document.addEventListener('DOMContentLoaded', function () {
     return pIdx === 0;
   };
   const toggleAdmissionPledgeLauncher = (value) => {
-    const required = requiresAdmissionPledge(value);
+    const required = admissionPledgeModuleEnabled && requiresAdmissionPledge(value);
     if (admissionPledgeRequiredInput) {
       admissionPledgeRequiredInput.value = required ? 'Y' : 'N';
     }
@@ -271,6 +273,7 @@ document.addEventListener('DOMContentLoaded', function () {
     setAdmissionPledgeStatus();
   };
   const applyAdmissionPledgePayload = (payload) => {
+    if (!admissionPledgeModuleEnabled) return;
     if (!payload || typeof payload !== 'object') return;
     if (!canApplyAdmissionPledgePayload(payload)) return;
     if (admissionPledgeRequiredInput) admissionPledgeRequiredInput.value = 'Y';
@@ -316,8 +319,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     if (message.type === 'csm-room-board-select') {
       const roomInput = document.getElementById('cs_col_38');
+      const roomName = String(message.roomName || '').trim();
       if (roomInput) {
-        roomInput.value = String(message.roomName || '').trim();
+        roomInput.value = roomName;
+      }
+      if (selectedRoomStatus) {
+        selectedRoomStatus.textContent = roomName ? `선택 병실: ${roomName}` : '선택된 병실 없음';
       }
     }
   });

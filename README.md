@@ -102,7 +102,21 @@ lsof -nP -iTCP:8082 -sTCP:LISTEN
 kill -15 <PID>
 ```
 
-## 6. CounselMan 실행
+## 6. 한 번에 같이 실행
+
+루트에서 아래 명령으로 `csm`과 `mediplat`를 함께 실행할 수 있습니다.
+
+```bash
+./scripts/local-up.sh
+```
+
+특징:
+
+- `8081`, `8082` 포트가 이미 사용 중이면 바로 중단
+- `csm`, `mediplat` 로그를 한 터미널에서 함께 출력
+- `Ctrl + C`로 종료하면 두 앱이 같이 종료
+
+## 7. CounselMan 단독 실행
 
 ```bash
 ./gradlew bootRun
@@ -118,7 +132,7 @@ curl -I http://127.0.0.1:8081/csm/login
 
 - `HTTP/1.1 200`
 
-## 7. MediPlat 실행
+## 8. MediPlat 단독 실행
 
 새 터미널에서 실행:
 
@@ -137,26 +151,26 @@ curl -I http://127.0.0.1:8082/login
 
 - `HTTP/1.1 200`
 
-## 8. 접속 주소
+## 9. 접속 주소
 
 - CounselMan 로그인: `http://localhost:8081/csm/login`
 - MediPlat 로그인: `http://localhost:8082/login`
 - 병실현황판: `http://localhost:8081/csm/room-board`
 - 병실현황판 관리: `http://localhost:8081/csm/admin/room-board`
 
-## 9. 로컬 실행 점검 순서
+## 10. 로컬 실행 점검 순서
 
 1. Java 17 확인
 2. `git pull`
 3. `./gradlew compileJava`
 4. `cd mediplat && ../gradlew compileJava`
 5. `8081`, `8082` 포트 점유 확인
-6. `csm` 실행
-7. `mediplat` 실행
+6. `./scripts/local-up.sh` 실행
+7. 또는 필요 시 각 앱 단독 실행
 8. 로그인 페이지 응답 확인
 9. MediPlat 로그인 후 CounselMan 진입 확인
 
-## 10. 병실현황판 기능 점검
+## 11. 병실현황판 기능 점검
 
 1. `http://localhost:8081/csm/admin/room-board` 접속
 2. 병실 기준정보 등록
@@ -166,9 +180,8 @@ curl -I http://127.0.0.1:8082/login
 6. `http://localhost:8081/csm/room-board`에서 결과 확인
 7. 입원상담 화면에서 `병실현황판 보기` 버튼으로 병실 선택 확인
 
-## 11. 참고 사항
+## 12. 참고 사항
 
 - `mediplat/mediplat/data/` 아래 H2 파일은 런타임 생성 데이터이며 Git에 포함하지 않습니다.
 - 서버용 설정(`nginx`, `systemd`, `Tomcat`, `SSL 인증서`)은 로컬 실행에 포함되지 않습니다.
 - 다른 PC에서 실행 시에도 DB 접속 정보와 SSO secret 값만 맞으면 동일하게 사용할 수 있습니다.
-

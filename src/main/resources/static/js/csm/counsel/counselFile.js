@@ -75,6 +75,36 @@ document.addEventListener('DOMContentLoaded', function () {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
+  function previewMode(item) {
+    const summary = String(item?.summaryText || '').trim();
+    const extracted = String(item?.extractedText || '').trim();
+    if (summary) return 'summary';
+    if (extracted) return 'source';
+    return 'empty';
+  }
+
+  function renderPreviewBody(item) {
+    const summary = String(item?.summaryText || '').trim();
+    const extracted = String(item?.extractedText || '').trim();
+    const mode = previewMode(item);
+    const helperMessage = extracted
+      ? '원문은 저장되어 있습니다. 필요할 때만 요약을 생성합니다.'
+      : '문서 원문은 내용적용 또는 요약 생성 시 자동으로 추출됩니다.';
+
+    return `
+      <div class="counsel-preview-card" data-view="${escapeHtml(mode)}">
+        <div class="counsel-preview-toolbar">
+          ${summary ? `<button type="button" class="counsel-preview-toggle" data-view-target="summary">요약 보기</button>` : ''}
+          ${extracted ? `<button type="button" class="counsel-preview-toggle" data-view-target="source">원문 보기</button>` : ''}
+          ${!summary ? `<button type="button" class="counsel-preview-generate counsel-file-summary" data-file-id="${escapeHtml(item.id)}">요약 생성</button>` : ''}
+        </div>
+        ${summary ? `<div class="counsel-preview-body counsel-preview-summary">${escapeHtml(summary)}</div>` : ''}
+        ${extracted ? `<div class="counsel-preview-body counsel-preview-source">${escapeHtml(extracted)}</div>` : ''}
+        <div class="counsel-preview-empty">${escapeHtml(helperMessage)}</div>
+      </div>
+    `;
+  }
+
   const STOP_WORDS = new Set([
     '기타', '선택', '선택하세요', '없음', '유', '무', '예', '아니오', '확인',
     '입원', '외래', '진료', '상담', '기록', '질환', '병명', '암명', '진단명'
@@ -342,14 +372,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
     fileListEl.innerHTML = list.map((item) => `
       <div class="counsel-file-item" data-file-id="${escapeHtml(item.id)}">
-        <a class="counsel-file-link" href="${escapeHtml(item.downloadUrl)}" target="_blank" rel="noopener">
-          ${escapeHtml(item.originalFilename || `file-${item.id}`)}
-        </a>
-        <span class="counsel-file-size">${escapeHtml(formatFileSize(item.fileSize))}</span>
-        <button type="button" class="counsel-file-apply" data-file-id="${escapeHtml(item.id)}">내용적용</button>
-        <button type="button" class="counsel-file-delete" data-file-id="${escapeHtml(item.id)}">삭제</button>
+        <div class="counsel-file-head">
+          <a class="counsel-file-link" href="${escapeHtml(item.downloadUrl)}" target="_blank" rel="noopener">
+            ${escapeHtml(item.originalFilename || `file-${item.id}`)}
+          </a>
+          <span class="counsel-file-size">${escapeHtml(formatFileSize(item.fileSize))}</span>
+        </div>
+        <div class="counsel-file-buttons">
+          <button type="button" class="counsel-file-apply" data-file-id="${escapeHtml(item.id)}">내용적용</button>
+          <button type="button" class="counsel-file-delete" data-file-id="${escapeHtml(item.id)}">삭제</button>
+        </div>
+        ${renderPreviewBody(item)}
       </div>
     `).join('');
+  }
+
+  function updatePreviewMode(card, mode) {
+    if (!card || !mode) return;
+    card.setAttribute('data-view', mode);
   }
 
   async function fetchCounselFileList() {
@@ -488,12 +528,44 @@ document.addEventListener('DOMContentLoaded', function () {
       } else {
         setFileStatus('첨부파일 텍스트 반영 완료');
       }
+      await fetchCounselFileList();
     } catch (_) {
       setFileStatus('첨부파일 텍스트 추출 중 오류', true);
     } finally {
       if (applyBtn) {
         applyBtn.disabled = false;
         applyBtn.textContent = '내용적용';
+      }
+    }
+  }
+
+  async function generateCounselFileSummary(fileId, summaryBtn) {
+    if (!fileId) return;
+    if (summaryBtn) {
+      summaryBtn.disabled = true;
+      summaryBtn.textContent = '요약 중...';
+    }
+    setFileStatus('문서 요약 생성 중...');
+
+    try {
+      const response = await fetch(`${APP_CTX}/counsel/file/summary/${encodeURIComponent(fileId)}`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: csrfHeaders()
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        setFileStatus(data?.message || '문서 요약 생성 실패', true);
+        return;
+      }
+      setFileStatus(data?.cached ? '저장된 문서 요약을 불러왔습니다.' : '문서 요약 생성 완료');
+      await fetchCounselFileList();
+    } catch (_) {
+      setFileStatus('문서 요약 생성 중 오류', true);
+    } finally {
+      if (summaryBtn) {
+        summaryBtn.disabled = false;
+        summaryBtn.textContent = '요약 생성';
       }
     }
   }
@@ -531,6 +603,23 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   fileListEl.addEventListener('click', function (e) {
+    const previewToggle = e.target.closest('.counsel-preview-toggle');
+    if (previewToggle) {
+      const card = previewToggle.closest('.counsel-preview-card');
+      const targetView = String(previewToggle.getAttribute('data-view-target') || '').trim();
+      if (!card || !targetView) return;
+      updatePreviewMode(card, targetView);
+      return;
+    }
+
+    const summaryBtn = e.target.closest('.counsel-file-summary');
+    if (summaryBtn) {
+      const fileId = summaryBtn.getAttribute('data-file-id');
+      if (!fileId) return;
+      generateCounselFileSummary(fileId, summaryBtn);
+      return;
+    }
+
     const applyBtn = e.target.closest('.counsel-file-apply');
     if (applyBtn) {
       const fileId = applyBtn.getAttribute('data-file-id');

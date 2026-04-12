@@ -17,6 +17,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const inputDesc = document.getElementById("template-desc");
   const btnCancel = document.getElementById("template-cancel");
   const btnSave = document.getElementById("template-save");
+  const moduleFeatureTab = document.getElementById("module-feature-tab");
+  const moduleFeatureSection = document.getElementById("module-feature-section");
 
   let selectedIdx = null;
   let mode = "create";
@@ -109,5 +111,44 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       })
       .catch(() => alert("저장 요청 중 오류가 발생했습니다."));
+  });
+
+  moduleFeatureTab?.addEventListener("click", function () {
+    moduleFeatureSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  document.querySelectorAll(".module-feature-toggle").forEach((checkbox) => {
+    checkbox.addEventListener("change", function () {
+      const instCode = this.getAttribute("data-inst-code");
+      const featureCode = this.getAttribute("data-feature-code");
+      const enabled = this.checked;
+      const statusLabel = this.closest(".module-toggle-wrap")?.querySelector(".module-toggle-status");
+      this.disabled = true;
+
+      fetch("/csm/core/setting/moduleFeatureUpdate", {
+        method: "POST",
+        headers: jsonHeaders(),
+        body: JSON.stringify({ instCode, featureCode, enabled }),
+      })
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.result !== "1") {
+            this.checked = !enabled;
+            alert(res.message || "기능 상태 변경에 실패했습니다.");
+            return;
+          }
+          if (statusLabel) {
+            statusLabel.textContent = enabled ? "사용" : "중지";
+            statusLabel.classList.toggle("is-disabled", !enabled);
+          }
+        })
+        .catch(() => {
+          this.checked = !enabled;
+          alert("기능 상태 변경 요청 중 오류가 발생했습니다.");
+        })
+        .finally(() => {
+          this.disabled = false;
+        });
+    });
   });
 });

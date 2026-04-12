@@ -21,6 +21,152 @@
 <link rel="stylesheet" th:href="@{/css/csm/core/admin/style.css}">
 <link rel="stylesheet" th:href="@{/css/csm/core/admin/setting.css}">
 <link rel="stylesheet" th:href="@{/css/csm/core/popup/popup.css}">
+<style>
+  .module-feature-panel {
+    margin-top: 24px;
+    border: 1px solid #dbe7df;
+    border-radius: 14px;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .module-feature-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 22px;
+    background: linear-gradient(135deg, #05401E, #0b6b33);
+    color: #fff;
+  }
+
+  .module-feature-title {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .module-feature-desc {
+    margin-top: 6px;
+    font-size: 13px;
+    opacity: 0.88;
+  }
+
+  .module-feature-table-wrap {
+    overflow-x: auto;
+  }
+
+  .module-feature-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 960px;
+  }
+
+  .module-feature-table thead th {
+    padding: 14px 12px;
+    background: #eef5f0;
+    border-bottom: 1px solid #d9e7de;
+    color: #0a512b;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .module-feature-table tbody td {
+    padding: 14px 12px;
+    border-bottom: 1px solid #edf2ee;
+    text-align: center;
+    font-size: 13px;
+    color: #24352b;
+  }
+
+  .module-feature-table tbody tr:hover {
+    background: #fafdfb;
+  }
+
+  .module-inst-cell {
+    text-align: left !important;
+  }
+
+  .module-inst-code {
+    font-weight: 700;
+    color: #05401E;
+  }
+
+  .module-inst-name {
+    margin-top: 4px;
+    color: #5f6f66;
+    font-size: 12px;
+  }
+
+  .module-toggle-wrap {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .module-toggle {
+    position: relative;
+    width: 52px;
+    height: 28px;
+    display: inline-block;
+  }
+
+  .module-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .module-slider {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: #c8d5cc;
+    transition: .2s ease;
+    cursor: pointer;
+  }
+
+  .module-slider::before {
+    content: "";
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    left: 3px;
+    top: 3px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,.18);
+    transition: .2s ease;
+  }
+
+  .module-toggle input:checked + .module-slider {
+    background: #0b6b33;
+  }
+
+  .module-toggle input:checked + .module-slider::before {
+    transform: translateX(24px);
+  }
+
+  .module-toggle input:disabled + .module-slider {
+    opacity: .65;
+    cursor: wait;
+  }
+
+  .module-toggle-status {
+    font-size: 12px;
+    font-weight: 700;
+    color: #0b6b33;
+  }
+
+  .module-toggle-status.is-disabled {
+    color: #9b3b31;
+  }
+
+  .module-feature-empty {
+    padding: 24px !important;
+    color: #7a8b80;
+  }
+</style>
 </head>
 <body>
 <div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
@@ -36,6 +182,8 @@
                 <span style="cursor:pointer; color: #06603A; font-weight: 500; font-size: 12px;" onclick="location.href='/csm/core/setting'">템플릿 관리</span>
                 |
                 <span style="cursor:pointer; margin-left: 5px;" onclick="location.href='/csm/core/categorysetting'">상담일지양식 관리</span>
+                |
+                <span style="cursor:pointer; margin-left: 5px;" id="module-feature-tab">기능 모듈 관리</span>
               </div>
             </div>
           </div>
@@ -73,6 +221,53 @@
               <div class="btn counsel-btn delBtn" id="user-modi">수정</div>
               <div class="section-btn btn newBtn pop-btn counsel-btn" id="user-new">템플릿등록</div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-mid" id="module-feature-section">
+        <div class="module-feature-panel">
+          <div class="module-feature-head">
+            <div>
+              <div class="module-feature-title">기능 모듈 관리</div>
+              <div class="module-feature-desc">최고 관리자가 기관별로 병실현황판, 녹음, 입원서약서, 파일 업로드 기능을 사용 또는 중지 상태로 제어합니다.</div>
+            </div>
+          </div>
+          <div class="module-feature-table-wrap">
+            <table class="module-feature-table">
+              <thead>
+              <tr>
+                <th style="min-width:180px;">기관</th>
+                <th th:each="feature : ${moduleFeatures}" th:text="${feature.label}">기능</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr th:if="${#lists.isEmpty(moduleFeatureRows)}">
+                <td class="module-feature-empty" th:attr="colspan=${1 + #lists.size(moduleFeatures)}">기능 모듈을 제어할 기관이 없습니다.</td>
+              </tr>
+              <tr th:each="row : ${moduleFeatureRows}">
+                <td class="module-inst-cell">
+                  <div class="module-inst-code" th:text="${row.instCode}">inst</div>
+                  <div class="module-inst-name" th:text="${row.instName}">기관명</div>
+                </td>
+                <td th:each="feature : ${moduleFeatures}"
+                    th:with="enabled=${row.featureStates[feature.code]}">
+                  <div class="module-toggle-wrap">
+                    <label class="module-toggle">
+                      <input type="checkbox"
+                             class="module-feature-toggle"
+                             th:attr="data-inst-code=${row.instCode},data-feature-code=${feature.code}"
+                             th:checked="${enabled}">
+                      <span class="module-slider"></span>
+                    </label>
+                    <span class="module-toggle-status"
+                          th:classappend="${enabled} ? '' : ' is-disabled'"
+                          th:text="${enabled} ? '사용' : '중지'">사용</span>
+                  </div>
+                </td>
+              </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
