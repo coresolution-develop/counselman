@@ -189,6 +189,10 @@ button:hover,
 .hero-card {
     padding: 28px 30px;
     margin-bottom: 22px;
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    align-items: flex-end;
 }
 
 .hero-card h2 {
@@ -196,19 +200,135 @@ button:hover,
     line-height: 1.4;
 }
 
-.service-grid {
+.hero-copy {
+    max-width: 760px;
+}
+
+.hero-note {
+    margin: 12px 0 0;
+    color: var(--sub);
+    line-height: 1.7;
+}
+
+.hero-stats {
+    display: flex;
+    gap: 14px;
+}
+
+.hero-stat {
+    min-width: 126px;
+    padding: 16px 18px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(13, 122, 96, 0.12), rgba(13, 122, 96, 0.04));
+    border: 1px solid rgba(13, 122, 96, 0.16);
+}
+
+.hero-stat strong {
+    display: block;
+    font-size: 28px;
+    line-height: 1;
+}
+
+.hero-stat span {
+    display: block;
+    margin-top: 8px;
+    color: var(--sub);
+    font-size: 13px;
+}
+
+.hero-stat-muted {
+    background: linear-gradient(135deg, rgba(97, 118, 109, 0.12), rgba(97, 118, 109, 0.04));
+    border-color: rgba(97, 118, 109, 0.18);
+}
+
+.service-section {
+    margin-top: 24px;
+}
+
+.service-section-head {
+    margin-bottom: 14px;
+}
+
+.service-section-head h2 {
+    margin-bottom: 0;
+}
+
+.service-grid,
+.service-grid-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 18px;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
 }
 
 .service-card {
     display: flex;
     flex-direction: column;
     gap: 14px;
+    min-height: 220px;
+    padding: 22px;
+    border: 1px solid transparent;
+}
+
+.service-card-available {
     text-decoration: none;
     color: var(--ink);
-    padding: 22px;
+    background:
+        radial-gradient(circle at top right, rgba(13, 122, 96, 0.15), transparent 34%),
+        linear-gradient(180deg, #ffffff 0%, #f9fcfa 100%);
+    border-color: rgba(13, 122, 96, 0.14);
+}
+
+.service-card-unavailable {
+    color: var(--ink);
+    background:
+        repeating-linear-gradient(
+            -45deg,
+            rgba(97, 118, 109, 0.06) 0,
+            rgba(97, 118, 109, 0.06) 10px,
+            rgba(255, 255, 255, 0.78) 10px,
+            rgba(255, 255, 255, 0.78) 20px
+        ),
+        linear-gradient(180deg, #fbfcfb 0%, #f4f6f4 100%);
+    border: 2px dashed rgba(97, 118, 109, 0.28);
+    box-shadow: none;
+    position: relative;
+}
+
+.service-card-unavailable::after {
+    content: "";
+    position: absolute;
+    inset: 12px;
+    border-radius: 18px;
+    border: 1px dashed rgba(97, 118, 109, 0.12);
+    pointer-events: none;
+}
+
+.service-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.service-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.service-badge-available {
+    background: rgba(13, 122, 96, 0.12);
+    color: var(--accent-strong);
+}
+
+.service-badge-unavailable {
+    background: rgba(97, 118, 109, 0.12);
+    color: #566960;
 }
 
 .service-code {
@@ -227,12 +347,22 @@ button:hover,
     margin: 0;
     color: var(--sub);
     line-height: 1.6;
+    flex: 1;
 }
 
 .service-link {
     margin-top: auto;
     font-weight: 700;
     color: var(--accent);
+}
+
+.service-link-muted {
+    color: #5a6c63;
+}
+
+.service-grid-muted .service-card {
+    box-shadow: none;
+    transform: none;
 }
 
 .admin-grid {
@@ -285,7 +415,7 @@ button:hover,
 }
 
 .list-row-service {
-    grid-template-columns: 140px 180px 1fr 90px;
+    grid-template-columns: 140px 180px 1fr 90px 180px;
 }
 
 .list-head {
@@ -298,6 +428,16 @@ button:hover,
     display: flex;
     gap: 10px;
     margin-bottom: 14px;
+}
+
+.inline-form-compact {
+    margin-bottom: 0;
+    align-items: center;
+}
+
+.inline-form-compact select,
+.inline-form-compact button {
+    padding: 10px 12px;
 }
 
 .checkbox-row {
@@ -318,6 +458,19 @@ button:hover,
     .login-panel,
     .admin-grid {
         grid-template-columns: 1fr;
+    }
+
+    .hero-card {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .hero-stats {
+        width: 100%;
+    }
+
+    .hero-stat {
+        flex: 1;
     }
 
     .grid-form {

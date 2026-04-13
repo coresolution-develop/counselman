@@ -81,4 +81,12 @@ public class PlatformService {
     public String getAccessYn() {
         return accessYn;
     }
+
+    public boolean isEnabled() {
+        return "Y".equalsIgnoreCase(useYn);
+    }
+
+    public boolean isAccessible() {
+        return isEnabled() && "Y".equalsIgnoreCase(accessYn);
+    }
 }

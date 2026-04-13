@@ -99,25 +99,33 @@ public class PlatformStoreService {
     }
 
     public List<PlatformService> listAccessibleServices(PlatformSessionUser user) {
+        return listServicesForUser(user).stream()
+                .filter(PlatformService::isAccessible)
+                .toList();
+    }
+
+    public List<PlatformService> listServicesForUser(PlatformSessionUser user) {
         if (user == null) {
             return List.of();
         }
         if (user.isPlatformAdmin()) {
             return listAllServices();
         }
-        PlatformInstitution institution = findInstitution(user.getInstCode());
-        if (institution != null && !USE_Y.equalsIgnoreCase(institution.getUseYn())) {
-            return List.of();
+        String normalizedInstCode = normalizeInstCode(user.getInstCode());
+        if (!StringUtils.hasText(normalizedInstCode)) {
+            return listAllServices().stream()
+                    .map(service -> withAccess(service, "N"))
+                    .toList();
         }
-        return jdbcTemplate.query("""
+        PlatformInstitution institution = findInstitution(user.getInstCode());
+        boolean institutionEnabled = institution == null || USE_Y.equalsIgnoreCase(institution.getUseYn());
+        List<PlatformService> services = jdbcTemplate.query("""
                 SELECT s.id, s.service_code, s.service_name, s.base_url, s.sso_entry_path, s.user_target, s.admin_target,
                        s.description, s.use_yn, s.display_order, COALESCE(a.use_yn, 'N') AS access_yn
                 FROM mp_service s
                 LEFT JOIN mp_institution_service a
                   ON a.service_code = s.service_code
                  AND a.inst_code = ?
-                WHERE s.use_yn = 'Y'
-                  AND COALESCE(a.use_yn, 'N') = 'Y'
                 ORDER BY s.display_order ASC, s.id ASC
                 """, (rs, rowNum) -> new PlatformService(
                         rs.getLong("id"),
@@ -131,7 +139,13 @@ public class PlatformStoreService {
                         rs.getString("use_yn"),
                         rs.getInt("display_order"),
                         rs.getString("access_yn")),
-                user.getInstCode());
+                normalizedInstCode);
+        if (institutionEnabled) {
+            return services;
+        }
+        return services.stream()
+                .map(service -> withAccess(service, "N"))
+                .toList();
     }
 
     public List<PlatformInstitution> listInstitutions() {
@@ -293,6 +307,23 @@ public class PlatformStoreService {
                 trimToNull(description),
                 normalizeYn(useYn),
                 displayOrder == null ? 0 : displayOrder);
+    }
+
+    public void updateServiceStatus(String serviceCode, String useYn) {
+        PlatformService existingService = findService(serviceCode);
+        if (existingService == null) {
+            throw new IllegalArgumentException("등록된 서비스가 아닙니다.");
+        }
+        upsertService(
+                existingService.getServiceCode(),
+                existingService.getServiceName(),
+                existingService.getBaseUrl(),
+                existingService.getSsoEntryPath(),
+                existingService.getUserTarget(),
+                existingService.getAdminTarget(),
+                existingService.getDescription(),
+                normalizeYn(useYn),
+                existingService.getDisplayOrder());
     }
 
     public void saveInstitutionServiceAccess(String instCode, List<String> enabledServiceCodes) {
@@ -682,6 +713,21 @@ public class PlatformStoreService {
                 KEY (inst_code, service_code)
                 VALUES (?, ?, ?)
                 """, instCode, serviceCode, useYn);
+    }
+
+    private PlatformService withAccess(PlatformService service, String accessYn) {
+        return new PlatformService(
+                service.getId(),
+                service.getServiceCode(),
+                service.getServiceName(),
+                service.getBaseUrl(),
+                service.getSsoEntryPath(),
+                service.getUserTarget(),
+                service.getAdminTarget(),
+                service.getDescription(),
+                service.getUseYn(),
+                service.getDisplayOrder(),
+                accessYn);
     }
 
     private DatabaseDialect detectDatabaseDialect() {

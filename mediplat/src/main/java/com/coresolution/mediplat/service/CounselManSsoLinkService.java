@@ -1,5 +1,6 @@
 package com.coresolution.mediplat.service;
 
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -10,12 +11,20 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import com.coresolution.mediplat.model.PlatformService;
 import com.coresolution.mediplat.model.PlatformSessionUser;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 @Service
 public class CounselManSsoLinkService {
+
+    @Value("${platform.bootstrap.counselman-base-url:http://localhost:8081/csm}")
+    private String configuredCounselManBaseUrl;
 
     @Value("${platform.counselman.sso-shared-secret:change-me}")
     private String sharedSecret;
@@ -30,7 +39,7 @@ public class CounselManSsoLinkService {
                 .encodeToString(target.getBytes(StandardCharsets.UTF_8));
         long expires = Instant.now().getEpochSecond() + expireSeconds;
         String signature = sign(user.getInstCode(), user.getUsername(), expires, targetToken);
-        return service.getBaseUrl() + service.getSsoEntryPath()
+        return resolveBaseUrl(service.getBaseUrl()) + service.getSsoEntryPath()
                 + "?inst=" + encode(user.getInstCode())
                 + "&userId=" + encode(user.getUsername())
                 + "&expires=" + expires
@@ -56,5 +65,96 @@ public class CounselManSsoLinkService {
 
     private String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    private String resolveBaseUrl(String baseUrl) {
+        String normalizedBaseUrl = trimTrailingSlash(baseUrl);
+        if (!isLoopbackUrl(normalizedBaseUrl)) {
+            return normalizedBaseUrl;
+        }
+
+        String configuredBaseUrl = trimTrailingSlash(configuredCounselManBaseUrl);
+        HttpServletRequest request = currentRequest();
+        if (StringUtils.hasText(configuredBaseUrl)) {
+            if (request == null || isLoopbackHost(request.getServerName())) {
+                return configuredBaseUrl;
+            }
+            if (!isLoopbackUrl(configuredBaseUrl)) {
+                return configuredBaseUrl;
+            }
+        }
+
+        if (request == null) {
+            return StringUtils.hasText(configuredBaseUrl) ? configuredBaseUrl : normalizedBaseUrl;
+        }
+
+        URI original = URI.create(normalizedBaseUrl);
+        String scheme = StringUtils.hasText(request.getScheme()) ? request.getScheme() : original.getScheme();
+        String host = StringUtils.hasText(request.getServerName()) ? request.getServerName() : original.getHost();
+        int port = request.getServerPort();
+
+        StringBuilder rebuilt = new StringBuilder();
+        rebuilt.append(scheme).append("://").append(host);
+        if (shouldAppendPort(scheme, port)) {
+            rebuilt.append(':').append(port);
+        }
+        if (StringUtils.hasText(original.getPath())) {
+            rebuilt.append(original.getPath());
+        }
+        return rebuilt.toString();
+    }
+
+    private HttpServletRequest currentRequest() {
+        var attributes = RequestContextHolder.getRequestAttributes();
+        if (attributes instanceof ServletRequestAttributes servletRequestAttributes) {
+            return servletRequestAttributes.getRequest();
+        }
+        return null;
+    }
+
+    private boolean isLoopbackUrl(String value) {
+        if (!StringUtils.hasText(value)) {
+            return false;
+        }
+        try {
+            String host = URI.create(value).getHost();
+            if (!StringUtils.hasText(host)) {
+                return false;
+            }
+            return "localhost".equalsIgnoreCase(host)
+                    || "127.0.0.1".equals(host)
+                    || "0.0.0.0".equals(host);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    private boolean isLoopbackHost(String host) {
+        if (!StringUtils.hasText(host)) {
+            return false;
+        }
+        return "localhost".equalsIgnoreCase(host)
+                || "127.0.0.1".equals(host)
+                || "0.0.0.0".equals(host);
+    }
+
+    private boolean shouldAppendPort(String scheme, int port) {
+        if (port <= 0) {
+            return false;
+        }
+        if ("http".equalsIgnoreCase(scheme) && port == 80) {
+            return false;
+        }
+        if ("https".equalsIgnoreCase(scheme) && port == 443) {
+            return false;
+        }
+        return true;
+    }
+
+    private String trimTrailingSlash(String value) {
+        if (!StringUtils.hasText(value)) {
+            return value;
+        }
+        return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
     }
 }

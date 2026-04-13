@@ -53,7 +53,7 @@
                 <p>로그인은 계정 기준으로 허용되며, 여기서 선택한 서비스만 실제로 노출됩니다.</p>
             </div>
             <form method="get" th:action="@{/admin}" class="inline-form">
-                <select name="instCode">
+                <select name="instCode" onchange="this.form.requestSubmit()">
                     <option th:each="institution : ${institutions}"
                             th:value="${institution.instCode}"
                             th:text="${institution.instName + ' (' + institution.instCode + ')'}"
@@ -61,7 +61,6 @@
                         기관
                     </option>
                 </select>
-                <button type="submit">기관 조회</button>
             </form>
             <form method="post" th:action="@{/admin/access}" class="stack-form">
                 <input type="hidden" name="instCode" th:value="${selectedInstCode}">
@@ -95,12 +94,20 @@
                 <button type="submit">서비스 저장</button>
             </form>
             <div class="table-list">
-                <div class="list-row list-head list-row-service"><span>코드</span><span>이름</span><span>Base URL</span><span>상태</span></div>
+                <div class="list-row list-head list-row-service"><span>코드</span><span>이름</span><span>Base URL</span><span>상태</span><span>변경</span></div>
                 <div class="list-row list-row-service" th:each="service : ${services}">
                     <span th:text="${service.serviceCode}">COUNSELMAN</span>
                     <span th:text="${service.serviceName}">CounselMan</span>
                     <span th:text="${service.baseUrl}">http://localhost:8081/csm</span>
                     <span th:text="${service.useYn}">Y</span>
+                    <form method="post" th:action="@{/admin/services/status}" class="inline-form inline-form-compact">
+                        <input type="hidden" name="serviceCode" th:value="${service.serviceCode}">
+                        <select name="useYn">
+                            <option value="Y" th:selected="${service.useYn == 'Y'}">사용</option>
+                            <option value="N" th:selected="${service.useYn == 'N'}">중지</option>
+                        </select>
+                        <button type="submit">저장</button>
+                    </form>
                 </div>
             </div>
         </div>

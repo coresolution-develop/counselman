@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import com.coresolution.mediplat.model.PlatformService;
 import com.coresolution.mediplat.model.PlatformSessionUser;
 import com.coresolution.mediplat.service.CounselManSsoLinkService;
 import com.coresolution.mediplat.service.PlatformStoreService;
@@ -75,8 +76,10 @@ public class MediplatController {
         if (user == null) {
             return "redirect:/login";
         }
+        List<PlatformService> services = storeService.listServicesForUser(user);
         model.addAttribute("user", user);
-        model.addAttribute("services", storeService.listAccessibleServices(user));
+        model.addAttribute("availableServices", services.stream().filter(PlatformService::isAccessible).toList());
+        model.addAttribute("unavailableServices", services.stream().filter(service -> !service.isAccessible()).toList());
         return "services";
     }
 
@@ -88,6 +91,9 @@ public class MediplatController {
         }
         var service = storeService.findService(serviceCode);
         if (service == null) {
+            return "redirect:/services";
+        }
+        if (!service.isEnabled()) {
             return "redirect:/services";
         }
         List<String> enabledCodes = user.isPlatformAdmin()
@@ -165,6 +171,24 @@ public class MediplatController {
         try {
             storeService.saveService(serviceCode, serviceName, baseUrl, ssoEntryPath, userTarget, adminTarget, description, useYn, displayOrder);
             redirectAttributes.addAttribute("message", "서비스가 저장되었습니다.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin";
+    }
+
+    @PostMapping("/admin/services/status")
+    public String updateServiceStatus(
+            @RequestParam("serviceCode") String serviceCode,
+            @RequestParam(name = "useYn", defaultValue = "Y") String useYn,
+            HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        if (!isAdminSession(session)) {
+            return "redirect:/login";
+        }
+        try {
+            storeService.updateServiceStatus(serviceCode, useYn);
+            redirectAttributes.addAttribute("message", "서비스 상태가 변경되었습니다.");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addAttribute("error", e.getMessage());
         }
