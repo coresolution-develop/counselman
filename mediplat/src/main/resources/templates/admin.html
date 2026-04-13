@@ -47,6 +47,33 @@
             </div>
         </div>
 
+        <div class="admin-card">
+            <div class="section-head">
+                <h2>기관별 서비스 권한</h2>
+                <p>로그인은 계정 기준으로 허용되며, 여기서 선택한 서비스만 실제로 노출됩니다.</p>
+            </div>
+            <form method="get" th:action="@{/admin}" class="inline-form">
+                <select name="instCode">
+                    <option th:each="institution : ${institutions}"
+                            th:value="${institution.instCode}"
+                            th:text="${institution.instName + ' (' + institution.instCode + ')'}"
+                            th:selected="${institution.instCode == selectedInstCode}">
+                        기관
+                    </option>
+                </select>
+                <button type="submit">기관 조회</button>
+            </form>
+            <form method="post" th:action="@{/admin/access}" class="stack-form">
+                <input type="hidden" name="instCode" th:value="${selectedInstCode}">
+                <label class="checkbox-row" th:each="service : ${services}">
+                    <input type="checkbox" name="enabledServiceCodes" th:value="${service.serviceCode}"
+                           th:checked="${#lists.contains(enabledServiceCodes, service.serviceCode)}">
+                    <span th:text="${service.serviceName + ' (' + service.serviceCode + ')'}">CounselMan</span>
+                </label>
+                <button type="submit">권한 저장</button>
+            </form>
+        </div>
+
         <div class="admin-card admin-card-wide">
             <div class="section-head">
                 <h2>서비스 등록</h2>
@@ -78,32 +105,7 @@
             </div>
         </div>
 
-        <div class="admin-card admin-card-wide">
-            <div class="section-head">
-                <h2>기관별 서비스 권한</h2>
-                <p>로그인은 계정 기준으로 허용되며, 여기서 선택한 서비스만 실제로 노출됩니다.</p>
-            </div>
-            <form method="get" th:action="@{/admin}" class="inline-form">
-                <select name="instCode">
-                    <option th:each="institution : ${institutions}"
-                            th:value="${institution.instCode}"
-                            th:text="${institution.instName + ' (' + institution.instCode + ')'}"
-                            th:selected="${institution.instCode == selectedInstCode}">
-                        기관
-                    </option>
-                </select>
-                <button type="submit">기관 조회</button>
-            </form>
-            <form method="post" th:action="@{/admin/access}" class="stack-form">
-                <input type="hidden" name="instCode" th:value="${selectedInstCode}">
-                <label class="checkbox-row" th:each="service : ${services}">
-                    <input type="checkbox" name="enabledServiceCodes" th:value="${service.serviceCode}"
-                           th:checked="${#lists.contains(enabledServiceCodes, service.serviceCode)}">
-                    <span th:text="${service.serviceName + ' (' + service.serviceCode + ')'}">CounselMan</span>
-                </label>
-                <button type="submit">권한 저장</button>
-            </form>
-        </div>
+        
     </section>
 </main>
 </body>
