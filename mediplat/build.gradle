@@ -32,3 +32,37 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+// bootJar 결과물은 프로파일별로 달라지지 않음
+// devJar / prodJar 는 bootJar 결과물을 복사해서 파일명만 바꾸는 편의 태스크
+tasks.register('devJar') {
+    dependsOn 'bootJar'
+    group = 'build'
+    description = 'Build JAR for DEV deployment'
+
+    doLast {
+        def src = tasks.named('bootJar').get().archiveFile.get().asFile
+        copy {
+            from src
+            into "$buildDir/libs"
+            rename { 'mediplat-dev.jar' }
+        }
+        println "DEV JAR created: ${buildDir}/libs/mediplat-dev.jar"
+    }
+}
+
+tasks.register('prodJar') {
+    dependsOn 'bootJar'
+    group = 'build'
+    description = 'Build JAR for PROD deployment'
+
+    doLast {
+        def src = tasks.named('bootJar').get().archiveFile.get().asFile
+        copy {
+            from src
+            into "$buildDir/libs"
+            rename { 'mediplat-prod.jar' }
+        }
+        println "PROD JAR created: ${buildDir}/libs/mediplat-prod.jar"
+    }
+}

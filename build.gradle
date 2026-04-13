@@ -95,3 +95,61 @@ tasks.register('prodWar') {
 		println "PROD WAR created: ${buildDir}/libs/csm-prod.war"
 	}
 }
+
+tasks.register('mediplatDevJar', GradleBuild) {
+	group = 'build'
+	description = 'Build MediPlat JAR for DEV deployment'
+	dir = file('mediplat')
+	tasks = ['devJar']
+}
+
+tasks.register('mediplatProdJar', GradleBuild) {
+	group = 'build'
+	description = 'Build MediPlat JAR for PROD deployment'
+	dir = file('mediplat')
+	tasks = ['prodJar']
+}
+
+tasks.register('packageDevDeploy') {
+	dependsOn 'devWar', 'mediplatDevJar'
+	group = 'build'
+	description = 'Build CSM DEV WAR and MediPlat DEV JAR, then collect them in one folder'
+
+	doLast {
+		def deployDir = file("$buildDir/deploy/dev")
+		delete deployDir
+		deployDir.mkdirs()
+
+		copy {
+			from "$buildDir/libs/csm-dev.war"
+			from "${projectDir}/mediplat/build/libs/mediplat-dev.jar"
+			into deployDir
+		}
+
+		println "DEV deploy bundle created: ${deployDir}"
+		println "- ${deployDir}/csm-dev.war"
+		println "- ${deployDir}/mediplat-dev.jar"
+	}
+}
+
+tasks.register('packageProdDeploy') {
+	dependsOn 'prodWar', 'mediplatProdJar'
+	group = 'build'
+	description = 'Build CSM PROD WAR and MediPlat PROD JAR, then collect them in one folder'
+
+	doLast {
+		def deployDir = file("$buildDir/deploy/prod")
+		delete deployDir
+		deployDir.mkdirs()
+
+		copy {
+			from "$buildDir/libs/csm-prod.war"
+			from "${projectDir}/mediplat/build/libs/mediplat-prod.jar"
+			into deployDir
+		}
+
+		println "PROD deploy bundle created: ${deployDir}"
+		println "- ${deployDir}/csm-prod.war"
+		println "- ${deployDir}/mediplat-prod.jar"
+	}
+}

@@ -171,7 +171,40 @@ curl -I http://127.0.0.1:8082/login
 8. 로그인 페이지 응답 확인
 9. MediPlat 로그인 후 CounselMan 진입 확인
 
-## 11. 병실현황판 기능 점검
+## 11. 배포 산출물 빌드
+
+루트에서 한 번에 `csm WAR`와 `mediplat JAR`를 같이 만들 수 있습니다.
+
+DEV 배포 묶음:
+
+```bash
+./gradlew packageDevDeploy
+```
+
+산출물:
+
+- `build/deploy/dev/csm-dev.war`
+- `build/deploy/dev/mediplat-dev.jar`
+
+PROD 배포 묶음:
+
+```bash
+./gradlew packageProdDeploy
+```
+
+산출물:
+
+- `build/deploy/prod/csm-prod.war`
+- `build/deploy/prod/mediplat-prod.jar`
+
+기존 단독 빌드도 그대로 사용할 수 있습니다.
+
+- `./gradlew devWar`
+- `./gradlew prodWar`
+- `./gradlew -p mediplat devJar`
+- `./gradlew -p mediplat prodJar`
+
+## 12. 병실현황판 기능 점검
 
 1. `http://localhost:8081/csm/admin/room-board` 접속
 2. 병실 기준정보 등록
@@ -181,9 +214,10 @@ curl -I http://127.0.0.1:8082/login
 6. `http://localhost:8081/csm/room-board`에서 결과 확인
 7. 입원상담 화면에서 `병실현황판 보기` 버튼으로 병실 선택 확인
 
-## 12. 참고 사항
+## 13. 참고 사항
 
 - `mediplat` 플랫폼 설정 데이터는 기본적으로 공유 MySQL의 `mp_*` 테이블에 저장됩니다.
 - 다른 저장소를 쓰고 싶으면 `MEDIPLAT_DATASOURCE_URL`, `MEDIPLAT_DATASOURCE_USERNAME`, `MEDIPLAT_DATASOURCE_PASSWORD`로 분리할 수 있습니다.
+- `mediplat`를 `systemd`로 운영할 때는 `SPRING_DATASOURCE_*`와 `PLATFORM_COUNSELMAN_DATASOURCE_*`가 모두 같은 `csm` MySQL을 가리키도록 맞춰야 합니다. `SPRING_DATASOURCE_URL`이 H2로 남아 있으면 로컬과 다른 기관/권한 데이터가 보일 수 있습니다.
 - 서버용 설정(`nginx`, `systemd`, `Tomcat`, `SSL 인증서`)은 로컬 실행에 포함되지 않습니다.
 - 다른 PC에서 실행 시에도 DB 접속 정보와 SSO secret 값만 맞으면 동일하게 사용할 수 있습니다.
