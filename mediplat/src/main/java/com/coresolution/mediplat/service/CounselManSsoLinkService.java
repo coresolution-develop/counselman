@@ -88,10 +88,11 @@ public class CounselManSsoLinkService {
             return StringUtils.hasText(configuredBaseUrl) ? configuredBaseUrl : normalizedBaseUrl;
         }
 
-        URI original = URI.create(normalizedBaseUrl);
+        String rewriteSource = StringUtils.hasText(configuredBaseUrl) ? configuredBaseUrl : normalizedBaseUrl;
+        URI original = URI.create(rewriteSource);
         String scheme = StringUtils.hasText(request.getScheme()) ? request.getScheme() : original.getScheme();
         String host = StringUtils.hasText(request.getServerName()) ? request.getServerName() : original.getHost();
-        int port = request.getServerPort();
+        int port = original.getPort() > 0 ? original.getPort() : request.getServerPort();
 
         StringBuilder rebuilt = new StringBuilder();
         rebuilt.append(scheme).append("://").append(host);
