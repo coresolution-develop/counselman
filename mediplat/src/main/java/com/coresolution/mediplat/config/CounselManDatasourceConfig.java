@@ -11,6 +11,7 @@ import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.util.StringUtils;
 
 import com.zaxxer.hikari.HikariDataSource;
 
@@ -48,14 +49,16 @@ public class CounselManDatasourceConfig {
             @Value("${platform.counselman.datasource.url}") String url,
             @Value("${platform.counselman.datasource.username}") String username,
             @Value("${platform.counselman.datasource.password}") String password,
-            @Value("${platform.counselman.datasource.driver-class-name:com.mysql.cj.jdbc.Driver}") String driverClassName) {
-        HikariDataSource dataSource = DataSourceBuilder.create()
+            @Value("${platform.counselman.datasource.driver-class-name:}") String driverClassName) {
+        DataSourceBuilder<?> builder = DataSourceBuilder.create()
                 .type(HikariDataSource.class)
-                .driverClassName(driverClassName)
                 .url(url)
                 .username(username)
-                .password(password)
-                .build();
+                .password(password);
+        if (StringUtils.hasText(driverClassName)) {
+            builder.driverClassName(driverClassName);
+        }
+        HikariDataSource dataSource = (HikariDataSource) builder.build();
         dataSource.setPoolName("mediplat-counselman");
         dataSource.setMaximumPoolSize(3);
         dataSource.setMinimumIdle(0);

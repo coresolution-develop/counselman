@@ -35,6 +35,7 @@ out/
 
 ### VS Code ###
 .vscode/
+.DS_Store
 
 ### MediPlat runtime data ###
 mediplat/mediplat/data/

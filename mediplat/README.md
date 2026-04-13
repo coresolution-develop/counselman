@@ -36,6 +36,7 @@ cd /Users/leesumin/csm/mediplat
 - `platform.counselman.datasource.url`
 - `platform.counselman.datasource.username`
 - `platform.counselman.datasource.password`
+- `platform.counselman.datasource.driver-class-name` (선택, 미지정 시 URL 기준 자동 감지)
 - `platform.counselman.login.aes-key`
 - `platform.bootstrap.counselman-base-url`
 - `platform.counselman.sso-shared-secret`

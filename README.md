@@ -54,10 +54,13 @@ git pull origin main
 - `spring.datasource.url`
 - `spring.datasource.username`
 - `spring.datasource.password`
+- `spring.datasource.driver-class-name` (필요 시에만 지정, 기본 자동 감지)
 - `MEDIPLAT_DATASOURCE_*`
+- `MEDIPLAT_DATASOURCE_DRIVER_CLASS_NAME` (선택)
 - `login.aes-key`
 - `mediplat.sso.shared-secret`
 - `platform.counselman.datasource.*`
+- `PLATFORM_COUNSELMAN_DATASOURCE_DRIVER_CLASS_NAME` (선택)
 - `platform.counselman.login.aes-key`
 - `platform.counselman.sso-shared-secret`
 
