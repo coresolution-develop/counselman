@@ -12,14 +12,16 @@
         <div class="brand-block">
             <p class="eyebrow">Integrated Healthcare Platform</p>
             <h1>MediPlat</h1>
-            <p class="subtitle">기관별 서비스 권한을 통합 관리하고, 필요한 서비스로 바로 진입합니다.</p>
+            <p class="subtitle">기관코드/기관명 + 아이디로 기본 로그인하며, 병실현황판 전용 계정은 기관 입력 없이 로그인할 수 있습니다.</p>
         </div>
         <form method="post" th:action="@{/login}" class="login-form">
-            <label for="instCode">기관코드</label>
-            <input id="instCode" name="instCode" type="text" placeholder="core" autocomplete="username" required>
+            <label for="instCode">기관코드 또는 기관명</label>
+            <input id="instCode" name="instCode" type="text" placeholder="기관코드 또는 기관명 (전용계정은 비워두기)"
+                   autocomplete="organization" th:value="${loginInstCode}">
 
             <label for="username">아이디</label>
-            <input id="username" name="username" type="text" placeholder="coreadmin" required>
+            <input id="username" name="username" type="text" placeholder="아이디" autocomplete="username" required
+                   th:value="${loginUsername}">
 
             <label for="password">비밀번호</label>
             <input id="password" name="password" type="password" placeholder="비밀번호" autocomplete="current-password" required>
@@ -30,5 +32,6 @@
         </form>
     </section>
 </main>
+<script th:src="@{/js/mediplat/login.js}"></script>
 </body>
 </html>

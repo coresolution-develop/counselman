@@ -168,6 +168,16 @@
       <span>문자관리</span>
     </li>
 
+    <!-- 병실현황판 -->
+    <li class="nav_link menu8"
+        data-menu="roomboard" data-content="all"
+        th:if="${session.inst != null and @moduleFeatureService.isEnabled(session.inst, 'ROOM_BOARD')}"
+        th:classappend="${activeMenu == 'roomboard' ? ' on active' : ''}"
+        th:attr="data-base-url=@{/room-board}"
+        role="link" tabindex="0" aria-label="병실현황판 페이지로 이동">
+      <span>병실현황판</span>
+    </li>
+
     <!-- 관리자 (info.us_col_08 == 1 또는 coreadmin) -->
     <li class="nav_link menu6"
         data-menu="admin" data-content="all"

@@ -46,6 +46,127 @@
 	height: calc(100% - 60px);
 }
 
+.integrated-reservation-box {
+    margin-bottom: 10px;
+    padding: 12px;
+    border: 1px solid #e8ecef;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.integrated-reservation-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.integrated-reservation-head h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #2f2f2f;
+}
+
+.integrated-reservation-manage {
+    font-size: 12px;
+    color: #06603A;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.integrated-reservation-empty {
+    font-size: 12px;
+    color: #7a7a7a;
+    padding: 8px 0;
+}
+
+.integrated-reservation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 190px;
+    overflow-y: auto;
+}
+
+.integrated-reservation-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid #ebebeb;
+    border-radius: 9px;
+    padding: 8px 10px;
+    background: #fdfdfd;
+}
+
+.reservation-priority-badge {
+    min-width: 38px;
+    height: 26px;
+    border-radius: 13px;
+    background: #edf4ff;
+    color: #274f90;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.reservation-priority-badge.high {
+    background: #fff1ed;
+    color: #b23a17;
+}
+
+.reservation-main-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.reservation-main-info strong {
+    font-size: 13px;
+    color: #272727;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.reservation-main-info span {
+    font-size: 12px;
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.reservation-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.reservation-link-btn {
+    height: 30px;
+    border-radius: 7px;
+    border: 1px solid #cfe0d8;
+    background: #fff;
+    color: #15553a;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.reservation-link-btn.ghost {
+    border-color: #dedede;
+    color: #595959;
+}
+
 #table-header {
 	position: sticky;
 	top: 0;
@@ -463,6 +584,9 @@ thead {
 	.section-mid{
 		display: none;
 	}
+	.integrated-reservation-box {
+        display: none;
+    }
 	.mobile-list {
 		border: 1px solid #ccc;
         border-left: unset;

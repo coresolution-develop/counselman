@@ -203,6 +203,14 @@ public interface CsmMapper {
   Instdata coreInstFindByCode(@Param("id_col_03") String id_col_03);
 
   @Select("""
+      SELECT id_col_03
+      FROM csm.inst_data_cs
+      WHERE LOWER(TRIM(id_col_02)) = LOWER(TRIM(#{instName}))
+      LIMIT 1
+      """)
+  String coreInstCodeFindByName(@Param("instName") String instName);
+
+  @Select("""
       SELECT id_col_09
       FROM csm.inst_data_cs
       WHERE id_col_02 = #{id_col_02}

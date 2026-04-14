@@ -2,6 +2,7 @@ package com.coresolution.mediplat.service;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -19,6 +20,7 @@ import com.coresolution.mediplat.model.PlatformInstitution;
 import com.coresolution.mediplat.model.PlatformService;
 import com.coresolution.mediplat.model.PlatformSessionUser;
 import com.coresolution.mediplat.model.PlatformUser;
+import com.coresolution.mediplat.model.RoomBoardViewerAccount;
 
 import jakarta.annotation.PostConstruct;
 
@@ -27,8 +29,10 @@ public class PlatformStoreService {
 
     private static final String USE_Y = "Y";
     private static final String ROLE_PLATFORM_ADMIN = "PLATFORM_ADMIN";
+    private static final String ROLE_ROOM_BOARD_VIEWER = "ROOM_BOARD_VIEWER";
     private static final String ROLE_USER = "USER";
     private static final String DEFAULT_SERVICE_CODE = "COUNSELMAN";
+    private static final String VIEWER_ACCOUNT_INST_CODE = "core";
     private static final String ENV_LOCAL = "LOCAL";
     private static final String ENV_DEV = "DEV";
     private static final String ENV_PROD = "PROD";
@@ -75,10 +79,25 @@ public class PlatformStoreService {
         bootstrapDefaults();
     }
 
-    public PlatformSessionUser authenticate(String instCode, String username, String rawPassword) {
+    public PlatformSessionUser authenticate(String instCodeOrName, String username, String rawPassword) {
+        String normalizedInstInput = StringUtils.hasText(instCodeOrName) ? instCodeOrName.trim() : "";
+        String normalizedUsername = normalizeUsername(username);
+
+        if (!StringUtils.hasText(normalizedInstInput)) {
+            PlatformSessionUser roomBoardViewerSession = authenticateRoomBoardViewerAccount(normalizedUsername, rawPassword);
+            if (roomBoardViewerSession != null) {
+                return roomBoardViewerSession;
+            }
+            return null;
+        }
+
+        String resolvedInstCode = resolveLoginInstCode(normalizedInstInput);
+        if (!StringUtils.hasText(resolvedInstCode)) {
+            return null;
+        }
         CounselManAccountService.AuthenticatedUser authenticatedUser = counselManAccountService.authenticate(
-                instCode,
-                username,
+                resolvedInstCode,
+                normalizedUsername,
                 rawPassword);
         if (authenticatedUser == null) {
             return null;
@@ -92,6 +111,54 @@ public class PlatformStoreService {
                 authenticatedUser.username(),
                 authenticatedUser.displayName(),
                 roleCode);
+    }
+
+    private PlatformSessionUser authenticateRoomBoardViewerAccount(String username, String rawPassword) {
+        String normalizedUsername = normalizeUsername(username);
+        if (!StringUtils.hasText(normalizedUsername) || !StringUtils.hasText(rawPassword)) {
+            return null;
+        }
+        PlatformUser viewerUser = findRoomBoardViewerUser(normalizedUsername);
+        if (viewerUser == null || !"Y".equalsIgnoreCase(viewerUser.getUseYn())) {
+            return null;
+        }
+        if (!passwordEncoder.matches(rawPassword, viewerUser.getPasswordHash())) {
+            return null;
+        }
+        return new PlatformSessionUser(
+                VIEWER_ACCOUNT_INST_CODE,
+                viewerUser.getUsername(),
+                viewerUser.getDisplayName(),
+                ROLE_ROOM_BOARD_VIEWER);
+    }
+
+    private String resolveLoginInstCode(String instCodeOrName) {
+        if (!StringUtils.hasText(instCodeOrName)) {
+            return null;
+        }
+        String candidate = instCodeOrName.trim();
+        String normalizedCandidateCode = normalizeInstCode(candidate);
+
+        List<PlatformInstitution> institutions = listInstitutions();
+        for (PlatformInstitution institution : institutions) {
+            if (institution == null || !StringUtils.hasText(institution.getInstCode())) {
+                continue;
+            }
+            String instCode = normalizeInstCode(institution.getInstCode());
+            if (StringUtils.hasText(instCode) && instCode.equalsIgnoreCase(normalizedCandidateCode)) {
+                return instCode;
+            }
+        }
+        for (PlatformInstitution institution : institutions) {
+            if (institution == null) {
+                continue;
+            }
+            String institutionName = institution.getInstName();
+            if (StringUtils.hasText(institutionName) && institutionName.trim().equalsIgnoreCase(candidate)) {
+                return normalizeInstCode(institution.getInstCode());
+            }
+        }
+        return normalizedCandidateCode;
     }
 
     private boolean isPlatformAdminAccount(String instCode, String username, PlatformUser managedUser) {
@@ -214,6 +281,151 @@ public class PlatformStoreService {
                         rs.getString("use_yn")));
     }
 
+    public List<RoomBoardViewerAccount> listRoomBoardViewerAccounts() {
+        List<PlatformUser> viewerUsers = jdbcTemplate.query("""
+                SELECT id, inst_code, username, password_hash, display_name, role_code, use_yn
+                FROM mp_user
+                WHERE role_code = ?
+                ORDER BY username ASC
+                """, (rs, rowNum) -> new PlatformUser(
+                        rs.getLong("id"),
+                        rs.getString("inst_code"),
+                        rs.getString("username"),
+                        rs.getString("password_hash"),
+                        rs.getString("display_name"),
+                        rs.getString("role_code"),
+                        rs.getString("use_yn")),
+                ROLE_ROOM_BOARD_VIEWER);
+
+        Map<String, String> institutionNameMap = new LinkedHashMap<>();
+        for (PlatformInstitution institution : listInstitutions()) {
+            if (institution == null || !StringUtils.hasText(institution.getInstCode())) {
+                continue;
+            }
+            institutionNameMap.put(normalizeInstCode(institution.getInstCode()), institution.getInstName());
+        }
+
+        List<RoomBoardViewerAccount> result = new ArrayList<>();
+        for (PlatformUser viewerUser : viewerUsers) {
+            List<String> scopeInstCodes = listRoomBoardViewerScopeInstCodes(viewerUser.getUsername());
+            List<String> scopeInstNames = scopeInstCodes.stream()
+                    .map(code -> institutionNameMap.getOrDefault(code, code))
+                    .toList();
+            String scopeSummary = scopeInstNames.isEmpty() ? "-" : String.join(", ", scopeInstNames);
+            result.add(new RoomBoardViewerAccount(
+                    viewerUser.getUsername(),
+                    viewerUser.getDisplayName(),
+                    normalizeYn(viewerUser.getUseYn()),
+                    scopeInstCodes,
+                    scopeInstNames,
+                    scopeSummary));
+        }
+        return result;
+    }
+
+    public RoomBoardViewerAccount findRoomBoardViewerAccount(String username) {
+        PlatformUser viewerUser = findRoomBoardViewerUser(username);
+        if (viewerUser == null) {
+            return null;
+        }
+        List<String> scopeInstCodes = listRoomBoardViewerScopeInstCodes(viewerUser.getUsername());
+        Map<String, String> institutionNameMap = new LinkedHashMap<>();
+        for (PlatformInstitution institution : listInstitutions()) {
+            if (institution == null || !StringUtils.hasText(institution.getInstCode())) {
+                continue;
+            }
+            institutionNameMap.put(normalizeInstCode(institution.getInstCode()), institution.getInstName());
+        }
+        List<String> scopeInstNames = scopeInstCodes.stream()
+                .map(code -> institutionNameMap.getOrDefault(code, code))
+                .toList();
+        String scopeSummary = scopeInstNames.isEmpty() ? "-" : String.join(", ", scopeInstNames);
+        return new RoomBoardViewerAccount(
+                viewerUser.getUsername(),
+                viewerUser.getDisplayName(),
+                normalizeYn(viewerUser.getUseYn()),
+                scopeInstCodes,
+                scopeInstNames,
+                scopeSummary);
+    }
+
+    public List<PlatformInstitution> listRoomBoardScopeCandidateInstitutions() {
+        return listInstitutions().stream()
+                .filter(Objects::nonNull)
+                .filter(institution -> !"core".equalsIgnoreCase(institution.getInstCode()))
+                .filter(institution -> USE_Y.equalsIgnoreCase(institution.getUseYn()))
+                .filter(institution -> isServiceEnabledForInstitution(institution.getInstCode(), DEFAULT_SERVICE_CODE))
+                .filter(institution -> counselManAccountService.isRoomBoardEnabled(institution.getInstCode()))
+                .toList();
+    }
+
+    public void saveRoomBoardViewerAccount(
+            String username,
+            String rawPassword,
+            String displayName,
+            String useYn,
+            List<String> scopedInstCodes) {
+        String normalizedUsername = normalizeUsername(username);
+        String normalizedDisplayName = StringUtils.hasText(displayName) ? displayName.trim() : null;
+        if (!StringUtils.hasText(normalizedUsername) || !normalizedUsername.matches("^[A-Za-z0-9_]{4,40}$")) {
+            throw new IllegalArgumentException("아이디는 4~40자의 영문/숫자/언더스코어만 사용할 수 있습니다.");
+        }
+        if (!StringUtils.hasText(normalizedDisplayName)) {
+            throw new IllegalArgumentException("표시 이름을 입력해 주세요.");
+        }
+        List<String> normalizedScopeInstCodes = normalizeScopeInstitutionCodes(scopedInstCodes);
+        if (normalizedScopeInstCodes.isEmpty()) {
+            throw new IllegalArgumentException("최소 1개 기관을 선택해 주세요.");
+        }
+        PlatformUser existingViewerUser = findRoomBoardViewerUser(normalizedUsername);
+        if (counselManAccountService.isUsernameUsedInAnyInstitution(normalizedUsername)) {
+            throw new IllegalArgumentException("이미 기관 계정에서 사용하는 아이디입니다. 다른 아이디를 사용해 주세요.");
+        }
+        if (isUsernameUsedByOtherPlatformUsers(normalizedUsername, existingViewerUser)) {
+            throw new IllegalArgumentException("이미 사용 중인 아이디입니다. 다른 아이디를 사용해 주세요.");
+        }
+
+        String normalizedUseYn = normalizeYn(useYn);
+        String passwordHash;
+        if (existingViewerUser == null) {
+            if (!StringUtils.hasText(rawPassword)) {
+                throw new IllegalArgumentException("새 계정은 비밀번호를 입력해야 합니다.");
+            }
+            passwordHash = passwordEncoder.encode(rawPassword.trim());
+        } else if (StringUtils.hasText(rawPassword)) {
+            passwordHash = passwordEncoder.encode(rawPassword.trim());
+        } else {
+            passwordHash = existingViewerUser.getPasswordHash();
+        }
+
+        upsertUser(
+                VIEWER_ACCOUNT_INST_CODE,
+                normalizedUsername,
+                passwordHash,
+                normalizedDisplayName,
+                ROLE_ROOM_BOARD_VIEWER,
+                normalizedUseYn);
+        replaceRoomBoardViewerScopes(normalizedUsername, normalizedScopeInstCodes);
+    }
+
+    public List<String> listRoomBoardViewerScopeInstCodes(String username) {
+        String normalizedUsername = normalizeUsername(username);
+        if (!StringUtils.hasText(normalizedUsername)) {
+            return List.of();
+        }
+        List<String> rows = jdbcTemplate.query("""
+                SELECT inst_code
+                FROM mp_user_scope
+                WHERE LOWER(username) = LOWER(?)
+                  AND use_yn = 'Y'
+                ORDER BY inst_code ASC
+                """, (rs, rowNum) -> normalizeInstCode(rs.getString("inst_code")), normalizedUsername);
+        return rows.stream()
+                .filter(StringUtils::hasText)
+                .distinct()
+                .toList();
+    }
+
     public List<PlatformService> listAllServices() {
         String runtimeEnvCode = resolveRuntimeEnvCode();
         return jdbcTemplate.query("""
@@ -260,6 +472,30 @@ public class PlatformStoreService {
                 """, (rs, rowNum) -> rs.getString("service_code"), normalizedInstCode);
     }
 
+    public List<PlatformInstitution> listRoomBoardViewerInstitutions(PlatformSessionUser user) {
+        if (user == null || !StringUtils.hasText(user.getUsername())) {
+            return List.of();
+        }
+        String username = user.getUsername().trim();
+        if (user.isRoomBoardViewer()) {
+            return listRoomBoardViewerScopeInstCodes(username).stream()
+                    .map(this::findInstitution)
+                    .filter(Objects::nonNull)
+                    .filter(institution -> USE_Y.equalsIgnoreCase(institution.getUseYn()))
+                    .filter(institution -> isServiceEnabledForInstitution(institution.getInstCode(), DEFAULT_SERVICE_CODE))
+                    .filter(institution -> counselManAccountService.isRoomBoardEnabled(institution.getInstCode()))
+                    .toList();
+        }
+        return listInstitutions().stream()
+                .filter(Objects::nonNull)
+                .filter(institution -> !"core".equalsIgnoreCase(institution.getInstCode()))
+                .filter(institution -> USE_Y.equalsIgnoreCase(institution.getUseYn()))
+                .filter(institution -> isServiceEnabledForInstitution(institution.getInstCode(), DEFAULT_SERVICE_CODE))
+                .filter(institution -> counselManAccountService.hasAvailableUser(institution.getInstCode(), username))
+                .filter(institution -> counselManAccountService.isRoomBoardEnabled(institution.getInstCode()))
+                .toList();
+    }
+
     public String getRuntimeEnvCode() {
         return resolveRuntimeEnvCode();
     }
@@ -293,6 +529,22 @@ public class PlatformStoreService {
                 runtimeEnvCode,
                 normalizeServiceCode(serviceCode));
         return result.isEmpty() ? null : result.get(0);
+    }
+
+    private boolean isServiceEnabledForInstitution(String instCode, String serviceCode) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        String normalizedServiceCode = normalizeServiceCode(serviceCode);
+        if (!StringUtils.hasText(normalizedInstCode) || !StringUtils.hasText(normalizedServiceCode)) {
+            return false;
+        }
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM mp_institution_service
+                WHERE inst_code = ?
+                  AND service_code = ?
+                  AND use_yn = 'Y'
+                """, Integer.class, normalizedInstCode, normalizedServiceCode);
+        return count != null && count > 0;
     }
 
     public void saveInstitution(String instCode, String instName, String useYn) {
@@ -443,6 +695,16 @@ public class PlatformStoreService {
                 """);
 
         jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS mp_user_scope (
+                    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    username VARCHAR(100) NOT NULL,
+                    inst_code VARCHAR(50) NOT NULL,
+                    use_yn CHAR(1) NOT NULL DEFAULT 'Y',
+                    UNIQUE KEY uq_mp_user_scope (username, inst_code)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """);
+
+        jdbcTemplate.execute("""
                 CREATE TABLE IF NOT EXISTS mp_service (
                     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
                     service_code VARCHAR(50) NOT NULL UNIQUE,
@@ -498,6 +760,16 @@ public class PlatformStoreService {
                     role_code VARCHAR(30) NOT NULL DEFAULT 'USER',
                     use_yn CHAR(1) NOT NULL DEFAULT 'Y',
                     UNIQUE (inst_code, username)
+                )
+                """);
+
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS mp_user_scope (
+                    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                    username VARCHAR(100) NOT NULL,
+                    inst_code VARCHAR(50) NOT NULL,
+                    use_yn CHAR(1) NOT NULL DEFAULT 'Y',
+                    UNIQUE (username, inst_code)
                 )
                 """);
 
@@ -589,6 +861,100 @@ public class PlatformStoreService {
                 normalizedInstCode,
                 normalizedUsername);
         return users.isEmpty() ? null : users.get(0);
+    }
+
+    private PlatformUser findRoomBoardViewerUser(String username) {
+        String normalizedUsername = normalizeUsername(username);
+        if (!StringUtils.hasText(normalizedUsername)) {
+            return null;
+        }
+        List<PlatformUser> users = jdbcTemplate.query("""
+                SELECT id, inst_code, username, password_hash, display_name, role_code, use_yn
+                FROM mp_user
+                WHERE role_code = ?
+                  AND LOWER(username) = LOWER(?)
+                LIMIT 1
+                """, (rs, rowNum) -> new PlatformUser(
+                        rs.getLong("id"),
+                        rs.getString("inst_code"),
+                        rs.getString("username"),
+                        rs.getString("password_hash"),
+                        rs.getString("display_name"),
+                        rs.getString("role_code"),
+                        rs.getString("use_yn")),
+                ROLE_ROOM_BOARD_VIEWER,
+                normalizedUsername);
+        return users.isEmpty() ? null : users.get(0);
+    }
+
+    private boolean isUsernameUsedByOtherPlatformUsers(String username, PlatformUser existingViewerUser) {
+        String normalizedUsername = normalizeUsername(username);
+        if (!StringUtils.hasText(normalizedUsername)) {
+            return false;
+        }
+        List<PlatformUser> users = jdbcTemplate.query("""
+                SELECT id, inst_code, username, password_hash, display_name, role_code, use_yn
+                FROM mp_user
+                WHERE LOWER(username) = LOWER(?)
+                """, (rs, rowNum) -> new PlatformUser(
+                        rs.getLong("id"),
+                        rs.getString("inst_code"),
+                        rs.getString("username"),
+                        rs.getString("password_hash"),
+                        rs.getString("display_name"),
+                        rs.getString("role_code"),
+                        rs.getString("use_yn")),
+                normalizedUsername);
+        for (PlatformUser user : users) {
+            if (user == null) {
+                continue;
+            }
+            if (existingViewerUser != null && Objects.equals(existingViewerUser.getId(), user.getId())) {
+                continue;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private List<String> normalizeScopeInstitutionCodes(List<String> scopedInstCodes) {
+        if (scopedInstCodes == null) {
+            return List.of();
+        }
+        LinkedHashSet<String> allowedCodes = listRoomBoardScopeCandidateInstitutions().stream()
+                .map(PlatformInstitution::getInstCode)
+                .filter(StringUtils::hasText)
+                .map(this::normalizeInstCode)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        return scopedInstCodes.stream()
+                .filter(Objects::nonNull)
+                .map(this::normalizeInstCode)
+                .filter(StringUtils::hasText)
+                .filter(code -> !"core".equalsIgnoreCase(code))
+                .filter(allowedCodes::contains)
+                .distinct()
+                .toList();
+    }
+
+    private void replaceRoomBoardViewerScopes(String username, List<String> scopedInstCodes) {
+        String normalizedUsername = normalizeUsername(username);
+        if (!StringUtils.hasText(normalizedUsername)) {
+            return;
+        }
+        jdbcTemplate.update("""
+                DELETE FROM mp_user_scope
+                WHERE LOWER(username) = LOWER(?)
+                """, normalizedUsername);
+
+        List<String> normalizedScopeInstCodes = normalizeScopeInstitutionCodes(scopedInstCodes);
+        for (String instCode : normalizedScopeInstCodes) {
+            jdbcTemplate.update("""
+                    INSERT INTO mp_user_scope (username, inst_code, use_yn)
+                    VALUES (?, ?, 'Y')
+                    """,
+                    normalizedUsername,
+                    instCode);
+        }
     }
 
     private PlatformInstitution findInstitution(String instCode) {

@@ -75,6 +75,58 @@
 
         <div class="admin-card admin-card-wide">
             <div class="section-head">
+                <h2>병실현황판 전용 계정</h2>
+                <p>기관코드 없이 로그인 가능한 전용 아이디/비밀번호를 만들고, 조회 가능한 기관을 선택합니다. 아이디는 기관 계정과 중복되면 저장되지 않습니다.</p>
+                <a class="ghost-btn" th:if="${viewerEditMode}" th:href="@{/admin(instCode=${selectedInstCode})}">새 계정 모드</a>
+            </div>
+            <form method="post" th:action="@{/admin/room-board-viewer/accounts}" class="stack-form">
+                <input type="hidden" name="instCode" th:value="${viewerSelectedInstCode}">
+                <input name="username"
+                       type="text"
+                       placeholder="아이디 (영문/숫자/언더스코어 4~40자)"
+                       th:value="${viewerFormUsername}"
+                       th:readonly="${viewerEditMode}"
+                       required>
+                <input name="displayName"
+                       type="text"
+                       placeholder="표시 이름"
+                       th:value="${viewerFormDisplayName}"
+                       required>
+                <input name="password"
+                       type="password"
+                       th:placeholder="${viewerEditMode ? '비밀번호 변경 시에만 입력' : '비밀번호'}"
+                       th:required="${!viewerEditMode}">
+                <select name="useYn">
+                    <option value="Y" th:selected="${viewerFormUseYn == 'Y'}">사용</option>
+                    <option value="N" th:selected="${viewerFormUseYn == 'N'}">중지</option>
+                </select>
+                <div class="scope-check-grid">
+                    <label class="checkbox-row" th:each="institution : ${viewerScopeInstitutions}">
+                        <input type="checkbox"
+                               name="instCodes"
+                               th:value="${institution.instCode}"
+                               th:checked="${#lists.contains(viewerSelectedInstCodes, institution.instCode)}">
+                        <span th:text="${institution.instName + ' (' + institution.instCode + ')'}">기관</span>
+                    </label>
+                </div>
+                <button type="submit" th:text="${viewerEditMode ? '계정 수정 저장' : '계정 생성'}">계정 생성</button>
+            </form>
+
+            <div class="table-list">
+                <div class="list-row list-head list-row-viewer"><span>아이디</span><span>표시 이름</span><span>조회 기관</span><span>상태</span><span>편집</span></div>
+                <div class="list-row list-row-viewer" th:each="account : ${viewerAccounts}">
+                    <span th:text="${account.username}">viewer01</span>
+                    <span th:text="${account.displayName}">병동 관리자</span>
+                    <span th:text="${account.scopeSummary}">기관A, 기관B</span>
+                    <span th:text="${account.useYn}">Y</span>
+                    <a class="ghost-btn"
+                       th:href="@{/admin(instCode=${selectedInstCode}, viewerUsername=${account.username})}">불러오기</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-card admin-card-wide">
+            <div class="section-head">
                 <h2>서비스 등록</h2>
                 <p>연동 서비스의 진입 URL과 기본 이동 경로를 등록합니다. 현재 적용 환경: <strong th:text="${runtimeEnvCode}">LOCAL</strong></p>
             </div>

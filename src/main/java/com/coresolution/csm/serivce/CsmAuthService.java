@@ -81,27 +81,54 @@ public class CsmAuthService {
         if (raw == null)
             return null;
         String candidate = raw.trim();
-        // 테이블명 안전성 보장 (영문/숫자/언더바만, 대소문자 허용)
-        if (!candidate.matches("^[A-Za-z0-9_]{2,32}$"))
+        if (candidate.isBlank()) {
             return null;
+        }
+
+        // 1) 기관코드로 직접 확인
+        String resolved = resolveInstByCodeCandidate(candidate);
+        if (resolved != null) {
+            return resolved;
+        }
+
+        // 2) 기관명(id_col_02)으로 기관코드(id_col_03) 조회 후 확인
+        String mappedCode = cs.coreInstCodeFindByName(candidate);
+        if (mappedCode != null && !mappedCode.isBlank()) {
+            return resolveInstByCodeCandidate(mappedCode.trim());
+        }
+
+        return null;
+    }
+
+    private String resolveInstByCodeCandidate(String candidate) {
+        if (candidate == null || candidate.isBlank()) {
+            return null;
+        }
+        // 테이블명 안전성 보장 (영문/숫자/언더바만, 대소문자 허용)
+        if (!candidate.matches("^[A-Za-z0-9_]{2,32}$")) {
+            return null;
+        }
 
         // 1) 입력값 그대로 확인
         String resolved = cs.resolveInstByTable(candidate);
-        if (resolved != null)
+        if (resolved != null) {
             return resolved;
+        }
 
         // 2) 대문자/소문자 fallback 확인
         String upper = candidate.toUpperCase();
         if (!upper.equals(candidate)) {
             resolved = cs.resolveInstByTable(upper);
-            if (resolved != null)
+            if (resolved != null) {
                 return resolved;
+            }
         }
         String lower = candidate.toLowerCase();
         if (!lower.equals(candidate)) {
             resolved = cs.resolveInstByTable(lower);
-            if (resolved != null)
+            if (resolved != null) {
                 return resolved;
+            }
         }
         return null;
     }

@@ -88,6 +88,71 @@ public class CounselManAccountService {
         return institutions.isEmpty() ? null : institutions.get(0);
     }
 
+    public boolean hasAvailableUser(String instCode, String username) {
+        String resolvedInst = resolveInst(instCode);
+        String normalizedUsername = normalizeUsername(username);
+        if (!StringUtils.hasText(resolvedInst) || !StringUtils.hasText(normalizedUsername)) {
+            return false;
+        }
+        if (!isInstitutionAvailable(resolvedInst)) {
+            return false;
+        }
+        CounselManUserRow user = findUser(resolvedInst, normalizedUsername);
+        return isUserAvailable(user);
+    }
+
+    public boolean isRoomBoardEnabled(String instCode) {
+        String resolvedInst = resolveInst(instCode);
+        if (!StringUtils.hasText(resolvedInst)) {
+            return false;
+        }
+        try {
+            List<String> rows = counselManJdbcTemplate.query("""
+                    SELECT enabled_yn
+                    FROM csm.module_feature_setting
+                    WHERE inst_code = ?
+                      AND feature_code = 'ROOM_BOARD'
+                    LIMIT 1
+                    """, (rs, rowNum) -> rs.getString("enabled_yn"), resolvedInst);
+            if (rows.isEmpty()) {
+                return true;
+            }
+            return !"N".equalsIgnoreCase(rows.get(0));
+        } catch (Exception e) {
+            // 테이블 미생성 등 초기 환경에서는 기본적으로 사용 가능 상태로 간주
+            return true;
+        }
+    }
+
+    public boolean isUsernameUsedInAnyInstitution(String username) {
+        String normalizedUsername = normalizeUsername(username);
+        if (!StringUtils.hasText(normalizedUsername)) {
+            return false;
+        }
+        for (CounselManInstitution institution : listInstitutions()) {
+            if (institution == null || !StringUtils.hasText(institution.instCode())) {
+                continue;
+            }
+            String safeInstCode = sanitizeInst(institution.instCode());
+            try {
+                Integer count = counselManJdbcTemplate.queryForObject(
+                        """
+                                SELECT COUNT(*)
+                                FROM user_data_%s
+                                WHERE LOWER(us_col_02) = LOWER(?)
+                                """.formatted(safeInstCode),
+                        Integer.class,
+                        normalizedUsername);
+                if (count != null && count > 0) {
+                    return true;
+                }
+            } catch (Exception e) {
+                // 일부 기관 테이블이 비정상인 경우 해당 기관은 건너뜀
+            }
+        }
+        return false;
+    }
+
     private String resolveInst(String rawInstCode) {
         if (!StringUtils.hasText(rawInstCode)) {
             return null;

@@ -101,11 +101,51 @@
         .rb-btn-light { background:#eef7f0; color:#0b5a2a; border:1px solid #c8decf; }
         .rb-toolbar .rb-btn-light { background:rgba(255,255,255,0.12); color:#fff; border:1px solid rgba(255,255,255,0.22); }
         .rb-btn-select { padding:6px 10px; background:#ecfdf3; color:#067647; border:1px solid #b7ebcb; }
+        .rb-mobile-nav {
+            display: none;
+        }
         @media (max-width: 1024px) { .rb-summary { grid-template-columns: repeat(2, minmax(0,1fr)); } }
         @media (max-width: 768px) {
+            body.room-board-page .home-icon {
+                display: none;
+            }
+            body.room-board-page .logo {
+                padding-left: 14px;
+            }
+            .rb-mobile-nav {
+                position: sticky;
+                top: 58px;
+                z-index: 995;
+                display: flex;
+                gap: 8px;
+                padding: 10px 12px;
+                border-bottom: 1px solid #d8e7dd;
+                background: rgba(244, 250, 246, 0.95);
+                backdrop-filter: blur(4px);
+            }
+            .rb-mobile-nav a {
+                flex: 1;
+                min-width: 0;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 10px 8px;
+                border-radius: 10px;
+                border: 1px solid #c9dace;
+                background: #fff;
+                color: #1d5131;
+                font-size: 12px;
+                font-weight: 700;
+                text-decoration: none;
+            }
+            .rb-mobile-nav a.is-active {
+                background: linear-gradient(312deg, #05401E 20.34%, #005424 155.45%);
+                color: #fff;
+                border-color: transparent;
+            }
             .rb-wrap { padding:16px; }
             body:not(.popup-mode) .rb-wrap {
-                padding: 78px 16px 32px;
+                padding: 132px 16px 32px;
                 margin-left: 0;
                 width: 100%;
             }
@@ -114,10 +154,15 @@
         }
     </style>
 </head>
-<body th:classappend="${popupMode} ? 'popup-mode' : ''">
+<body th:classappend="${popupMode} ? 'popup-mode' : ''" class="room-board-page">
 <th:block th:unless="${popupMode}">
     <div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
-    <div th:replace="~{csm/Include/layout :: nav_section2('new', ${endVar}, ${st}, ${kw})}"></div>
+    <div th:replace="~{csm/Include/layout :: nav_section2('roomboard', ${endVar}, ${st}, ${kw})}"></div>
+    <nav class="rb-mobile-nav" aria-label="병실현황판 모바일 메뉴">
+        <a th:href="@{/counsel/list(page=1, perPageNum=10, end='on', searchType='', keyword='')}">상담내역</a>
+        <a class="is-active" th:href="@{/room-board}">병실현황판</a>
+        <a th:if="${canManageRoomBoard}" th:href="@{/admin/room-board}">관리화면</a>
+    </nav>
 </th:block>
 
 <div class="rb-wrap">
@@ -127,6 +172,7 @@
             <p th:text="|기준일 ${board.snapshotDate} ${#strings.isEmpty(board.snapshotTime) ? '' : board.snapshotTime}|">기준일</p>
         </div>
         <div class="rb-actions">
+            <a th:if="${!popupMode}" class="rb-btn rb-btn-light" th:href="@{/room-board}">최신 현황</a>
             <a th:if="${canManageRoomBoard and !popupMode}" class="rb-btn rb-btn-light" th:href="@{/admin/room-board}">관리 화면</a>
             <button th:if="${popupMode}" type="button" class="rb-btn rb-btn-light" onclick="window.close()">닫기</button>
         </div>

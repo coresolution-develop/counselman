@@ -17,6 +17,7 @@
             <strong th:text="${user.displayName}">Platform Admin</strong>
             <span th:text="${user.instCode + ' · ' + user.roleCode}">core · PLATFORM_ADMIN</span>
         </div>
+        <a class="ghost-btn" th:if="${roomBoardViewerEnabled}" th:href="@{/room-board-viewer}">통합 병실현황판</a>
         <a class="ghost-btn" th:if="${user.platformAdmin}" th:href="@{/admin}">관리</a>
         <a class="ghost-btn" th:href="@{/logout}">로그아웃</a>
     </div>
@@ -26,65 +27,50 @@
     <section class="hero-card">
         <div class="hero-copy">
             <p class="eyebrow">Service Catalog</p>
-            <h2>모든 서비스를 한 번에 확인하고, 현재 기관에서 사용할 수 있는지 바로 구분합니다.</h2>
-            <p class="hero-note">사용 가능 서비스는 바로 진입할 수 있고, 사용 불가 서비스는 권한 요청이 필요합니다.</p>
+            <h2>등록된 서비스를 카드로 확인하고 필요한 화면으로 빠르게 이동하세요.</h2>
+            <p class="hero-note">서비스 코드를 기준으로 원하는 기능을 바로 찾아 실행할 수 있습니다.</p>
         </div>
         <div class="hero-stats">
             <div class="hero-stat">
-                <strong th:text="${#lists.size(availableServices)}">0</strong>
-                <span>사용 가능</span>
+                <strong th:text="${#lists.size(services)}">0</strong>
+                <span>총 서비스</span>
             </div>
             <div class="hero-stat hero-stat-muted">
-                <strong th:text="${#lists.size(unavailableServices)}">0</strong>
-                <span>사용 불가</span>
+                <strong th:text="${roomBoardViewerInstitutionCount}">0</strong>
+                <span>병실현황 기관</span>
             </div>
         </div>
     </section>
 
-    <section class="service-section" th:if="${!#lists.isEmpty(availableServices)}">
+    <section class="service-section" th:if="${!#lists.isEmpty(services)}">
         <div class="section-head service-section-head">
             <div>
-                <p class="eyebrow">Ready</p>
-                <h2>사용 가능한 서비스</h2>
+                <p class="eyebrow">All Services</p>
+                <h2>서비스 목록</h2>
             </div>
         </div>
         <div class="service-grid service-grid-cards">
-            <a class="service-card service-card-available" th:each="service : ${availableServices}"
-               th:href="@{/launch/{serviceCode}(serviceCode=${service.serviceCode})}">
+            <article class="service-card" th:each="service : ${services}">
                 <div class="service-card-top">
                     <span class="service-code" th:text="${service.serviceCode}">COUNSELMAN</span>
-                    <span class="service-badge service-badge-available">사용 가능</span>
                 </div>
                 <strong th:text="${service.serviceName}">CounselMan</strong>
                 <p th:text="${service.description}">기관별 상담관리 서비스</p>
-                <span class="service-link">서비스 열기</span>
-            </a>
-        </div>
-    </section>
-
-    <section class="service-section" th:if="${!#lists.isEmpty(unavailableServices)}">
-        <div class="section-head service-section-head">
-            <div>
-                <p class="eyebrow">Restricted</p>
-                <h2>사용할 수 없는 서비스</h2>
-            </div>
-        </div>
-        <div class="service-grid service-grid-cards service-grid-muted">
-            <article class="service-card service-card-unavailable" th:each="service : ${unavailableServices}">
-                <div class="service-card-top">
-                    <span class="service-code" th:text="${service.serviceCode}">COUNSELMAN</span>
-                    <span class="service-badge service-badge-unavailable"
-                          th:text="${service.useYn == 'Y' ? '권한 필요' : '서비스 중지'}">권한 필요</span>
+                <div class="service-actions">
+                    <a class="service-action-btn"
+                       th:if="${service.accessible}"
+                       th:href="@{/launch/{serviceCode}(serviceCode=${service.serviceCode})}">서비스 열기</a>
+                    <button type="button"
+                            class="service-action-btn"
+                            th:if="${!service.accessible}"
+                            disabled
+                            aria-disabled="true">서비스 열기</button>
                 </div>
-                <strong th:text="${service.serviceName}">CounselMan</strong>
-                <p th:text="${service.description}">기관별 상담관리 서비스</p>
-                <span class="service-link service-link-muted"
-                      th:text="${service.useYn == 'Y' ? '플랫폼 관리자에게 권한 요청' : '현재 제공 중지'}">플랫폼 관리자에게 권한 요청</span>
             </article>
         </div>
     </section>
 
-    <section class="empty-card" th:if="${#lists.isEmpty(availableServices) and #lists.isEmpty(unavailableServices)}">
+    <section class="empty-card" th:if="${#lists.isEmpty(services)}">
         등록된 서비스가 없습니다. 플랫폼 관리자에게 서비스 설정을 요청해 주세요.
     </section>
 </main>

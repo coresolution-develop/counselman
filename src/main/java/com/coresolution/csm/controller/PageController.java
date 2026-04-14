@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.Comparator;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -320,6 +321,7 @@ public class PageController {
         model.addAttribute("endVar", "on");
         model.addAttribute("st", "");
         model.addAttribute("kw", "");
+        populateModuleFeatureModel(model, inst);
         return "csm/admin/admin";
     }
 
@@ -1413,6 +1415,13 @@ public class PageController {
         List<CounselData> cslist = cs.searchCounselData(cri);
         int totalCnt = cs.CounselListCnt(cri);
         postProcessDecryptAndMask(cslist, inst, cri.getSearchType(), cri.getKeyword());
+        List<CounselReservation> reservedCounselReservations = cs.listCounselReservations(inst, "RESERVED", 200);
+        if (reservedCounselReservations != null) {
+            reservedCounselReservations.sort(Comparator
+                    .comparing((CounselReservation r) -> r == null || r.getPriority() == null ? 99 : r.getPriority())
+                    .thenComparing(r -> r == null ? "" : safeString(r.getReserved_at()))
+                    .thenComparing(r -> r == null || r.getId() == null ? Long.MAX_VALUE : r.getId()));
+        }
 
         Set<String> hiddenListColumns = getHiddenListColumns();
         List<Map<String, Object>> orderItems = filterListSettingItems(cs.getOrderItems(inst), hiddenListColumns);
@@ -1428,6 +1437,8 @@ public class PageController {
         mv.addObject("cri", cri);
         mv.addObject("cnt", totalCnt);
         mv.addObject("cslist", cslist);
+        mv.addObject("reservedCounselReservations",
+                reservedCounselReservations != null ? reservedCounselReservations : Collections.emptyList());
         mv.setViewName(isMobile(req) ? "csm/counsel/list_m" : "csm/counsel/list");
         return mv;
     }
@@ -1671,14 +1682,20 @@ public class PageController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("result", "0", "message", "세션이 만료되었습니다."));
         }
         if (isCoreInst(inst)) {
-            return ResponseEntity.ok(Map.of("result", "0", "notice", null));
+            Map<String, Object> coreResponse = new HashMap<>();
+            coreResponse.put("result", "0");
+            coreResponse.put("notice", null);
+            coreResponse.put("unreadCount", 0);
+            return ResponseEntity.ok(coreResponse);
         }
         String userId = resolveNoticeUserId(session);
         if (userId.isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("result", "0", "message", "사용자 정보를 확인할 수 없습니다."));
         }
 
-        List<Map<String, Object>> notices = cs.listInstitutionNotices(inst, userId, 300);
+        List<Map<String, Object>> notices = Optional
+                .ofNullable(cs.listInstitutionNotices(inst, userId, 300))
+                .orElse(Collections.emptyList());
         Map<String, Object> popupNotice = null;
         for (Map<String, Object> notice : notices) {
             if (notice == null) {
@@ -1692,10 +1709,11 @@ public class PageController {
             }
         }
         int unreadCount = cs.countInstitutionUnreadNotices(inst, userId);
-        return ResponseEntity.ok(Map.of(
-                "result", popupNotice == null ? "0" : "1",
-                "notice", popupNotice,
-                "unreadCount", unreadCount));
+        Map<String, Object> response = new HashMap<>();
+        response.put("result", popupNotice == null ? "0" : "1");
+        response.put("notice", popupNotice);
+        response.put("unreadCount", unreadCount);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping({ "setting", "/setting", "setting/", "/setting/" })

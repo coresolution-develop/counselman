@@ -34,13 +34,25 @@ public class CounselManSsoLinkService {
 
     public String createLaunchUrl(PlatformService service, PlatformSessionUser user) {
         String target = user.isPlatformAdmin() ? service.getAdminTarget() : service.getUserTarget();
+        return createLaunchUrl(service, user, user.getInstCode(), target);
+    }
+
+    public String createLaunchUrl(
+            PlatformService service,
+            PlatformSessionUser user,
+            String instCode,
+            String targetPath) {
+        String resolvedInstCode = StringUtils.hasText(instCode) ? instCode.trim() : user.getInstCode();
+        String resolvedTargetPath = StringUtils.hasText(targetPath)
+                ? targetPath.trim()
+                : (user.isPlatformAdmin() ? service.getAdminTarget() : service.getUserTarget());
         String targetToken = Base64.getUrlEncoder()
                 .withoutPadding()
-                .encodeToString(target.getBytes(StandardCharsets.UTF_8));
+                .encodeToString(resolvedTargetPath.getBytes(StandardCharsets.UTF_8));
         long expires = Instant.now().getEpochSecond() + expireSeconds;
-        String signature = sign(user.getInstCode(), user.getUsername(), expires, targetToken);
+        String signature = sign(resolvedInstCode, user.getUsername(), expires, targetToken);
         return resolveBaseUrl(service.getBaseUrl()) + service.getSsoEntryPath()
-                + "?inst=" + encode(user.getInstCode())
+                + "?inst=" + encode(resolvedInstCode)
                 + "&userId=" + encode(user.getUsername())
                 + "&expires=" + expires
                 + "&target=" + encode(targetToken)

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediPlat Room Board Viewer</title>
+    <link rel="stylesheet" th:href="@{/css/mediplat.css}">
+</head>
+<body>
+<header class="topbar">
+    <div>
+        <p class="eyebrow">MediPlat Viewer</p>
+        <h1>통합 병실현황판</h1>
+    </div>
+    <div class="topbar-actions">
+        <div class="user-meta">
+            <strong th:text="${user.displayName}">Platform Admin</strong>
+            <span th:text="${user.instCode + ' · ' + user.roleCode}">core · PLATFORM_ADMIN</span>
+        </div>
+        <a class="ghost-btn" th:href="@{/services}">서비스 선택</a>
+        <a class="ghost-btn" th:href="@{/logout}">로그아웃</a>
+    </div>
+</header>
+
+<main class="page-shell viewer-shell">
+    <section class="hero-card">
+        <div class="hero-copy">
+            <p class="eyebrow">Multi Institution</p>
+            <h2>여러 기관의 병실현황판을 한 화면에서 확인할 수 있습니다.</h2>
+            <p class="hero-note">모바일에서는 상단 메뉴바에서 기관을 선택해 빠르게 전환할 수 있습니다.</p>
+        </div>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <strong th:text="${#lists.size(viewerItems)}">0</strong>
+                <span>연결 기관</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="empty-card" th:if="${viewerError != null}" th:text="${viewerError}">
+        조회 가능한 병실현황판 기관이 없습니다.
+    </section>
+
+    <section class="viewer-mobile-menu" th:if="${!#lists.isEmpty(viewerItems)}">
+        <button type="button"
+                class="viewer-mobile-tab"
+                th:each="item, stat : ${viewerItems}"
+                th:classappend="${stat.index == 0 ? ' is-active' : ''}"
+                th:attr="data-inst=${item.instCode}">
+            <span th:text="${item.instName}">기관명</span>
+        </button>
+    </section>
+
+    <section class="viewer-grid" th:if="${!#lists.isEmpty(viewerItems)}">
+        <article class="viewer-card"
+                 th:each="item, stat : ${viewerItems}"
+                 th:classappend="${stat.index == 0 ? ' is-active' : ''}"
+                 th:attr="data-inst=${item.instCode}">
+            <div class="viewer-card-head">
+                <div>
+                    <strong th:text="${item.instName}">기관명</strong>
+                    <span th:text="${item.instCode}">INST</span>
+                </div>
+                <a class="viewer-open-btn"
+                   th:href="${item.launchUrl}"
+                   target="_blank"
+                   rel="noopener noreferrer">새 창 열기</a>
+            </div>
+            <iframe class="viewer-frame"
+                    th:src="${item.launchUrl}"
+                    loading="lazy"
+                    referrerpolicy="no-referrer"></iframe>
+        </article>
+    </section>
+</main>
+<script th:src="@{/js/mediplat/room-board-viewer.js}"></script>
+</body>
+</html>

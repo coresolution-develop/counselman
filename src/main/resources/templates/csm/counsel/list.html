@@ -147,6 +147,36 @@
                 </div>
             </div>
 
+            <section class="integrated-reservation-box">
+                <div class="integrated-reservation-head">
+                    <h3>상담예약 (우선순위 순)</h3>
+                    <a class="integrated-reservation-manage" th:href="@{/counsel/reservation(status='RESERVED')}">예약관리</a>
+                </div>
+                <div class="integrated-reservation-empty"
+                     th:if="${reservedCounselReservations == null or #lists.isEmpty(reservedCounselReservations)}">
+                    현재 대기 중인 상담예약이 없습니다.
+                </div>
+                <div class="integrated-reservation-list"
+                     th:if="${reservedCounselReservations != null and !#lists.isEmpty(reservedCounselReservations)}">
+                    <article class="integrated-reservation-item" th:each="item : ${reservedCounselReservations}">
+                        <div class="reservation-priority-badge"
+                             th:classappend="${item.priority != null and item.priority <= 2 ? ' high' : ''}"
+                             th:text="${'P' + (item.priority != null ? item.priority : 3)}">P3</div>
+                        <div class="reservation-main-info">
+                            <strong th:text="${item.patient_name}">홍길동</strong>
+                            <span th:text="${#strings.isEmpty(item.patient_phone) ? '-' : item.patient_phone}">010-0000-0000</span>
+                            <span th:text="${#strings.isEmpty(item.reserved_at) ? '예약일 미정' : item.reserved_at}">2026-04-14 10:00:00</span>
+                        </div>
+                        <div class="reservation-actions">
+                            <a class="reservation-link-btn"
+                               th:href="@{/counsel/new(reservationId=${item.id})}">상담작성</a>
+                            <a class="reservation-link-btn ghost"
+                               th:href="@{/counsel/reservation(status='ALL', reservationId=${item.id})}">상세</a>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
             <div class="content-mid">
                 <div class="section-mid">
                     <table style="width:100%;" id="myTable">

@@ -89,6 +89,113 @@ body {
     gap: 10px;
 }
 
+.mobile-reservation-box {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.mobile-reservation-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.mobile-reservation-head h3 {
+    margin: 0;
+    font-size: 14px;
+    color: #2d2d2d;
+    font-weight: 700;
+}
+
+.mobile-reservation-head a {
+    font-size: 12px;
+    color: #145138;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.mobile-reservation-empty {
+    font-size: 12px;
+    color: #757575;
+}
+
+.mobile-reservation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mobile-reservation-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #ededed;
+    border-radius: 8px;
+    padding: 8px;
+    background: #fcfcfc;
+}
+
+.mobile-priority {
+    min-width: 34px;
+    height: 24px;
+    border-radius: 12px;
+    background: #edf4ff;
+    color: #244a87;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.mobile-priority.high {
+    background: #fff1ed;
+    color: #b23a17;
+}
+
+.mobile-reservation-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.mobile-reservation-main strong {
+    font-size: 13px;
+    color: #2f2f2f;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mobile-reservation-main span {
+    font-size: 11px;
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mobile-reservation-go {
+    border: 1px solid #d2dfd8;
+    border-radius: 7px;
+    height: 30px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    color: #135039;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
 .counsel-card {
     background: var(--card-bg);
     border: 1px solid var(--line);

@@ -58,8 +58,6 @@ document.addEventListener('DOMContentLoaded', function() {
 					$('#result').html('로그인 중입니다. 잠시만 기다려주세요.');
 					if (response.redirect) {
 						location.href = response.redirect;
-					} else if ($("#us_col_04").val().toLowerCase() === "core") {
-						location.href= "/csm/core/admin";
 					} else {
 						location.href= "/csm/counsel/list?page=1&perPageNum=10&comment=";
 					}
@@ -76,22 +74,6 @@ document.addEventListener('DOMContentLoaded', function() {
 		});
 		
 	}
-	
-	const exceptions = {
-		"CORE": "core",
-	}
-    $("#us_col_04").bind("keyup", function() {
-		let val = $(this).val();
-	    let upperVal = val.toUpperCase();
-	
-	    // 예외 리스트에 포함되어 있다면, 해당 값으로 치환
-	    if (exceptions.hasOwnProperty(upperVal)) {
-	        $(this).val(exceptions[upperVal]);
-	    } else {
-	        $(this).val(upperVal);
-	    }
-    });
-	
 	
 	// 엔터키로 로그인 구현
 	$('#us_col_02').on('keypress', function (e) {
