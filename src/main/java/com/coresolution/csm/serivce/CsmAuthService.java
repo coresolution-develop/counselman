@@ -3,14 +3,19 @@ package com.coresolution.csm.serivce;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +38,7 @@ import com.coresolution.csm.vo.CounselData;
 import com.coresolution.csm.vo.CounselDataEntry;
 import com.coresolution.csm.vo.CounselLog;
 import com.coresolution.csm.vo.CounselLogGuardian;
+import com.coresolution.csm.vo.CounselReservation;
 import com.coresolution.csm.vo.Counsel_phone;
 import com.coresolution.csm.vo.Criteria;
 import com.coresolution.csm.vo.Guardian;
@@ -335,6 +341,25 @@ public class CsmAuthService {
                         + "unique key uq_cs_idx (cs_idx)"
                         + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+                "CREATE TABLE IF NOT EXISTS csm.counsel_reservation_" + safe + " ("
+                        + "id bigint auto_increment primary key,"
+                        + "patient_name varchar(100) not null,"
+                        + "patient_phone varchar(50) default null,"
+                        + "guardian_name varchar(100) default null,"
+                        + "call_summary text,"
+                        + "priority int not null default 3,"
+                        + "reserved_at datetime default null,"
+                        + "status varchar(20) not null default 'RESERVED',"
+                        + "linked_cs_idx int default null,"
+                        + "created_by varchar(100) default null,"
+                        + "completed_by varchar(100) default null,"
+                        + "completed_at datetime default null,"
+                        + "created_at timestamp default current_timestamp,"
+                        + "updated_at timestamp default current_timestamp on update current_timestamp,"
+                        + "key idx_status_priority_reserved (status, priority, reserved_at),"
+                        + "key idx_linked_cs_idx (linked_cs_idx)"
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
                 "CREATE TABLE IF NOT EXISTS csm.counsel_list_" + safe + " ("
                         + "idx int auto_increment primary key,"
                         + "coulmn varchar(50) default null,"
@@ -543,6 +568,7 @@ public class CsmAuthService {
                 "counsel_data_" + safeInst + "_entries",
                 "counsel_data_" + safeInst + "_guardians",
                 "counsel_admission_pledge_" + safeInst,
+                "counsel_reservation_" + safeInst,
                 "counsel_list_" + safeInst,
                 "counsel_log_" + safeInst,
                 "counsel_log_guardians_" + safeInst,
@@ -1072,6 +1098,17 @@ public class CsmAuthService {
         }
     }
 
+    private long parseLong(Object value, long defaultValue) {
+        if (value == null) {
+            return defaultValue;
+        }
+        try {
+            return Long.parseLong(String.valueOf(value).trim());
+        } catch (Exception e) {
+            return defaultValue;
+        }
+    }
+
     public CounselData getCounselById(String inst, int csIdx) {
         CounselData counselData = cs.getCounselById(inst, csIdx);
         if (counselData != null) {
@@ -1203,6 +1240,693 @@ public class CsmAuthService {
             log.warn("[admission-pledge] delete fail inst={}, cs_idx={}, err={}", safe, csIdx, e.toString());
             return 0;
         }
+    }
+
+    public List<CounselReservation> listCounselReservations(String inst, String status, int limit) {
+        String safe = sanitizeInst(inst);
+        ensureCounselReservationTable(safe);
+        int limitedRows = limit <= 0 ? 300 : Math.min(limit, 2000);
+        String normalizedStatus = normalizeReservationStatus(status, true);
+
+        StringBuilder sql = new StringBuilder()
+                .append("SELECT id, patient_name, patient_phone, guardian_name, call_summary, priority, ")
+                .append("DATE_FORMAT(reserved_at, '%Y-%m-%d %H:%i:%s') AS reserved_at, ")
+                .append("status, linked_cs_idx, created_by, completed_by, ")
+                .append("DATE_FORMAT(completed_at, '%Y-%m-%d %H:%i:%s') AS completed_at, ")
+                .append("DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at, ")
+                .append("DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at ")
+                .append("FROM csm.counsel_reservation_").append(safe).append(" ");
+        List<Object> params = new ArrayList<>();
+        if (!"ALL".equals(normalizedStatus)) {
+            sql.append("WHERE status = ? ");
+            params.add(normalizedStatus);
+        }
+        sql.append("ORDER BY CASE status WHEN 'RESERVED' THEN 0 WHEN 'COMPLETED' THEN 1 ELSE 2 END, ")
+                .append("CASE WHEN priority IS NULL THEN 99 ELSE priority END ASC, ")
+                .append("CASE WHEN reserved_at IS NULL THEN 1 ELSE 0 END ASC, reserved_at ASC, id DESC ")
+                .append("LIMIT ?");
+        params.add(limitedRows);
+
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql.toString(), params.toArray());
+        List<CounselReservation> out = new ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            out.add(mapCounselReservationRow(row));
+        }
+        return out;
+    }
+
+    public CounselReservation getCounselReservationById(String inst, long reservationId) {
+        if (reservationId <= 0) {
+            return null;
+        }
+        String safe = sanitizeInst(inst);
+        ensureCounselReservationTable(safe);
+        String sql = "SELECT id, patient_name, patient_phone, guardian_name, call_summary, priority, "
+                + "DATE_FORMAT(reserved_at, '%Y-%m-%d %H:%i:%s') AS reserved_at, "
+                + "status, linked_cs_idx, created_by, completed_by, "
+                + "DATE_FORMAT(completed_at, '%Y-%m-%d %H:%i:%s') AS completed_at, "
+                + "DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at, "
+                + "DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at "
+                + "FROM csm.counsel_reservation_" + safe + " WHERE id = ? LIMIT 1";
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, reservationId);
+        if (rows.isEmpty()) {
+            return null;
+        }
+        return mapCounselReservationRow(rows.get(0));
+    }
+
+    public CounselReservation getCounselReservationByLinkedCsIdx(String inst, int csIdx) {
+        if (csIdx <= 0) {
+            return null;
+        }
+        String safe = sanitizeInst(inst);
+        ensureCounselReservationTable(safe);
+        String sql = "SELECT id, patient_name, patient_phone, guardian_name, call_summary, priority, "
+                + "DATE_FORMAT(reserved_at, '%Y-%m-%d %H:%i:%s') AS reserved_at, "
+                + "status, linked_cs_idx, created_by, completed_by, "
+                + "DATE_FORMAT(completed_at, '%Y-%m-%d %H:%i:%s') AS completed_at, "
+                + "DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at, "
+                + "DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at "
+                + "FROM csm.counsel_reservation_" + safe + " WHERE linked_cs_idx = ? LIMIT 1";
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, csIdx);
+        if (rows.isEmpty()) {
+            return null;
+        }
+        return mapCounselReservationRow(rows.get(0));
+    }
+
+    public long saveCounselReservation(String inst, CounselReservation reservation) {
+        if (reservation == null) {
+            return 0L;
+        }
+        String safe = sanitizeInst(inst);
+        ensureCounselReservationTable(safe);
+
+        String patientName = safeText(reservation.getPatient_name(), 100);
+        if (patientName.isBlank()) {
+            throw new IllegalArgumentException("환자명은 필수입니다.");
+        }
+        String patientPhone = safeText(reservation.getPatient_phone(), 50);
+        String guardianName = safeText(reservation.getGuardian_name(), 100);
+        String callSummary = safeText(reservation.getCall_summary(), 3000);
+        int priority = normalizeReservationPriority(reservation.getPriority());
+        String status = normalizeReservationStatus(reservation.getStatus(), false);
+        Timestamp reservedAt = parseReservationTimestamp(reservation.getReserved_at());
+        String createdBy = safeText(reservation.getCreated_by(), 100);
+
+        Long id = reservation.getId();
+        if (id == null || id <= 0) {
+            String sql = "INSERT INTO csm.counsel_reservation_" + safe + " ("
+                    + "patient_name, patient_phone, guardian_name, call_summary, priority, reserved_at, status, created_by"
+                    + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            KeyHolder keyHolder = new GeneratedKeyHolder();
+            jdbcTemplate.update(connection -> {
+                PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+                int idx = 1;
+                ps.setString(idx++, patientName);
+                ps.setString(idx++, patientPhone);
+                ps.setString(idx++, guardianName);
+                ps.setString(idx++, callSummary);
+                ps.setInt(idx++, priority);
+                ps.setTimestamp(idx++, reservedAt);
+                ps.setString(idx++, status);
+                ps.setString(idx++, createdBy);
+                return ps;
+            }, keyHolder);
+            Number key = keyHolder.getKey();
+            return key == null ? 0L : key.longValue();
+        }
+
+        jdbcTemplate.update(
+                "UPDATE csm.counsel_reservation_" + safe + " "
+                        + "SET patient_name = ?, patient_phone = ?, guardian_name = ?, call_summary = ?, priority = ?, reserved_at = ?, status = ? "
+                        + "WHERE id = ?",
+                patientName,
+                patientPhone,
+                guardianName,
+                callSummary,
+                priority,
+                reservedAt,
+                status,
+                id);
+        return id;
+    }
+
+    public int updateCounselReservationStatus(String inst, long reservationId, String status, String actor) {
+        if (reservationId <= 0) {
+            return 0;
+        }
+        String safe = sanitizeInst(inst);
+        ensureCounselReservationTable(safe);
+        String normalizedStatus = normalizeReservationStatus(status, false);
+        String actorName = safeText(actor, 100);
+
+        if ("COMPLETED".equals(normalizedStatus)) {
+            return jdbcTemplate.update(
+                    "UPDATE csm.counsel_reservation_" + safe + " "
+                            + "SET status = ?, completed_at = NOW(), completed_by = COALESCE(NULLIF(?, ''), completed_by) "
+                            + "WHERE id = ?",
+                    normalizedStatus,
+                    actorName,
+                    reservationId);
+        }
+        if ("CANCELLED".equals(normalizedStatus)) {
+            return jdbcTemplate.update(
+                    "UPDATE csm.counsel_reservation_" + safe + " "
+                            + "SET status = ?, completed_at = NOW(), completed_by = COALESCE(NULLIF(?, ''), completed_by) "
+                            + "WHERE id = ?",
+                    normalizedStatus,
+                    actorName,
+                    reservationId);
+        }
+        return jdbcTemplate.update(
+                "UPDATE csm.counsel_reservation_" + safe + " "
+                        + "SET status = ?, completed_at = NULL, completed_by = NULL "
+                        + "WHERE id = ?",
+                normalizedStatus,
+                reservationId);
+    }
+
+    public int linkReservationToCounsel(String inst, long reservationId, int csIdx, String actor) {
+        if (reservationId <= 0 || csIdx <= 0) {
+            return 0;
+        }
+        String safe = sanitizeInst(inst);
+        ensureCounselReservationTable(safe);
+        String actorName = safeText(actor, 100);
+        return jdbcTemplate.update(
+                "UPDATE csm.counsel_reservation_" + safe + " "
+                        + "SET linked_cs_idx = ?, status = 'COMPLETED', completed_at = NOW(), completed_by = COALESCE(NULLIF(?, ''), completed_by) "
+                        + "WHERE id = ?",
+                csIdx,
+                actorName,
+                reservationId);
+    }
+
+    private void ensureCounselReservationTable(String safeInst) {
+        String tableName = "counsel_reservation_" + safeInst;
+        String sql = "CREATE TABLE IF NOT EXISTS csm." + tableName + " ("
+                + "id bigint auto_increment primary key,"
+                + "patient_name varchar(100) not null,"
+                + "patient_phone varchar(50) default null,"
+                + "guardian_name varchar(100) default null,"
+                + "call_summary text,"
+                + "priority int not null default 3,"
+                + "reserved_at datetime default null,"
+                + "status varchar(20) not null default 'RESERVED',"
+                + "linked_cs_idx int default null,"
+                + "created_by varchar(100) default null,"
+                + "completed_by varchar(100) default null,"
+                + "completed_at datetime default null,"
+                + "created_at timestamp default current_timestamp,"
+                + "updated_at timestamp default current_timestamp on update current_timestamp,"
+                + "key idx_status_priority_reserved (status, priority, reserved_at),"
+                + "key idx_linked_cs_idx (linked_cs_idx)"
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        jdbcTemplate.execute(sql);
+        ensureTableColumn("csm", tableName, "status",
+                "ALTER TABLE csm." + tableName + " ADD COLUMN status varchar(20) not null default 'RESERVED'");
+        ensureTableColumn("csm", tableName, "linked_cs_idx",
+                "ALTER TABLE csm." + tableName + " ADD COLUMN linked_cs_idx int default null");
+        ensureTableColumn("csm", tableName, "completed_by",
+                "ALTER TABLE csm." + tableName + " ADD COLUMN completed_by varchar(100) default null");
+        ensureTableColumn("csm", tableName, "completed_at",
+                "ALTER TABLE csm." + tableName + " ADD COLUMN completed_at datetime default null");
+    }
+
+    private CounselReservation mapCounselReservationRow(Map<String, Object> row) {
+        CounselReservation reservation = new CounselReservation();
+        reservation.setId(row.get("id") == null ? null : ((Number) row.get("id")).longValue());
+        reservation.setPatient_name(safeText(row.get("patient_name"), 100));
+        reservation.setPatient_phone(safeText(row.get("patient_phone"), 50));
+        reservation.setGuardian_name(safeText(row.get("guardian_name"), 100));
+        reservation.setCall_summary(safeText(row.get("call_summary"), 3000));
+        reservation.setPriority(normalizeReservationPriority(row.get("priority")));
+        reservation.setReserved_at(safeText(row.get("reserved_at"), 19));
+        reservation.setStatus(normalizeReservationStatus(row.get("status"), false));
+        reservation.setLinked_cs_idx(row.get("linked_cs_idx") == null ? null : ((Number) row.get("linked_cs_idx")).intValue());
+        reservation.setCreated_by(safeText(row.get("created_by"), 100));
+        reservation.setCompleted_by(safeText(row.get("completed_by"), 100));
+        reservation.setCompleted_at(safeText(row.get("completed_at"), 19));
+        reservation.setCreated_at(safeText(row.get("created_at"), 19));
+        reservation.setUpdated_at(safeText(row.get("updated_at"), 19));
+        return reservation;
+    }
+
+    private int normalizeReservationPriority(Object value) {
+        int priority = parseInt(value, 3);
+        if (priority < 1) {
+            return 1;
+        }
+        if (priority > 5) {
+            return 5;
+        }
+        return priority;
+    }
+
+    private String normalizeReservationStatus(Object value, boolean allowAll) {
+        String v = value == null ? "" : String.valueOf(value).trim().toUpperCase();
+        if (allowAll && (v.isBlank() || "ALL".equals(v))) {
+            return "ALL";
+        }
+        if ("예약".equals(value) || "RESERVED".equals(v)) {
+            return "RESERVED";
+        }
+        if ("완료".equals(value) || "COMPLETED".equals(v)) {
+            return "COMPLETED";
+        }
+        if ("취소".equals(value) || "CANCELLED".equals(v) || "CANCELED".equals(v)) {
+            return "CANCELLED";
+        }
+        return "RESERVED";
+    }
+
+    private Timestamp parseReservationTimestamp(String raw) {
+        String value = safeText(raw, 19).replace('T', ' ').trim();
+        if (value.isBlank()) {
+            return null;
+        }
+        List<DateTimeFormatter> formatters = List.of(
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+        for (DateTimeFormatter formatter : formatters) {
+            try {
+                LocalDateTime dt = LocalDateTime.parse(value, formatter);
+                return Timestamp.valueOf(dt);
+            } catch (DateTimeParseException ignore) {
+            }
+        }
+        return null;
+    }
+
+    public List<Map<String, Object>> coreNoticeList(String status, String keyword, int limit) {
+        ensureCoreNoticeTables();
+        int limitedRows = limit <= 0 ? 300 : Math.min(limit, 2000);
+        String normalizedStatus = normalizeCoreNoticeStatus(status, true);
+        String normalizedKeyword = safeText(keyword, 200);
+
+        StringBuilder sql = new StringBuilder()
+                .append("SELECT id, title, body, priority, pinned_yn, popup_yn, status, ")
+                .append("DATE_FORMAT(start_at, '%Y-%m-%d %H:%i:%s') AS start_at, ")
+                .append("DATE_FORMAT(end_at, '%Y-%m-%d %H:%i:%s') AS end_at, ")
+                .append("DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at, ")
+                .append("DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at, ")
+                .append("created_by ")
+                .append("FROM csm.core_notice WHERE 1=1 ");
+        List<Object> params = new ArrayList<>();
+        if (!"ALL".equals(normalizedStatus)) {
+            sql.append("AND status = ? ");
+            params.add(normalizedStatus);
+        }
+        if (!normalizedKeyword.isBlank()) {
+            sql.append("AND (title LIKE ? OR body LIKE ?) ");
+            String like = "%" + normalizedKeyword + "%";
+            params.add(like);
+            params.add(like);
+        }
+        sql.append("ORDER BY CASE status WHEN 'PUBLISHED' THEN 0 WHEN 'DRAFT' THEN 1 ELSE 2 END, ")
+                .append("CASE WHEN pinned_yn = 'Y' THEN 0 ELSE 1 END, ")
+                .append("priority ASC, id DESC ")
+                .append("LIMIT ?");
+        params.add(limitedRows);
+
+        List<Map<String, Object>> notices = jdbcTemplate.queryForList(sql.toString(), params.toArray());
+        if (notices.isEmpty()) {
+            return notices;
+        }
+
+        Map<String, String> instNameMap = new HashMap<>();
+        for (Instdata inst : Optional.ofNullable(coreInstSelect()).orElse(Collections.emptyList())) {
+            if (inst == null || inst.getId_col_03() == null) {
+                continue;
+            }
+            instNameMap.put(inst.getId_col_03(), safeText(inst.getId_col_02(), 100));
+        }
+
+        List<Long> noticeIds = new ArrayList<>();
+        for (Map<String, Object> notice : notices) {
+            noticeIds.add(parseLong(notice.get("id"), 0L));
+        }
+        Map<Long, List<String>> targetMap = findCoreNoticeTargetCodes(noticeIds);
+        for (Map<String, Object> notice : notices) {
+            long noticeId = parseLong(notice.get("id"), 0L);
+            List<String> codes = targetMap.getOrDefault(noticeId, Collections.emptyList());
+            List<String> names = new ArrayList<>();
+            for (String code : codes) {
+                names.add(instNameMap.getOrDefault(code, code));
+            }
+            notice.put("status", normalizeCoreNoticeStatus(notice.get("status"), false));
+            notice.put("pinned_yn", normalizeYn(notice.get("pinned_yn"), "N"));
+            notice.put("popup_yn", normalizeYn(notice.get("popup_yn"), "N"));
+            notice.put("target_inst_codes", codes);
+            notice.put("target_codes_csv", String.join(",", codes));
+            notice.put("target_names_csv", String.join(", ", names));
+            notice.put("target_count", codes.size());
+        }
+        return notices;
+    }
+
+    public Map<String, Object> coreNoticeById(long noticeId) {
+        ensureCoreNoticeTables();
+        if (noticeId <= 0) {
+            return null;
+        }
+        String sql = "SELECT id, title, body, priority, pinned_yn, popup_yn, status, "
+                + "DATE_FORMAT(start_at, '%Y-%m-%d %H:%i:%s') AS start_at, "
+                + "DATE_FORMAT(end_at, '%Y-%m-%d %H:%i:%s') AS end_at, "
+                + "DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at, "
+                + "DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at, "
+                + "created_by "
+                + "FROM csm.core_notice WHERE id = ? LIMIT 1";
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, noticeId);
+        if (rows.isEmpty()) {
+            return null;
+        }
+        Map<String, Object> notice = rows.get(0);
+        List<String> codes = findCoreNoticeTargetCodes(List.of(noticeId)).getOrDefault(noticeId, Collections.emptyList());
+        notice.put("status", normalizeCoreNoticeStatus(notice.get("status"), false));
+        notice.put("pinned_yn", normalizeYn(notice.get("pinned_yn"), "N"));
+        notice.put("popup_yn", normalizeYn(notice.get("popup_yn"), "N"));
+        notice.put("target_inst_codes", codes);
+        notice.put("target_codes_csv", String.join(",", codes));
+        return notice;
+    }
+
+    public long coreNoticeSave(Map<String, Object> payload, List<String> targetInstCodes) {
+        ensureCoreNoticeTables();
+        String title = safeText(payload == null ? null : payload.get("title"), 200);
+        if (title.isBlank()) {
+            throw new IllegalArgumentException("공지 제목은 필수입니다.");
+        }
+        String body = safeText(payload == null ? null : payload.get("body"), 20000);
+        int priority = parseInt(payload == null ? null : payload.get("priority"), 3);
+        if (priority < 0) {
+            priority = 0;
+        }
+        if (priority > 99) {
+            priority = 99;
+        }
+        String pinnedYn = normalizeYn(payload == null ? null : payload.get("pinnedYn"), "N");
+        String popupYn = normalizeYn(payload == null ? null : payload.get("popupYn"), "N");
+        String status = normalizeCoreNoticeStatus(payload == null ? null : payload.get("status"), false);
+        Timestamp startAt = parseCoreNoticeTimestamp(payload == null ? null : payload.get("startAt"));
+        Timestamp endAt = parseCoreNoticeTimestamp(payload == null ? null : payload.get("endAt"));
+        if (startAt != null && endAt != null && startAt.after(endAt)) {
+            throw new IllegalArgumentException("게시 시작일은 종료일보다 늦을 수 없습니다.");
+        }
+        String createdBy = safeText(payload == null ? null : payload.get("createdBy"), 100);
+
+        List<String> normalizedTargets = normalizeCoreNoticeTargets(targetInstCodes);
+        if (normalizedTargets.isEmpty()) {
+            throw new IllegalArgumentException("대상 기관을 선택해 주세요.");
+        }
+
+        long noticeId = parseLong(payload == null ? null : payload.get("id"), 0L);
+        if (noticeId <= 0) {
+            String sql = "INSERT INTO csm.core_notice ("
+                    + "title, body, priority, pinned_yn, popup_yn, start_at, end_at, status, created_by"
+                    + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            KeyHolder keyHolder = new GeneratedKeyHolder();
+            int finalPriority = priority;
+            jdbcTemplate.update(connection -> {
+                PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+                int idx = 1;
+                ps.setString(idx++, title);
+                ps.setString(idx++, body);
+                ps.setInt(idx++, finalPriority);
+                ps.setString(idx++, pinnedYn);
+                ps.setString(idx++, popupYn);
+                ps.setTimestamp(idx++, startAt);
+                ps.setTimestamp(idx++, endAt);
+                ps.setString(idx++, status);
+                ps.setString(idx++, createdBy);
+                return ps;
+            }, keyHolder);
+            Number key = keyHolder.getKey();
+            noticeId = key == null ? 0L : key.longValue();
+        } else {
+            jdbcTemplate.update(
+                    "UPDATE csm.core_notice SET title = ?, body = ?, priority = ?, pinned_yn = ?, popup_yn = ?, "
+                            + "start_at = ?, end_at = ?, status = ? WHERE id = ?",
+                    title, body, priority, pinnedYn, popupYn, startAt, endAt, status, noticeId);
+        }
+
+        if (noticeId <= 0) {
+            throw new IllegalStateException("공지 저장에 실패했습니다.");
+        }
+
+        jdbcTemplate.update("DELETE FROM csm.core_notice_target_inst WHERE notice_id = ?", noticeId);
+        String insertTargetSql = "INSERT INTO csm.core_notice_target_inst (notice_id, inst_code) VALUES (?, ?)";
+        for (String code : normalizedTargets) {
+            jdbcTemplate.update(insertTargetSql, noticeId, code);
+        }
+        return noticeId;
+    }
+
+    public int coreNoticeUpdateStatus(long noticeId, Object status) {
+        ensureCoreNoticeTables();
+        if (noticeId <= 0) {
+            return 0;
+        }
+        String normalized = normalizeCoreNoticeStatus(status, false);
+        return jdbcTemplate.update("UPDATE csm.core_notice SET status = ? WHERE id = ?", normalized, noticeId);
+    }
+
+    public List<Map<String, Object>> listInstitutionNotices(String inst, String userId, int limit) {
+        ensureCoreNoticeTables();
+        String safeInst = sanitizeInst(inst);
+        String safeUserId = safeText(userId, 100);
+        if (safeUserId.isBlank()) {
+            return Collections.emptyList();
+        }
+        int limitedRows = limit <= 0 ? 200 : Math.min(limit, 2000);
+        String sql = "SELECT n.id, n.title, n.body, n.priority, n.pinned_yn, n.popup_yn, n.status, "
+                + "DATE_FORMAT(n.start_at, '%Y-%m-%d %H:%i:%s') AS start_at, "
+                + "DATE_FORMAT(n.end_at, '%Y-%m-%d %H:%i:%s') AS end_at, "
+                + "DATE_FORMAT(n.created_at, '%Y-%m-%d %H:%i:%s') AS created_at, "
+                + "CASE WHEN r.id IS NULL THEN 'N' ELSE 'Y' END AS read_yn, "
+                + "DATE_FORMAT(r.read_at, '%Y-%m-%d %H:%i:%s') AS read_at "
+                + "FROM csm.core_notice n "
+                + "JOIN csm.core_notice_target_inst t ON t.notice_id = n.id AND t.inst_code = ? "
+                + "LEFT JOIN csm.core_notice_read r ON r.notice_id = n.id AND r.inst_code = ? AND r.user_id = ? "
+                + "WHERE n.status = 'PUBLISHED' "
+                + "AND (n.start_at IS NULL OR n.start_at <= NOW()) "
+                + "AND (n.end_at IS NULL OR n.end_at >= NOW()) "
+                + "ORDER BY CASE WHEN n.pinned_yn = 'Y' THEN 0 ELSE 1 END, n.priority ASC, n.id DESC "
+                + "LIMIT ?";
+        List<Map<String, Object>> notices = jdbcTemplate.queryForList(sql, safeInst, safeInst, safeUserId, limitedRows);
+        for (Map<String, Object> notice : notices) {
+            notice.put("status", normalizeCoreNoticeStatus(notice.get("status"), false));
+            notice.put("pinned_yn", normalizeYn(notice.get("pinned_yn"), "N"));
+            notice.put("popup_yn", normalizeYn(notice.get("popup_yn"), "N"));
+            notice.put("read_yn", normalizeYn(notice.get("read_yn"), "N"));
+        }
+        return notices;
+    }
+
+    public int markInstitutionNoticeRead(String inst, String userId, Integer userIdx, long noticeId) {
+        ensureCoreNoticeTables();
+        if (noticeId <= 0) {
+            return 0;
+        }
+        String safeInst = sanitizeInst(inst);
+        String safeUserId = safeText(userId, 100);
+        if (safeUserId.isBlank()) {
+            return 0;
+        }
+        Integer normalizedUserIdx = userIdx != null && userIdx > 0 ? userIdx : null;
+        String sql = "INSERT INTO csm.core_notice_read (notice_id, inst_code, user_idx, user_id, read_at) "
+                + "VALUES (?, ?, ?, ?, NOW()) "
+                + "ON DUPLICATE KEY UPDATE read_at = VALUES(read_at), user_idx = VALUES(user_idx)";
+        return jdbcTemplate.update(sql, noticeId, safeInst, normalizedUserIdx, safeUserId);
+    }
+
+    public int countInstitutionUnreadNotices(String inst, String userId) {
+        ensureCoreNoticeTables();
+        String safeInst = sanitizeInst(inst);
+        String safeUserId = safeText(userId, 100);
+        if (safeUserId.isBlank()) {
+            return 0;
+        }
+        String sql = "SELECT COUNT(*) FROM csm.core_notice n "
+                + "JOIN csm.core_notice_target_inst t ON t.notice_id = n.id AND t.inst_code = ? "
+                + "LEFT JOIN csm.core_notice_read r ON r.notice_id = n.id AND r.inst_code = ? AND r.user_id = ? "
+                + "WHERE n.status = 'PUBLISHED' "
+                + "AND (n.start_at IS NULL OR n.start_at <= NOW()) "
+                + "AND (n.end_at IS NULL OR n.end_at >= NOW()) "
+                + "AND r.id IS NULL";
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, safeInst, safeInst, safeUserId);
+        return count == null ? 0 : count;
+    }
+
+    private Map<Long, List<String>> findCoreNoticeTargetCodes(List<Long> noticeIds) {
+        if (noticeIds == null || noticeIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        StringBuilder placeholders = new StringBuilder();
+        List<Object> params = new ArrayList<>();
+        for (Long id : noticeIds) {
+            long noticeId = id == null ? 0L : id;
+            if (noticeId <= 0) {
+                continue;
+            }
+            if (placeholders.length() > 0) {
+                placeholders.append(',');
+            }
+            placeholders.append('?');
+            params.add(noticeId);
+        }
+        if (placeholders.length() == 0) {
+            return Collections.emptyMap();
+        }
+        String sql = "SELECT notice_id, inst_code FROM csm.core_notice_target_inst "
+                + "WHERE notice_id IN (" + placeholders + ") ORDER BY id ASC";
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params.toArray());
+        Map<Long, List<String>> out = new HashMap<>();
+        for (Map<String, Object> row : rows) {
+            long noticeId = parseLong(row.get("notice_id"), 0L);
+            String code = safeText(row.get("inst_code"), 32);
+            if (noticeId <= 0 || code.isBlank()) {
+                continue;
+            }
+            out.computeIfAbsent(noticeId, k -> new ArrayList<>()).add(code);
+        }
+        return out;
+    }
+
+    private List<String> normalizeCoreNoticeTargets(List<String> targetInstCodes) {
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        boolean allSelected = false;
+        for (String raw : targetInstCodes == null ? Collections.<String>emptyList() : targetInstCodes) {
+            String value = safeText(raw, 40);
+            if (value.isBlank()) {
+                continue;
+            }
+            if ("ALL".equalsIgnoreCase(value)) {
+                allSelected = true;
+                continue;
+            }
+            try {
+                String code = sanitizeInst(value);
+                if (!"core".equalsIgnoreCase(code)) {
+                    normalized.add(code);
+                }
+            } catch (Exception ignore) {
+            }
+        }
+        if (allSelected || normalized.isEmpty()) {
+            for (Instdata inst : Optional.ofNullable(coreInstSelect()).orElse(Collections.emptyList())) {
+                if (inst == null || inst.getId_col_03() == null) {
+                    continue;
+                }
+                String code = inst.getId_col_03().trim();
+                if (code.isEmpty() || "core".equalsIgnoreCase(code)) {
+                    continue;
+                }
+                String useYn = safeText(inst.getId_col_04(), 1);
+                if (!useYn.isBlank() && !"Y".equalsIgnoreCase(useYn)) {
+                    continue;
+                }
+                try {
+                    normalized.add(sanitizeInst(code));
+                } catch (Exception ignore) {
+                }
+            }
+        }
+        return new ArrayList<>(normalized);
+    }
+
+    private String normalizeCoreNoticeStatus(Object value, boolean allowAll) {
+        String v = value == null ? "" : String.valueOf(value).trim().toUpperCase();
+        if (allowAll && (v.isBlank() || "ALL".equals(v) || "전체".equals(String.valueOf(value).trim()))) {
+            return "ALL";
+        }
+        if ("PUBLISHED".equals(v) || "게시".equals(String.valueOf(value).trim())) {
+            return "PUBLISHED";
+        }
+        if ("ARCHIVED".equals(v) || "보관".equals(String.valueOf(value).trim())) {
+            return "ARCHIVED";
+        }
+        return "DRAFT";
+    }
+
+    private String normalizeYn(Object value, String defaultValue) {
+        String v = value == null ? "" : String.valueOf(value).trim().toUpperCase();
+        if ("Y".equals(v) || "1".equals(v) || "TRUE".equals(v)) {
+            return "Y";
+        }
+        if ("N".equals(v) || "0".equals(v) || "FALSE".equals(v)) {
+            return "N";
+        }
+        return "Y".equalsIgnoreCase(defaultValue) ? "Y" : "N";
+    }
+
+    private Timestamp parseCoreNoticeTimestamp(Object raw) {
+        String value = safeText(raw, 25).replace('T', ' ').trim();
+        if (value.isBlank()) {
+            return null;
+        }
+        List<DateTimeFormatter> formatters = List.of(
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+        for (DateTimeFormatter formatter : formatters) {
+            try {
+                LocalDateTime dt = LocalDateTime.parse(value, formatter);
+                return Timestamp.valueOf(dt);
+            } catch (DateTimeParseException ignore) {
+            }
+        }
+        return null;
+    }
+
+    private void ensureCoreNoticeTables() {
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS csm.core_notice ("
+                + "id bigint auto_increment primary key,"
+                + "title varchar(200) not null,"
+                + "body text,"
+                + "priority int not null default 3,"
+                + "pinned_yn char(1) not null default 'N',"
+                + "popup_yn char(1) not null default 'N',"
+                + "start_at datetime default null,"
+                + "end_at datetime default null,"
+                + "status varchar(20) not null default 'DRAFT',"
+                + "created_by varchar(100) default null,"
+                + "created_at timestamp default current_timestamp,"
+                + "updated_at timestamp default current_timestamp on update current_timestamp,"
+                + "key idx_status_window (status, start_at, end_at),"
+                + "key idx_pinned_priority (pinned_yn, priority)"
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS csm.core_notice_target_inst ("
+                + "id bigint auto_increment primary key,"
+                + "notice_id bigint not null,"
+                + "inst_code varchar(32) not null,"
+                + "created_at timestamp default current_timestamp,"
+                + "unique key uq_notice_inst (notice_id, inst_code),"
+                + "key idx_inst_notice (inst_code, notice_id)"
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS csm.core_notice_read ("
+                + "id bigint auto_increment primary key,"
+                + "notice_id bigint not null,"
+                + "inst_code varchar(32) not null,"
+                + "user_idx int default null,"
+                + "user_id varchar(100) not null,"
+                + "read_at datetime not null default current_timestamp,"
+                + "unique key uq_notice_inst_user (notice_id, inst_code, user_id),"
+                + "key idx_inst_user_read (inst_code, user_id, notice_id)"
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        ensureTableColumn("csm", "core_notice", "popup_yn",
+                "ALTER TABLE csm.core_notice ADD COLUMN popup_yn char(1) not null default 'N'");
+        ensureTableColumn("csm", "core_notice", "pinned_yn",
+                "ALTER TABLE csm.core_notice ADD COLUMN pinned_yn char(1) not null default 'N'");
+        ensureTableColumn("csm", "core_notice", "status",
+                "ALTER TABLE csm.core_notice ADD COLUMN status varchar(20) not null default 'DRAFT'");
+        ensureTableColumn("csm", "core_notice_target_inst", "inst_code",
+                "ALTER TABLE csm.core_notice_target_inst ADD COLUMN inst_code varchar(32) not null");
+        ensureTableColumn("csm", "core_notice_read", "user_id",
+                "ALTER TABLE csm.core_notice_read ADD COLUMN user_id varchar(100) not null default ''");
     }
 
     private void ensureAdmissionPledgeTable(String safeInst) {

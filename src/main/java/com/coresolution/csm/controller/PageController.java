@@ -20,6 +20,8 @@ import java.net.http.HttpResponse;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Duration;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -66,6 +68,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.core.io.InputStreamResource;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -94,6 +97,7 @@ import com.coresolution.csm.vo.CounselData;
 import com.coresolution.csm.vo.CounselDataEntry;
 import com.coresolution.csm.vo.CounselLog;
 import com.coresolution.csm.vo.CounselLogGuardian;
+import com.coresolution.csm.vo.CounselReservation;
 import com.coresolution.csm.vo.Counsel_phone;
 import com.coresolution.csm.vo.Criteria;
 import com.coresolution.csm.vo.Guardian;
@@ -483,6 +487,109 @@ public class PageController {
         model.addAttribute("instCount",
                 list.stream().filter(i -> i != null && !"core".equalsIgnoreCase(i.getId_col_03())).count());
         return "csm/core/admin/smssetting";
+    }
+
+    @GetMapping({ "core/notice", "/core/notice" })
+    public String coreNoticePage(
+            @RequestParam(value = "status", defaultValue = "ALL") String status,
+            @RequestParam(value = "keyword", defaultValue = "") String keyword,
+            Model model,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (!isCoreInst(inst)) {
+            return "redirect:/login";
+        }
+        Userdata info = ensureUserInfo(session, inst);
+        String selectedStatus = normalizeCoreNoticeStatusParam(status, true);
+        String searchKeyword = safeString(keyword).trim();
+
+        List<Map<String, Object>> notices = cs.coreNoticeList(selectedStatus, searchKeyword, 500);
+        List<Instdata> institutions = Optional.ofNullable(cs.coreInstSelect())
+                .orElse(Collections.emptyList())
+                .stream()
+                .filter(Objects::nonNull)
+                .filter(item -> item.getId_col_03() != null && !"core".equalsIgnoreCase(item.getId_col_03()))
+                .toList();
+
+        model.addAttribute("info", info);
+        model.addAttribute("selectedStatus", selectedStatus);
+        model.addAttribute("keyword", searchKeyword);
+        model.addAttribute("notices", notices);
+        model.addAttribute("institutions", institutions);
+        model.addAttribute("noticeCount", notices.size());
+        return "csm/core/admin/notice";
+    }
+
+    @GetMapping({ "core/notice/detail/{noticeId}", "/core/notice/detail/{noticeId}" })
+    @ResponseBody
+    public ResponseEntity<?> coreNoticeDetail(
+            @PathVariable("noticeId") long noticeId,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (!isCoreInst(inst)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "권한 없음"));
+        }
+        Map<String, Object> notice = cs.coreNoticeById(noticeId);
+        if (notice == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "공지 정보를 찾을 수 없습니다."));
+        }
+        return ResponseEntity.ok(Map.of("result", "1", "notice", notice));
+    }
+
+    @PostMapping({ "core/notice/save", "/core/notice/save" })
+    @ResponseBody
+    public ResponseEntity<?> coreNoticeSave(
+            HttpSession session,
+            @RequestBody Map<String, Object> body) {
+        String inst = ensureInst(session);
+        if (!isCoreInst(inst)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "권한 없음"));
+        }
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            if (body != null) {
+                payload.putAll(body);
+            }
+
+            if (safeString(readAsString(payload, "createdBy")).isBlank()) {
+                payload.put("createdBy", resolveNoticeActor(inst, session));
+            }
+
+            List<String> targetInstCodes = toStringList(payload.get("targetInstCodes"));
+            if (targetInstCodes.isEmpty()) {
+                targetInstCodes = toStringList(payload.get("target_codes_csv"));
+            }
+            long noticeId = cs.coreNoticeSave(payload, targetInstCodes);
+            return ResponseEntity.ok(Map.of("result", "1", "id", noticeId));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("result", "0", "message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[core/notice/save] fail", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("result", "0", "message", "공지 저장 중 오류가 발생했습니다."));
+        }
+    }
+
+    @PostMapping({ "core/notice/status", "/core/notice/status" })
+    @ResponseBody
+    public ResponseEntity<?> coreNoticeStatusUpdate(
+            HttpSession session,
+            @RequestBody Map<String, Object> body) {
+        String inst = ensureInst(session);
+        if (!isCoreInst(inst)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "권한 없음"));
+        }
+        long noticeId = parseLongSafely(body == null ? null : body.get("id"), 0L);
+        String status = readAsString(body == null ? Collections.emptyMap() : body, "status").trim();
+        if (noticeId <= 0 || status.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("result", "0", "message", "필수값이 누락되었습니다."));
+        }
+        int updated = cs.coreNoticeUpdateStatus(noticeId, status);
+        if (updated <= 0) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("result", "0", "message", "공지 상태를 변경할 수 없습니다."));
+        }
+        return ResponseEntity.ok(Map.of("result", "1", "updated", updated));
     }
 
     @GetMapping({ "core/newinstPopup", "/core/newinstPopup" })
@@ -1392,6 +1499,203 @@ public class PageController {
                 rows.size(), before, nulls, hasMore, (orderItems != null ? orderItems.size() : -1));
         log.warn("[JSON] sample row0 = {}", rows.isEmpty() ? null : rows.get(0));
         return body;
+    }
+
+    @GetMapping({ "counsel/reservation", "/counsel/reservation" })
+    public String counselReservationPage(
+            @RequestParam(value = "status", defaultValue = "RESERVED") String status,
+            @RequestParam(value = "reservationId", required = false) Long reservationId,
+            @RequestParam(value = "message", required = false) String message,
+            @RequestParam(value = "error", required = false) String error,
+            Model model,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return "redirect:/login";
+        }
+
+        Userdata info = ensureUserInfo(session, inst);
+        String selectedStatus = normalizeReservationStatusParam(status, true);
+        List<CounselReservation> reservations = cs.listCounselReservations(inst, selectedStatus, 500);
+        List<CounselReservation> allReservations = cs.listCounselReservations(inst, "ALL", 2000);
+
+        CounselReservation reservationForm = (reservationId != null && reservationId > 0)
+                ? cs.getCounselReservationById(inst, reservationId)
+                : null;
+        if (reservationForm == null) {
+            reservationForm = new CounselReservation();
+            reservationForm.setStatus("RESERVED");
+            reservationForm.setPriority(3);
+        }
+
+        model.addAttribute("info", info);
+        model.addAttribute("inst", inst);
+        model.addAttribute("endVar", "on");
+        model.addAttribute("st", "");
+        model.addAttribute("kw", "");
+        model.addAttribute("selectedStatus", selectedStatus);
+        model.addAttribute("reservations", reservations);
+        model.addAttribute("reservationForm", reservationForm);
+        model.addAttribute("reservationFormReservedAtInput", toDateTimeLocalValue(reservationForm.getReserved_at()));
+        model.addAttribute("statusCounts", countReservationStatus(allReservations));
+        model.addAttribute("message", message);
+        model.addAttribute("error", error);
+        return "csm/counsel/reservation";
+    }
+
+    @PostMapping({ "counsel/reservation/save", "/counsel/reservation/save" })
+    public String saveCounselReservation(
+            @RequestParam(value = "id", required = false) Long id,
+            @RequestParam("patientName") String patientName,
+            @RequestParam(value = "patientPhone", required = false) String patientPhone,
+            @RequestParam(value = "guardianName", required = false) String guardianName,
+            @RequestParam(value = "callSummary", required = false) String callSummary,
+            @RequestParam(value = "priority", required = false, defaultValue = "3") Integer priority,
+            @RequestParam(value = "reservedAt", required = false) String reservedAt,
+            @RequestParam(value = "status", required = false, defaultValue = "RESERVED") String status,
+            HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return "redirect:/login";
+        }
+
+        try {
+            CounselReservation reservation = new CounselReservation();
+            reservation.setId(id);
+            reservation.setPatient_name(patientName);
+            reservation.setPatient_phone(patientPhone);
+            reservation.setGuardian_name(guardianName);
+            reservation.setCall_summary(callSummary);
+            reservation.setPriority(priority);
+            reservation.setReserved_at(reservedAt);
+            reservation.setStatus(normalizeReservationStatusParam(status, false));
+            reservation.setCreated_by(resolveReservationActor(inst, session));
+
+            long savedId = cs.saveCounselReservation(inst, reservation);
+            redirectAttributes.addAttribute("status", normalizeReservationStatusParam(status, true));
+            redirectAttributes.addAttribute("reservationId", savedId);
+            redirectAttributes.addAttribute("message", "상담 예약이 저장되었습니다.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addAttribute("status", normalizeReservationStatusParam(status, true));
+            redirectAttributes.addAttribute("reservationId", id);
+            redirectAttributes.addAttribute("error", e.getMessage());
+        } catch (Exception e) {
+            log.warn("[reservation] save fail inst={}, err={}", inst, e.toString());
+            redirectAttributes.addAttribute("status", normalizeReservationStatusParam(status, true));
+            redirectAttributes.addAttribute("reservationId", id);
+            redirectAttributes.addAttribute("error", "상담 예약 저장 중 오류가 발생했습니다.");
+        }
+        return "redirect:/counsel/reservation";
+    }
+
+    @PostMapping({ "counsel/reservation/status", "/counsel/reservation/status" })
+    public String updateCounselReservationStatus(
+            @RequestParam("reservationId") Long reservationId,
+            @RequestParam("status") String status,
+            @RequestParam(value = "viewStatus", defaultValue = "RESERVED") String viewStatus,
+            HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return "redirect:/login";
+        }
+
+        try {
+            cs.updateCounselReservationStatus(inst, reservationId, status, resolveReservationActor(inst, session));
+            redirectAttributes.addAttribute("message", "예약 상태가 변경되었습니다.");
+        } catch (Exception e) {
+            log.warn("[reservation] status update fail inst={}, reservationId={}, err={}", inst, reservationId, e.toString());
+            redirectAttributes.addAttribute("error", "예약 상태 변경 중 오류가 발생했습니다.");
+        }
+        redirectAttributes.addAttribute("status", normalizeReservationStatusParam(viewStatus, true));
+        return "redirect:/counsel/reservation";
+    }
+
+    @GetMapping({ "notice", "/notice" })
+    public String institutionNoticePage(Model model, HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return "redirect:/login";
+        }
+        if (isCoreInst(inst)) {
+            return "redirect:/core/notice";
+        }
+
+        Userdata info = ensureUserInfo(session, inst);
+        String userId = resolveNoticeUserId(session);
+        List<Map<String, Object>> notices = cs.listInstitutionNotices(inst, userId, 500);
+        int unreadCount = cs.countInstitutionUnreadNotices(inst, userId);
+
+        model.addAttribute("info", info);
+        model.addAttribute("inst", inst);
+        model.addAttribute("endVar", "on");
+        model.addAttribute("st", "");
+        model.addAttribute("kw", "");
+        model.addAttribute("notices", notices);
+        model.addAttribute("unreadCount", unreadCount);
+        model.addAttribute("noticeCount", notices.size());
+        return "csm/notice/list";
+    }
+
+    @PostMapping({ "notice/read/{noticeId}", "/notice/read/{noticeId}" })
+    @ResponseBody
+    public ResponseEntity<?> markInstitutionNoticeRead(
+            @PathVariable("noticeId") long noticeId,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "세션이 만료되었습니다."));
+        }
+        if (isCoreInst(inst)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "권한 없음"));
+        }
+        String userId = resolveNoticeUserId(session);
+        if (userId.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "사용자 정보를 확인할 수 없습니다."));
+        }
+        Integer userIdx = resolveNoticeUserIdx(session);
+        int updated = cs.markInstitutionNoticeRead(inst, userId, userIdx, noticeId);
+        int unreadCount = cs.countInstitutionUnreadNotices(inst, userId);
+        return ResponseEntity.ok(Map.of(
+                "result", "1",
+                "updated", updated,
+                "unreadCount", unreadCount));
+    }
+
+    @GetMapping({ "notice/popup/next", "/notice/popup/next" })
+    @ResponseBody
+    public ResponseEntity<?> institutionNoticePopupNext(HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("result", "0", "message", "세션이 만료되었습니다."));
+        }
+        if (isCoreInst(inst)) {
+            return ResponseEntity.ok(Map.of("result", "0", "notice", null));
+        }
+        String userId = resolveNoticeUserId(session);
+        if (userId.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("result", "0", "message", "사용자 정보를 확인할 수 없습니다."));
+        }
+
+        List<Map<String, Object>> notices = cs.listInstitutionNotices(inst, userId, 300);
+        Map<String, Object> popupNotice = null;
+        for (Map<String, Object> notice : notices) {
+            if (notice == null) {
+                continue;
+            }
+            String popupYn = notice.get("popup_yn") == null ? "" : String.valueOf(notice.get("popup_yn")).trim();
+            String readYn = notice.get("read_yn") == null ? "" : String.valueOf(notice.get("read_yn")).trim();
+            if ("Y".equalsIgnoreCase(popupYn) && !"Y".equalsIgnoreCase(readYn)) {
+                popupNotice = notice;
+                break;
+            }
+        }
+        int unreadCount = cs.countInstitutionUnreadNotices(inst, userId);
+        return ResponseEntity.ok(Map.of(
+                "result", popupNotice == null ? "0" : "1",
+                "notice", popupNotice,
+                "unreadCount", unreadCount));
     }
 
     @GetMapping({ "setting", "/setting", "setting/", "/setting/" })
@@ -2531,6 +2835,10 @@ public class PageController {
             if (isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_FILE)) {
                 bindPendingCounselFiles(inst, csIdx, request);
             }
+            long reservationId = parseLongSafely(request.getParameter("reservation_id"), 0L);
+            if (reservationId > 0) {
+                cs.linkReservationToCounsel(inst, reservationId, csIdx, resolveReservationActor(inst, session));
+            }
             return "redirect:/counsel/list";
         } catch (Exception e) {
             log.error("[counsel] save fail inst={}", inst, e);
@@ -2584,6 +2892,10 @@ public class PageController {
             }
             if (isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_FILE)) {
                 bindPendingCounselFiles(inst, csIdx, request);
+            }
+            long reservationId = parseLongSafely(request.getParameter("reservation_id"), 0L);
+            if (reservationId > 0) {
+                cs.linkReservationToCounsel(inst, reservationId, csIdx, resolveReservationActor(inst, session));
             }
             return "redirect:/counsel/list";
         } catch (Exception e) {
@@ -4775,7 +5087,11 @@ public class PageController {
 
     /** 신규 페이지 (빈 폼) */
     @GetMapping({ "counsel/new", "/counsel/new" })
-    public String counselNew(Model model, HttpSession session, HttpServletRequest req) {
+    public String counselNew(
+            @RequestParam(value = "reservationId", required = false) Long reservationId,
+            Model model,
+            HttpSession session,
+            HttpServletRequest req) {
         String inst = ensureInst(session);
         if (inst == null)
             return "redirect:/login";
@@ -4784,15 +5100,40 @@ public class PageController {
         populateCommon(model, inst, userinfo);
         populateModuleFeatureModel(model, inst);
 
+        CounselData prefill = new CounselData();
+        List<Guardian> prefillGuardians = new ArrayList<>();
+        Map<String, Object> reservationLink = Collections.emptyMap();
+        if (reservationId != null && reservationId > 0) {
+            CounselReservation reservation = cs.getCounselReservationById(inst, reservationId);
+            if (reservation != null) {
+                prefill.setCs_col_01(safeString(reservation.getPatient_name()));
+                prefill.setCs_col_06(safeString(reservation.getPatient_phone()));
+                prefill.setCs_col_18("전화");
+                prefill.setCs_col_19("입원예약");
+                prefill.setCs_col_21(safeString(reservation.getReserved_at()));
+                prefill.setCs_col_32(safeString(reservation.getCall_summary()));
+                if (!isBlank(reservation.getGuardian_name()) || !isBlank(reservation.getPatient_phone())) {
+                    Guardian guardian = new Guardian();
+                    guardian.setName(safeString(reservation.getGuardian_name()));
+                    guardian.setRelationship("");
+                    guardian.setContact_number(safeString(reservation.getPatient_phone()));
+                    prefillGuardians.add(guardian);
+                }
+                reservationLink = toReservationLink(reservation);
+            }
+        }
+
         // 신규 화면 렌더에 필요한 기본 모델값
         model.addAttribute("inst", inst);
         model.addAttribute("cs_idx", null);
-        model.addAttribute("csData", new CounselData());
+        model.addAttribute("csData", prefill);
         model.addAttribute("csEntries", Collections.emptyList());
-        model.addAttribute("guardians", Collections.emptyList());
+        model.addAttribute("guardians", prefillGuardians);
         model.addAttribute("valueMap", Collections.emptyMap());
         model.addAttribute("cslog", Collections.emptyList());
         model.addAttribute("admissionPledge", Collections.emptyMap());
+        model.addAttribute("reservationId", reservationLink.get("id"));
+        model.addAttribute("reservationLink", reservationLink);
         model.addAttribute("isEdit", false);
 
         // nav fragment 파라미터 기본값
@@ -4848,6 +5189,10 @@ public class PageController {
         Map<String, Object> admissionPledge = Optional.ofNullable(cs.getAdmissionPledge(inst, csIdx))
                 .orElse(Collections.emptyMap());
         model.addAttribute("admissionPledge", admissionPledge);
+        CounselReservation linkedReservation = cs.getCounselReservationByLinkedCsIdx(inst, csIdx);
+        model.addAttribute("reservationId", linkedReservation != null ? linkedReservation.getId() : null);
+        model.addAttribute("reservationLink",
+                linkedReservation != null ? toReservationLink(linkedReservation) : Collections.emptyMap());
 
         // 3) isEdit일 때만 추가 정보(복호화/보호자)
         if (isEdit) {
@@ -5217,6 +5562,183 @@ public class PageController {
         } catch (Exception e) {
             return defaultValue;
         }
+    }
+
+    private long parseLongSafely(Object value, long defaultValue) {
+        if (value == null) {
+            return defaultValue;
+        }
+        try {
+            return Long.parseLong(String.valueOf(value).trim());
+        } catch (Exception e) {
+            return defaultValue;
+        }
+    }
+
+    private String normalizeCoreNoticeStatusParam(String status, boolean allowAll) {
+        String raw = safeString(status).trim();
+        if (raw.isEmpty()) {
+            return allowAll ? "ALL" : "DRAFT";
+        }
+        String upper = raw.toUpperCase(Locale.ROOT);
+        if (allowAll && ("ALL".equals(upper) || "전체".equals(raw))) {
+            return "ALL";
+        }
+        if ("게시".equals(raw) || "PUBLISHED".equals(upper)) {
+            return "PUBLISHED";
+        }
+        if ("보관".equals(raw) || "ARCHIVED".equals(upper)) {
+            return "ARCHIVED";
+        }
+        return "DRAFT";
+    }
+
+    private String normalizeReservationStatusParam(String status, boolean allowAll) {
+        String raw = safeString(status).trim();
+        if (raw.isEmpty()) {
+            return allowAll ? "ALL" : "RESERVED";
+        }
+        String upper = raw.toUpperCase(Locale.ROOT);
+        if (allowAll && ("ALL".equals(upper) || "전체".equals(raw))) {
+            return "ALL";
+        }
+        if ("예약".equals(raw) || "RESERVED".equals(upper)) {
+            return "RESERVED";
+        }
+        if ("완료".equals(raw) || "COMPLETED".equals(upper)) {
+            return "COMPLETED";
+        }
+        if ("취소".equals(raw) || "CANCELLED".equals(upper) || "CANCELED".equals(upper)) {
+            return "CANCELLED";
+        }
+        return "RESERVED";
+    }
+
+    private Map<String, Integer> countReservationStatus(List<CounselReservation> reservations) {
+        LinkedHashMap<String, Integer> out = new LinkedHashMap<>();
+        out.put("all", 0);
+        out.put("reserved", 0);
+        out.put("completed", 0);
+        out.put("cancelled", 0);
+        if (reservations == null || reservations.isEmpty()) {
+            return out;
+        }
+        for (CounselReservation reservation : reservations) {
+            if (reservation == null) {
+                continue;
+            }
+            String status = normalizeReservationStatusParam(reservation.getStatus(), false);
+            if ("RESERVED".equals(status)) {
+                out.put("reserved", out.get("reserved") + 1);
+            } else if ("COMPLETED".equals(status)) {
+                out.put("completed", out.get("completed") + 1);
+            } else if ("CANCELLED".equals(status)) {
+                out.put("cancelled", out.get("cancelled") + 1);
+            }
+        }
+        out.put("all", out.get("reserved") + out.get("completed") + out.get("cancelled"));
+        return out;
+    }
+
+    private String toDateTimeLocalValue(String raw) {
+        String value = safeString(raw).trim();
+        if (value.isEmpty()) {
+            return "";
+        }
+        List<DateTimeFormatter> formatters = List.of(
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"));
+        for (DateTimeFormatter formatter : formatters) {
+            try {
+                LocalDateTime dt = LocalDateTime.parse(value, formatter);
+                return dt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"));
+            } catch (DateTimeParseException ignore) {
+            }
+        }
+        return "";
+    }
+
+    private String resolveReservationActor(String inst, HttpSession session) {
+        Object userInfo = session != null ? session.getAttribute("userInfo") : null;
+        if (userInfo instanceof Userdata user) {
+            String userId = safeString(user.getUs_col_02()).trim();
+            if (!userId.isEmpty()) {
+                return userId;
+            }
+        }
+        Authentication auth = SecurityContextHolder.getContext() == null ? null
+                : SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null) {
+            String name = safeString(auth.getName()).trim();
+            if (!name.isEmpty() && !"anonymousUser".equalsIgnoreCase(name)) {
+                return name;
+            }
+        }
+        String safeInst = safeString(inst).trim();
+        return safeInst.isEmpty() ? "system" : safeInst + "_system";
+    }
+
+    private String resolveNoticeUserId(HttpSession session) {
+        Object userInfo = session != null ? session.getAttribute("userInfo") : null;
+        if (userInfo instanceof Userdata user) {
+            String userId = safeString(user.getUs_col_02()).trim();
+            if (!userId.isEmpty()) {
+                return userId;
+            }
+        }
+        Authentication auth = SecurityContextHolder.getContext() == null ? null
+                : SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null) {
+            String name = safeString(auth.getName()).trim();
+            if (!name.isEmpty() && !"anonymousUser".equalsIgnoreCase(name)) {
+                return name;
+            }
+        }
+        return "";
+    }
+
+    private Integer resolveNoticeUserIdx(HttpSession session) {
+        Object userInfo = session != null ? session.getAttribute("userInfo") : null;
+        if (userInfo instanceof Userdata user) {
+            Integer userIdx = user.getUs_col_01();
+            if (userIdx != null && userIdx > 0) {
+                return userIdx;
+            }
+        }
+        return null;
+    }
+
+    private String resolveNoticeActor(String inst, HttpSession session) {
+        String userId = resolveNoticeUserId(session);
+        if (!userId.isBlank()) {
+            return userId;
+        }
+        String safeInst = safeString(inst).trim();
+        return safeInst.isBlank() ? "core_system" : safeInst + "_system";
+    }
+
+    private Map<String, Object> toReservationLink(CounselReservation reservation) {
+        if (reservation == null || reservation.getId() == null || reservation.getId() <= 0) {
+            return Collections.emptyMap();
+        }
+        String status = normalizeReservationStatusParam(reservation.getStatus(), false);
+        LinkedHashMap<String, Object> out = new LinkedHashMap<>();
+        out.put("id", reservation.getId());
+        out.put("patientName", safeString(reservation.getPatient_name()));
+        out.put("patientPhone", safeString(reservation.getPatient_phone()));
+        out.put("guardianName", safeString(reservation.getGuardian_name()));
+        out.put("reservedAt", safeString(reservation.getReserved_at()));
+        out.put("priority", reservation.getPriority() == null ? 3 : reservation.getPriority());
+        out.put("status", status);
+        out.put("statusLabel", switch (status) {
+            case "COMPLETED" -> "완료";
+            case "CANCELLED" -> "취소";
+            default -> "예약";
+        });
+        out.put("url", "/counsel/reservation?status=ALL&reservationId=" + reservation.getId());
+        return out;
     }
 
     private int parseBool01(Object value) {

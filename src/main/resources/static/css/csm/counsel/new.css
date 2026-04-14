@@ -6,6 +6,53 @@
 	width: calc(100% - 145px);
 }
 
+.reservation-link-banner {
+    margin: 0 0 10px 0;
+    border: 1px solid #d7e9dd;
+    border-radius: 8px;
+    background: #f3fbf6;
+    padding: 10px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.reservation-link-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.reservation-link-left strong {
+    color: #1f603e;
+    font-size: 12px;
+}
+
+.reservation-link-left span {
+    color: #355543;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.reservation-link-btn {
+    height: 30px;
+    border-radius: 6px;
+    border: 1px solid #06603A;
+    color: #06603A;
+    background: #fff;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .pc-file-panel {
     margin-bottom: 10px;
     border: 1px solid #dbdbdb;

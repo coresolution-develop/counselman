@@ -8,7 +8,9 @@
 </head>
 
 <body>
-	<div class="wrapper" th:fragment="header(info)" th:with="u=${info != null ? info : session.userInfo}">
+	<div class="wrapper" th:fragment="header(info)"
+	     th:with="u=${info != null ? info : session.userInfo}"
+	     th:attr="data-inst=${u != null ? u.us_col_04 : ''}">
 		<div class="logo">
 			<div class="home-icon">
 				<a th:href="@{/counsel/list(page=1,perPageNum=10,end='',searchType='',keyword='')}">
@@ -42,6 +44,32 @@
             </div>
 		</div>
 	</div>
+	<div class="global-notice-popup-overlay" id="global-notice-popup-overlay" hidden>
+		<div class="global-notice-popup-card" role="dialog" aria-modal="true" aria-labelledby="global-notice-popup-title">
+			<div class="global-notice-popup-head">
+				<strong>공지사항</strong>
+				<button type="button" id="global-notice-popup-close" aria-label="팝업 닫기">×</button>
+			</div>
+			<div class="global-notice-popup-meta">
+				<span id="global-notice-popup-pin" hidden>고정</span>
+				<span id="global-notice-popup-date"></span>
+			</div>
+			<h3 id="global-notice-popup-title"></h3>
+			<div id="global-notice-popup-body" class="global-notice-popup-body"></div>
+			<div class="global-notice-popup-foot">
+				<label class="global-notice-popup-hide-today">
+					<input type="checkbox" id="global-notice-popup-hide-today">
+					오늘 하루 보지 않기
+				</label>
+				<div class="global-notice-popup-actions">
+					<button type="button" id="global-notice-popup-read">읽음 처리</button>
+					<button type="button" id="global-notice-popup-move">공지사항 이동</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	<link rel="stylesheet" th:href="@{/css/csm/notice/popup.css}">
+	<script th:src="@{/js/csm/notice/popup.js}" defer></script>
 	<div id="user-nav" class="nav_section"
      th:fragment="nav_section2(activeMenu, end, searchType, keyword)"
      th:attr="data-active-menu=${activeMenu}">
@@ -62,9 +90,23 @@
         th:classappend="${activeMenu == 'smssetting' ? ' on active' : ''}">
       <a th:href="@{/core/smssetting}" aria-label="문자관리 페이지로 이동">문자관리</a>
     </li>
+    <li class="nav_link menu4"
+        data-menu="notice" data-content="all"
+        th:classappend="${activeMenu == 'notice' ? ' on active' : ''}">
+      <a th:href="@{/core/notice}" aria-label="공지관리 페이지로 이동">공지관리</a>
+    </li>
   </ul>
 
   <ul th:unless="${isCore}">
+    <!-- 상담예약 -->
+    <li class="nav_link menu0"
+        data-menu="reservation" data-content="all"
+        th:classappend="${activeMenu == 'reservation' ? ' on active' : ''}"
+        th:attr="data-base-url=@{/counsel/reservation(status='RESERVED')}"
+        role="link" tabindex="0" aria-label="상담예약 페이지로 이동">
+      <span>상담예약</span>
+    </li>
+
     <!-- 입원상담 -->
     <li class="nav_link menu1"
         data-menu="new" data-content="all"
@@ -81,6 +123,14 @@
         th:attr="data-base-url=@{/counsel/list(page=1, perPageNum=10, end=${end}, searchType=${searchType}, keyword=${keyword})}"
         role="link" tabindex="0" aria-label="상담리스트 페이지로 이동">
       <span>상담리스트</span>
+    </li>
+
+    <li class="nav_link menu7"
+        data-menu="notice" data-content="all"
+        th:classappend="${activeMenu == 'notice' ? ' on active' : ''}"
+        th:attr="data-base-url=@{/notice}"
+        role="link" tabindex="0" aria-label="공지사항 페이지로 이동">
+      <span>공지사항</span>
     </li>
 
     <!-- 상담통계 (info.us_col_08 == 2 또는 coreadmin) -->

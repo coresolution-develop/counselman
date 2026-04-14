@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
-  $('.menu2', $('.nav_section')).addClass('active');
+  $('.nav_link[data-menu="list"]', $('.nav_section')).addClass('active');
 
   const query = new URLSearchParams(window.location.search);
   let page = Number(query.get('page') || 1);
@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const loadingEl = document.getElementById('loading');
   const scrollDetectorEl = document.getElementById('scrollDetector');
   const newCounselBtn = document.getElementById('new-counsel-mobile');
+  const newReservationBtn = document.getElementById('new-reservation-mobile');
   const searchForm = document.getElementById('mobileSearchForm');
   const searchButton = document.getElementById('mobileSearchBtn');
   const keywordInput = document.getElementById('keywordInput');
@@ -184,6 +185,13 @@ document.addEventListener("DOMContentLoaded", function () {
       const spinner = document.getElementById('spinner-overlay');
       if (spinner) spinner.style.display = 'flex';
       window.location.href = '/csm/counsel/new';
+    });
+  }
+  if (newReservationBtn) {
+    newReservationBtn.addEventListener('click', function () {
+      const spinner = document.getElementById('spinner-overlay');
+      if (spinner) spinner.style.display = 'flex';
+      window.location.href = '/csm/counsel/reservation';
     });
   }
 

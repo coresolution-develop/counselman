@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
   // 메뉴 활성화
-  $('.menu2', $('.nav_section')).addClass('active');
+  $('.nav_link[data-menu="list"]', $('.nav_section')).addClass('active');
 
   // ===== 전역 상태 =====
   let page = 1;
@@ -16,6 +16,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const tableBodyEl = document.querySelector('#table-body');
   const deleteButton = document.getElementById('del-counsel');
   const newCounselLink = document.getElementById('new-counsel');
+  const newReservationLink = document.getElementById('new-reservation');
   const detail = document.getElementById('detail');
   const set = document.getElementById('setting');
   const confirmed = document.getElementById('confirm');
@@ -76,11 +77,15 @@ document.addEventListener("DOMContentLoaded", function () {
     if (spinner) spinner.style.display = 'flex';
   }
 
-  function showSpinnerAndNavigate() {
+  function navigateWithSpinner(path) {
     showSpinner();
     setTimeout(function () {
-      window.location.href = '/csm/counsel/new';
+      window.location.href = path;
     }, 100);
+  }
+
+  function showSpinnerAndNavigate() {
+    navigateWithSpinner('/csm/counsel/new');
   }
 
   // ========= 이벤트 위임(행 선택/더블클릭) =========
@@ -144,6 +149,11 @@ document.addEventListener("DOMContentLoaded", function () {
   // ========= 신규 등록 =========
   if (newCounselLink) {
     newCounselLink.addEventListener('click', showSpinnerAndNavigate);
+  }
+  if (newReservationLink) {
+    newReservationLink.addEventListener('click', function () {
+      navigateWithSpinner('/csm/counsel/reservation');
+    });
   }
 
   // ========= 리스트 설정 팝업 =========

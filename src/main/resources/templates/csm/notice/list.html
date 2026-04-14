@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="_csrf" th:content="${_csrf.token}">
+<meta name="_csrf_header" th:content="${_csrf.headerName}">
+<title>공지사항 : SOSYGE EASY-CRM</title>
+<link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+<link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+<link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+<link rel="stylesheet" th:href="@{/css/reset.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/style.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
+<link rel="stylesheet" th:href="@{/css/csm/notice/list.css(v='20260414c')}">
+<script th:src="@{/js/csm/notice/list.js(v='20260414c')}" defer></script>
+</head>
+<body>
+<div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
+<div th:replace="~{csm/Include/layout :: nav_section2('notice', ${endVar}, ${st}, ${kw})}"></div>
+
+<div class="main">
+  <div class="section notice-page orb-deco">
+    <div class="notice-summary">
+      <div class="summary-card">
+        <span class="label">전체 공지</span>
+        <strong id="notice-total-count" th:text="${noticeCount}">0</strong>
+      </div>
+      <div class="summary-card unread">
+        <span class="label">미확인 공지</span>
+        <strong id="notice-unread-count" th:text="${unreadCount}">0</strong>
+      </div>
+    </div>
+
+    <div class="notice-list" id="institution-notice-list">
+      <article class="notice-card"
+               th:if="${#lists.isEmpty(notices)}">
+        <p class="empty">현재 확인할 공지사항이 없습니다.</p>
+      </article>
+
+      <article class="notice-card"
+               th:each="n : ${notices}"
+               th:attr="data-notice-id=${n['id']},data-read-yn=${n['read_yn']}">
+        <header class="notice-head">
+          <div class="head-left">
+            <span class="status"
+                  th:classappend="${n['read_yn'] == 'Y' ? ' read' : ' unread'}"
+                  th:text="${n['read_yn'] == 'Y' ? '읽음' : '미확인'}">미확인</span>
+            <span class="pin" th:if="${n['pinned_yn'] == 'Y'}">고정</span>
+            <h3 th:text="${n['title']}">공지 제목</h3>
+          </div>
+          <div class="head-right">
+            <span class="created-at" th:text="${n['created_at']}">2026-04-14 00:00:00</span>
+            <button type="button"
+                    class="read-btn"
+                    th:if="${n['read_yn'] != 'Y'}">읽음 처리</button>
+          </div>
+        </header>
+        <div class="notice-body" th:text="${n['body']}">공지 내용</div>
+      </article>
+    </div>
+  </div>
+</div>
+<script th:replace="~{csm/Include/layout :: scripts}"></script>
+</body>
+</html>

@@ -74,7 +74,7 @@
     <div th:replace="~{csm/Include/layout :: nav_section2('list', ${endVar}, ${st}, ${kw})}"></div>
     <div class="main">
         <!-- 중앙 콘텐츠 -->
-        <div class="section">
+        <div class="section orb-deco">
             <div class="content-top">
                 <div class="section-top">
                     <form id="searchForm" th:action="@{/counsel/list}" method="get" style="width:100%;height:100%;">
@@ -191,6 +191,7 @@
                             <div style="display:flex;justify-content:flex-end;">
                                 <div class="btn delBtn btnw100 listBtn2" id="del-counsel" style="flex:inherit;">환자정보삭제
                                 </div>
+                                <div class="btn listBtn2" id="new-reservation" style="flex:inherit;">상담예약</div>
                                 <div class="btn newBtn btnw100 listBtn2" id="new-counsel" style="flex:inherit;">신규상담
                                 </div>
                             </div>

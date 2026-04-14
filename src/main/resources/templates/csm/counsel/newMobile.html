@@ -40,6 +40,7 @@
 
             <input type="hidden" name="cs_idx" th:value="${cs_idx}">
             <input type="hidden" id="inst" name="inst" th:value="${inst}"/>
+            <input type="hidden" id="reservation_id" name="reservation_id" th:value="${reservationId != null ? reservationId : ''}">
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
             <input type="hidden" id="audio_temp_key" name="audio_temp_key">
             <input type="hidden" id="file_temp_key" name="file_temp_key">
@@ -114,6 +115,17 @@
             <input type="hidden" name="cs_col_40" th:value="${csData.cs_col_40}">
             <input type="hidden" name="cs_col_41" th:value="${csData.cs_col_41}">
             <input type="hidden" name="cs_col_42" th:value="${csData.cs_col_42}">
+
+            <div class="reservation-link-banner"
+                 th:if="${reservationLink != null and reservationLink['id'] != null}">
+                <div class="reservation-link-left">
+                    <strong>상담예약 연계</strong>
+                    <span th:text="|#${reservationLink['id']} / ${reservationLink['patientName']}|">#1 / 홍길동</span>
+                    <span th:text="${reservationLink['reservedAt']}">2026-04-14 09:00:00</span>
+                </div>
+                <a class="reservation-link-btn"
+                   th:href="@{/counsel/reservation(status='ALL', reservationId=${reservationLink['id']})}">예약 상세</a>
+            </div>
 
             <section class="block">
                 <h2>상담 기본 항목</h2>

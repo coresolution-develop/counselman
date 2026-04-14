@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="_csrf" th:content="${_csrf.token}">
+<meta name="_csrf_header" th:content="${_csrf.headerName}">
+<title>공지관리 : SOSYGE EASY-CRM</title>
+<link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+<link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+<link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+<link rel="stylesheet" th:href="@{/css/reset.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/style.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/admin/style.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/admin/admin.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/admin/notice.css}">
+<script th:src="@{/js/csm/core/admin/core-notice.js}" defer></script>
+</head>
+<body>
+<div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
+<div th:replace="~{csm/Include/layout :: nav_section2('notice', '', '', '')}"></div>
+
+<div class="main">
+  <div class="section notice-section">
+    <div class="content-top">
+      <form method="get" th:action="@{/core/notice}" class="notice-filter">
+        <select name="status" id="notice-filter-status">
+          <option value="ALL" th:selected="${selectedStatus == 'ALL'}">전체</option>
+          <option value="DRAFT" th:selected="${selectedStatus == 'DRAFT'}">임시저장</option>
+          <option value="PUBLISHED" th:selected="${selectedStatus == 'PUBLISHED'}">게시중</option>
+          <option value="ARCHIVED" th:selected="${selectedStatus == 'ARCHIVED'}">보관</option>
+        </select>
+        <input type="text" name="keyword" id="notice-filter-keyword" placeholder="제목/내용 검색"
+               th:value="${keyword}">
+        <button type="submit" class="filter-btn">검색</button>
+        <button type="button" id="notice-filter-reset" class="filter-btn light">초기화</button>
+      </form>
+    </div>
+
+    <div class="content-mid notice-layout">
+      <section class="notice-list-panel">
+        <div class="panel-title">
+          <span>공지 목록</span>
+          <strong th:text="|${noticeCount}건|">0건</strong>
+        </div>
+        <div class="notice-table">
+          <div class="notice-table-head">
+            <div>상태</div>
+            <div>제목</div>
+            <div>대상 기관</div>
+            <div>수정일</div>
+          </div>
+          <div class="notice-table-body" id="core-notice-rows">
+            <div class="notice-row empty" th:if="${#lists.isEmpty(notices)}">
+              <div>등록된 공지가 없습니다.</div>
+            </div>
+            <div class="notice-row"
+                 th:each="n : ${notices}"
+                 th:attr="data-notice-id=${n['id']}">
+              <div>
+                <span class="badge"
+                      th:classappend="${n['status'] == 'PUBLISHED' ? ' published' : (n['status'] == 'ARCHIVED' ? ' archived' : ' draft')}"
+                      th:text="${n['status'] == 'PUBLISHED' ? '게시중' : (n['status'] == 'ARCHIVED' ? '보관' : '임시저장')}">임시저장</span>
+              </div>
+              <div th:text="${n['title']}">제목</div>
+              <div th:text="${#strings.isEmpty(n['target_names_csv']) ? '-' : n['target_names_csv']}">기관</div>
+              <div th:text="${n['updated_at']}">2026-04-14 00:00:00</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="notice-form-panel">
+        <div class="panel-title">
+          <span>공지 편집</span>
+          <strong id="core-notice-current-id">신규</strong>
+        </div>
+
+        <form id="core-notice-form" onsubmit="return false;">
+          <input type="hidden" id="notice-id" value="">
+
+          <div class="field-row">
+            <label for="notice-title">제목</label>
+            <input type="text" id="notice-title" maxlength="200" placeholder="공지 제목을 입력하세요.">
+          </div>
+
+          <div class="field-row">
+            <label for="notice-body">내용</label>
+            <textarea id="notice-body" rows="8" maxlength="20000" placeholder="공지 내용을 입력하세요."></textarea>
+          </div>
+
+          <div class="field-grid">
+            <div class="field-row">
+              <label for="notice-status">상태</label>
+              <select id="notice-status">
+                <option value="DRAFT">임시저장</option>
+                <option value="PUBLISHED">게시</option>
+                <option value="ARCHIVED">보관</option>
+              </select>
+            </div>
+
+            <div class="field-row">
+              <label for="notice-priority">우선순위</label>
+              <input type="number" id="notice-priority" min="0" max="99" value="3">
+            </div>
+
+            <div class="field-row check-row">
+              <label><input type="checkbox" id="notice-pinned"> 상단고정</label>
+              <label><input type="checkbox" id="notice-popup"> 팝업</label>
+            </div>
+          </div>
+
+          <div class="field-grid">
+            <div class="field-row">
+              <label for="notice-start-at">게시 시작</label>
+              <input type="datetime-local" id="notice-start-at">
+            </div>
+            <div class="field-row">
+              <label for="notice-end-at">게시 종료</label>
+              <input type="datetime-local" id="notice-end-at">
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="target-head">
+              <label>대상 기관</label>
+              <label class="all-check"><input type="checkbox" id="notice-target-all"> 전체 선택</label>
+            </div>
+            <div class="target-list" id="notice-target-list">
+              <label th:each="inst : ${institutions}" class="target-item">
+                <input type="checkbox" name="targetInstCode" th:value="${inst.id_col_03}">
+                <span th:text="${inst.id_col_03}">INST</span>
+                <em th:text="${inst.id_col_02}">기관명</em>
+              </label>
+            </div>
+          </div>
+        </form>
+
+        <div class="form-actions">
+          <button type="button" id="notice-new-btn" class="action light">신규</button>
+          <button type="button" id="notice-save-btn" class="action">저장</button>
+          <button type="button" id="notice-publish-btn" class="action success">게시</button>
+          <button type="button" id="notice-archive-btn" class="action dark">보관</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+</body>
+</html>

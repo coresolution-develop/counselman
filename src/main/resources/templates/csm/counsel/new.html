@@ -72,7 +72,7 @@
     <div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
     <div th:replace="~{csm/Include/layout :: nav_section2('new', ${endVar}, ${st}, ${kw})}"></div>
     <div class="main">
-        <div class="section">
+        <div class="section orb-deco">
             <!-- action의 c:choose → 삼항연산자 -->
             <form id="counselForm"
                 th:object="${csData}"
@@ -81,6 +81,7 @@
 
                 <input type="hidden" name="cs_idx" th:value="${cs_idx}">
                 <input type="hidden" id="inst" name="inst" th:value="${inst}"/>
+                <input type="hidden" id="reservation_id" name="reservation_id" th:value="${reservationId != null ? reservationId : ''}">
                 <input type="hidden" id="audio_temp_key" name="audio_temp_key">
                 <input type="hidden" id="file_temp_key" name="file_temp_key">
                 <input type="hidden" id="module_admission_pledge_enabled" th:value="${moduleAdmissionPledgeEnabled ? 'Y' : 'N'}">
@@ -126,6 +127,15 @@
                 <input type="file" id="counselFileInput" style="display:none;">
 
                 <div class="section-content">
+                    <div class="reservation-link-banner"
+                        th:if="${reservationLink != null and reservationLink['id'] != null}">
+                        <div class="reservation-link-left">
+                            <strong>상담예약 연계</strong>
+                            <span th:text="|#${reservationLink['id']} / ${reservationLink['patientName']} / ${reservationLink['reservedAt']}|">#1 / 홍길동 / 2026-04-14 09:00:00</span>
+                        </div>
+                        <a class="reservation-link-btn"
+                            th:href="@{/counsel/reservation(status='ALL', reservationId=${reservationLink['id']})}">예약 상세</a>
+                    </div>
                     <div class="content-body">
                         <div class="contentbox">
                             <div class="content-inner">

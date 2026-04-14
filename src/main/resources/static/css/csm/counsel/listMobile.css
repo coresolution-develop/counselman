@@ -216,11 +216,17 @@ body {
     height: 1px;
 }
 
-.fab-new {
+.fab-stack {
     position: fixed;
     right: 14px;
     bottom: 14px;
     z-index: 1002;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.fab-new {
     border: none;
     border-radius: 999px;
     background: linear-gradient(312deg, var(--brand-green-dark) 20.34%, var(--brand-green) 155.45%);
@@ -229,6 +235,14 @@ body {
     font-weight: 700;
     padding: 12px 16px;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+}
+
+.fab-new.secondary {
+    background: #fff;
+    color: #17563a;
+    border: 1px solid #9ac1ac;
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.12);
 }
 
 @media screen and (max-width: 900px) {
