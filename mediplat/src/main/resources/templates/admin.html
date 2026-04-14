@@ -76,26 +76,47 @@
         <div class="admin-card admin-card-wide">
             <div class="section-head">
                 <h2>서비스 등록</h2>
-                <p>연동 서비스의 진입 URL과 기본 이동 경로를 등록합니다.</p>
+                <p>연동 서비스의 진입 URL과 기본 이동 경로를 등록합니다. 현재 적용 환경: <strong th:text="${runtimeEnvCode}">LOCAL</strong></p>
             </div>
-            <form method="post" th:action="@{/admin/services}" class="grid-form">
-                <input name="serviceCode" type="text" placeholder="서비스코드" required>
-                <input name="serviceName" type="text" placeholder="서비스명" required>
-                <input name="baseUrl" type="text" placeholder="http://localhost:8081/csm" required>
-                <input name="ssoEntryPath" type="text" placeholder="/mediplat/sso/entry" value="/mediplat/sso/entry">
-                <input name="userTarget" type="text" placeholder="/counsel/list?page=1&perPageNum=10&comment=" required>
-                <input name="adminTarget" type="text" placeholder="/core/admin" required>
-                <input name="description" type="text" placeholder="설명">
-                <input name="displayOrder" type="number" placeholder="순서" value="0">
-                <select name="useYn">
+            <p class="service-form-mode" id="service-form-mode">신규 등록 모드입니다. 서비스 목록 행을 클릭하면 수정 모드로 전환됩니다.</p>
+            <form method="post" th:action="@{/admin/services}" class="grid-form" id="service-form" th:attr="data-runtime-env=${runtimeEnvCode}">
+                <input id="serviceCode" name="serviceCode" type="text" placeholder="서비스코드" required>
+                <input id="serviceName" name="serviceName" type="text" placeholder="서비스명" required>
+                <input id="baseUrlLocal" name="baseUrlLocal" type="text" placeholder="LOCAL URL (예: http://localhost:8081/csm)">
+                <input id="baseUrlDev" name="baseUrlDev" type="text" placeholder="DEV URL (예: https://dev.sosyge.net/csm)">
+                <input id="baseUrlProd" name="baseUrlProd" type="text" placeholder="PROD URL (예: https://sosyge.net/csm)">
+                <input id="ssoEntryPath" name="ssoEntryPath" type="text" placeholder="/mediplat/sso/entry" value="/mediplat/sso/entry">
+                <input id="userTarget" name="userTarget" type="text" placeholder="/counsel/list?page=1&perPageNum=10&comment=" required>
+                <input id="adminTarget" name="adminTarget" type="text" placeholder="/core/admin" required>
+                <input id="description" name="description" type="text" placeholder="설명">
+                <input id="displayOrder" name="displayOrder" type="number" placeholder="순서" value="0">
+                <select id="serviceUseYn" name="useYn">
                     <option value="Y">사용</option>
                     <option value="N">중지</option>
                 </select>
-                <button type="submit">서비스 저장</button>
+                <div class="grid-form-actions">
+                    <button type="submit" id="service-submit-button">서비스 저장</button>
+                    <button type="button" id="service-form-reset" class="secondary-btn">선택 해제</button>
+                </div>
             </form>
-            <div class="table-list">
-                <div class="list-row list-head list-row-service"><span>코드</span><span>이름</span><span>Base URL</span><span>상태</span><span>변경</span></div>
-                <div class="list-row list-row-service" th:each="service : ${services}">
+                <div class="table-list">
+                <div class="list-row list-head list-row-service"><span>코드</span><span>이름</span><span>적용 URL</span><span>상태</span><span>변경</span></div>
+                <div class="list-row list-row-service service-edit-row"
+                     th:each="service : ${services}"
+                     th:attr="data-service-code=${service.serviceCode},
+                              data-service-name=${service.serviceName},
+                              data-base-url-effective=${service.baseUrl},
+                              data-base-url-local=${service.baseUrlLocal},
+                              data-base-url-dev=${service.baseUrlDev},
+                              data-base-url-prod=${service.baseUrlProd},
+                              data-sso-entry-path=${service.ssoEntryPath},
+                              data-user-target=${service.userTarget},
+                              data-admin-target=${service.adminTarget},
+                              data-description=${service.description},
+                              data-display-order=${service.displayOrder},
+                              data-use-yn=${service.useYn}"
+                     role="button"
+                     tabindex="0">
                     <span th:text="${service.serviceCode}">COUNSELMAN</span>
                     <span th:text="${service.serviceName}">CounselMan</span>
                     <span th:text="${service.baseUrl}">http://localhost:8081/csm</span>
@@ -115,5 +136,121 @@
         
     </section>
 </main>
+<script>
+(() => {
+    const form = document.getElementById('service-form');
+    if (!form) {
+        return;
+    }
+
+    const modeLabel = document.getElementById('service-form-mode');
+    const submitButton = document.getElementById('service-submit-button');
+    const resetButton = document.getElementById('service-form-reset');
+    const rows = document.querySelectorAll('.service-edit-row');
+    const runtimeEnv = String(form.dataset.runtimeEnv || 'LOCAL').toUpperCase();
+    const fields = {
+        serviceCode: form.elements.namedItem('serviceCode'),
+        serviceName: form.elements.namedItem('serviceName'),
+        baseUrlLocal: form.elements.namedItem('baseUrlLocal'),
+        baseUrlDev: form.elements.namedItem('baseUrlDev'),
+        baseUrlProd: form.elements.namedItem('baseUrlProd'),
+        ssoEntryPath: form.elements.namedItem('ssoEntryPath'),
+        userTarget: form.elements.namedItem('userTarget'),
+        adminTarget: form.elements.namedItem('adminTarget'),
+        description: form.elements.namedItem('description'),
+        displayOrder: form.elements.namedItem('displayOrder'),
+        useYn: form.elements.namedItem('useYn')
+    };
+
+    const normalizeValue = (value) => {
+        if (value === undefined || value === null || value === 'null') {
+            return '';
+        }
+        return value;
+    };
+
+    const clearRowSelection = () => {
+        rows.forEach((row) => row.classList.remove('is-selected'));
+    };
+
+    const runtimeEnvField = () => {
+        if (runtimeEnv === 'PROD') {
+            return fields.baseUrlProd;
+        }
+        if (runtimeEnv === 'DEV') {
+            return fields.baseUrlDev;
+        }
+        return fields.baseUrlLocal;
+    };
+
+    const setNewMode = () => {
+        clearRowSelection();
+        form.reset();
+        fields.serviceCode.readOnly = false;
+        if (modeLabel) {
+            modeLabel.textContent = '신규 등록 모드입니다. 서비스 목록 행을 클릭하면 수정 모드로 전환됩니다.';
+        }
+        if (submitButton) {
+            submitButton.textContent = '서비스 저장';
+        }
+    };
+
+    const setEditMode = (row) => {
+        fields.serviceCode.value = normalizeValue(row.dataset.serviceCode);
+        fields.serviceCode.readOnly = true;
+        fields.serviceName.value = normalizeValue(row.dataset.serviceName);
+        const localUrl = normalizeValue(row.dataset.baseUrlLocal);
+        const devUrl = normalizeValue(row.dataset.baseUrlDev);
+        const prodUrl = normalizeValue(row.dataset.baseUrlProd);
+        const effectiveUrl = normalizeValue(row.dataset.baseUrlEffective);
+        fields.baseUrlLocal.value = localUrl;
+        fields.baseUrlDev.value = devUrl;
+        fields.baseUrlProd.value = prodUrl;
+        if (!localUrl && !devUrl && !prodUrl && effectiveUrl) {
+            runtimeEnvField().value = effectiveUrl;
+        }
+        fields.ssoEntryPath.value = normalizeValue(row.dataset.ssoEntryPath);
+        fields.userTarget.value = normalizeValue(row.dataset.userTarget);
+        fields.adminTarget.value = normalizeValue(row.dataset.adminTarget);
+        fields.description.value = normalizeValue(row.dataset.description);
+        fields.displayOrder.value = normalizeValue(row.dataset.displayOrder) || '0';
+        fields.useYn.value = normalizeValue(row.dataset.useYn).toUpperCase() === 'N' ? 'N' : 'Y';
+
+        clearRowSelection();
+        row.classList.add('is-selected');
+
+        if (modeLabel) {
+            modeLabel.textContent = `${fields.serviceCode.value} 수정 모드입니다. 값을 변경하고 저장하면 즉시 반영됩니다.`;
+        }
+        if (submitButton) {
+            submitButton.textContent = '서비스 수정 저장';
+        }
+        fields.serviceName.focus();
+    };
+
+    rows.forEach((row) => {
+        row.addEventListener('click', (event) => {
+            if (event.target.closest('.inline-form-compact')) {
+                return;
+            }
+            setEditMode(row);
+        });
+        row.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') {
+                return;
+            }
+            if (event.target.closest('.inline-form-compact')) {
+                return;
+            }
+            event.preventDefault();
+            setEditMode(row);
+        });
+    });
+
+    if (resetButton) {
+        resetButton.addEventListener('click', setNewMode);
+    }
+})();
+</script>
 </body>
 </html>

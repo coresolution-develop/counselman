@@ -39,8 +39,11 @@ cd /Users/leesumin/csm/mediplat
 - `platform.counselman.datasource.driver-class-name` (선택, 미지정 시 URL 기준 자동 감지)
 - `platform.counselman.login.aes-key`
 - `platform.bootstrap.counselman-base-url`
+- `platform.runtime-env` (`LOCAL`, `DEV`, `PROD`)
 - `platform.counselman.sso-shared-secret`
 - `platform.counselman.sso-expire-seconds`
 
 `CounselMan` 쪽의 `MEDIPLAT_SSO_SHARED_SECRET`와 `MediPlat` 쪽의
 `COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET` 값은 동일해야 합니다.
+
+서비스 URL은 `mp_service_endpoint` 테이블에서 환경별(`LOCAL/DEV/PROD`)로 관리합니다.

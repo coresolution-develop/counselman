@@ -1,5 +1,6 @@
 package com.coresolution.mediplat.service;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -28,6 +29,9 @@ public class PlatformStoreService {
     private static final String ROLE_PLATFORM_ADMIN = "PLATFORM_ADMIN";
     private static final String ROLE_USER = "USER";
     private static final String DEFAULT_SERVICE_CODE = "COUNSELMAN";
+    private static final String ENV_LOCAL = "LOCAL";
+    private static final String ENV_DEV = "DEV";
+    private static final String ENV_PROD = "PROD";
 
     private final JdbcTemplate jdbcTemplate;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
@@ -50,6 +54,12 @@ public class PlatformStoreService {
 
     @Value("${platform.bootstrap.counselman-base-url:http://localhost:8081/csm}")
     private String bootstrapCounselmanBaseUrl;
+
+    @Value("${platform.runtime-env:}")
+    private String configuredRuntimeEnv;
+
+    @Value("${spring.profiles.active:}")
+    private String activeProfiles;
 
     private final CounselManAccountService counselManAccountService;
 
@@ -119,26 +129,34 @@ public class PlatformStoreService {
         }
         PlatformInstitution institution = findInstitution(user.getInstCode());
         boolean institutionEnabled = institution == null || USE_Y.equalsIgnoreCase(institution.getUseYn());
+        String runtimeEnvCode = resolveRuntimeEnvCode();
         List<PlatformService> services = jdbcTemplate.query("""
-                SELECT s.id, s.service_code, s.service_name, s.base_url, s.sso_entry_path, s.user_target, s.admin_target,
+                SELECT s.id, s.service_code, s.service_name,
+                       COALESCE(se_runtime.base_url, s.base_url) AS base_url,
+                       se_local.base_url AS base_url_local,
+                       se_dev.base_url AS base_url_dev,
+                       se_prod.base_url AS base_url_prod,
+                       s.sso_entry_path, s.user_target, s.admin_target,
                        s.description, s.use_yn, s.display_order, COALESCE(a.use_yn, 'N') AS access_yn
                 FROM mp_service s
+                LEFT JOIN mp_service_endpoint se_runtime
+                  ON se_runtime.service_code = s.service_code
+                 AND se_runtime.env_code = ?
+                LEFT JOIN mp_service_endpoint se_local
+                  ON se_local.service_code = s.service_code
+                 AND se_local.env_code = 'LOCAL'
+                LEFT JOIN mp_service_endpoint se_dev
+                  ON se_dev.service_code = s.service_code
+                 AND se_dev.env_code = 'DEV'
+                LEFT JOIN mp_service_endpoint se_prod
+                  ON se_prod.service_code = s.service_code
+                 AND se_prod.env_code = 'PROD'
                 LEFT JOIN mp_institution_service a
                   ON a.service_code = s.service_code
                  AND a.inst_code = ?
                 ORDER BY s.display_order ASC, s.id ASC
-                """, (rs, rowNum) -> new PlatformService(
-                        rs.getLong("id"),
-                        rs.getString("service_code"),
-                        rs.getString("service_name"),
-                        rs.getString("base_url"),
-                        rs.getString("sso_entry_path"),
-                        rs.getString("user_target"),
-                        rs.getString("admin_target"),
-                        rs.getString("description"),
-                        rs.getString("use_yn"),
-                        rs.getInt("display_order"),
-                        rs.getString("access_yn")),
+                """, (rs, rowNum) -> mapPlatformService(rs, rs.getString("access_yn")),
+                runtimeEnvCode,
                 normalizedInstCode);
         if (institutionEnabled) {
             return services;
@@ -197,23 +215,31 @@ public class PlatformStoreService {
     }
 
     public List<PlatformService> listAllServices() {
+        String runtimeEnvCode = resolveRuntimeEnvCode();
         return jdbcTemplate.query("""
-                SELECT s.id, s.service_code, s.service_name, s.base_url, s.sso_entry_path, s.user_target, s.admin_target,
+                SELECT s.id, s.service_code, s.service_name,
+                       COALESCE(se_runtime.base_url, s.base_url) AS base_url,
+                       se_local.base_url AS base_url_local,
+                       se_dev.base_url AS base_url_dev,
+                       se_prod.base_url AS base_url_prod,
+                       s.sso_entry_path, s.user_target, s.admin_target,
                        s.description, s.use_yn, s.display_order, 'Y' AS access_yn
                 FROM mp_service s
+                LEFT JOIN mp_service_endpoint se_runtime
+                  ON se_runtime.service_code = s.service_code
+                 AND se_runtime.env_code = ?
+                LEFT JOIN mp_service_endpoint se_local
+                  ON se_local.service_code = s.service_code
+                 AND se_local.env_code = 'LOCAL'
+                LEFT JOIN mp_service_endpoint se_dev
+                  ON se_dev.service_code = s.service_code
+                 AND se_dev.env_code = 'DEV'
+                LEFT JOIN mp_service_endpoint se_prod
+                  ON se_prod.service_code = s.service_code
+                 AND se_prod.env_code = 'PROD'
                 ORDER BY s.display_order ASC, s.id ASC
-                """, (rs, rowNum) -> new PlatformService(
-                        rs.getLong("id"),
-                        rs.getString("service_code"),
-                        rs.getString("service_name"),
-                        rs.getString("base_url"),
-                        rs.getString("sso_entry_path"),
-                        rs.getString("user_target"),
-                        rs.getString("admin_target"),
-                        rs.getString("description"),
-                        rs.getString("use_yn"),
-                        rs.getInt("display_order"),
-                        rs.getString("access_yn")));
+                """, (rs, rowNum) -> mapPlatformService(rs, rs.getString("access_yn")),
+                runtimeEnvCode);
     }
 
     public List<String> listEnabledServiceCodes(String instCode) {
@@ -234,25 +260,37 @@ public class PlatformStoreService {
                 """, (rs, rowNum) -> rs.getString("service_code"), normalizedInstCode);
     }
 
+    public String getRuntimeEnvCode() {
+        return resolveRuntimeEnvCode();
+    }
+
     public PlatformService findService(String serviceCode) {
+        String runtimeEnvCode = resolveRuntimeEnvCode();
         List<PlatformService> result = jdbcTemplate.query("""
-                SELECT s.id, s.service_code, s.service_name, s.base_url, s.sso_entry_path, s.user_target, s.admin_target,
+                SELECT s.id, s.service_code, s.service_name,
+                       COALESCE(se_runtime.base_url, s.base_url) AS base_url,
+                       se_local.base_url AS base_url_local,
+                       se_dev.base_url AS base_url_dev,
+                       se_prod.base_url AS base_url_prod,
+                       s.sso_entry_path, s.user_target, s.admin_target,
                        s.description, s.use_yn, s.display_order, 'Y' AS access_yn
                 FROM mp_service s
+                LEFT JOIN mp_service_endpoint se_runtime
+                  ON se_runtime.service_code = s.service_code
+                 AND se_runtime.env_code = ?
+                LEFT JOIN mp_service_endpoint se_local
+                  ON se_local.service_code = s.service_code
+                 AND se_local.env_code = 'LOCAL'
+                LEFT JOIN mp_service_endpoint se_dev
+                  ON se_dev.service_code = s.service_code
+                 AND se_dev.env_code = 'DEV'
+                LEFT JOIN mp_service_endpoint se_prod
+                  ON se_prod.service_code = s.service_code
+                 AND se_prod.env_code = 'PROD'
                 WHERE s.service_code = ?
                 LIMIT 1
-                """, (rs, rowNum) -> new PlatformService(
-                        rs.getLong("id"),
-                        rs.getString("service_code"),
-                        rs.getString("service_name"),
-                        rs.getString("base_url"),
-                        rs.getString("sso_entry_path"),
-                        rs.getString("user_target"),
-                        rs.getString("admin_target"),
-                        rs.getString("description"),
-                        rs.getString("use_yn"),
-                        rs.getInt("display_order"),
-                        rs.getString("access_yn")),
+                """, (rs, rowNum) -> mapPlatformService(rs, rs.getString("access_yn")),
+                runtimeEnvCode,
                 normalizeServiceCode(serviceCode));
         return result.isEmpty() ? null : result.get(0);
     }
@@ -287,6 +325,9 @@ public class PlatformStoreService {
             String serviceCode,
             String serviceName,
             String baseUrl,
+            String baseUrlLocal,
+            String baseUrlDev,
+            String baseUrlProd,
             String ssoEntryPath,
             String userTarget,
             String adminTarget,
@@ -294,36 +335,55 @@ public class PlatformStoreService {
             String useYn,
             Integer displayOrder) {
         String normalizedCode = normalizeServiceCode(serviceCode);
-        if (!StringUtils.hasText(normalizedCode) || !StringUtils.hasText(serviceName) || !StringUtils.hasText(baseUrl)) {
-            throw new IllegalArgumentException("서비스 코드, 이름, base URL은 필수입니다.");
+        if (!StringUtils.hasText(normalizedCode) || !StringUtils.hasText(serviceName)) {
+            throw new IllegalArgumentException("서비스 코드와 이름은 필수입니다.");
         }
+        String normalizedBaseUrl = normalizeBaseUrl(baseUrl);
+        String normalizedLocalBaseUrl = normalizeBaseUrl(baseUrlLocal);
+        String normalizedDevBaseUrl = normalizeBaseUrl(baseUrlDev);
+        String normalizedProdBaseUrl = normalizeBaseUrl(baseUrlProd);
+        validateEndpointUrl(ENV_DEV, normalizedDevBaseUrl);
+        validateEndpointUrl(ENV_PROD, normalizedProdBaseUrl);
+
+        String runtimeEnvCode = resolveRuntimeEnvCode();
+        String resolvedDefaultBaseUrl = firstNonBlank(
+                selectByRuntimeEnv(runtimeEnvCode, normalizedLocalBaseUrl, normalizedDevBaseUrl, normalizedProdBaseUrl),
+                normalizedBaseUrl,
+                normalizedLocalBaseUrl,
+                normalizedDevBaseUrl,
+                normalizedProdBaseUrl);
+        if (!StringUtils.hasText(resolvedDefaultBaseUrl)) {
+            throw new IllegalArgumentException("base URL은 최소 1개(Local/Dev/Prod 중 하나) 입력해 주세요.");
+        }
+
         upsertService(
                 normalizedCode,
                 serviceName.trim(),
-                trimTrailingSlash(baseUrl),
+                resolvedDefaultBaseUrl,
                 normalizePath(ssoEntryPath, "/mediplat/sso/entry"),
                 normalizePath(userTarget, "/counsel/list?page=1&perPageNum=10&comment="),
                 normalizePath(adminTarget, "/core/admin"),
                 trimToNull(description),
                 normalizeYn(useYn),
                 displayOrder == null ? 0 : displayOrder);
+        upsertServiceEndpoint(normalizedCode, ENV_LOCAL, normalizedLocalBaseUrl);
+        upsertServiceEndpoint(normalizedCode, ENV_DEV, normalizedDevBaseUrl);
+        upsertServiceEndpoint(normalizedCode, ENV_PROD, normalizedProdBaseUrl);
     }
 
     public void updateServiceStatus(String serviceCode, String useYn) {
-        PlatformService existingService = findService(serviceCode);
-        if (existingService == null) {
+        String normalizedCode = normalizeServiceCode(serviceCode);
+        if (!StringUtils.hasText(normalizedCode)) {
             throw new IllegalArgumentException("등록된 서비스가 아닙니다.");
         }
-        upsertService(
-                existingService.getServiceCode(),
-                existingService.getServiceName(),
-                existingService.getBaseUrl(),
-                existingService.getSsoEntryPath(),
-                existingService.getUserTarget(),
-                existingService.getAdminTarget(),
-                existingService.getDescription(),
-                normalizeYn(useYn),
-                existingService.getDisplayOrder());
+        int updated = jdbcTemplate.update("""
+                UPDATE mp_service
+                SET use_yn = ?
+                WHERE service_code = ?
+                """, normalizeYn(useYn), normalizedCode);
+        if (updated == 0) {
+            throw new IllegalArgumentException("등록된 서비스가 아닙니다.");
+        }
     }
 
     public void saveInstitutionServiceAccess(String instCode, List<String> enabledServiceCodes) {
@@ -406,6 +466,16 @@ public class PlatformStoreService {
                     UNIQUE KEY uq_mp_institution_service (inst_code, service_code)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
                 """);
+
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS mp_service_endpoint (
+                    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    service_code VARCHAR(50) NOT NULL,
+                    env_code VARCHAR(20) NOT NULL,
+                    base_url VARCHAR(255) NOT NULL,
+                    UNIQUE KEY uq_mp_service_endpoint (service_code, env_code)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """);
     }
 
     private void createH2Tables() {
@@ -455,9 +525,23 @@ public class PlatformStoreService {
                     UNIQUE (inst_code, service_code)
                 )
                 """);
+
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS mp_service_endpoint (
+                    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                    service_code VARCHAR(50) NOT NULL,
+                    env_code VARCHAR(20) NOT NULL,
+                    base_url VARCHAR(255) NOT NULL,
+                    UNIQUE (service_code, env_code)
+                )
+                """);
     }
 
     private void bootstrapDefaults() {
+        String runtimeEnvCode = resolveRuntimeEnvCode();
+        String localBaseUrl = ENV_LOCAL.equals(runtimeEnvCode) ? bootstrapCounselmanBaseUrl : null;
+        String devBaseUrl = ENV_DEV.equals(runtimeEnvCode) ? bootstrapCounselmanBaseUrl : null;
+        String prodBaseUrl = ENV_PROD.equals(runtimeEnvCode) ? bootstrapCounselmanBaseUrl : null;
         saveInstitution(bootstrapAdminInstCode, bootstrapAdminInstName, USE_Y);
         saveUser(
                 bootstrapAdminInstCode,
@@ -470,6 +554,9 @@ public class PlatformStoreService {
                 DEFAULT_SERVICE_CODE,
                 "CounselMan",
                 bootstrapCounselmanBaseUrl,
+                localBaseUrl,
+                devBaseUrl,
+                prodBaseUrl,
                 "/mediplat/sso/entry",
                 "/counsel/list?page=1&perPageNum=10&comment=",
                 "/core/admin",
@@ -715,12 +802,63 @@ public class PlatformStoreService {
                 """, instCode, serviceCode, useYn);
     }
 
+    private void upsertServiceEndpoint(String serviceCode, String envCode, String baseUrl) {
+        String normalizedEnvCode = normalizeEnvCode(envCode);
+        if (!StringUtils.hasText(baseUrl)) {
+            jdbcTemplate.update("""
+                    DELETE FROM mp_service_endpoint
+                    WHERE service_code = ?
+                      AND env_code = ?
+                    """, serviceCode, normalizedEnvCode);
+            return;
+        }
+        if (isMySql()) {
+            jdbcTemplate.update("""
+                    INSERT INTO mp_service_endpoint (service_code, env_code, base_url)
+                    VALUES (?, ?, ?)
+                    ON DUPLICATE KEY UPDATE
+                        base_url = ?
+                    """,
+                    serviceCode,
+                    normalizedEnvCode,
+                    baseUrl,
+                    baseUrl);
+            return;
+        }
+        jdbcTemplate.update("""
+                MERGE INTO mp_service_endpoint (service_code, env_code, base_url)
+                KEY (service_code, env_code)
+                VALUES (?, ?, ?)
+                """, serviceCode, normalizedEnvCode, baseUrl);
+    }
+
+    private PlatformService mapPlatformService(java.sql.ResultSet rs, String accessYn) throws java.sql.SQLException {
+        return new PlatformService(
+                rs.getLong("id"),
+                rs.getString("service_code"),
+                rs.getString("service_name"),
+                rs.getString("base_url"),
+                rs.getString("base_url_local"),
+                rs.getString("base_url_dev"),
+                rs.getString("base_url_prod"),
+                rs.getString("sso_entry_path"),
+                rs.getString("user_target"),
+                rs.getString("admin_target"),
+                rs.getString("description"),
+                rs.getString("use_yn"),
+                rs.getInt("display_order"),
+                accessYn);
+    }
+
     private PlatformService withAccess(PlatformService service, String accessYn) {
         return new PlatformService(
                 service.getId(),
                 service.getServiceCode(),
                 service.getServiceName(),
                 service.getBaseUrl(),
+                service.getBaseUrlLocal(),
+                service.getBaseUrlDev(),
+                service.getBaseUrlProd(),
                 service.getSsoEntryPath(),
                 service.getUserTarget(),
                 service.getAdminTarget(),
@@ -743,6 +881,82 @@ public class PlatformStoreService {
 
     private boolean isMySql() {
         return databaseDialect == DatabaseDialect.MYSQL;
+    }
+
+    private String resolveRuntimeEnvCode() {
+        if (StringUtils.hasText(configuredRuntimeEnv)) {
+            return normalizeEnvCode(configuredRuntimeEnv);
+        }
+        if (StringUtils.hasText(activeProfiles)) {
+            for (String profile : activeProfiles.split(",")) {
+                String normalizedProfile = profile == null ? "" : profile.trim().toLowerCase(Locale.ROOT);
+                if (normalizedProfile.startsWith("prod")) {
+                    return ENV_PROD;
+                }
+                if (normalizedProfile.startsWith("dev")) {
+                    return ENV_DEV;
+                }
+            }
+        }
+        return ENV_LOCAL;
+    }
+
+    private String normalizeEnvCode(String envCode) {
+        if (!StringUtils.hasText(envCode)) {
+            return ENV_LOCAL;
+        }
+        String normalized = envCode.trim().toUpperCase(Locale.ROOT);
+        if (ENV_PROD.equals(normalized) || "PRODUCTION".equals(normalized)) {
+            return ENV_PROD;
+        }
+        if (ENV_DEV.equals(normalized) || "DEVELOPMENT".equals(normalized) || "STAGE".equals(normalized)
+                || "STAGING".equals(normalized)) {
+            return ENV_DEV;
+        }
+        return ENV_LOCAL;
+    }
+
+    private String selectByRuntimeEnv(String runtimeEnvCode, String localBaseUrl, String devBaseUrl, String prodBaseUrl) {
+        if (ENV_PROD.equals(runtimeEnvCode)) {
+            return prodBaseUrl;
+        }
+        if (ENV_DEV.equals(runtimeEnvCode)) {
+            return devBaseUrl;
+        }
+        return localBaseUrl;
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (StringUtils.hasText(value)) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private void validateEndpointUrl(String envCode, String baseUrl) {
+        if (!StringUtils.hasText(baseUrl) || ENV_LOCAL.equals(envCode)) {
+            return;
+        }
+        if (isLoopbackUrl(baseUrl)) {
+            throw new IllegalArgumentException(envCode + " URL에는 localhost를 사용할 수 없습니다.");
+        }
+    }
+
+    private boolean isLoopbackUrl(String baseUrl) {
+        try {
+            URI uri = URI.create(baseUrl);
+            String host = uri.getHost();
+            if (!StringUtils.hasText(host)) {
+                return false;
+            }
+            return "localhost".equalsIgnoreCase(host)
+                    || "127.0.0.1".equals(host)
+                    || "0.0.0.0".equals(host);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     private int institutionRank(String instCode) {
@@ -791,6 +1005,10 @@ public class PlatformStoreService {
             return normalized;
         }
         return "/" + normalized;
+    }
+
+    private String normalizeBaseUrl(String value) {
+        return StringUtils.hasText(value) ? trimTrailingSlash(value) : null;
     }
 
     private String trimTrailingSlash(String value) {

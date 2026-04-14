@@ -14,6 +14,15 @@
   별도 Spring Boot + JAR 구조
   로컬 기본 주소: `http://localhost:8082`
 
+## 빠른 시작 (두 서버 동시 실행)
+
+`CounselMan`과 `MediPlat`를 동시에 시작하려면 프로젝트 루트에서 아래 명령을 실행합니다.
+
+```bash
+cd /Users/leesumin/csm
+./scripts/local-up.sh
+```
+
 ## 1. 사전 준비
 
 아래 항목이 먼저 준비되어 있어야 합니다.
@@ -61,6 +70,7 @@ git pull origin main
 - `mediplat.sso.shared-secret`
 - `platform.counselman.datasource.*`
 - `PLATFORM_COUNSELMAN_DATASOURCE_DRIVER_CLASS_NAME` (선택)
+- `PLATFORM_RUNTIME_ENV` (`LOCAL`, `DEV`, `PROD`)
 - `platform.counselman.login.aes-key`
 - `platform.counselman.sso-shared-secret`
 
@@ -75,6 +85,7 @@ export MEDIPLAT_SSO_SHARED_SECRET='change-me'
 export COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET='change-me'
 export MEDIPLAT_PLATFORM_BASE_URL='http://localhost:8082'
 export COUNSELMAN_BASE_URL='http://localhost:8081/csm'
+export PLATFORM_RUNTIME_ENV='LOCAL'
 ```
 
 주의:
@@ -220,6 +231,7 @@ PROD 배포 묶음:
 ## 13. 참고 사항
 
 - `mediplat` 플랫폼 설정 데이터는 기본적으로 공유 MySQL의 `mp_*` 테이블에 저장됩니다.
+- 서비스 URL은 `mp_service_endpoint`에서 환경별(`LOCAL/DEV/PROD`)로 관리됩니다.
 - 다른 저장소를 쓰고 싶으면 `MEDIPLAT_DATASOURCE_URL`, `MEDIPLAT_DATASOURCE_USERNAME`, `MEDIPLAT_DATASOURCE_PASSWORD`로 분리할 수 있습니다.
 - `mediplat`를 `systemd`로 운영할 때는 `SPRING_DATASOURCE_*`와 `PLATFORM_COUNSELMAN_DATASOURCE_*`가 모두 같은 `csm` MySQL을 가리키도록 맞춰야 합니다. `SPRING_DATASOURCE_URL`이 H2로 남아 있으면 로컬과 다른 기관/권한 데이터가 보일 수 있습니다.
 - 서버용 설정(`nginx`, `systemd`, `Tomcat`, `SSL 인증서`)은 로컬 실행에 포함되지 않습니다.

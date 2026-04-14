@@ -126,6 +126,7 @@ public class MediplatController {
         model.addAttribute("user", user);
         model.addAttribute("institutions", storeService.listInstitutions());
         model.addAttribute("services", storeService.listAllServices());
+        model.addAttribute("runtimeEnvCode", storeService.getRuntimeEnvCode());
         model.addAttribute("selectedInstCode", selectedInstCode);
         model.addAttribute("enabledServiceCodes", storeService.listEnabledServiceCodes(selectedInstCode));
         model.addAttribute("message", message);
@@ -156,7 +157,10 @@ public class MediplatController {
     public String saveService(
             @RequestParam("serviceCode") String serviceCode,
             @RequestParam("serviceName") String serviceName,
-            @RequestParam("baseUrl") String baseUrl,
+            @RequestParam(name = "baseUrl", required = false) String baseUrl,
+            @RequestParam(name = "baseUrlLocal", required = false) String baseUrlLocal,
+            @RequestParam(name = "baseUrlDev", required = false) String baseUrlDev,
+            @RequestParam(name = "baseUrlProd", required = false) String baseUrlProd,
             @RequestParam(name = "ssoEntryPath", defaultValue = "/mediplat/sso/entry") String ssoEntryPath,
             @RequestParam("userTarget") String userTarget,
             @RequestParam("adminTarget") String adminTarget,
@@ -169,7 +173,19 @@ public class MediplatController {
             return "redirect:/login";
         }
         try {
-            storeService.saveService(serviceCode, serviceName, baseUrl, ssoEntryPath, userTarget, adminTarget, description, useYn, displayOrder);
+            storeService.saveService(
+                    serviceCode,
+                    serviceName,
+                    baseUrl,
+                    baseUrlLocal,
+                    baseUrlDev,
+                    baseUrlProd,
+                    ssoEntryPath,
+                    userTarget,
+                    adminTarget,
+                    description,
+                    useYn,
+                    displayOrder);
             redirectAttributes.addAttribute("message", "서비스가 저장되었습니다.");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addAttribute("error", e.getMessage());

@@ -395,6 +395,44 @@ button:hover,
     gap: 12px;
 }
 
+.grid-form-actions {
+    grid-column: span 5;
+    display: flex;
+    gap: 10px;
+}
+
+.grid-form-actions button {
+    flex: 0 0 auto;
+}
+
+.secondary-btn {
+    background: #f0f5f2;
+    color: #2f4a3c;
+    border: 1px solid #d7e4dc;
+}
+
+.secondary-btn:hover {
+    background: #e8f1ec;
+}
+
+.service-form-mode {
+    margin: 0 0 12px;
+    color: var(--sub);
+}
+
+.service-edit-row {
+    cursor: pointer;
+}
+
+.service-edit-row:hover {
+    background: #f6fbf8;
+}
+
+.service-edit-row.is-selected {
+    background: #e9f5ef;
+    box-shadow: inset 4px 0 0 #2f9f65;
+}
+
 .grid-form button {
     grid-column: span 5;
 }
@@ -479,5 +517,10 @@ button:hover,
 
     .grid-form button {
         grid-column: auto;
+    }
+
+    .grid-form-actions {
+        grid-column: auto;
+        flex-direction: column;
     }
 }

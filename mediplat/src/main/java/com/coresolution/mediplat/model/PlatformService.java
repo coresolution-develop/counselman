@@ -5,6 +5,9 @@ public class PlatformService {
     private final String serviceCode;
     private final String serviceName;
     private final String baseUrl;
+    private final String baseUrlLocal;
+    private final String baseUrlDev;
+    private final String baseUrlProd;
     private final String ssoEntryPath;
     private final String userTarget;
     private final String adminTarget;
@@ -18,6 +21,9 @@ public class PlatformService {
             String serviceCode,
             String serviceName,
             String baseUrl,
+            String baseUrlLocal,
+            String baseUrlDev,
+            String baseUrlProd,
             String ssoEntryPath,
             String userTarget,
             String adminTarget,
@@ -29,6 +35,9 @@ public class PlatformService {
         this.serviceCode = serviceCode;
         this.serviceName = serviceName;
         this.baseUrl = baseUrl;
+        this.baseUrlLocal = baseUrlLocal;
+        this.baseUrlDev = baseUrlDev;
+        this.baseUrlProd = baseUrlProd;
         this.ssoEntryPath = ssoEntryPath;
         this.userTarget = userTarget;
         this.adminTarget = adminTarget;
@@ -52,6 +61,18 @@ public class PlatformService {
 
     public String getBaseUrl() {
         return baseUrl;
+    }
+
+    public String getBaseUrlLocal() {
+        return baseUrlLocal;
+    }
+
+    public String getBaseUrlDev() {
+        return baseUrlDev;
+    }
+
+    public String getBaseUrlProd() {
+        return baseUrlProd;
     }
 
     public String getSsoEntryPath() {
