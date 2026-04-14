@@ -59,6 +59,7 @@
 
     const contextPath = detectContextPath();
     let currentNoticeId = 0;
+    let popupOpen = false;
 
     async function markRead(noticeId) {
       if (!noticeId || noticeId <= 0) {
@@ -79,6 +80,7 @@
         localStorage.setItem(todayKey(currentNoticeId), "Y");
       }
       overlay.hidden = true;
+      popupOpen = false;
     }
 
     closeBtn.addEventListener("click", closePopup);
@@ -99,7 +101,10 @@
       window.location.href = `${suffix}/notice`;
     });
 
-    try {
+    async function tryOpenPopup() {
+      if (popupOpen) {
+        return;
+      }
       const response = await fetch(`${contextPath}/notice/popup/next`, { cache: "no-store" });
       if (!response.ok) {
         return;
@@ -127,6 +132,24 @@
       const isPinned = normalizeText(notice.pinned_yn).toUpperCase() === "Y";
       pinEl.hidden = !isPinned;
       overlay.hidden = false;
+      popupOpen = true;
+    }
+
+    try {
+      await tryOpenPopup();
+      window.setInterval(() => {
+        tryOpenPopup().catch(() => {
+          // ignore
+        });
+      }, 60000);
+
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) {
+          tryOpenPopup().catch(() => {
+            // ignore
+          });
+        }
+      });
     } catch (e) {
       // ignore
     }

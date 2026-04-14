@@ -43,33 +43,33 @@
                 </div>
             </div>
 		</div>
-	</div>
-	<div class="global-notice-popup-overlay" id="global-notice-popup-overlay" hidden>
-		<div class="global-notice-popup-card" role="dialog" aria-modal="true" aria-labelledby="global-notice-popup-title">
-			<div class="global-notice-popup-head">
-				<strong>공지사항</strong>
-				<button type="button" id="global-notice-popup-close" aria-label="팝업 닫기">×</button>
-			</div>
-			<div class="global-notice-popup-meta">
-				<span id="global-notice-popup-pin" hidden>고정</span>
-				<span id="global-notice-popup-date"></span>
-			</div>
-			<h3 id="global-notice-popup-title"></h3>
-			<div id="global-notice-popup-body" class="global-notice-popup-body"></div>
-			<div class="global-notice-popup-foot">
-				<label class="global-notice-popup-hide-today">
-					<input type="checkbox" id="global-notice-popup-hide-today">
-					오늘 하루 보지 않기
-				</label>
-				<div class="global-notice-popup-actions">
-					<button type="button" id="global-notice-popup-read">읽음 처리</button>
-					<button type="button" id="global-notice-popup-move">공지사항 이동</button>
+		<div class="global-notice-popup-overlay" id="global-notice-popup-overlay" hidden>
+			<div class="global-notice-popup-card" role="dialog" aria-modal="true" aria-labelledby="global-notice-popup-title">
+				<div class="global-notice-popup-head">
+					<strong>공지사항</strong>
+					<button type="button" id="global-notice-popup-close" aria-label="팝업 닫기">×</button>
+				</div>
+				<div class="global-notice-popup-meta">
+					<span id="global-notice-popup-pin" hidden>고정</span>
+					<span id="global-notice-popup-date"></span>
+				</div>
+				<h3 id="global-notice-popup-title"></h3>
+				<div id="global-notice-popup-body" class="global-notice-popup-body"></div>
+				<div class="global-notice-popup-foot">
+					<label class="global-notice-popup-hide-today">
+						<input type="checkbox" id="global-notice-popup-hide-today">
+						오늘 하루 보지 않기
+					</label>
+					<div class="global-notice-popup-actions">
+						<button type="button" id="global-notice-popup-read">읽음 처리</button>
+						<button type="button" id="global-notice-popup-move">공지사항 이동</button>
+					</div>
 				</div>
 			</div>
 		</div>
+		<link rel="stylesheet" th:href="@{/css/csm/notice/popup.css(v='20260414e')}">
+		<script th:src="@{/js/csm/notice/popup.js(v='20260414e')}" defer></script>
 	</div>
-	<link rel="stylesheet" th:href="@{/css/csm/notice/popup.css}">
-	<script th:src="@{/js/csm/notice/popup.js}" defer></script>
 	<div id="user-nav" class="nav_section"
      th:fragment="nav_section2(activeMenu, end, searchType, keyword)"
      th:attr="data-active-menu=${activeMenu}">

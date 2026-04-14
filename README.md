@@ -236,3 +236,15 @@ PROD 배포 묶음:
 - `mediplat`를 `systemd`로 운영할 때는 `SPRING_DATASOURCE_*`와 `PLATFORM_COUNSELMAN_DATASOURCE_*`가 모두 같은 `csm` MySQL을 가리키도록 맞춰야 합니다. `SPRING_DATASOURCE_URL`이 H2로 남아 있으면 로컬과 다른 기관/권한 데이터가 보일 수 있습니다.
 - 서버용 설정(`nginx`, `systemd`, `Tomcat`, `SSL 인증서`)은 로컬 실행에 포함되지 않습니다.
 - 다른 PC에서 실행 시에도 DB 접속 정보와 SSO secret 값만 맞으면 동일하게 사용할 수 있습니다.
+
+## 14. 다음 작업(To-do)
+
+- 관리자 화면 검증 강화
+  - 입력값/권한/예외 처리 점검
+  - 저장 실패 시 사용자 메시지 일관화
+- 서비스 페이지 UX 마무리
+  - 사용가능/사용불가 시각 구분 고도화
+  - 카드/탭/버튼 인터랙션 정리
+- 배포/운영 설정 문서화
+  - systemd, 환경변수, 로그 확인 절차 정리
+  - DEV/PROD 배포 체크리스트 업데이트
