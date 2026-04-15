@@ -51,7 +51,10 @@ public class CounselManSsoLinkService {
                 .encodeToString(resolvedTargetPath.getBytes(StandardCharsets.UTF_8));
         long expires = Instant.now().getEpochSecond() + expireSeconds;
         String signature = sign(resolvedInstCode, user.getUsername(), expires, targetToken);
-        return resolveBaseUrl(service.getBaseUrl()) + service.getSsoEntryPath()
+        String resolvedBaseUrl = resolveBaseUrl(service.getBaseUrl());
+        String resolvedEntryPath = normalizeEntryPath(service.getSsoEntryPath());
+        String dedupedEntryPath = dedupeEntryPath(resolvedBaseUrl, resolvedEntryPath);
+        return resolvedBaseUrl + dedupedEntryPath
                 + "?inst=" + encode(resolvedInstCode)
                 + "&userId=" + encode(user.getUsername())
                 + "&expires=" + expires
@@ -81,12 +84,13 @@ public class CounselManSsoLinkService {
 
     private String resolveBaseUrl(String baseUrl) {
         String normalizedBaseUrl = trimTrailingSlash(baseUrl);
-        if (!isLoopbackUrl(normalizedBaseUrl)) {
-            return normalizedBaseUrl;
+        HttpServletRequest request = currentRequest();
+        String upgradedBaseUrl = upgradeToHttpsWhenNeeded(normalizedBaseUrl, request);
+        if (!isLoopbackUrl(upgradedBaseUrl)) {
+            return upgradedBaseUrl;
         }
 
         String configuredBaseUrl = trimTrailingSlash(configuredCounselManBaseUrl);
-        HttpServletRequest request = currentRequest();
         if (StringUtils.hasText(configuredBaseUrl)) {
             if (request == null || isLoopbackHost(request.getServerName())) {
                 return configuredBaseUrl;
@@ -169,5 +173,75 @@ public class CounselManSsoLinkService {
             return value;
         }
         return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
+    }
+
+    private String normalizeEntryPath(String path) {
+        if (!StringUtils.hasText(path)) {
+            return "/mediplat/sso/entry";
+        }
+        String normalized = path.trim();
+        return normalized.startsWith("/") ? normalized : "/" + normalized;
+    }
+
+    private String dedupeEntryPath(String baseUrl, String entryPath) {
+        if (!StringUtils.hasText(baseUrl) || !StringUtils.hasText(entryPath)) {
+            return entryPath;
+        }
+        try {
+            URI uri = URI.create(baseUrl);
+            String basePath = trimTrailingSlash(uri.getPath());
+            if (!StringUtils.hasText(basePath) || "/".equals(basePath)) {
+                return entryPath;
+            }
+            if (entryPath.equals(basePath)) {
+                return "/";
+            }
+            String prefix = basePath + "/";
+            if (entryPath.startsWith(prefix)) {
+                String deduped = entryPath.substring(basePath.length());
+                return StringUtils.hasText(deduped) ? deduped : "/";
+            }
+            return entryPath;
+        } catch (IllegalArgumentException e) {
+            return entryPath;
+        }
+    }
+
+    private String upgradeToHttpsWhenNeeded(String baseUrl, HttpServletRequest request) {
+        if (!StringUtils.hasText(baseUrl) || request == null) {
+            return baseUrl;
+        }
+        if (!"https".equalsIgnoreCase(request.getScheme())) {
+            return baseUrl;
+        }
+        try {
+            URI uri = URI.create(baseUrl);
+            String scheme = uri.getScheme();
+            String host = uri.getHost();
+            if (!"http".equalsIgnoreCase(scheme) || !StringUtils.hasText(host)) {
+                return baseUrl;
+            }
+            String requestHost = request.getServerName();
+            if (!StringUtils.hasText(requestHost) || !host.equalsIgnoreCase(requestHost.trim())) {
+                return baseUrl;
+            }
+            int port = uri.getPort();
+            StringBuilder rebuilt = new StringBuilder("https://").append(host);
+            if (port > 0 && port != 80 && port != 443) {
+                rebuilt.append(':').append(port);
+            }
+            if (StringUtils.hasText(uri.getPath())) {
+                rebuilt.append(uri.getPath());
+            }
+            if (StringUtils.hasText(uri.getQuery())) {
+                rebuilt.append('?').append(uri.getQuery());
+            }
+            if (StringUtils.hasText(uri.getFragment())) {
+                rebuilt.append('#').append(uri.getFragment());
+            }
+            return rebuilt.toString();
+        } catch (IllegalArgumentException e) {
+            return baseUrl;
+        }
     }
 }

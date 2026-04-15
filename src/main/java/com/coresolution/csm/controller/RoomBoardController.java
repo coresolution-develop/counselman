@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
+import org.springframework.util.StringUtils;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,10 +17,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import com.coresolution.csm.config.InstDetails;
 import com.coresolution.csm.serivce.CsmAuthService;
+import com.coresolution.csm.serivce.MediplatSsoService;
 import com.coresolution.csm.serivce.ModuleFeatureService;
 import com.coresolution.csm.serivce.RoomBoardService;
 import com.coresolution.csm.serivce.SmsService;
 import com.coresolution.csm.vo.Counsel_phone;
+import com.coresolution.csm.vo.Instdata;
 import com.coresolution.csm.vo.RoomBoardRoomConfig;
 import com.coresolution.csm.vo.Userdata;
 
@@ -36,6 +39,7 @@ public class RoomBoardController {
     private final RoomBoardService roomBoardService;
     private final ModuleFeatureService moduleFeatureService;
     private final CsmAuthService cs;
+    private final MediplatSsoService mediplatSsoService;
     private final SmsService ss;
 
     @GetMapping({ "room-board", "/room-board" })
@@ -45,18 +49,30 @@ public class RoomBoardController {
             @RequestParam(value = "patientName", required = false) String patientName,
             @RequestParam(value = "gender", required = false) String gender,
             @RequestParam(value = "expectedDate", required = false) String expectedDate,
+            @RequestParam(value = "mpInst", required = false) String mpInst,
+            @RequestParam(value = "mpUser", required = false) String mpUser,
+            @RequestParam(value = "mpExpires", required = false) Long mpExpires,
+            @RequestParam(value = "mpSignature", required = false) String mpSignature,
             Model model,
             HttpSession session) {
-        String inst = ensureInst(session);
-        if (inst == null) {
-            return "redirect:/login";
+        RoomBoardViewerAccess viewerAccess = resolveViewerAccess(mpInst, mpUser, mpExpires, mpSignature);
+        String inst;
+        Userdata userinfo;
+        if (viewerAccess != null) {
+            inst = viewerAccess.inst();
+            userinfo = viewerAccess.userinfo();
+        } else {
+            inst = ensureInst(session);
+            if (inst == null) {
+                return "redirect:/login";
+            }
+            userinfo = ensureUserInfo(session, inst);
         }
         if (!isRoomBoardEnabled(inst)) {
             throw new org.springframework.web.server.ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "병실현황판 기능이 비활성화되었습니다.");
         }
-        Userdata userinfo = ensureUserInfo(session, inst);
         populateCommon(model, inst, userinfo);
         model.addAttribute("board", roomBoardService.getBoard(inst, snapshotDate));
         model.addAttribute("canManageRoomBoard", canManageRoomBoard(userinfo));
@@ -286,6 +302,68 @@ public class RoomBoardController {
         return moduleFeatureService.isEnabled(inst, ModuleFeatureService.FEATURE_ROOM_BOARD);
     }
 
+    private RoomBoardViewerAccess resolveViewerAccess(
+            String mpInst,
+            String mpUser,
+            Long mpExpires,
+            String mpSignature) {
+        boolean hasAnyTokenParam = StringUtils.hasText(mpInst)
+                || StringUtils.hasText(mpUser)
+                || mpExpires != null
+                || StringUtils.hasText(mpSignature);
+        if (!hasAnyTokenParam) {
+            return null;
+        }
+        if (!StringUtils.hasText(mpInst)
+                || !StringUtils.hasText(mpUser)
+                || mpExpires == null
+                || !StringUtils.hasText(mpSignature)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "병실현황판 접근 토큰이 올바르지 않습니다.");
+        }
+        try {
+            mediplatSsoService.validateRoomBoardViewer(mpInst, mpUser, mpExpires, mpSignature);
+        } catch (IllegalArgumentException e) {
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN, e.getMessage(), e);
+        }
+
+        String inst = cs.resolveInst(mpInst);
+        if (!StringUtils.hasText(inst)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "유효하지 않은 기관코드입니다.");
+        }
+        if (!cs.isInstitutionAvailable(inst)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "현재 기관은 CounselMan 사용이 중지되었습니다.");
+        }
+        String viewerUserId = mpUser.trim();
+        Userdata userinfo = cs.loadUserInfo(inst, viewerUserId);
+        if (!cs.isUserAvailable(userinfo)) {
+            userinfo = buildVirtualViewerUser(inst, viewerUserId);
+        }
+        return new RoomBoardViewerAccess(inst, userinfo);
+    }
+
+    private Userdata buildVirtualViewerUser(String inst, String userId) {
+        Userdata virtualUser = new Userdata();
+        String normalizedUserId = StringUtils.hasText(userId) ? userId.trim() : "";
+        Instdata institution = cs.coreInstFindByCode(inst);
+        String instName = institution != null && StringUtils.hasText(institution.getId_col_02())
+                ? institution.getId_col_02().trim()
+                : inst;
+        virtualUser.setUs_col_02(normalizedUserId);
+        virtualUser.setUs_col_04(inst);
+        virtualUser.setUs_col_05(instName);
+        virtualUser.setUs_col_07("y");
+        virtualUser.setUs_col_08(3);
+        virtualUser.setUs_col_09(1);
+        virtualUser.setUs_col_12(normalizedUserId);
+        return virtualUser;
+    }
+
     private void populateCommon(Model model, String inst, Userdata userinfo) {
         Userdata ud = new Userdata();
         ud.setUs_col_04(inst);
@@ -305,5 +383,10 @@ public class RoomBoardController {
 
     private String safeString(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private record RoomBoardViewerAccess(
+            String inst,
+            Userdata userinfo) {
     }
 }

@@ -84,28 +84,6 @@ document.addEventListener('DOMContentLoaded', function () {
     return 'empty';
   }
 
-  function renderPreviewBody(item) {
-    const summary = String(item?.summaryText || '').trim();
-    const extracted = String(item?.extractedText || '').trim();
-    const mode = previewMode(item);
-    const helperMessage = extracted
-      ? (openAiSummaryAvailable ? '원문은 저장되어 있습니다. 필요할 때만 요약을 생성합니다.' : '원문은 저장되어 있습니다.')
-      : '문서 원문은 내용적용 또는 요약 생성 시 자동으로 추출됩니다.';
-
-    return `
-      <div class="counsel-preview-card" data-view="${escapeHtml(mode)}">
-        <div class="counsel-preview-toolbar">
-          ${summary ? `<button type="button" class="counsel-preview-toggle" data-view-target="summary">요약 보기</button>` : ''}
-          ${extracted ? `<button type="button" class="counsel-preview-toggle" data-view-target="source">원문 보기</button>` : ''}
-          ${!summary && openAiSummaryAvailable ? `<button type="button" class="counsel-preview-generate counsel-file-summary" data-file-id="${escapeHtml(item.id)}">요약 생성</button>` : ''}
-        </div>
-        ${summary ? `<div class="counsel-preview-body counsel-preview-summary">${escapeHtml(summary)}</div>` : ''}
-        ${extracted ? `<div class="counsel-preview-body counsel-preview-source">${escapeHtml(extracted)}</div>` : ''}
-        <div class="counsel-preview-empty">${escapeHtml(helperMessage)}</div>
-      </div>
-    `;
-  }
-
   const STOP_WORDS = new Set([
     '기타', '선택', '선택하세요', '없음', '유', '무', '예', '아니오', '확인',
     '입원', '외래', '진료', '상담', '기록', '질환', '병명', '암명', '진단명'
@@ -318,6 +296,124 @@ document.addEventListener('DOMContentLoaded', function () {
     return bestScore > 0 ? bestValue : '';
   }
 
+  function analyzeCustomMatchFromText(sourceText) {
+    const normalizedSource = normalizeMatchText(sourceText);
+    if (!normalizedSource) return [];
+
+    const diseaseTokens = extractDiseaseTokens(sourceText);
+    const targets = collectCustomTargets();
+    const result = [];
+
+    targets.forEach((target) => {
+      const candidates = candidateWordsOfTarget(target);
+      const matchedKeyword = candidates.length > 0
+        ? findLongestMatchedKeyword(normalizedSource, candidates)
+        : '';
+      const bestOption = findBestOptionMatch(target.options, normalizedSource, diseaseTokens);
+      const diseaseFallback = isDiseaseTarget(target) && diseaseTokens.length > 0 ? diseaseTokens[0] : '';
+      const selectValue = (target.select && bestOption) ? bestOption : '';
+      const textValue = bestOption || matchedKeyword || diseaseFallback;
+      const check = !!(target.checkbox || target.radio);
+      const previewValue = selectValue || textValue || (check ? '체크' : '');
+      if (!previewValue) return;
+
+      const label = String(target.label || target.base || '커스텀항목').trim();
+      const type = selectValue
+        ? '선택'
+        : (target.text ? '입력' : (check ? '체크' : '매칭'));
+
+      result.push({
+        id: String(target.base || ''),
+        base: String(target.base || ''),
+        label,
+        type,
+        previewValue,
+        selectValue,
+        textValue,
+        check
+      });
+    });
+
+    return result;
+  }
+
+  function renderMatchPreview(sourceText, fileId) {
+    const clean = String(sourceText || '').trim();
+    if (!clean) {
+      return `
+        <div class="counsel-match-preview counsel-match-preview-empty">
+          텍스트 추출 후 커스텀 매칭 후보를 확인할 수 있습니다.
+        </div>
+      `;
+    }
+
+    const matches = analyzeCustomMatchFromText(clean);
+    if (matches.length === 0) {
+      return `
+        <div class="counsel-match-preview">
+          <div class="counsel-match-preview-empty">추출 완료: 매칭된 커스텀 항목이 없습니다.</div>
+          <div class="counsel-match-actions">
+            <button type="button" class="counsel-file-apply" data-file-id="${escapeHtml(fileId)}">적용</button>
+          </div>
+        </div>
+      `;
+    }
+
+    const visible = matches.slice(0, 8);
+    const moreCount = matches.length - visible.length;
+    return `
+      <div class="counsel-match-preview">
+        <div class="counsel-match-title">매칭 후보 ${matches.length}건</div>
+        <ul class="counsel-match-list">
+          ${visible.map((match) => `
+            <li class="counsel-match-item">
+              <input type="checkbox"
+                     class="counsel-match-check"
+                     checked
+                     data-match-base="${escapeHtml(match.base)}"
+                     data-match-label="${escapeHtml(match.label)}"
+                     data-match-type="${escapeHtml(match.type)}"
+                     data-match-select="${escapeHtml(match.selectValue || '')}"
+                     data-match-text="${escapeHtml(match.textValue || '')}"
+                     data-match-check="${match.check ? 'Y' : 'N'}">
+              <span class="counsel-match-label">${escapeHtml(match.label)}</span>
+              <span class="counsel-match-arrow">→</span>
+              <span class="counsel-match-value">${escapeHtml(match.previewValue)}</span>
+              <span class="counsel-match-type">${escapeHtml(match.type)}</span>
+            </li>
+          `).join('')}
+        </ul>
+        ${moreCount > 0 ? `<div class="counsel-match-more">외 ${moreCount}건</div>` : ''}
+        <div class="counsel-match-actions">
+          <button type="button" class="counsel-file-apply" data-file-id="${escapeHtml(fileId)}">선택 적용</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderPreviewBody(item) {
+    const summary = String(item?.summaryText || '').trim();
+    const extracted = String(item?.extractedText || '').trim();
+    const mode = previewMode(item);
+    const helperMessage = extracted
+      ? (openAiSummaryAvailable ? '원문은 저장되어 있습니다. 요약 생성 또는 적용을 선택해 주세요.' : '원문은 저장되어 있습니다. 적용 버튼으로 반영할 수 있습니다.')
+      : '문서 텍스트 추출 버튼을 눌러 원문과 매칭 후보를 먼저 확인해 주세요.';
+
+    return `
+      <div class="counsel-preview-card" data-view="${escapeHtml(mode)}">
+        <div class="counsel-preview-toolbar">
+          ${summary ? `<button type="button" class="counsel-preview-toggle" data-view-target="summary">요약 보기</button>` : ''}
+          ${extracted ? `<button type="button" class="counsel-preview-toggle" data-view-target="source">원문 보기</button>` : ''}
+          ${!summary && openAiSummaryAvailable ? `<button type="button" class="counsel-preview-generate counsel-file-summary" data-file-id="${escapeHtml(item.id)}">요약 생성</button>` : ''}
+        </div>
+        ${summary ? `<div class="counsel-preview-body counsel-preview-summary">${escapeHtml(summary)}</div>` : ''}
+        ${extracted ? `<div class="counsel-preview-body counsel-preview-source">${escapeHtml(extracted)}</div>` : ''}
+        <div class="counsel-preview-empty">${escapeHtml(helperMessage)}</div>
+        ${renderMatchPreview(extracted, item.id)}
+      </div>
+    `;
+  }
+
   function applyCustomMatchFromText(sourceText) {
     const normalizedSource = normalizeMatchText(sourceText);
     if (!normalizedSource) return 0;
@@ -371,21 +467,23 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
-    fileListEl.innerHTML = list.map((item) => `
-      <div class="counsel-file-item" data-file-id="${escapeHtml(item.id)}">
-        <div class="counsel-file-head">
-          <a class="counsel-file-link" href="${escapeHtml(item.downloadUrl)}" target="_blank" rel="noopener">
-            ${escapeHtml(item.originalFilename || `file-${item.id}`)}
-          </a>
-          <span class="counsel-file-size">${escapeHtml(formatFileSize(item.fileSize))}</span>
+    fileListEl.innerHTML = list.map((item) => {
+      return `
+        <div class="counsel-file-item" data-file-id="${escapeHtml(item.id)}">
+          <div class="counsel-file-head">
+            <a class="counsel-file-link" href="${escapeHtml(item.downloadUrl)}" target="_blank" rel="noopener">
+              ${escapeHtml(item.originalFilename || `file-${item.id}`)}
+            </a>
+            <span class="counsel-file-size">${escapeHtml(formatFileSize(item.fileSize))}</span>
+          </div>
+          <div class="counsel-file-buttons">
+            <button type="button" class="counsel-file-extract" data-file-id="${escapeHtml(item.id)}">텍스트추출</button>
+            <button type="button" class="counsel-file-delete" data-file-id="${escapeHtml(item.id)}">삭제</button>
+          </div>
+          ${renderPreviewBody(item)}
         </div>
-        <div class="counsel-file-buttons">
-          <button type="button" class="counsel-file-apply" data-file-id="${escapeHtml(item.id)}">내용적용</button>
-          <button type="button" class="counsel-file-delete" data-file-id="${escapeHtml(item.id)}">삭제</button>
-        </div>
-        ${renderPreviewBody(item)}
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
 
   function updatePreviewMode(card, mode) {
@@ -450,17 +548,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
-      const extracted = String(data?.item?.extractedText || '').trim();
-      if (extracted) {
-        const matchedCount = applyExtractedTextToCounsel(extracted, data?.item?.originalFilename);
-        if (matchedCount > 0) {
-          setFileStatus(`첨부파일 업로드 및 텍스트 반영 완료 (커스텀 ${matchedCount}건 매칭)`);
-        } else {
-          setFileStatus('첨부파일 업로드 및 텍스트 반영 완료');
-        }
-      } else {
-        setFileStatus('첨부파일 업로드 완료');
-      }
+      setFileStatus('첨부파일 업로드 완료. 텍스트추출 후 적용해 주세요.');
       await fetchCounselFileList();
     } catch (_) {
       setFileStatus('첨부파일 업로드 중 오류', true);
@@ -477,30 +565,75 @@ document.addEventListener('DOMContentLoaded', function () {
     return String(counselContentInput.value || '').includes(clean);
   }
 
-  function applyExtractedTextToCounsel(text, filename) {
-    if (!counselContentInput) return 0;
-    const clean = String(text || '').trim();
-    if (!clean || hasExtractedTextInCounsel(clean)) return 0;
+  function applySelectedCustomMatches(matches) {
+    if (!Array.isArray(matches) || matches.length === 0) return 0;
+    const targets = collectCustomTargets();
+    let matchedCount = 0;
 
-    const title = String(filename || '').trim();
-    const block = title
-      ? `[첨부문서:${title}]\n${clean}\n[/첨부문서]`
-      : clean;
-    const prev = String(counselContentInput.value || '').trim();
-    counselContentInput.value = prev ? `${prev}\n\n${block}` : block;
-    const matchedCount = applyCustomMatchFromText(counselContentInput.value || clean);
+    matches.forEach((match) => {
+      const base = String(match?.base || '').trim();
+      if (!base) return;
+      const target = targets.get(base);
+      if (!target) return;
 
-    document.dispatchEvent(new CustomEvent('counsel-file-text', {
-      detail: { text: clean, filename: title, matchedCount }
-    }));
+      const selectValue = String(match?.selectValue || '').trim();
+      const textValue = String(match?.textValue || '').trim();
+      const shouldCheck = match?.check === true || String(match?.check || '').trim().toUpperCase() === 'Y';
+
+      let touched = false;
+      if (target.select && selectValue && target.select.value !== selectValue) {
+        target.select.value = selectValue;
+        target.select.dispatchEvent(new Event('change', { bubbles: true }));
+        touched = true;
+      }
+      if (target.text && textValue && !String(target.text.value || '').trim()) {
+        target.text.value = textValue;
+        target.text.dispatchEvent(new Event('input', { bubbles: true }));
+        touched = true;
+      }
+      if (shouldCheck && target.checkbox && !target.checkbox.checked) {
+        target.checkbox.checked = true;
+        touched = true;
+      }
+      if (shouldCheck && target.radio && !target.radio.checked) {
+        target.radio.checked = true;
+        touched = true;
+      }
+      syncCheckboxByBase(base);
+      if (touched) matchedCount += 1;
+    });
+
     return matchedCount;
   }
 
-  async function extractCounselFileText(fileId, applyBtn) {
+  function applyExtractedTextToCounsel(text, filename, selectedMatches) {
+    if (!counselContentInput) return { appended: false, matchedCount: 0 };
+    const clean = String(text || '').trim();
+    if (!clean) return { appended: false, matchedCount: 0 };
+
+    const title = String(filename || '').trim();
+    let appended = false;
+    if (!hasExtractedTextInCounsel(clean)) {
+      const block = title
+        ? `[첨부문서:${title}]\n${clean}\n[/첨부문서]`
+        : clean;
+      const prev = String(counselContentInput.value || '').trim();
+      counselContentInput.value = prev ? `${prev}\n\n${block}` : block;
+      appended = true;
+    }
+    const matchedCount = applySelectedCustomMatches(selectedMatches);
+
+    document.dispatchEvent(new CustomEvent('counsel-file-text', {
+      detail: { text: clean, filename: title, matchedCount, appended }
+    }));
+    return { appended, matchedCount };
+  }
+
+  async function extractCounselFileText(fileId, extractBtn) {
     if (!fileId) return;
-    if (applyBtn) {
-      applyBtn.disabled = true;
-      applyBtn.textContent = '적용중...';
+    if (extractBtn) {
+      extractBtn.disabled = true;
+      extractBtn.textContent = '추출중...';
     }
     setFileStatus('첨부파일 텍스트 추출 중...');
 
@@ -521,22 +654,59 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
-      const item = applyBtn ? applyBtn.closest('.counsel-file-item') : null;
-      const filename = item ? item.querySelector('.counsel-file-link')?.textContent : '';
-      const matchedCount = applyExtractedTextToCounsel(text, filename);
-      if (matchedCount > 0) {
-        setFileStatus(`첨부파일 텍스트 반영 완료 (커스텀 ${matchedCount}건 매칭)`);
+      const matchedCandidates = analyzeCustomMatchFromText(text).length;
+      if (matchedCandidates > 0) {
+        setFileStatus(`텍스트 추출 완료 (매칭 후보 ${matchedCandidates}건). 적용 버튼으로 반영해 주세요.`);
       } else {
-        setFileStatus('첨부파일 텍스트 반영 완료');
+        setFileStatus('텍스트 추출 완료. 적용 버튼으로 상담내용에 반영할 수 있습니다.');
       }
       await fetchCounselFileList();
     } catch (_) {
       setFileStatus('첨부파일 텍스트 추출 중 오류', true);
     } finally {
-      if (applyBtn) {
-        applyBtn.disabled = false;
-        applyBtn.textContent = '내용적용';
+      if (extractBtn) {
+        extractBtn.disabled = false;
+        extractBtn.textContent = '텍스트추출';
       }
+    }
+  }
+
+  async function applyCounselFileText(fileId, applyBtn) {
+    if (!fileId || !applyBtn) return;
+    const originalBtnText = String(applyBtn.textContent || '적용').trim() || '적용';
+    applyBtn.disabled = true;
+    applyBtn.textContent = '적용중...';
+
+    try {
+      const fileItem = applyBtn.closest('.counsel-file-item');
+      const extracted = String(fileItem?.querySelector('.counsel-preview-source')?.textContent || '').trim();
+      if (!extracted) {
+        setFileStatus('먼저 텍스트추출을 실행해 주세요.', true);
+        return;
+      }
+      const filename = String(fileItem?.querySelector('.counsel-file-link')?.textContent || '').trim();
+      const selectedMatches = Array.from(fileItem?.querySelectorAll('.counsel-match-check:checked') || []).map((node) => ({
+        base: String(node.getAttribute('data-match-base') || '').trim(),
+        label: String(node.getAttribute('data-match-label') || '').trim(),
+        type: String(node.getAttribute('data-match-type') || '').trim(),
+        selectValue: String(node.getAttribute('data-match-select') || '').trim(),
+        textValue: String(node.getAttribute('data-match-text') || '').trim(),
+        check: String(node.getAttribute('data-match-check') || '').trim().toUpperCase() === 'Y'
+      })).filter((match) => match.base);
+
+      const applied = applyExtractedTextToCounsel(extracted, filename, selectedMatches);
+      if (applied.matchedCount > 0 && applied.appended) {
+        setFileStatus(`문서 내용 + 선택 매칭 적용 완료 (커스텀 ${applied.matchedCount}건)`);
+      } else if (applied.matchedCount > 0) {
+        setFileStatus(`선택 매칭 적용 완료 (커스텀 ${applied.matchedCount}건)`);
+      } else if (applied.appended) {
+        setFileStatus('문서 내용 적용 완료');
+      } else {
+        setFileStatus('이미 반영된 텍스트이며, 선택된 매칭 후보는 추가 적용되지 않았습니다.');
+      }
+    } finally {
+      applyBtn.disabled = false;
+      applyBtn.textContent = originalBtnText;
     }
   }
 
@@ -625,11 +795,19 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
+    const extractBtn = e.target.closest('.counsel-file-extract');
+    if (extractBtn) {
+      const fileId = extractBtn.getAttribute('data-file-id');
+      if (!fileId) return;
+      extractCounselFileText(fileId, extractBtn);
+      return;
+    }
+
     const applyBtn = e.target.closest('.counsel-file-apply');
     if (applyBtn) {
       const fileId = applyBtn.getAttribute('data-file-id');
       if (!fileId) return;
-      extractCounselFileText(fileId, applyBtn);
+      applyCounselFileText(fileId, applyBtn);
       return;
     }
 

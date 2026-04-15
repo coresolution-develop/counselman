@@ -27,7 +27,7 @@
         <div class="hero-copy">
             <p class="eyebrow">Multi Institution</p>
             <h2>여러 기관의 병실현황판을 한 화면에서 확인할 수 있습니다.</h2>
-            <p class="hero-note">모바일에서는 상단 메뉴바에서 기관을 선택해 빠르게 전환할 수 있습니다.</p>
+            <p class="hero-note">모바일/PC 모두 연결된 기관 화면을 한 번에 내려보며 확인할 수 있습니다.</p>
         </div>
         <div class="hero-stats">
             <div class="hero-stat">
@@ -41,21 +41,9 @@
         조회 가능한 병실현황판 기관이 없습니다.
     </section>
 
-    <section class="viewer-mobile-menu" th:if="${!#lists.isEmpty(viewerItems)}">
-        <button type="button"
-                class="viewer-mobile-tab"
-                th:each="item, stat : ${viewerItems}"
-                th:classappend="${stat.index == 0 ? ' is-active' : ''}"
-                th:attr="data-inst=${item.instCode}">
-            <span th:text="${item.instName}">기관명</span>
-        </button>
-    </section>
-
     <section class="viewer-grid" th:if="${!#lists.isEmpty(viewerItems)}">
         <article class="viewer-card"
-                 th:each="item, stat : ${viewerItems}"
-                 th:classappend="${stat.index == 0 ? ' is-active' : ''}"
-                 th:attr="data-inst=${item.instCode}">
+                 th:each="item : ${viewerItems}">
             <div class="viewer-card-head">
                 <div>
                     <strong th:text="${item.instName}">기관명</strong>
@@ -73,6 +61,5 @@
         </article>
     </section>
 </main>
-<script th:src="@{/js/mediplat/room-board-viewer.js}"></script>
 </body>
 </html>

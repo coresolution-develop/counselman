@@ -598,26 +598,18 @@ button:hover,
         flex-direction: column;
     }
 
-    .viewer-mobile-menu {
-        display: flex;
-    }
-
     .viewer-grid {
         grid-template-columns: 1fr;
     }
 
     .viewer-card {
-        display: none;
+        display: block;
         min-height: 0;
     }
 
-    .viewer-card.is-active {
-        display: block;
-    }
-
     .viewer-frame {
-        height: calc(100vh - 300px);
-        min-height: 520px;
+        height: 560px;
+        min-height: 420px;
     }
 
     .list-row-viewer {

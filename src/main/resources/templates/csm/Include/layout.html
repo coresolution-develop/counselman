@@ -13,9 +13,13 @@
 	     th:attr="data-inst=${u != null ? u.us_col_04 : ''}">
 		<div class="logo">
 			<div class="home-icon">
-				<a th:href="@{/counsel/list(page=1,perPageNum=10,end='',searchType='',keyword='')}">
-					<img th:src="@{/icon/ev/home_white.png}">
-				</a>
+				<button type="button" id="global-menu-toggle" class="menu-toggle-btn" aria-label="메뉴 열기" aria-expanded="false">
+					<span class="menu-toggle-icon" aria-hidden="true">
+						<span class="menu-toggle-bar"></span>
+						<span class="menu-toggle-bar"></span>
+						<span class="menu-toggle-bar"></span>
+					</span>
+				</button>
 			</div>
 			<div class="logo-img">
 				<img th:src="@{/icon/ev/sosyge_logo_w2.png}">
@@ -42,6 +46,55 @@
                     </a>
                 </div>
             </div>
+		</div>
+		<div class="global-mobile-menu-overlay" id="global-mobile-menu-overlay" hidden
+			 th:if="${u != null and !#strings.equalsIgnoreCase(u.us_col_04, 'core')}">
+			<div class="global-mobile-menu-sheet" role="dialog" aria-modal="true" aria-labelledby="global-mobile-menu-title">
+				<div class="global-mobile-menu-head">
+					<strong id="global-mobile-menu-title">메뉴</strong>
+					<button type="button" id="global-mobile-menu-close" aria-label="메뉴 닫기">×</button>
+				</div>
+				<nav class="global-mobile-menu-list" aria-label="모바일 전체 메뉴">
+					<a class="global-mobile-menu-item" th:href="@{/counsel/reservation(status='RESERVED')}">
+						<span class="global-mobile-menu-item-icon icon-reservation" aria-hidden="true"></span>
+						<span>상담예약</span>
+					</a>
+					<a class="global-mobile-menu-item" th:href="@{/counsel/new}">
+						<span class="global-mobile-menu-item-icon icon-new" aria-hidden="true"></span>
+						<span>입원상담</span>
+					</a>
+					<a class="global-mobile-menu-item" th:href="@{/counsel/list(page=1, perPageNum=10, end='', searchType='', keyword='')}">
+						<span class="global-mobile-menu-item-icon icon-list" aria-hidden="true"></span>
+						<span>상담리스트</span>
+					</a>
+					<a class="global-mobile-menu-item" th:href="@{/notice}">
+						<span class="global-mobile-menu-item-icon icon-notice" aria-hidden="true"></span>
+						<span>공지사항</span>
+					</a>
+					<a class="global-mobile-menu-item"
+					   th:if="${u.us_col_08 == 2 or u.us_col_02 == 'coreadmin'}"
+					   th:href="@{/statistics}">
+						<span class="global-mobile-menu-item-icon icon-stat" aria-hidden="true"></span>
+						<span>상담통계</span>
+					</a>
+					<span class="global-mobile-menu-item is-disabled"
+						  th:unless="${u.us_col_08 == 2 or u.us_col_02 == 'coreadmin'}">
+						<span class="global-mobile-menu-item-icon icon-stat" aria-hidden="true"></span>
+						<span>상담통계</span>
+					</span>
+					<a class="global-mobile-menu-item"
+					   th:if="${session.inst != null and @moduleFeatureService.isEnabled(session.inst, 'ROOM_BOARD')}"
+					   th:href="@{/room-board}">
+						<span class="global-mobile-menu-item-icon icon-roomboard" aria-hidden="true"></span>
+						<span>병실현황판</span>
+					</a>
+					<span class="global-mobile-menu-item is-disabled"
+						  th:unless="${session.inst != null and @moduleFeatureService.isEnabled(session.inst, 'ROOM_BOARD')}">
+						<span class="global-mobile-menu-item-icon icon-roomboard" aria-hidden="true"></span>
+						<span>병실현황판</span>
+					</span>
+				</nav>
+			</div>
 		</div>
 		<div class="global-notice-popup-overlay" id="global-notice-popup-overlay" hidden>
 			<div class="global-notice-popup-card" role="dialog" aria-modal="true" aria-labelledby="global-notice-popup-title">
@@ -249,6 +302,103 @@ function updateMenuLinksAdmin(year) {
       // 포커스 가능하도록 보장(이미 role="link" tabindex="0" 부여했지만 혹시 몰라서)
       if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
       if (!el.hasAttribute('role')) el.setAttribute('role', 'link');
+    });
+
+    const menuToggleBtn = document.getElementById('global-menu-toggle');
+    const mobileMenuOverlay = document.getElementById('global-mobile-menu-overlay');
+    const mobileMenuCloseBtn = document.getElementById('global-mobile-menu-close');
+    const mobileMenuLinks = mobileMenuOverlay
+      ? mobileMenuOverlay.querySelectorAll('a.global-mobile-menu-item')
+      : [];
+
+    const NAV_COLLAPSE_STORAGE_KEY = 'csm-nav-collapsed';
+    const MOBILE_BREAKPOINT = 900;
+
+    function isMobileViewport() {
+      return window.innerWidth <= MOBILE_BREAKPOINT;
+    }
+
+    function setMobileMenuOpen(open) {
+      if (!mobileMenuOverlay) return;
+      mobileMenuOverlay.hidden = !open;
+      document.body.classList.toggle('mobile-menu-open', !!open);
+    }
+
+    function setDesktopNavCollapsed(collapsed, persist) {
+      if (!userNav) return;
+      document.body.classList.toggle('nav-collapsed', !!collapsed);
+      if (persist) {
+        try {
+          window.localStorage.setItem(NAV_COLLAPSE_STORAGE_KEY, collapsed ? '1' : '0');
+        } catch (_) {
+          // no-op
+        }
+      }
+    }
+
+    function syncMenuButtonAria() {
+      if (!menuToggleBtn) return;
+      if (isMobileViewport()) {
+        menuToggleBtn.setAttribute('aria-expanded', mobileMenuOverlay && !mobileMenuOverlay.hidden ? 'true' : 'false');
+      } else {
+        menuToggleBtn.setAttribute('aria-expanded', document.body.classList.contains('nav-collapsed') ? 'false' : 'true');
+      }
+    }
+
+    if (menuToggleBtn) {
+      menuToggleBtn.addEventListener('click', function () {
+        if (isMobileViewport()) {
+          setMobileMenuOpen(true);
+        } else {
+          const collapsed = !document.body.classList.contains('nav-collapsed');
+          setDesktopNavCollapsed(collapsed, true);
+        }
+        syncMenuButtonAria();
+      });
+    }
+
+    if (mobileMenuCloseBtn) {
+      mobileMenuCloseBtn.addEventListener('click', function () {
+        setMobileMenuOpen(false);
+        syncMenuButtonAria();
+      });
+    }
+
+    if (mobileMenuOverlay) {
+      mobileMenuOverlay.addEventListener('click', function (event) {
+        if (event.target === mobileMenuOverlay) {
+          setMobileMenuOpen(false);
+          syncMenuButtonAria();
+        }
+      });
+    }
+
+    mobileMenuLinks.forEach((el) => {
+      el.addEventListener('click', function () {
+        setMobileMenuOpen(false);
+      });
+    });
+
+    let storedCollapsed = false;
+    try {
+      storedCollapsed = window.localStorage.getItem(NAV_COLLAPSE_STORAGE_KEY) === '1';
+    } catch (_) {
+      storedCollapsed = false;
+    }
+    if (!isMobileViewport()) {
+      setDesktopNavCollapsed(storedCollapsed, false);
+    } else {
+      setDesktopNavCollapsed(false, false);
+    }
+    syncMenuButtonAria();
+
+    window.addEventListener('resize', function () {
+      if (!isMobileViewport()) {
+        setMobileMenuOpen(false);
+      } else {
+        setDesktopNavCollapsed(false, false);
+      }
+      syncMenuButtonAria();
     });
   });
 

@@ -1,5 +1,8 @@
 package com.coresolution.csm.controller;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -7,6 +10,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.stereotype.Controller;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -58,6 +62,16 @@ public class MediplatSsoController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "현재 기관은 CounselMan 사용이 중지되었습니다.");
         }
 
+        if (isRoomBoardViewerTarget(redirectTarget)) {
+            String roomBoardTarget = appendRoomBoardViewerToken(
+                    redirectTarget,
+                    normalizedInst,
+                    userId,
+                    expires,
+                    mediplatSsoService.signRoomBoardViewer(normalizedInst, userId, expires));
+            return "redirect:" + request.getContextPath() + roomBoardTarget;
+        }
+
         Userdata info = cs.loadUserInfo(normalizedInst, userId);
         if (!cs.isUserAvailable(info)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "사용 가능한 계정이 아닙니다.");
@@ -82,5 +96,48 @@ public class MediplatSsoController {
         session.setAttribute("instname", info.getUs_col_05());
 
         return "redirect:" + request.getContextPath() + redirectTarget;
+    }
+
+    private boolean isRoomBoardViewerTarget(String redirectTarget) {
+        if (!StringUtils.hasText(redirectTarget)) {
+            return false;
+        }
+        try {
+            URI uri = URI.create(redirectTarget.trim());
+            if (!"/room-board".equals(uri.getPath())) {
+                return false;
+            }
+            String query = uri.getQuery();
+            if (!StringUtils.hasText(query)) {
+                return false;
+            }
+            for (String token : query.split("&")) {
+                if ("popup=1".equalsIgnoreCase(token.trim())) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    private String appendRoomBoardViewerToken(
+            String redirectTarget,
+            String inst,
+            String userId,
+            long expires,
+            String signature) {
+        StringBuilder sb = new StringBuilder(redirectTarget);
+        sb.append(redirectTarget.contains("?") ? "&" : "?");
+        sb.append("mpInst=").append(encode(inst));
+        sb.append("&mpUser=").append(encode(userId));
+        sb.append("&mpExpires=").append(expires);
+        sb.append("&mpSignature=").append(encode(signature));
+        return sb.toString();
+    }
+
+    private String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 }

@@ -11,6 +11,7 @@
 	font-size: 17px;
 	z-index: 1000;
 	top: 65px !important;
+	transition: transform 0.22s ease, opacity 0.22s ease;
 }
 
 .nav_section ul {
@@ -37,6 +38,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: flex-start;
+	gap: 8px;
 	width: 100%;
 	min-height: 50px;
 	padding: 15px 15px 15px 30px;
@@ -80,6 +82,22 @@ main {
 	margin-top: 90px;
 	padding: 10px 0;
 }
+
+body.nav-collapsed .nav_section {
+	transform: translateX(-100%);
+	opacity: 0;
+	pointer-events: none;
+}
+
+body.nav-collapsed .main {
+	margin-left: 0 !important;
+	width: 100% !important;
+}
+
+body.nav-collapsed.room-board-page:not(.popup-mode) .rb-wrap {
+	margin-left: 0 !important;
+	width: 100% !important;
+}
 .copyright {
     text-align: center;
     font-size: 9px;
@@ -98,4 +116,78 @@ main {
     cursor: not-allowed; /* 커서를 "허용되지 않음" 기호로 변경 */
     opacity: 0.7; /* 불투명도를 약간 줄임 */
     pointer-events: none; /* 포인터 이벤트를 비활성화하여 확실하게 함 */
+}
+
+#user-nav .nav_link > a::before,
+#user-nav .nav_link > span::before,
+#user-nav .nav_link > [data-base-url]::before,
+#user-nav .nav_link > .disabled-link::before {
+	content: "";
+	display: inline-block;
+	width: 14px;
+	height: 14px;
+	flex: 0 0 14px;
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: contain;
+}
+
+#user-nav .nav_link[data-menu='reservation'] > span::before,
+#user-nav .nav_link[data-menu='reservation'] > [data-base-url]::before {
+	background-image: url('../../../icon/ev/menu-reservation.png');
+}
+
+#user-nav .nav_link[data-menu='new'] > span::before,
+#user-nav .nav_link[data-menu='new'] > [data-base-url]::before {
+	background-image: url('../../../icon/ev/menu-new.png');
+}
+
+#user-nav .nav_link[data-menu='list'] > span::before,
+#user-nav .nav_link[data-menu='list'] > [data-base-url]::before {
+	background-image: url('../../../icon/ev/menu-list.png');
+}
+
+#user-nav .nav_link[data-menu='notice'] > span::before,
+#user-nav .nav_link[data-menu='notice'] > [data-base-url]::before,
+#user-nav .nav_link[data-menu='notice'] > a::before {
+	background-image: url('../../../icon/ev/menu-notice.png');
+}
+
+#user-nav .nav_link[data-menu='statistics'] > [data-base-url]::before,
+#user-nav .nav_link[data-menu='statistics'] > .disabled-link::before {
+	background-image: url('../../../icon/ev/menu-stat.png');
+}
+
+#user-nav .nav_link[data-menu='roomboard'] > span::before,
+#user-nav .nav_link[data-menu='roomboard'] > [data-base-url]::before {
+	background-image: url('../../../icon/ev/menu-roomboard.png');
+}
+
+#user-nav .nav_link[data-menu='setting'] > span::before,
+#user-nav .nav_link[data-menu='setting'] > [data-base-url]::before,
+#user-nav .nav_link[data-menu='setting'] > a::before {
+	background-image: url('../../../icon/ev/menu-setting.png');
+}
+
+#user-nav .nav_link[data-menu='sms'] > span::before,
+#user-nav .nav_link[data-menu='sms'] > [data-base-url]::before,
+#user-nav .nav_link[data-menu='smssetting'] > a::before {
+	background-image: url('../../../icon/ev/menu-sms.png');
+}
+
+#user-nav .nav_link[data-menu='admin'] > [data-base-url]::before,
+#user-nav .nav_link[data-menu='admin'] > .disabled-link::before,
+#user-nav .nav_link[data-menu='admin'] > a::before {
+	background-image: url('../../../icon/ev/menu-admin.svg');
+}
+
+@media screen and (max-width: 900px) {
+	.nav_section {
+		display: none !important;
+	}
+
+	.main {
+		margin-left: 0 !important;
+		width: 100% !important;
+	}
 }

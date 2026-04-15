@@ -27,9 +27,32 @@
 	z-index: 2;
 }
 
-.home-icon>a>img {
-	width: 20px;
+.menu-toggle-btn {
+	width: 34px;
+	height: 34px;
+	border: 1px solid rgba(255, 255, 255, 0.32);
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.12);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	padding: 0;
+}
+
+.menu-toggle-icon {
+	display: inline-flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 4px;
+}
+
+.menu-toggle-bar {
 	display: block;
+	width: 14px;
+	height: 2px;
+	background: #fff;
+	border-radius: 999px;
 }
 
 .logo-img {
@@ -122,6 +145,131 @@
 	opacity: 0.85;
 }
 
+.global-mobile-menu-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 1200;
+	background: rgba(9, 18, 12, 0.42);
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	padding-top: 66px;
+}
+
+.global-mobile-menu-overlay[hidden] {
+	display: none !important;
+}
+
+.global-mobile-menu-sheet {
+	width: min(460px, calc(100vw - 24px));
+	background: #fff;
+	border: 1px solid #d9e6dd;
+	border-radius: 14px;
+	box-shadow: 0 12px 30px rgba(9, 43, 24, 0.24);
+	overflow: hidden;
+}
+
+.global-mobile-menu-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 12px 14px;
+	background: #f1f7f3;
+	border-bottom: 1px solid #e1ece5;
+}
+
+.global-mobile-menu-head strong {
+	color: #12442c;
+	font-size: 15px;
+	font-weight: 800;
+}
+
+.global-mobile-menu-head button {
+	border: 1px solid #d5e4dc;
+	background: #fff;
+	width: 28px;
+	height: 28px;
+	border-radius: 8px;
+	cursor: pointer;
+	color: #27553e;
+	font-size: 16px;
+	line-height: 1;
+}
+
+.global-mobile-menu-list {
+	padding: 10px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.global-mobile-menu-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 12px;
+	border: 1px solid #deebe3;
+	border-radius: 10px;
+	background: #fff;
+	color: #194d33;
+	font-size: 14px;
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.global-mobile-menu-item.is-disabled {
+	background: #f6f8f7;
+	color: #9aa8a0;
+	border-color: #e3e8e5;
+	cursor: default;
+}
+
+.global-mobile-menu-item-icon {
+	display: inline-flex;
+	width: 20px;
+	height: 20px;
+	border-radius: 6px;
+	flex: 0 0 20px;
+	background-color: var(--menu-icon-bg, #6a8cff);
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: 13px 13px;
+}
+
+.global-mobile-menu-item-icon.icon-reservation {
+	--menu-icon-bg: #6a8cff;
+	background-image: url('../../../icon/ev/menu-reservation.png');
+}
+
+.global-mobile-menu-item-icon.icon-new {
+	--menu-icon-bg: #0f9f6f;
+	background-image: url('../../../icon/ev/menu-new.png');
+}
+
+.global-mobile-menu-item-icon.icon-list {
+	--menu-icon-bg: #2f6bc7;
+	background-image: url('../../../icon/ev/menu-list.png');
+}
+
+.global-mobile-menu-item-icon.icon-notice {
+	--menu-icon-bg: #f79009;
+	background-image: url('../../../icon/ev/menu-notice.png');
+}
+
+.global-mobile-menu-item-icon.icon-stat {
+	--menu-icon-bg: #875bf7;
+	background-image: url('../../../icon/ev/menu-stat.png');
+}
+
+.global-mobile-menu-item-icon.icon-roomboard {
+	--menu-icon-bg: #1f7a58;
+	background-image: url('../../../icon/ev/menu-roomboard.png');
+}
+
+body.mobile-menu-open {
+	overflow: hidden;
+}
+
 
 
 @media screen and (max-width: 1140px) {
@@ -185,5 +333,10 @@
 	.header-right {
 		gap: 10px;
 		max-width: 52%;
+	}
+
+	.menu-toggle-btn {
+		width: 32px;
+		height: 32px;
 	}
 }

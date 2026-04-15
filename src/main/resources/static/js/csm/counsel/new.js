@@ -893,7 +893,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* -------- 프린트 미리보기/출력 -------- */
   const modal = document.getElementById('dataModal');
-  const openModalButton = document.getElementById('print-preview');
+  const journalPrintButton = document.getElementById('print-preview');
+  const admissionPledgePrintButton = document.getElementById('print-admission-pledge');
   const closeModalButton = document.getElementById('closeModal');
   const escapeHtml = (v) => String(v ?? '')
     .replaceAll('&', '&amp;')
@@ -902,7 +903,7 @@ document.addEventListener('DOMContentLoaded', function () {
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 
-  const buildPrintHtmlFromForm = () => {
+  const buildPrintHtmlFromForm = (printMode = 'journal') => {
     const val = (id) => (document.getElementById(id)?.value || '').trim();
     const selectedText = (id) => {
       const el = document.getElementById(id);
@@ -1203,12 +1204,11 @@ document.addEventListener('DOMContentLoaded', function () {
       const backgroundUrl = `${APP_CTX}/img/background4.png`;
       const primarySignatureImg = '<img class="ap-sign-image ap-sign-image-final" alt="" style="display:none;">';
       const pageInkMarkup = admissionPageInk
-        ? `<img alt="문서 전체 필기 인쇄 레이어" src="${escapeHtml(admissionPageInk)}" style="position:absolute; inset:0; left:-157px; width:1280px; height:100%; object-fit:fill; z-index:19; pointer-events:none; opacity:1; visibility:visible;">`
+        ? `<img class="ap-page-ink-print-img" alt="문서 전체 필기 인쇄 레이어" src="${escapeHtml(admissionPageInk)}" style="position:absolute; inset:0; left:-157px; width:1280px; height:100%; object-fit:fill; z-index:19; pointer-events:none; opacity:1; visibility:visible;">`
         : '';
 
       return `
-        <section class="journal-section" style="page-break-before: always;">
-          <h2 class="section-title">9. 입원서약서</h2>
+        <section class="journal-section journal-section-admission">
           <div class="ap-document-stage" style="position:relative; width:966px; margin:0 auto; overflow:hidden;">
             <section class="ap-paper" style="background-repeat:no-repeat; background-position:center 0; background-image:url('${escapeHtml(backgroundUrl)}'); background-size:966px auto; width:966px; min-width:966px; margin:0 auto;">
               <h1 style="text-align: center; font-size: 30pt; padding-top: 70px;">입 원 서 약 서</h1>
@@ -1352,6 +1352,9 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const admissionPledgeSection = admissionRequired ? buildAdmissionPledgePrintMarkup() : '';
+    if (printMode === 'admission') {
+      return admissionPledgeSection;
+    }
 
     return `
       <div class="journal-doc">
@@ -1449,7 +1452,6 @@ document.addEventListener('DOMContentLoaded', function () {
             <tbody>${rows || '<tr><td colspan="5" class="empty-cell">이력이 없습니다.</td></tr>'}</tbody>
           </table>
         </section>
-        ${admissionPledgeSection}
 
         <footer class="journal-sign">
           <div class="sign-box">
@@ -1464,11 +1466,18 @@ document.addEventListener('DOMContentLoaded', function () {
       </div>`;
   };
 
-  const openPrintWindow = () => {
-    const bodyHtml = buildPrintHtmlFromForm();
+  const openPrintWindow = (printMode = 'journal') => {
+    const isAdmissionPrint = printMode === 'admission';
+    const bodyHtml = buildPrintHtmlFromForm(printMode);
+    if (!bodyHtml) {
+      alert('입원서약서 데이터가 없습니다.');
+      return;
+    }
+
     const popup = window.open('', '_blank', 'width=1280,height=1000,resizable=yes,scrollbars=yes');
     if (!popup) return;
-    const printStyles = `
+
+    const journalPrintStyles = `
       :root { color-scheme: light; }
       * { box-sizing: border-box; }
       body {
@@ -1620,16 +1629,92 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       }
     `;
+
+    const admissionPrintStyles = `
+      :root { color-scheme: light; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 0;
+        background: #fff;
+        color: #1f2937;
+        font-family: "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      }
+      .print-page {
+        width: auto;
+        margin: 0 auto;
+        padding: 0;
+        background: #fff;
+        box-shadow: none;
+      }
+      .journal-section-admission {
+        margin: 0;
+        page-break-inside: auto;
+      }
+      .ap-document-stage {
+        position: relative !important;
+        width: 966px !important;
+        margin: 0 auto !important;
+        overflow: hidden !important;
+      }
+      .print-page .ap-paper {
+        background-image: none !important;
+        background-color: #fff !important;
+      }
+      .ap-paper .ap-terms-block span {
+        line-height: 30px !important;
+        margin-bottom: 5px !important;
+      }
+      .ap-page-ink-print-img {
+        left: -157px !important;
+        width: 1280px !important;
+        height: 100% !important;
+        object-fit: fill !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .ap-paper table,
+      .ap-paper tr,
+      .ap-paper th,
+      .ap-paper td {
+        page-break-inside: avoid !important;
+        break-inside: avoid-page !important;
+      }
+      .ap-guardian-table,
+      .ap-reason-table {
+        page-break-inside: avoid !important;
+        break-inside: avoid-page !important;
+      }
+      @media print {
+        @page { size: A4 portrait; margin: 10mm; }
+        body { background: #fff; }
+        .print-page {
+          width: auto;
+          min-width: 0;
+          margin: 0;
+          padding: 0;
+          box-shadow: none;
+        }
+      }
+    `;
+
+    const printStyles = isAdmissionPrint ? admissionPrintStyles : journalPrintStyles;
+    const title = isAdmissionPrint ? '입원서약서출력' : '상담일지출력';
+    const bodyClassName = isAdmissionPrint ? 'admission-print-body' : '';
+    const pageClassName = isAdmissionPrint ? 'print-page admission-print-page' : 'print-page';
+
     const html = `
       <html>
         <head>
-          <title>상담일지출력</title>
+          <title>${title}</title>
           <meta charset="UTF-8">
           <link rel="stylesheet" href="${APP_CTX}/css/csm/counsel/admissionPledge.css">
           <style>${printStyles}</style>
         </head>
-        <body>
-          <div class="print-page">${bodyHtml}</div>
+        <body class="${bodyClassName}">
+          <div class="${pageClassName}">${bodyHtml}</div>
           <script>
             window.addEventListener('load', function() {
               setTimeout(function() { window.print(); }, 120);
@@ -1643,17 +1728,20 @@ document.addEventListener('DOMContentLoaded', function () {
     popup.document.close();
   };
 
-  if (openModalButton && modal) {
-    openModalButton.addEventListener('click', () => modal.style.display = 'flex');
-  } else if (openModalButton) {
+  if (journalPrintButton && modal) {
+    journalPrintButton.addEventListener('click', () => modal.style.display = 'flex');
+  } else if (journalPrintButton) {
     // 프린트 모달 마크업이 없는 페이지에서도 일지출력 버튼 동작
-    openModalButton.addEventListener('click', openPrintWindow);
+    journalPrintButton.addEventListener('click', () => openPrintWindow('journal'));
+  }
+  if (admissionPledgePrintButton) {
+    admissionPledgePrintButton.addEventListener('click', () => openPrintWindow('admission'));
   }
   if (closeModalButton && modal) closeModalButton.addEventListener('click', () => modal.style.display = 'none');
   window.addEventListener('click', (e) => { if (modal && e.target === modal) modal.style.display = 'none'; });
 
   const printButton = document.getElementById('printBtn');
-  if (printButton) printButton.addEventListener('click', openPrintWindow);
+  if (printButton) printButton.addEventListener('click', () => openPrintWindow('journal'));
 
   /* -------- 히스토리 모달/보호자 -------- */
   document.addEventListener('click', function (event) {

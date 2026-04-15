@@ -72,6 +72,43 @@ public class MediplatSsoService {
         }
     }
 
+    public String signRoomBoardViewer(String inst, String userId, long expires) {
+        if (!isConfigured()) {
+            throw new IllegalStateException("MediPlat SSO shared secret is not configured.");
+        }
+        if (!StringUtils.hasText(inst) || !StringUtils.hasText(userId)) {
+            throw new IllegalArgumentException("병실현황판 토큰 생성 파라미터가 올바르지 않습니다.");
+        }
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(sharedSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] hash = mac.doFinal(canonicalRoomBoardPayload(inst, userId, expires).getBytes(StandardCharsets.UTF_8));
+            return toHex(hash);
+        } catch (Exception e) {
+            throw new IllegalStateException("MediPlat room-board token signature generation failed.", e);
+        }
+    }
+
+    public void validateRoomBoardViewer(String inst, String userId, long expires, String signature) {
+        if (!isConfigured()) {
+            throw new IllegalArgumentException("MediPlat SSO shared secret is not configured.");
+        }
+        if (!StringUtils.hasText(inst) || !StringUtils.hasText(userId) || !StringUtils.hasText(signature)) {
+            throw new IllegalArgumentException("병실현황판 접근 토큰 파라미터가 누락되었습니다.");
+        }
+        long now = Instant.now().getEpochSecond();
+        if (expires < now - allowedClockSkewSeconds) {
+            throw new IllegalArgumentException("병실현황판 접근 토큰이 만료되었습니다.");
+        }
+
+        String expectedSignature = signRoomBoardViewer(inst.trim(), userId.trim(), expires);
+        if (!MessageDigest.isEqual(
+                expectedSignature.getBytes(StandardCharsets.UTF_8),
+                signature.trim().getBytes(StandardCharsets.UTF_8))) {
+            throw new IllegalArgumentException("병실현황판 접근 토큰이 올바르지 않습니다.");
+        }
+    }
+
     private String decodeTarget(String targetToken) {
         if (!StringUtils.hasText(targetToken)) {
             return defaultTarget;
@@ -110,6 +147,12 @@ public class MediplatSsoService {
                 + "&userId=" + userId.trim()
                 + "&expires=" + expires
                 + "&target=" + normalizedTargetToken;
+    }
+
+    private String canonicalRoomBoardPayload(String inst, String userId, long expires) {
+        return "room-board|inst=" + inst.trim()
+                + "&userId=" + userId.trim()
+                + "&expires=" + expires;
     }
 
     private String toHex(byte[] bytes) {

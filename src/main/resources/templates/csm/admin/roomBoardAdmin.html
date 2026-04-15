@@ -92,6 +92,7 @@
         @media (max-width: 768px) {
             .rb-grid { grid-template-columns: 1fr; }
             .main.rb-admin { padding: 78px 16px 32px; margin-left: 0; }
+            .rb-admin-home-link { display: none; }
         }
     </style>
 </head>
@@ -107,8 +108,8 @@
                 <p class="rb-note">병실 기준정보, EMR 붙여넣기 가져오기, 업로드 이력을 한 화면에서 관리합니다.</p>
             </div>
             <div class="rb-inline">
-                <a class="rb-btn rb-btn-light" th:href="@{/room-board}" target="_blank">현황판 보기</a>
-                <a class="rb-btn rb-btn-light" th:href="@{/admin}">관리자 페이지</a>
+                <a class="rb-btn rb-btn-light" th:href="@{/room-board}">현황판 보기</a>
+                <a class="rb-btn rb-btn-light rb-admin-home-link" th:href="@{/admin}">관리자 페이지</a>
             </div>
         </div>
     </div>

@@ -235,6 +235,44 @@ body {
     font-weight: 700;
     color: #2d2d2d;
     margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.patient-name-text {
+    display: inline-block;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.potential-rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1;
+    flex: 0 0 18px;
+}
+
+.potential-rank-A {
+    background: #b42318;
+}
+
+.potential-rank-B {
+    background: #175cd3;
+}
+
+.potential-rank-C {
+    background: #7a3a9a;
 }
 
 .result-badge {

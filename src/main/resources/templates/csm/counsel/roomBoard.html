@@ -60,18 +60,54 @@
         .rb-ward-header {
             display:flex;
             justify-content:space-between;
-            align-items:center;
+            align-items:flex-start;
             gap:10px;
             padding:16px 18px;
             background:#f1f7f3;
             border-bottom:1px solid #e4efe6;
         }
-        .rb-ward-header h2 { margin:0; font-size:20px; color:#05401E; }
-        .rb-ward-meta { color:#3d5e48; font-size:14px; }
+        .rb-ward-head-left { display:flex; flex-direction:column; gap:10px; min-width:0; width:100%; }
+        .rb-ward-title-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .rb-ward-header h2 { margin:0; font-size:22px; color:#05401E; letter-spacing:-0.2px; }
+        .rb-ward-subtitle {
+            display:inline-flex;
+            align-items:center;
+            font-size:12px;
+            font-weight:700;
+            color:#286146;
+            background:#e4f2e8;
+            border:1px solid #c5dfcd;
+            border-radius:999px;
+            padding:4px 10px;
+        }
+        .rb-ward-kpi-list { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .rb-ward-kpi {
+            display:inline-flex;
+            align-items:center;
+            gap:6px;
+            background:#fff;
+            border:1px solid #cfe3d6;
+            border-radius:10px;
+            padding:5px 10px;
+            color:#21563a;
+            font-size:13px;
+            line-height:1;
+            white-space:nowrap;
+        }
+        .rb-ward-kpi-label { color:#4f6f5d; font-weight:700; }
+        .rb-ward-kpi-value { font-size:16px; font-weight:800; color:#05401E; }
         .rb-table-wrap { overflow:auto; }
         .rb-table { width:100%; border-collapse:collapse; min-width:1400px; }
         .rb-table th, .rb-table td { border-bottom:1px solid #edf3ef; padding:10px 12px; font-size:13px; text-align:left; vertical-align:top; }
-        .rb-table th { background:#f8fcf9; color:#1d5131; position:sticky; top:0; z-index:1; }
+        .rb-table th {
+            background:#f8fcf9;
+            color:#1d5131;
+            position:sticky;
+            top:0;
+            z-index:1;
+            white-space:nowrap;
+            word-break:keep-all;
+        }
         .rb-badge {
             display:inline-block;
             border-radius:999px;
@@ -84,9 +120,27 @@
         }
         .rb-available-good { color:#067647; font-weight:700; }
         .rb-available-bad { color:#b42318; font-weight:700; }
-        .rb-slot-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:6px; min-width:320px; }
-        .rb-slot { border:1px solid #d6e6da; border-radius:8px; padding:6px 8px; background:#fff; min-height:34px; }
+        .rb-slot-grid {
+            display:flex;
+            flex-wrap:nowrap;
+            gap:6px;
+            min-width:max-content;
+            white-space:nowrap;
+        }
+        .rb-slot {
+            border:1px solid #d6e6da;
+            border-radius:8px;
+            padding:6px 8px;
+            background:#fff;
+            min-height:34px;
+            min-width:84px;
+            text-align:center;
+        }
         .rb-slot-empty { color:#98a2b3; }
+        .rb-slot-to {
+            background:#ecfdf3;
+            border-color:#b7ebcb;
+        }
         .rb-actions { display:flex; gap:8px; flex-wrap:wrap; }
         .rb-btn {
             border:none;
@@ -106,11 +160,11 @@
         }
         @media (max-width: 1024px) { .rb-summary { grid-template-columns: repeat(2, minmax(0,1fr)); } }
         @media (max-width: 768px) {
-            body.room-board-page .home-icon {
-                display: none;
-            }
             body.room-board-page .logo {
                 padding-left: 14px;
+            }
+            body:not(.popup-mode) .rb-toolbar .rb-actions {
+                display: none;
             }
             .rb-mobile-nav {
                 position: sticky;
@@ -145,12 +199,15 @@
             }
             .rb-wrap { padding:16px; }
             body:not(.popup-mode) .rb-wrap {
-                padding: 132px 16px 32px;
+                padding: 72px 16px 32px;
                 margin-left: 0;
                 width: 100%;
             }
-            .rb-summary { grid-template-columns: 1fr; }
+            .rb-summary { grid-template-columns: repeat(2, minmax(0,1fr)) }
             .rb-toolbar { padding:18px 16px; }
+            .rb-ward-kpi-list { gap:6px; }
+            .rb-ward-kpi { padding:5px 8px; font-size:12px; }
+            .rb-ward-kpi-value { font-size:14px; }
         }
     </style>
 </head>
@@ -206,9 +263,30 @@
 
     <div class="rb-ward-card" th:each="ward : ${board.wards}">
         <div class="rb-ward-header">
-            <h2 th:text="${ward.wardName}">1병동</h2>
-            <div class="rb-ward-meta"
-                 th:text="|허가병상 ${ward.licensedBeds} / 재원환자 ${ward.occupiedBeds} / 입원 가능 ${ward.availableBeds} / 가동률 ${ward.occupancyRate}%|"></div>
+            <div class="rb-ward-head-left">
+                <div class="rb-ward-title-row">
+                    <h2 th:text="${ward.wardName}">1병동</h2>
+                    <span class="rb-ward-subtitle">병동 현황</span>
+                </div>
+                <div class="rb-ward-kpi-list">
+                    <span class="rb-ward-kpi">
+                        <span class="rb-ward-kpi-label">허가병상</span>
+                        <span class="rb-ward-kpi-value" th:text="|${ward.licensedBeds}|">0</span>
+                    </span>
+                    <span class="rb-ward-kpi">
+                        <span class="rb-ward-kpi-label">재원환자</span>
+                        <span class="rb-ward-kpi-value" th:text="|${ward.occupiedBeds}|">0</span>
+                    </span>
+                    <span class="rb-ward-kpi">
+                        <span class="rb-ward-kpi-label">입원 가능</span>
+                        <span class="rb-ward-kpi-value" th:text="|${ward.availableBeds}|">0</span>
+                    </span>
+                    <span class="rb-ward-kpi">
+                        <span class="rb-ward-kpi-label">가동률</span>
+                        <span class="rb-ward-kpi-value" th:text="|${ward.occupancyRate}%|">0%</span>
+                    </span>
+                </div>
+            </div>
         </div>
         <div class="rb-table-wrap">
             <table class="rb-table">
@@ -231,8 +309,8 @@
                 </thead>
                 <tbody>
                 <tr th:each="room : ${ward.rooms}">
-                    <td><span class="rb-badge" th:text="${room.roomName}">101호</span></td>
-                    <td th:text="|${room.licensedBeds} bed|"></td>
+                    <td><span class="rb-badge" th:text="|${room.roomName} (${room.licensedBeds}병상)|">101호 (8병상)</span></td>
+                    <td th:text="|${room.licensedBeds} 병상|"></td>
                     <td th:text="${room.genderSummary}"></td>
                     <td th:text="|${room.occupiedCount} 명|"></td>
                     <td>
@@ -247,9 +325,10 @@
                     <td>
                         <div class="rb-slot-grid">
                             <div class="rb-slot"
-                                 th:each="slot : ${room.patientSlots}"
-                                 th:classappend="${slot == '-'} ? ' rb-slot-empty' : ''"
-                                 th:text="${slot}">-</div>
+                                 th:each="slot,slotStat : ${room.patientSlots}"
+                                 th:if="${slotStat.index < room.licensedBeds}"
+                                 th:classappend="${slot == '-'} ? ' rb-slot-empty rb-slot-to' : ''"
+                                 th:text="${slot == '-' ? '' : slot}"></div>
                         </div>
                     </td>
                     <td th:text="${room.note}"></td>
@@ -270,6 +349,7 @@
 <script>
     window.ROOM_BOARD_POPUP_MODE = [[${popupMode}]];
 </script>
+<script th:replace="~{csm/Include/layout :: scripts}"></script>
 <script th:src="@{/js/csm/counsel/roomBoard.js}"></script>
 </body>
 </html>

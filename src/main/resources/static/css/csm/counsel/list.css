@@ -295,6 +295,47 @@ thead {
     font-weight: 400;
 }
 
+.patient-cell-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+}
+
+.patient-cell-name {
+    display: inline-block;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.potential-rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    color: #fff;
+    flex: 0 0 18px;
+    line-height: 1;
+}
+
+.potential-rank-A {
+    background: #b42318;
+}
+
+.potential-rank-B {
+    background: #175cd3;
+}
+
+.potential-rank-C {
+    background: #7a3a9a;
+}
+
 
 .inner-content{
 	border: 1px solid #eee;

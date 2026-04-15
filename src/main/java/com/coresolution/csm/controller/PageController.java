@@ -3294,12 +3294,6 @@ public class PageController {
             if (row == null) {
                 return ResponseEntity.ok(Map.of("success", true, "fileId", fileId));
             }
-
-            String extractedText = extractTextFromCounselFile(target, originalFilename, mimeType);
-            if (!extractedText.isBlank()) {
-                cs.updateCounselFileExtractedText(inst, fileId, extractedText);
-                row = cs.getCounselFileById(inst, fileId);
-            }
             Map<String, Object> payload = toCounselFilePayload(row, request);
             return ResponseEntity.ok(Map.of("success", true, "item", payload));
         } catch (Exception e) {

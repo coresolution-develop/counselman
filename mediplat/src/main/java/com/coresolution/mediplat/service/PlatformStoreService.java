@@ -486,14 +486,27 @@ public class PlatformStoreService {
                     .filter(institution -> counselManAccountService.isRoomBoardEnabled(institution.getInstCode()))
                     .toList();
         }
-        return listInstitutions().stream()
-                .filter(Objects::nonNull)
-                .filter(institution -> !"core".equalsIgnoreCase(institution.getInstCode()))
-                .filter(institution -> USE_Y.equalsIgnoreCase(institution.getUseYn()))
-                .filter(institution -> isServiceEnabledForInstitution(institution.getInstCode(), DEFAULT_SERVICE_CODE))
-                .filter(institution -> counselManAccountService.hasAvailableUser(institution.getInstCode(), username))
-                .filter(institution -> counselManAccountService.isRoomBoardEnabled(institution.getInstCode()))
-                .toList();
+        String normalizedInstCode = normalizeInstCode(user.getInstCode());
+        if (!StringUtils.hasText(normalizedInstCode) || "core".equalsIgnoreCase(normalizedInstCode)) {
+            return List.of();
+        }
+        PlatformInstitution loginInstitution = findInstitution(normalizedInstCode);
+        if (loginInstitution == null) {
+            return List.of();
+        }
+        if (!USE_Y.equalsIgnoreCase(loginInstitution.getUseYn())) {
+            return List.of();
+        }
+        if (!isServiceEnabledForInstitution(normalizedInstCode, DEFAULT_SERVICE_CODE)) {
+            return List.of();
+        }
+        if (!counselManAccountService.hasAvailableUser(normalizedInstCode, username)) {
+            return List.of();
+        }
+        if (!counselManAccountService.isRoomBoardEnabled(normalizedInstCode)) {
+            return List.of();
+        }
+        return List.of(loginInstitution);
     }
 
     public String getRuntimeEnvCode() {

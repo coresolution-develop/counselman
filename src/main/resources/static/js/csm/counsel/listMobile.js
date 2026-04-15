@@ -27,6 +27,17 @@ document.addEventListener("DOMContentLoaded", function () {
       .replace(/'/g, '&#39;');
   }
 
+  function normalizePotentialRank(v) {
+    const rank = String(v || '').trim().toUpperCase();
+    return ['A', 'B', 'C'].includes(rank) ? rank : '';
+  }
+
+  function renderPotentialBadge(v) {
+    const rank = normalizePotentialRank(v);
+    if (!rank) return '';
+    return `<span class="potential-rank-badge potential-rank-${rank}" title="잠재고객 ${rank}" aria-label="잠재고객 ${rank}">${rank}</span>`;
+  }
+
   function getVal(row, key) {
     if (!row || !key) return '';
     if (key in row) return row[key] ?? '';
@@ -80,17 +91,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
       const csIdx = getVal(row, 'cs_idx');
       const patient = getVal(row, 'cs_col_01') || '-';
+      const potential = getVal(row, 'cs_col_09');
       const counselDate = getVal(row, 'cs_col_16') || '-';
       const counselor = getVal(row, 'cs_col_17') || '-';
       const result = getVal(row, 'cs_col_19') || '-';
       const currentStatus = getVal(row, 'cs_col_11') || '-';
       const { names, relation } = formatGuardians(row);
       const statusClass = cardStatusClass(row);
+      const potentialBadge = renderPotentialBadge(potential);
 
       html += `
         <article class="counsel-card ${statusClass}" data-cs-idx="${escapeHTML(csIdx)}">
           <div class="card-head">
-            <h3 class="patient-name">${escapeHTML(patient)}</h3>
+            <h3 class="patient-name">
+              <span class="patient-name-text">${escapeHTML(patient)}</span>
+              ${potentialBadge}
+            </h3>
             <span class="result-badge">${escapeHTML(result)}</span>
           </div>
           <div class="card-grid">

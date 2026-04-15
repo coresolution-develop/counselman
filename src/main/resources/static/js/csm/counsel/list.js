@@ -35,6 +35,17 @@ document.addEventListener("DOMContentLoaded", function () {
       .replace(/'/g, '&#39;');
   }
 
+  function normalizePotentialRank(v) {
+    const rank = String(v || '').trim().toUpperCase();
+    return ['A', 'B', 'C'].includes(rank) ? rank : '';
+  }
+
+  function renderPotentialBadge(v) {
+    const rank = normalizePotentialRank(v);
+    if (!rank) return '';
+    return `<span class="potential-rank-badge potential-rank-${rank}" title="잠재고객 ${rank}" aria-label="잠재고객 ${rank}">${rank}</span>`;
+  }
+
   function getCurrentFilters() {
     return {
       dateRange: $('#dateRange').val(),
@@ -449,6 +460,18 @@ if (clean.length !== data.length) {
           <td class="limited-text" title="${escapeHTML(value)}">
             <div class="text-container">${escapeHTML(value)}</div>
           </td>`;
+      } else if (columnName === 'cs_col_01') {
+        const potentialBadge = renderPotentialBadge(col09);
+        bodyHtml += `
+          <td>
+            <div class="patient-cell-wrap">
+              <span class="patient-cell-name">${escapeHTML(value)}</span>
+              ${potentialBadge}
+            </div>
+          </td>`;
+      } else if (columnName === 'cs_col_09') {
+        const potentialBadge = renderPotentialBadge(value);
+        bodyHtml += `<td>${potentialBadge || escapeHTML(value)}</td>`;
       } else if (columnName === 'cs_col_13') {
         // 보호자명
         bodyHtml += '<td>';

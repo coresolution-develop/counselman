@@ -1,5 +1,6 @@
 package com.coresolution.csm.config;
 
+import java.net.URI;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -31,6 +32,7 @@ public class SecurityConfig {
         private static final String[] PUBLIC_PATHS = {
                         "/login", "/login/**", "/csm/login", "/csm/login/**",
                         "/mediplat/sso/entry", "/csm/mediplat/sso/entry",
+                        "/room-board", "/csm/room-board",
                         "/findpwd", "/findpwd/**", "/csm/findpwd", "/csm/findpwd/**",
                         "/ResetPwd", "/ResetPwd/**", "/csm/ResetPwd", "/csm/ResetPwd/**",
                         "/api/external/SMSRequest", "/csm/api/external/SMSRequest",
@@ -51,6 +53,9 @@ public class SecurityConfig {
                                                 .permitAll()
                                                 .anyRequest().authenticated())
                                 .cors(Customizer.withDefaults())
+                                .headers(headers -> headers
+                                                .frameOptions(frame -> frame.disable())
+                                                .contentSecurityPolicy(csp -> csp.policyDirectives(buildFrameAncestorsPolicy())))
                                 .csrf(csrf -> csrf.ignoringRequestMatchers(
                                                 new AntPathRequestMatcher("/api/external/SMSRequest", "POST"),
                                                 new AntPathRequestMatcher("/csm/api/external/SMSRequest", "POST")))
@@ -102,6 +107,37 @@ public class SecurityConfig {
                         normalized = normalized.substring(0, normalized.length() - 1);
                 }
                 return normalized.isBlank() ? "http://localhost:8082" : normalized;
+        }
+
+        private String buildFrameAncestorsPolicy() {
+                String mediplatOrigin = extractOrigin(mediplatPlatformBaseUrl);
+                if (StringUtils.hasText(mediplatOrigin)) {
+                        return "frame-ancestors 'self' " + mediplatOrigin + ";";
+                }
+                return "frame-ancestors 'self';";
+        }
+
+        private String extractOrigin(String rawUrl) {
+                if (!StringUtils.hasText(rawUrl)) {
+                        return null;
+                }
+                try {
+                        URI uri = URI.create(rawUrl.trim());
+                        if (!StringUtils.hasText(uri.getScheme()) || !StringUtils.hasText(uri.getHost())) {
+                                return null;
+                        }
+                        String scheme = uri.getScheme().toLowerCase();
+                        String host = uri.getHost().toLowerCase();
+                        int port = uri.getPort();
+                        if (port < 0
+                                        || ("http".equals(scheme) && port == 80)
+                                        || ("https".equals(scheme) && port == 443)) {
+                                return scheme + "://" + host;
+                        }
+                        return scheme + "://" + host + ":" + port;
+                } catch (IllegalArgumentException e) {
+                        return null;
+                }
         }
 
         @Bean

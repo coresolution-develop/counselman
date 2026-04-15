@@ -325,6 +325,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   const printPreviewBtn = document.getElementById('print-preview');
+  const admissionPledgePrintBtn = document.getElementById('print-admission-pledge');
 
   function getElementByIdOrName(key) {
     return document.getElementById(key) || document.querySelector(`[name="${key}"]`);
@@ -487,7 +488,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }, []);
   }
 
-  function buildMobilePrintHtmlFromForm() {
+  function buildMobilePrintHtmlFromForm(printMode = 'journal') {
     const patientInfoRows = renderPrintKvRows([
       { label: '환자명', value: printValue('cs_col_01') },
       { label: '성별', value: printSelectedText('cs_col_02') },
@@ -650,12 +651,11 @@ document.addEventListener('DOMContentLoaded', function () {
       const backgroundUrl = `${APP_CTX}/img/background4.png`;
       const primarySignatureImg = '<img class="ap-sign-image ap-sign-image-final" alt="" style="display:none;">';
       const pageInkMarkup = admissionPageInk
-        ? `<img alt="문서 전체 필기 인쇄 레이어" src="${escapeHtml(admissionPageInk)}" style="position:absolute; inset:0; left:-157px; width:1280px; height:100%; object-fit:fill; z-index:19; pointer-events:none; opacity:1; visibility:visible;">`
+        ? `<img class="ap-page-ink-print-img" alt="문서 전체 필기 인쇄 레이어" src="${escapeHtml(admissionPageInk)}" style="position:absolute; inset:0; left:-157px; width:1280px; height:100%; object-fit:fill; z-index:19; pointer-events:none; opacity:1; visibility:visible;">`
         : '';
 
       return `
-        <section class="journal-section" style="page-break-before: always;">
-          <h2 class="section-title">9. 입원서약서</h2>
+        <section class="journal-section journal-section-admission">
           <div class="ap-document-stage" style="position:relative; width:966px; margin:0 auto; overflow:hidden;">
             <section class="ap-paper" style="background-repeat:no-repeat; background-position:center 0; background-image:url('${escapeHtml(backgroundUrl)}'); background-size:966px auto; width:966px; min-width:966px; margin:0 auto;">
               <h1 style="text-align: center; font-size: 30pt; padding-top: 70px;">입 원 서 약 서</h1>
@@ -799,6 +799,9 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const admissionPledgeSection = admissionRequired ? buildAdmissionPledgePrintMarkup() : '';
+    if (printMode === 'admission') {
+      return admissionPledgeSection;
+    }
 
     return `
       <div class="journal-doc">
@@ -896,7 +899,6 @@ document.addEventListener('DOMContentLoaded', function () {
             <tbody>${historyRows || '<tr><td colspan="5" class="empty-cell">이력이 없습니다.</td></tr>'}</tbody>
           </table>
         </section>
-        ${admissionPledgeSection}
 
         <footer class="journal-sign">
           <div class="sign-box">
@@ -911,12 +913,18 @@ document.addEventListener('DOMContentLoaded', function () {
       </div>`;
   }
 
-  function openMobilePrintWindow() {
-    const bodyHtml = buildMobilePrintHtmlFromForm();
+  function openMobilePrintWindow(printMode = 'journal') {
+    const isAdmissionPrint = printMode === 'admission';
+    const bodyHtml = buildMobilePrintHtmlFromForm(printMode);
+    if (!bodyHtml) {
+      alert('입원서약서 데이터가 없습니다.');
+      return;
+    }
+
     const popup = window.open('', '_blank', 'width=1280,height=1000,resizable=yes,scrollbars=yes');
     if (!popup) return;
 
-    const printStyles = `
+    const journalPrintStyles = `
       :root { color-scheme: light; }
       * { box-sizing: border-box; }
       body {
@@ -1069,16 +1077,91 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     `;
 
+    const admissionPrintStyles = `
+      :root { color-scheme: light; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 0;
+        background: #fff;
+        color: #1f2937;
+        font-family: "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      }
+      .print-page {
+        width: auto;
+        margin: 0 auto;
+        padding: 0;
+        background: #fff;
+        box-shadow: none;
+      }
+      .journal-section-admission {
+        margin: 0;
+        page-break-inside: auto;
+      }
+      .ap-document-stage {
+        position: relative !important;
+        width: 966px !important;
+        margin: 0 auto !important;
+        overflow: hidden !important;
+      }
+      .print-page .ap-paper {
+        background-image: none !important;
+        background-color: #fff !important;
+      }
+      .ap-paper .ap-terms-block span {
+        line-height: 30px !important;
+        margin-bottom: 5px !important;
+      }
+      .ap-page-ink-print-img {
+        left: -157px !important;
+        width: 1280px !important;
+        height: 100% !important;
+        object-fit: fill !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .ap-paper table,
+      .ap-paper tr,
+      .ap-paper th,
+      .ap-paper td {
+        page-break-inside: avoid !important;
+        break-inside: avoid-page !important;
+      }
+      .ap-guardian-table,
+      .ap-reason-table {
+        page-break-inside: avoid !important;
+        break-inside: avoid-page !important;
+      }
+      @media print {
+        @page { size: A4 portrait; margin: 10mm; }
+        body { background: #fff; }
+        .print-page {
+          width: auto;
+          min-width: 0;
+          margin: 0;
+          padding: 0;
+          box-shadow: none;
+        }
+      }
+    `;
+
+    const printStyles = isAdmissionPrint ? admissionPrintStyles : journalPrintStyles;
+    const title = isAdmissionPrint ? '입원서약서출력' : '상담일지출력';
+    const bodyClassName = isAdmissionPrint ? 'admission-print-body' : '';
+    const pageClassName = isAdmissionPrint ? 'print-page admission-print-page' : 'print-page';
+
     const html = `
       <html>
         <head>
-          <title>상담일지출력</title>
+          <title>${title}</title>
           <meta charset="UTF-8">
           <link rel="stylesheet" href="${APP_CTX}/css/csm/counsel/admissionPledge.css">
           <style>${printStyles}</style>
         </head>
-        <body>
-          <div class="print-page">${bodyHtml}</div>
+        <body class="${bodyClassName}">
+          <div class="${pageClassName}">${bodyHtml}</div>
           <script>
             window.addEventListener('load', function() {
               setTimeout(function() { window.print(); }, 120);
@@ -1653,6 +1736,7 @@ document.addEventListener('DOMContentLoaded', function () {
   let finalTranscript = '';
   let speechRecognition = null;
   let recordingTimerInterval = null;
+  let recordPreviewObjectUrl = null;
 
   function formatRecordingDuration(seconds) {
     const safe = Math.max(0, Number(seconds) || 0);
@@ -1820,7 +1904,7 @@ document.addEventListener('DOMContentLoaded', function () {
         headers: csrfHeaders(),
         body: formData
       });
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.success) {
         const message = data?.message || '녹음 파일 저장 실패';
         setRecordingStatus(message, true);
@@ -1864,7 +1948,7 @@ document.addEventListener('DOMContentLoaded', function () {
         headers: csrfHeaders(),
         body: formData
       });
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.success) {
         setRecordingStatus(data?.message || '파일 업로드 실패', true);
         return;
@@ -1883,6 +1967,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function startRecording() {
     if (isRecording) return;
+    if (!window.isSecureContext) {
+      setRecordingStatus('모바일 녹음은 HTTPS 환경에서만 사용할 수 있습니다.', true);
+      return;
+    }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       alert('이 브라우저는 녹음을 지원하지 않습니다.');
       return;
@@ -1925,7 +2013,7 @@ document.addEventListener('DOMContentLoaded', function () {
         options.mimeType = matchedType;
       }
 
-      mediaRecorder = new MediaRecorder(mediaStream, options);
+      mediaRecorder = createMediaRecorder(mediaStream, options);
       chunks = [];
       finalTranscript = '';
       recordStartedAt = Date.now();
@@ -1944,27 +2032,37 @@ document.addEventListener('DOMContentLoaded', function () {
         stopSpeechRecognition();
 
         const blob = new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+        if (!blob || blob.size <= 0) {
+          setRecordingStatus('녹음 데이터가 비어 있습니다. 다시 시도해 주세요.', true);
+          cleanupRecorderState();
+          return;
+        }
         const durationSeconds = Math.max(0, (Date.now() - recordStartedAt) / 1000);
         const transcript = String(finalTranscript || '').trim();
 
         if (recordPreviewEl) {
-          recordPreviewEl.src = URL.createObjectURL(blob);
+          if (recordPreviewObjectUrl) {
+            URL.revokeObjectURL(recordPreviewObjectUrl);
+            recordPreviewObjectUrl = null;
+          }
+          recordPreviewObjectUrl = URL.createObjectURL(blob);
+          recordPreviewEl.src = recordPreviewObjectUrl;
           recordPreviewEl.style.display = 'block';
         }
 
         setRecordingStatus('전사 처리 중...');
         await uploadAudioBlob(blob, durationSeconds, transcript);
 
-        if (mediaStream) {
-          mediaStream.getTracks().forEach((track) => track.stop());
-        }
-        mediaStream = null;
-        mediaRecorder = null;
-        startRecordingBtn.disabled = false;
-        stopRecordingBtn.disabled = true;
+        cleanupRecorderState();
       });
 
-      mediaRecorder.start(1000);
+      mediaRecorder.addEventListener('error', function (event) {
+        const message = event?.error?.message || event?.error?.name || 'unknown';
+        setRecordingStatus(`녹음 오류가 발생했습니다: ${message}`, true);
+        cleanupRecorderState();
+      });
+
+      startMediaRecorder(mediaRecorder);
       startSpeechRecognition();
       startRecordingBtn.disabled = true;
       stopRecordingBtn.disabled = false;
@@ -1975,28 +2073,57 @@ document.addEventListener('DOMContentLoaded', function () {
         setRecordingStatus('녹음 중...');
       }
     } catch (e) {
-      setRecordingStatus('마이크 권한이 필요합니다.', true);
-      if (mediaStream) {
-        mediaStream.getTracks().forEach((track) => track.stop());
-      }
-      mediaStream = null;
-      mediaRecorder = null;
-      isRecording = false;
-      setRecordingIndicatorActive(false);
-      startRecordingBtn.disabled = false;
-      stopRecordingBtn.disabled = true;
+      const detail = e?.message ? ` (${e.message})` : '';
+      setRecordingStatus(`마이크 권한이 필요합니다.${detail}`, true);
+      cleanupRecorderState();
     }
   }
 
   function stopRecording() {
     if (!isRecording || !mediaRecorder) return;
     try {
+      if (typeof mediaRecorder.requestData === 'function') {
+        try {
+          mediaRecorder.requestData();
+        } catch (_) {}
+      }
       mediaRecorder.stop();
     } catch (_) {
-      isRecording = false;
-      setRecordingIndicatorActive(false);
       setRecordingStatus('녹음 중지 실패', true);
+      cleanupRecorderState();
     }
+  }
+
+  function createMediaRecorder(stream, options) {
+    try {
+      if (options && options.mimeType) {
+        return new MediaRecorder(stream, options);
+      }
+      return new MediaRecorder(stream);
+    } catch (_) {
+      return new MediaRecorder(stream);
+    }
+  }
+
+  function startMediaRecorder(recorder) {
+    if (!recorder) return;
+    try {
+      recorder.start(1000);
+    } catch (_) {
+      recorder.start();
+    }
+  }
+
+  function cleanupRecorderState() {
+    if (mediaStream) {
+      mediaStream.getTracks().forEach((track) => track.stop());
+    }
+    mediaStream = null;
+    mediaRecorder = null;
+    isRecording = false;
+    setRecordingIndicatorActive(false);
+    if (startRecordingBtn) startRecordingBtn.disabled = false;
+    if (stopRecordingBtn) stopRecordingBtn.disabled = true;
   }
 
   if (goListBtn) {
@@ -2007,7 +2134,15 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   if (printPreviewBtn) {
-    printPreviewBtn.addEventListener('click', openMobilePrintWindow);
+    printPreviewBtn.addEventListener('click', function () {
+      openMobilePrintWindow('journal');
+    });
+  }
+
+  if (admissionPledgePrintBtn) {
+    admissionPledgePrintBtn.addEventListener('click', function () {
+      openMobilePrintWindow('admission');
+    });
   }
 
   if (addGuardianBtn && guardianContainer) {

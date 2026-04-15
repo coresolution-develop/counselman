@@ -530,6 +530,7 @@ body {
     display: flex;
     justify-content: flex-end;
     gap: 6px;
+    flex-wrap: wrap;
 }
 
 .counsel-file-link {
@@ -549,11 +550,22 @@ body {
     white-space: nowrap;
 }
 
-.counsel-file-apply {
+.counsel-file-extract {
     border: 1px solid #b8c8de;
     background: #f4f8ff;
     border-radius: 6px;
     color: #3b5e90;
+    font-size: 11px;
+    height: 24px;
+    padding: 0 7px;
+    cursor: pointer;
+}
+
+.counsel-file-apply {
+    border: 1px solid #0a6f40;
+    background: #f2fbf6;
+    border-radius: 6px;
+    color: #0b5a32;
     font-size: 11px;
     height: 24px;
     padding: 0 7px;
@@ -580,6 +592,100 @@ body {
     margin: 6px 2px 0;
     font-size: 11px;
     color: #5a5a5a;
+}
+
+.counsel-match-preview {
+    margin-top: 8px;
+    border-top: 1px dashed #d9e7dc;
+    padding-top: 8px;
+}
+
+.counsel-match-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #244834;
+    margin-bottom: 6px;
+}
+
+.counsel-match-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.counsel-match-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    font-size: 11px;
+    color: #36423a;
+}
+
+.counsel-match-check {
+    width: 13px;
+    height: 13px;
+    margin: 0;
+    accent-color: #0b5a32;
+    flex: 0 0 auto;
+}
+
+.counsel-match-label {
+    max-width: 110px;
+    font-weight: 600;
+    color: #2f425a;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.counsel-match-arrow {
+    color: #7a8c80;
+}
+
+.counsel-match-value {
+    color: #184f33;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.counsel-match-type {
+    margin-left: auto;
+    font-size: 10px;
+    color: #6d7f73;
+    border: 1px solid #d9e7dc;
+    border-radius: 999px;
+    padding: 1px 6px;
+    white-space: nowrap;
+}
+
+.counsel-match-more {
+    margin-top: 4px;
+    font-size: 10px;
+    color: #6d7f73;
+}
+
+.counsel-match-preview-empty {
+    font-size: 11px;
+    color: #6b756f;
+}
+
+.counsel-match-actions {
+    margin-top: 8px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.counsel-match-actions .counsel-file-apply {
+    height: 26px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 0 8px;
 }
 
 .admission-pledge-launcher {
@@ -609,7 +715,7 @@ body {
 
 .bottom-actions {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 8px;
     position: fixed;
     left: calc(145px + 14px);
@@ -637,6 +743,11 @@ body {
 
 .bottom-actions .print-btn {
     background: #2f425a;
+    color: #fff;
+}
+
+.bottom-actions .pledge-print-btn {
+    background: #1f6a45;
     color: #fff;
 }
 

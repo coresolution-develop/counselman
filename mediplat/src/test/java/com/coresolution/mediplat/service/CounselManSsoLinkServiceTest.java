@@ -75,6 +75,31 @@ class CounselManSsoLinkServiceTest {
         assertEquals("/admin/main", decodeTarget(query.get("target")));
     }
 
+    @Test
+    void createLaunchUrl_dedupesContextPath_whenEntryPathContainsBasePath() {
+        CounselManSsoLinkService linkService = newLinkService("https://dev.sosyge.net/csm");
+
+        String launchUrl = linkService.createLaunchUrl(serviceWithEntryPath(
+                "http://localhost:8081/csm",
+                "/csm/mediplat/sso/entry"), normalUser());
+        URI uri = URI.create(launchUrl);
+
+        assertEquals("/csm/mediplat/sso/entry", uri.getPath());
+    }
+
+    @Test
+    void createLaunchUrl_upgradesHttpToHttps_whenRequestIsHttpsOnSameHost() {
+        CounselManSsoLinkService linkService = newLinkService("http://dev.sosyge.net/csm");
+        bindRequest("https", "dev.sosyge.net", 443);
+
+        String launchUrl = linkService.createLaunchUrl(defaultService("http://dev.sosyge.net/csm"), normalUser());
+        URI uri = URI.create(launchUrl);
+
+        assertEquals("https", uri.getScheme());
+        assertEquals("dev.sosyge.net", uri.getHost());
+        assertEquals("/csm/mediplat/sso/entry", uri.getPath());
+    }
+
     private CounselManSsoLinkService newLinkService(String configuredBaseUrl) {
         CounselManSsoLinkService service = new CounselManSsoLinkService();
         ReflectionTestUtils.setField(service, "configuredCounselManBaseUrl", configuredBaseUrl);
@@ -84,6 +109,10 @@ class CounselManSsoLinkServiceTest {
     }
 
     private PlatformService defaultService(String baseUrl) {
+        return serviceWithEntryPath(baseUrl, "/mediplat/sso/entry");
+    }
+
+    private PlatformService serviceWithEntryPath(String baseUrl, String ssoEntryPath) {
         return new PlatformService(
                 1L,
                 "counselman",
@@ -92,7 +121,7 @@ class CounselManSsoLinkServiceTest {
                 null,
                 null,
                 null,
-                "/mediplat/sso/entry",
+                ssoEntryPath,
                 "/counsel/list?page=1&perPageNum=10",
                 "/admin/main",
                 "description",

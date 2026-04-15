@@ -427,6 +427,7 @@
     display: flex;
     gap: 6px;
     align-self: flex-end;
+    flex-wrap: wrap;
 }
 
 .counsel-file-link {
@@ -445,9 +446,26 @@
     white-space: nowrap;
 }
 
+.counsel-file-extract {
+    border: 1px solid #b8c8de;
+    background: #f4f8ff;
+    border-radius: 5px;
+    color: #365985;
+    font-size: 12px;
+    font-weight: 500;
+    height: 26px;
+    padding: 0 8px;
+    cursor: pointer;
+    transition: all 0.16s ease;
+}
+
+.counsel-file-extract:hover {
+    background: #ebf3ff;
+}
+
 .counsel-file-apply {
     border: 1px solid #06603A;
-    background: #fff;
+    background: #f2fbf6;
     border-radius: 5px;
     color: #06603A;
     font-size: 12px;
@@ -488,6 +506,100 @@
     margin: 6px 2px 0;
     font-size: 12px;
     color: #5a5a5a;
+}
+
+.counsel-match-preview {
+    margin-top: 8px;
+    border-top: 1px dashed #d9e7dc;
+    padding-top: 8px;
+}
+
+.counsel-match-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #244834;
+    margin-bottom: 6px;
+}
+
+.counsel-match-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.counsel-match-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    font-size: 12px;
+    color: #36423a;
+}
+
+.counsel-match-check {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    accent-color: #06603A;
+    flex: 0 0 auto;
+}
+
+.counsel-match-label {
+    max-width: 130px;
+    font-weight: 600;
+    color: #2f425a;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.counsel-match-arrow {
+    color: #7a8c80;
+}
+
+.counsel-match-value {
+    color: #184f33;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.counsel-match-type {
+    margin-left: auto;
+    font-size: 11px;
+    color: #6d7f73;
+    border: 1px solid #d9e7dc;
+    border-radius: 999px;
+    padding: 1px 7px;
+    white-space: nowrap;
+}
+
+.counsel-match-more {
+    margin-top: 4px;
+    font-size: 11px;
+    color: #6d7f73;
+}
+
+.counsel-match-preview-empty {
+    font-size: 12px;
+    color: #6b756f;
+}
+
+.counsel-match-actions {
+    margin-top: 8px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.counsel-match-actions .counsel-file-apply {
+    height: 28px;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 0 10px;
 }
 
 .admission-pledge-launcher {
