@@ -54,6 +54,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CsmAuthService {
     private static final Logger log = LoggerFactory.getLogger(CsmAuthService.class);
+    private static final String PLATFORM_SERVICE_COUNSELMAN = "COUNSELMAN";
+    private static final String PLATFORM_INTEGRATION_ROOMBOARD_CSM_LINK = "ROOMBOARD_CSM_LINK";
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
@@ -161,6 +163,62 @@ public class CsmAuthService {
         }
         Integer userStatus = info.getUs_col_09();
         return userStatus == null || userStatus != 2;
+    }
+
+    public boolean isRoomBoardCounselLinkEnabled(String inst) {
+        if (inst == null || inst.isBlank()) {
+            return false;
+        }
+        String resolvedInst = resolveInst(inst);
+        String candidate = resolvedInst == null ? inst.trim() : resolvedInst;
+        String safeInst;
+        try {
+            safeInst = sanitizeInst(candidate);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+        return isPlatformCounselServiceEnabled(safeInst) && isPlatformIntegrationEnabled(safeInst);
+    }
+
+    private boolean isPlatformCounselServiceEnabled(String inst) {
+        try {
+            if (!tableExistsInCsm("mp_institution_service")) {
+                return true;
+            }
+            Integer count = jdbcTemplate.queryForObject("""
+                    SELECT COUNT(*)
+                    FROM csm.mp_institution_service
+                    WHERE inst_code = ?
+                      AND service_code = ?
+                      AND use_yn = 'Y'
+                    """, Integer.class, inst, PLATFORM_SERVICE_COUNSELMAN);
+            return count != null && count > 0;
+        } catch (Exception e) {
+            log.warn("[platform] counselman service check skipped inst={}, err={}", inst, e.toString());
+            return true;
+        }
+    }
+
+    private boolean isPlatformIntegrationEnabled(String inst) {
+        try {
+            if (!tableExistsInCsm("mp_institution_integration")) {
+                return true;
+            }
+            List<String> rows = jdbcTemplate.query("""
+                    SELECT use_yn
+                    FROM csm.mp_institution_integration
+                    WHERE inst_code = ?
+                      AND integration_code = ?
+                    LIMIT 1
+                    """, (rs, rowNum) -> rs.getString("use_yn"), inst, PLATFORM_INTEGRATION_ROOMBOARD_CSM_LINK);
+            if (rows.isEmpty()) {
+                return true;
+            }
+            return !"N".equalsIgnoreCase(rows.get(0));
+        } catch (Exception e) {
+            log.warn("[platform] room-board integration check skipped inst={}, err={}", inst, e.toString());
+            return true;
+        }
     }
 
     public List<CounselData> searchCounselData(Criteria cri) {
@@ -1512,17 +1570,20 @@ public class CsmAuthService {
     }
 
     private String normalizeReservationStatus(Object value, boolean allowAll) {
-        String v = value == null ? "" : String.valueOf(value).trim().toUpperCase();
+        String raw = value == null ? "" : String.valueOf(value).trim();
+        String v = raw.toUpperCase();
         if (allowAll && (v.isBlank() || "ALL".equals(v))) {
             return "ALL";
         }
-        if ("예약".equals(value) || "RESERVED".equals(v)) {
+        if ("접수".equals(raw) || "예약".equals(raw) || "RESERVED".equals(v)) {
             return "RESERVED";
         }
-        if ("완료".equals(value) || "COMPLETED".equals(v)) {
+        if ("입원상담연계".equals(raw) || "입원상담 연계".equals(raw)
+                || "입원상담이관".equals(raw) || "입원상담 이관".equals(raw)
+                || "완료".equals(raw) || "COMPLETED".equals(v)) {
             return "COMPLETED";
         }
-        if ("취소".equals(value) || "CANCELLED".equals(v) || "CANCELED".equals(v)) {
+        if ("취소".equals(raw) || "CANCELLED".equals(v) || "CANCELED".equals(v)) {
             return "CANCELLED";
         }
         return "RESERVED";

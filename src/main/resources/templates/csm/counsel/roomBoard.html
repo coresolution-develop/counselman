@@ -231,6 +231,7 @@
         <div class="rb-actions">
             <a th:if="${!popupMode}" class="rb-btn rb-btn-light" th:href="@{/room-board}">최신 현황</a>
             <a th:if="${canManageRoomBoard and !popupMode}" class="rb-btn rb-btn-light" th:href="@{/admin/room-board}">관리 화면</a>
+            <a th:if="${popupMode}" class="rb-btn rb-btn-light" th:href="@{/room-board/return}">로그아웃</a>
             <button th:if="${popupMode}" type="button" class="rb-btn rb-btn-light" onclick="window.close()">닫기</button>
         </div>
     </div>

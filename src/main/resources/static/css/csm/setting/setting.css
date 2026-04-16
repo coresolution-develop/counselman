@@ -548,3 +548,82 @@ td, th {
 .btn {
 	font-size: 1.2rem !important;
 }
+
+/* 상담일지 관리: 항상 드래그 정렬 + 선택 하이라이트 */
+.category-header .settingDiv {
+    display: none !important;
+}
+
+#mainCategoryDiv .custom-radio,
+#subCategoryDiv .custom-radio,
+#optionCategoryDiv .custom-radio {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 10px 8px 28px;
+    margin: 6px 0;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
+    cursor: grab;
+}
+
+#mainCategoryDiv .custom-radio:active,
+#subCategoryDiv .custom-radio:active,
+#optionCategoryDiv .custom-radio:active {
+    cursor: grabbing;
+}
+
+#mainCategoryDiv .custom-radio::before,
+#subCategoryDiv .custom-radio::before,
+#optionCategoryDiv .custom-radio::before {
+    content: "⋮⋮";
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    letter-spacing: -1px;
+    color: #94a3b1;
+    pointer-events: none;
+}
+
+#mainCategoryDiv .custom-radio .custom-radio-mark,
+#subCategoryDiv .custom-radio .custom-radio-mark,
+#optionCategoryDiv .custom-radio .custom-radio-mark {
+    display: none !important;
+}
+
+#mainCategoryDiv .custom-radio.is-selected,
+#subCategoryDiv .custom-radio.is-selected,
+#optionCategoryDiv .custom-radio.is-selected {
+    background: #ecf7f1;
+    border-color: #0b6f44;
+    box-shadow: inset 0 0 0 1px rgba(11, 111, 68, 0.08);
+}
+
+#mainCategoryDiv .custom-radio:hover,
+#subCategoryDiv .custom-radio:hover,
+#optionCategoryDiv .custom-radio:hover {
+    background: #f6fbf8;
+}
+
+#mainCategoryDiv .custom-radio .bi-pen,
+#subCategoryDiv .custom-radio .bi-pen,
+#optionCategoryDiv .custom-radio .bi-pen {
+    margin-left: auto;
+}
+
+#mainCategoryDiv .drag-chosen,
+#subCategoryDiv .drag-chosen,
+#optionCategoryDiv .drag-chosen {
+    background: #f0f8f3;
+}
+
+#mainCategoryDiv .drag-ghost,
+#subCategoryDiv .drag-ghost,
+#optionCategoryDiv .drag-ghost {
+    opacity: 0.55;
+}

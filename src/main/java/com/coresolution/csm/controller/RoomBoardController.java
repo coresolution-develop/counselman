@@ -5,8 +5,10 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.StringUtils;
 import org.springframework.ui.Model;
@@ -27,6 +29,7 @@ import com.coresolution.csm.vo.RoomBoardRoomConfig;
 import com.coresolution.csm.vo.Userdata;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +39,9 @@ import lombok.extern.slf4j.Slf4j;
 @RequestMapping("/")
 @RequiredArgsConstructor
 public class RoomBoardController {
+    @Value("${mediplat.platform.base-url:http://localhost:8082}")
+    private String mediplatPlatformBaseUrl;
+
     private final RoomBoardService roomBoardService;
     private final ModuleFeatureService moduleFeatureService;
     private final CsmAuthService cs;
@@ -84,6 +90,14 @@ public class RoomBoardController {
         model.addAttribute("st", "");
         model.addAttribute("kw", "");
         return "csm/counsel/roomBoard";
+    }
+
+    @GetMapping({ "room-board/return", "/room-board/return" })
+    public String returnToMediplat(HttpServletRequest request, HttpServletResponse response) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        new SecurityContextLogoutHandler().logout(request, response, auth);
+        SecurityContextHolder.clearContext();
+        return "redirect:" + resolveMediplatRedirectUrl();
     }
 
     @GetMapping({ "admin/room-board", "/admin/room-board" })
@@ -339,6 +353,11 @@ public class RoomBoardController {
                     HttpStatus.FORBIDDEN,
                     "현재 기관은 CounselMan 사용이 중지되었습니다.");
         }
+        if (!cs.isRoomBoardCounselLinkEnabled(inst)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "현재 기관은 병실현황판-입원상담 연동이 비활성화되었습니다.");
+        }
         String viewerUserId = mpUser.trim();
         Userdata userinfo = cs.loadUserInfo(inst, viewerUserId);
         if (!cs.isUserAvailable(userinfo)) {
@@ -383,6 +402,16 @@ public class RoomBoardController {
 
     private String safeString(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private String resolveMediplatRedirectUrl() {
+        String normalized = StringUtils.hasText(mediplatPlatformBaseUrl)
+                ? mediplatPlatformBaseUrl.trim()
+                : "http://localhost:8082";
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized.isBlank() ? "http://localhost:8082" : normalized;
     }
 
     private record RoomBoardViewerAccess(

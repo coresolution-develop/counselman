@@ -167,8 +167,7 @@ public class PageController {
 
     @RequestMapping("login")
     public String login() {
-
-        return "csm/login/login";
+        return "redirect:" + resolveMediplatLoginRedirectUrl();
     }
 
     @GetMapping({ "findpwd", "/findpwd" })
@@ -301,6 +300,11 @@ public class PageController {
             normalized = normalized.substring(0, normalized.length() - 1);
         }
         return normalized.isBlank() ? "http://localhost:8082" : normalized;
+    }
+
+    private String resolveMediplatLoginRedirectUrl() {
+        String baseUrl = resolveMediplatRedirectUrl();
+        return baseUrl.endsWith("/login") ? baseUrl : baseUrl + "/login";
     }
 
     @GetMapping({ "admin", "/admin", "admin/", "/admin/" })
@@ -1537,6 +1541,7 @@ public class PageController {
             reservationForm = new CounselReservation();
             reservationForm.setStatus("RESERVED");
             reservationForm.setPriority(3);
+            reservationForm.setReserved_at(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         }
 
         model.addAttribute("info", info);
@@ -1579,14 +1584,18 @@ public class PageController {
             reservation.setGuardian_name(guardianName);
             reservation.setCall_summary(callSummary);
             reservation.setPriority(priority);
-            reservation.setReserved_at(reservedAt);
+            String normalizedReservedAt = safeString(reservedAt).trim();
+            if (normalizedReservedAt.isEmpty() && (id == null || id <= 0)) {
+                normalizedReservedAt = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            }
+            reservation.setReserved_at(normalizedReservedAt);
             reservation.setStatus(normalizeReservationStatusParam(status, false));
             reservation.setCreated_by(resolveReservationActor(inst, session));
 
             long savedId = cs.saveCounselReservation(inst, reservation);
             redirectAttributes.addAttribute("status", normalizeReservationStatusParam(status, true));
             redirectAttributes.addAttribute("reservationId", savedId);
-            redirectAttributes.addAttribute("message", "상담 예약이 저장되었습니다.");
+            redirectAttributes.addAttribute("message", "상담 접수가 저장되었습니다.");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addAttribute("status", normalizeReservationStatusParam(status, true));
             redirectAttributes.addAttribute("reservationId", id);
@@ -1595,7 +1604,7 @@ public class PageController {
             log.warn("[reservation] save fail inst={}, err={}", inst, e.toString());
             redirectAttributes.addAttribute("status", normalizeReservationStatusParam(status, true));
             redirectAttributes.addAttribute("reservationId", id);
-            redirectAttributes.addAttribute("error", "상담 예약 저장 중 오류가 발생했습니다.");
+            redirectAttributes.addAttribute("error", "상담 접수 저장 중 오류가 발생했습니다.");
         }
         return "redirect:/counsel/reservation";
     }
@@ -1614,10 +1623,10 @@ public class PageController {
 
         try {
             cs.updateCounselReservationStatus(inst, reservationId, status, resolveReservationActor(inst, session));
-            redirectAttributes.addAttribute("message", "예약 상태가 변경되었습니다.");
+            redirectAttributes.addAttribute("message", "접수 상태가 변경되었습니다.");
         } catch (Exception e) {
             log.warn("[reservation] status update fail inst={}, reservationId={}, err={}", inst, reservationId, e.toString());
-            redirectAttributes.addAttribute("error", "예약 상태 변경 중 오류가 발생했습니다.");
+            redirectAttributes.addAttribute("error", "접수 상태 변경 중 오류가 발생했습니다.");
         }
         redirectAttributes.addAttribute("status", normalizeReservationStatusParam(viewStatus, true));
         return "redirect:/counsel/reservation";
@@ -5614,10 +5623,12 @@ public class PageController {
         if (allowAll && ("ALL".equals(upper) || "전체".equals(raw))) {
             return "ALL";
         }
-        if ("예약".equals(raw) || "RESERVED".equals(upper)) {
+        if ("접수".equals(raw) || "예약".equals(raw) || "RESERVED".equals(upper)) {
             return "RESERVED";
         }
-        if ("완료".equals(raw) || "COMPLETED".equals(upper)) {
+        if ("입원상담연계".equals(raw) || "입원상담 연계".equals(raw)
+                || "입원상담이관".equals(raw) || "입원상담 이관".equals(raw)
+                || "완료".equals(raw) || "COMPLETED".equals(upper)) {
             return "COMPLETED";
         }
         if ("취소".equals(raw) || "CANCELLED".equals(upper) || "CANCELED".equals(upper)) {
@@ -5745,9 +5756,9 @@ public class PageController {
         out.put("priority", reservation.getPriority() == null ? 3 : reservation.getPriority());
         out.put("status", status);
         out.put("statusLabel", switch (status) {
-            case "COMPLETED" -> "완료";
+            case "COMPLETED" -> "입원상담 연계";
             case "CANCELLED" -> "취소";
-            default -> "예약";
+            default -> "접수";
         });
         out.put("url", "/counsel/reservation?status=ALL&reservationId=" + reservation.getId());
         return out;

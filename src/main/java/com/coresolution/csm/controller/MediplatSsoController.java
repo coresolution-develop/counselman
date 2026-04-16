@@ -63,6 +63,9 @@ public class MediplatSsoController {
         }
 
         if (isRoomBoardViewerTarget(redirectTarget)) {
+            if (!cs.isRoomBoardCounselLinkEnabled(normalizedInst)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "현재 기관은 병실현황판-입원상담 연동이 비활성화되었습니다.");
+            }
             String roomBoardTarget = appendRoomBoardViewerToken(
                     redirectTarget,
                     normalizedInst,

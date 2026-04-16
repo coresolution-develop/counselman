@@ -54,12 +54,12 @@
 
         <section class="mobile-reservation-box">
             <div class="mobile-reservation-head">
-                <h3>상담예약</h3>
-                <a th:href="@{/counsel/reservation(status='RESERVED')}">예약관리</a>
+                <h3>상담 접수</h3>
+                <a th:href="@{/counsel/reservation(status='RESERVED')}">접수관리</a>
             </div>
             <div class="mobile-reservation-empty"
                  th:if="${reservedCounselReservations == null or #lists.isEmpty(reservedCounselReservations)}">
-                현재 대기 중인 상담예약이 없습니다.
+                현재 대기 중인 상담 접수가 없습니다.
             </div>
             <div class="mobile-reservation-list"
                  th:if="${reservedCounselReservations != null and !#lists.isEmpty(reservedCounselReservations)}">
@@ -69,7 +69,7 @@
                          th:text="${'P' + (item.priority != null ? item.priority : 3)}">P3</div>
                     <div class="mobile-reservation-main">
                         <strong th:text="${item.patient_name}">홍길동</strong>
-                        <span th:text="${#strings.isEmpty(item.reserved_at) ? '예약일 미정' : item.reserved_at}">2026-04-14 10:00:00</span>
+                        <span th:text="${#strings.isEmpty(item.reserved_at) ? '접수시간 미정' : item.reserved_at}">2026-04-14 10:00:00</span>
                         <span th:text="${#strings.isEmpty(item.patient_phone) ? '-' : item.patient_phone}">010-0000-0000</span>
                     </div>
                     <a class="mobile-reservation-go" th:href="@{/counsel/new(reservationId=${item.id})}">상담작성</a>
@@ -86,7 +86,7 @@
     </div>
 
     <div class="fab-stack">
-        <button type="button" id="new-reservation-mobile" class="fab-new secondary">상담예약</button>
+        <button type="button" id="new-reservation-mobile" class="fab-new secondary">상담 접수</button>
         <button type="button" id="new-counsel-mobile" class="fab-new">신규상담</button>
     </div>
 </div>

@@ -38,6 +38,17 @@ let Type = '';
 const APP_CTX = window.location.pathname.startsWith('/csm') ? '/csm' : '';
 const ICON_BASE = `${APP_CTX}/icon/ev`;
 
+function updateSelectedCategoryStyles() {
+	['mainCategoryDiv', 'subCategoryDiv', 'optionCategoryDiv'].forEach((containerId) => {
+		const container = document.getElementById(containerId);
+		if (!container) return;
+		container.querySelectorAll('.custom-radio').forEach((label) => {
+			const input = label.querySelector('input[type="radio"]');
+			label.classList.toggle('is-selected', Boolean(input && input.checked));
+		});
+	});
+}
+
 //function getSubCategories(parentId, element) {
 //	console.log("Category ID:", parentId);
 //    const categoryType = element.getAttribute('data-category-type');
@@ -1245,6 +1256,7 @@ $(document).on("click", 'input[name="subCategory"]', function() {
 				    }
 				});
 		            $('#optionCategoryDiv').html(html);
+					updateSelectedCategoryStyles();
 		        }
 		    });
 			
@@ -1308,6 +1320,7 @@ window.getSubCategories = function(categoryId, element) {
 				    	`;
 					});
 		            $('#subCategoryDiv').html(html);
+					updateSelectedCategoryStyles();
 		        }
 		    });
 		    // 기존 getSubCategories 함수 로직 유지
@@ -1347,6 +1360,7 @@ window.getSubCategories = function(categoryId, element) {
                 `;
             });
             $('#subCategoryDiv').html(html);
+			updateSelectedCategoryStyles();
         },
         error: function(xhr, status, error) {
             console.error("❌ AJAX 오류:", error);
@@ -1400,13 +1414,17 @@ $(document).ready(function() {
     });
 
 
-    $(document).on('change', 'input[name="subCategory"]', function() {
+	$(document).on('change', 'input[name="subCategory"]', function() {
         var subCategoryId = $(this).val();
 //         loadSubSubCategories(subCategoryId);
         $('#optionCategoryDiv').html('');
         $('#new-optioncategory').prop('disabled', false);
         $('#del-optioncategory').prop('disabled', false);
     });
+
+	$(document).on('change', 'input[name="mainCategory"], input[name="subCategory"], input[name="optionCategory"]', function() {
+		updateSelectedCategoryStyles();
+	});
 
 	document.getElementById("back-icon").addEventListener("click", back);
     settingMain.addEventListener('mouseenter', function() {
@@ -1470,57 +1488,42 @@ $(document).ready(function() {
 	window.showAddCategoryModal = showAddCategoryModal;
 	window.showDeleteConfirmation = showDeleteConfirmation;
 	window.deleteCategory = deleteCategory;
-	
-	let isOrderEditEnabled = { main: false, sub: false, option: false };
-	
+
 	function initializeOrderEdit() {
 		console.log('initializeOrderEdit 실행됨');
 	    initSortable('mainCategoryDiv', 'main');
 	    initSortable('subCategoryDiv', 'sub');
 	    initSortable('optionCategoryDiv', 'option');
-	    $('#setting-main').on('click', () => toggleOrderEdit('main'));
-        $('#setting-sub').on('click', () => toggleOrderEdit('sub'));
-        $('#setting-option').on('click', () => toggleOrderEdit('option'));
+
+		['main', 'sub', 'option'].forEach((type) => {
+			const saveOrderButton = document.getElementById(`save-order-${type}`);
+			if (saveOrderButton) {
+				saveOrderButton.style.display = 'inline-block';
+			}
+			const settingIcon = document.getElementById(`setting-${type}`);
+			const settingWrapper = settingIcon ? settingIcon.closest('.settingDiv') : null;
+			if (settingWrapper) {
+				settingWrapper.style.display = 'none';
+			}
+		});
+
+		updateSelectedCategoryStyles();
 	}
-	
+
 	function initSortable(containerId, type) {
 	    const container = document.getElementById(containerId);
-	    if (container) {
-	        new Sortable(container, {
-	            animation: 150,
-	            disabled: true
-	        });
-	    }
-	}
-	
-	function toggleOrderEdit(type) {
-	    isOrderEditEnabled[type] = !isOrderEditEnabled[type];
-	    console.log(type);
-	    
-	    const container = document.getElementById(`${type}CategoryDiv`);
-	    const sortableInstance = Sortable.get(container);
-	    
-	    // Set buttons and icons
-	    const addButton = document.getElementById(`new-${type}category`);
-	    const deleteButton = document.getElementById(`del-${type}category`);
-	    const saveOrderButton = document.getElementById(`save-order-${type}`);
-	    const settingIcon = document.getElementById(`setting-${type}`);
-	    
-	    if (sortableInstance) {
-	        if (isOrderEditEnabled[type]) {
-	            sortableInstance.option('disabled', false);
-	            if (addButton) addButton.style.display = 'none';
-	            if (deleteButton) deleteButton.style.display = 'none';
-	            if (saveOrderButton) saveOrderButton.style.display = 'inline-block';
-	            if (settingIcon) settingIcon.src = `${ICON_BASE}/fix-icon.png`;
-	        } else {
-	            sortableInstance.option('disabled', true);
-	            if (addButton) addButton.style.display = 'inline-block';
-	            if (deleteButton) deleteButton.style.display = 'inline-block';
-	            if (saveOrderButton) saveOrderButton.style.display = 'none';
-	            if (settingIcon) settingIcon.src = `${ICON_BASE}/fix-icon.png`;
-	        }
-	    }
+	    if (!container) return;
+	    const existing = Sortable.get(container);
+	    if (existing) {
+			existing.destroy();
+		}
+		new Sortable(container, {
+			animation: 150,
+			draggable: '.custom-radio',
+			disabled: false,
+			ghostClass: 'drag-ghost',
+			chosenClass: 'drag-chosen'
+		});
 	}
 	
 	// ✅ 빈 함수로 미리 정의하여 오류 방지
@@ -1597,6 +1600,7 @@ $(document).ready(function() {
                 }
 
                 $('#optionCategoryDiv').html(html);
+				updateSelectedCategoryStyles();
             }
         });
     };
@@ -2451,6 +2455,7 @@ $(document).ready(function() {
 					    `;
 					});
 		            $('#subCategoryDiv').html(html);
+					updateSelectedCategoryStyles();
                     // 소분류 편집 모달 열기
                     document.getElementById('subcategory-popup').style.display = 'block';
                 });
@@ -2692,6 +2697,7 @@ $(document).ready(function() {
 	            </label>
 	        `;
 	        $("#mainCategoryDiv").prepend(categoryHTML);
+			updateSelectedCategoryStyles();
 			// ✅ 동적으로 추가된 요소에도 클릭 이벤트 적용 (jQuery의 `$(document).on()` 활용)
 		    $(document).off("click", 'input[name="mainCategory"]').on("click", 'input[name="mainCategory"]', function () {
 	            let categoryId = $(this).val();
@@ -2745,6 +2751,7 @@ $(document).ready(function() {
 	        	</label>
 	        `;
 	        $("#subCategoryDiv").prepend(categoryHTML);
+			updateSelectedCategoryStyles();
 			
 		    setTimeout(() => {
 	            let newSubCategoryInput = $(`input[name="subCategory"][value="${response.data.cc_col_01}"]`);

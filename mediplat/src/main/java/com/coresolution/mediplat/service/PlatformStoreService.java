@@ -31,7 +31,10 @@ public class PlatformStoreService {
     private static final String ROLE_PLATFORM_ADMIN = "PLATFORM_ADMIN";
     private static final String ROLE_ROOM_BOARD_VIEWER = "ROOM_BOARD_VIEWER";
     private static final String ROLE_USER = "USER";
-    private static final String DEFAULT_SERVICE_CODE = "COUNSELMAN";
+    private static final String SERVICE_CODE_COUNSELMAN = "COUNSELMAN";
+    private static final String SERVICE_CODE_ROOM_BOARD = "ROOM_BOARD";
+    private static final String INTEGRATION_CODE_ROOMBOARD_CSM_LINK = "ROOMBOARD_CSM_LINK";
+    private static final String DEFAULT_SERVICE_CODE = SERVICE_CODE_COUNSELMAN;
     private static final String VIEWER_ACCOUNT_INST_CODE = "core";
     private static final String ENV_LOCAL = "LOCAL";
     private static final String ENV_DEV = "DEV";
@@ -226,7 +229,7 @@ public class PlatformStoreService {
                 runtimeEnvCode,
                 normalizedInstCode);
         if (institutionEnabled) {
-            return services;
+            return appendRoomBoardServiceCard(services, normalizedInstCode);
         }
         return services.stream()
                 .map(service -> withAccess(service, "N"))
@@ -354,8 +357,7 @@ public class PlatformStoreService {
                 .filter(Objects::nonNull)
                 .filter(institution -> !"core".equalsIgnoreCase(institution.getInstCode()))
                 .filter(institution -> USE_Y.equalsIgnoreCase(institution.getUseYn()))
-                .filter(institution -> isServiceEnabledForInstitution(institution.getInstCode(), DEFAULT_SERVICE_CODE))
-                .filter(institution -> counselManAccountService.isRoomBoardEnabled(institution.getInstCode()))
+                .filter(institution -> isRoomBoardCounselLinkEnabled(institution.getInstCode()))
                 .toList();
     }
 
@@ -472,6 +474,26 @@ public class PlatformStoreService {
                 """, (rs, rowNum) -> rs.getString("service_code"), normalizedInstCode);
     }
 
+    public List<String> listEnabledIntegrationCodes(String instCode) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        if (!StringUtils.hasText(normalizedInstCode)) {
+            return List.of();
+        }
+        List<String> enabledCodes = jdbcTemplate.query("""
+                SELECT integration_code
+                FROM mp_institution_integration
+                WHERE inst_code = ?
+                  AND use_yn = 'Y'
+                ORDER BY integration_code ASC
+                """, (rs, rowNum) -> rs.getString("integration_code"), normalizedInstCode);
+        if (!enabledCodes.isEmpty()) {
+            return enabledCodes;
+        }
+        return isRoomBoardCounselPairEnabled(normalizedInstCode)
+                ? List.of(INTEGRATION_CODE_ROOMBOARD_CSM_LINK)
+                : List.of();
+    }
+
     public List<PlatformInstitution> listRoomBoardViewerInstitutions(PlatformSessionUser user) {
         if (user == null || !StringUtils.hasText(user.getUsername())) {
             return List.of();
@@ -482,8 +504,7 @@ public class PlatformStoreService {
                     .map(this::findInstitution)
                     .filter(Objects::nonNull)
                     .filter(institution -> USE_Y.equalsIgnoreCase(institution.getUseYn()))
-                    .filter(institution -> isServiceEnabledForInstitution(institution.getInstCode(), DEFAULT_SERVICE_CODE))
-                    .filter(institution -> counselManAccountService.isRoomBoardEnabled(institution.getInstCode()))
+                    .filter(institution -> isRoomBoardCounselLinkEnabled(institution.getInstCode()))
                     .toList();
         }
         String normalizedInstCode = normalizeInstCode(user.getInstCode());
@@ -497,16 +518,33 @@ public class PlatformStoreService {
         if (!USE_Y.equalsIgnoreCase(loginInstitution.getUseYn())) {
             return List.of();
         }
-        if (!isServiceEnabledForInstitution(normalizedInstCode, DEFAULT_SERVICE_CODE)) {
-            return List.of();
-        }
         if (!counselManAccountService.hasAvailableUser(normalizedInstCode, username)) {
             return List.of();
         }
-        if (!counselManAccountService.isRoomBoardEnabled(normalizedInstCode)) {
+        if (!isRoomBoardCounselLinkEnabled(normalizedInstCode)) {
             return List.of();
         }
         return List.of(loginInstitution);
+    }
+
+    public boolean isRoomBoardCounselPairEnabled(String instCode) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        if (!StringUtils.hasText(normalizedInstCode)) {
+            return false;
+        }
+        return isServiceEnabledForInstitution(normalizedInstCode, SERVICE_CODE_COUNSELMAN)
+                && counselManAccountService.isRoomBoardEnabled(normalizedInstCode);
+    }
+
+    public boolean isRoomBoardCounselLinkEnabled(String instCode) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        if (!StringUtils.hasText(normalizedInstCode)) {
+            return false;
+        }
+        if (!isRoomBoardCounselPairEnabled(normalizedInstCode)) {
+            return false;
+        }
+        return isIntegrationEnabledForInstitution(normalizedInstCode, INTEGRATION_CODE_ROOMBOARD_CSM_LINK);
     }
 
     public String getRuntimeEnvCode() {
@@ -674,6 +712,35 @@ public class PlatformStoreService {
                     service.getServiceCode(),
                     normalizedCodes.contains(service.getServiceCode()) ? "Y" : "N");
         }
+        syncDefaultIntegrationFlags(normalizedInstCode, normalizedCodes);
+    }
+
+    public void saveInstitutionIntegrationAccess(String instCode, List<String> enabledIntegrationCodes) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        if (!StringUtils.hasText(normalizedInstCode)) {
+            throw new IllegalArgumentException("기관을 선택해 주세요.");
+        }
+        if (ensureInstitutionRegistered(normalizedInstCode, null) == null) {
+            throw new IllegalArgumentException("등록되지 않은 기관코드입니다.");
+        }
+        List<String> normalizedCodes = new ArrayList<>();
+        if (enabledIntegrationCodes != null) {
+            enabledIntegrationCodes.stream()
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .map(String::toUpperCase)
+                    .filter(INTEGRATION_CODE_ROOMBOARD_CSM_LINK::equals)
+                    .distinct()
+                    .forEach(normalizedCodes::add);
+        }
+        if (normalizedCodes.contains(INTEGRATION_CODE_ROOMBOARD_CSM_LINK)
+                && !isRoomBoardCounselPairEnabled(normalizedInstCode)) {
+            throw new IllegalArgumentException("CounselMan 서비스 권한과 ROOM_BOARD 기능이 모두 활성화되어야 연동을 사용할 수 있습니다.");
+        }
+        upsertInstitutionIntegration(
+                normalizedInstCode,
+                INTEGRATION_CODE_ROOMBOARD_CSM_LINK,
+                normalizedCodes.contains(INTEGRATION_CODE_ROOMBOARD_CSM_LINK) ? "Y" : "N");
     }
 
     private void createTables() {
@@ -743,6 +810,16 @@ public class PlatformStoreService {
                 """);
 
         jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS mp_institution_integration (
+                    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    inst_code VARCHAR(50) NOT NULL,
+                    integration_code VARCHAR(80) NOT NULL,
+                    use_yn CHAR(1) NOT NULL DEFAULT 'N',
+                    UNIQUE KEY uq_mp_institution_integration (inst_code, integration_code)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """);
+
+        jdbcTemplate.execute("""
                 CREATE TABLE IF NOT EXISTS mp_service_endpoint (
                     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
                     service_code VARCHAR(50) NOT NULL,
@@ -808,6 +885,16 @@ public class PlatformStoreService {
                     service_code VARCHAR(50) NOT NULL,
                     use_yn CHAR(1) NOT NULL DEFAULT 'N',
                     UNIQUE (inst_code, service_code)
+                )
+                """);
+
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS mp_institution_integration (
+                    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                    inst_code VARCHAR(50) NOT NULL,
+                    integration_code VARCHAR(80) NOT NULL,
+                    use_yn CHAR(1) NOT NULL DEFAULT 'N',
+                    UNIQUE (inst_code, integration_code)
                 )
                 """);
 
@@ -1181,6 +1268,61 @@ public class PlatformStoreService {
                 """, instCode, serviceCode, useYn);
     }
 
+    private void upsertInstitutionIntegration(String instCode, String integrationCode, String useYn) {
+        if (isMySql()) {
+            jdbcTemplate.update("""
+                    INSERT INTO mp_institution_integration (inst_code, integration_code, use_yn)
+                    VALUES (?, ?, ?)
+                    ON DUPLICATE KEY UPDATE
+                        use_yn = ?
+                    """,
+                    instCode,
+                    integrationCode,
+                    useYn,
+                    useYn);
+            return;
+        }
+        jdbcTemplate.update("""
+                MERGE INTO mp_institution_integration (inst_code, integration_code, use_yn)
+                KEY (inst_code, integration_code)
+                VALUES (?, ?, ?)
+                """, instCode, integrationCode, useYn);
+    }
+
+    private boolean isIntegrationEnabledForInstitution(String instCode, String integrationCode) {
+        List<String> rows = jdbcTemplate.query("""
+                SELECT use_yn
+                FROM mp_institution_integration
+                WHERE inst_code = ?
+                  AND integration_code = ?
+                LIMIT 1
+                """, (rs, rowNum) -> rs.getString("use_yn"), instCode, integrationCode);
+        if (rows.isEmpty()) {
+            return true;
+        }
+        return USE_Y.equalsIgnoreCase(rows.get(0));
+    }
+
+    private void syncDefaultIntegrationFlags(String instCode, List<String> enabledServiceCodes) {
+        boolean counselManEnabled = enabledServiceCodes != null
+                && enabledServiceCodes.stream().anyMatch(code -> SERVICE_CODE_COUNSELMAN.equalsIgnoreCase(code));
+        boolean roomBoardEnabled = counselManAccountService.isRoomBoardEnabled(instCode);
+        if (!counselManEnabled || !roomBoardEnabled) {
+            upsertInstitutionIntegration(instCode, INTEGRATION_CODE_ROOMBOARD_CSM_LINK, "N");
+            return;
+        }
+        List<String> rows = jdbcTemplate.query("""
+                SELECT use_yn
+                FROM mp_institution_integration
+                WHERE inst_code = ?
+                  AND integration_code = ?
+                LIMIT 1
+                """, (rs, rowNum) -> rs.getString("use_yn"), instCode, INTEGRATION_CODE_ROOMBOARD_CSM_LINK);
+        if (rows.isEmpty()) {
+            upsertInstitutionIntegration(instCode, INTEGRATION_CODE_ROOMBOARD_CSM_LINK, "Y");
+        }
+    }
+
     private void upsertServiceEndpoint(String serviceCode, String envCode, String baseUrl) {
         String normalizedEnvCode = normalizeEnvCode(envCode);
         if (!StringUtils.hasText(baseUrl)) {
@@ -1245,6 +1387,42 @@ public class PlatformStoreService {
                 service.getUseYn(),
                 service.getDisplayOrder(),
                 accessYn);
+    }
+
+    private List<PlatformService> appendRoomBoardServiceCard(List<PlatformService> services, String instCode) {
+        if (!StringUtils.hasText(instCode) || !isRoomBoardCounselLinkEnabled(instCode)) {
+            return services;
+        }
+        boolean alreadyExists = services.stream()
+                .anyMatch(service -> SERVICE_CODE_ROOM_BOARD.equalsIgnoreCase(service.getServiceCode()));
+        if (alreadyExists) {
+            return services;
+        }
+        List<PlatformService> merged = new ArrayList<>(services);
+        int insertIndex = merged.size();
+        for (int i = 0; i < merged.size(); i++) {
+            PlatformService current = merged.get(i);
+            if (current != null && SERVICE_CODE_COUNSELMAN.equalsIgnoreCase(current.getServiceCode())) {
+                insertIndex = i + 1;
+                break;
+            }
+        }
+        merged.add(insertIndex, new PlatformService(
+                null,
+                SERVICE_CODE_ROOM_BOARD,
+                "병실현황판",
+                null,
+                null,
+                null,
+                null,
+                "/mediplat/sso/entry",
+                "/room-board?popup=1",
+                "/room-board?popup=1",
+                "입원상담 연동 병실현황판",
+                USE_Y,
+                9999,
+                USE_Y));
+        return merged;
     }
 
     private DatabaseDialect detectDatabaseDialect() {

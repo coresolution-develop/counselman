@@ -33,6 +33,7 @@ public class SecurityConfig {
                         "/login", "/login/**", "/csm/login", "/csm/login/**",
                         "/mediplat/sso/entry", "/csm/mediplat/sso/entry",
                         "/room-board", "/csm/room-board",
+                        "/room-board/return", "/csm/room-board/return",
                         "/findpwd", "/findpwd/**", "/csm/findpwd", "/csm/findpwd/**",
                         "/ResetPwd", "/ResetPwd/**", "/csm/ResetPwd", "/csm/ResetPwd/**",
                         "/api/external/SMSRequest", "/csm/api/external/SMSRequest",

@@ -1,15 +1,18 @@
 :root {
-    --bg: #eff3ea;
+    --bg: #e7edf6;
     --panel: #ffffff;
-    --ink: #173329;
-    --sub: #61766d;
-    --accent: #0d7a60;
-    --accent-strong: #0a5e49;
-    --line: #d8e2db;
-    --warn: #fff0dc;
-    --warn-ink: #8f5400;
+    --ink: #172e4b;
+    --sub: #5d6f85;
+    --accent: #1a74bf;
+    --accent-strong: #14599f;
+    --line: #cfdbeb;
+    --warn: #eef6ff;
+    --warn-ink: #2a527c;
     --error: #fde8e4;
     --error-ink: #9a2f20;
+    --brand-navy: #1f3b69;
+    --brand-cyan: #1aa6dc;
+    --brand-lime: #9fca2f;
 }
 
 * {
@@ -20,9 +23,17 @@ body {
     margin: 0;
     font-family: "SUIT", "Pretendard", sans-serif;
     background:
-        radial-gradient(circle at top right, rgba(13, 122, 96, 0.12), transparent 26%),
-        linear-gradient(180deg, #f5f7f1 0%, var(--bg) 100%);
+        radial-gradient(circle at 88% 12%, rgba(26, 166, 220, 0.18), transparent 30%),
+        radial-gradient(circle at 92% 20%, rgba(159, 202, 47, 0.16), transparent 34%),
+        linear-gradient(180deg, #f7f9fd 0%, var(--bg) 100%);
     color: var(--ink);
+}
+
+.services-page {
+    background: #dce3ed;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 .login-body {
@@ -57,8 +68,18 @@ body {
 
 .brand-block {
     padding: 48px;
-    background: linear-gradient(135deg, #17372d 0%, #296454 100%);
+    background:
+        radial-gradient(circle at 100% 0%, rgba(26, 166, 220, 0.24), transparent 35%),
+        radial-gradient(circle at 100% 6%, rgba(159, 202, 47, 0.2), transparent 45%),
+        linear-gradient(135deg, #1f3b69 0%, #14599f 100%);
     color: #f5fbf8;
+}
+
+.brand-logo {
+    display: block;
+    width: min(240px, 100%);
+    height: auto;
+    margin: 0 0 20px;
 }
 
 .brand-block h1 {
@@ -186,6 +207,51 @@ button:hover,
     padding: 28px 0 40px;
 }
 
+.services-page .page-shell {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 0 32px;
+}
+
+.mediplat-services-shell {
+    width: min(1100px, calc(100% - 40px));
+    margin: 0 auto;
+}
+
+.mediplat-service-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
+}
+
+.mediplat-service-card {
+    min-height: 66px;
+    border-radius: 8px;
+    background: #284a78;
+    color: #f4f8ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0.02em;
+    font-size: 22px;
+    font-weight: 600;
+    box-shadow: 0 10px 20px rgba(25, 53, 92, 0.18);
+    text-decoration: none;
+    transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+.mediplat-service-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 24px rgba(25, 53, 92, 0.22);
+}
+
+.mediplat-service-card.is-disabled {
+    opacity: 0.58;
+    cursor: default;
+}
+
 .hero-card {
     padding: 28px 30px;
     margin-bottom: 22px;
@@ -219,8 +285,8 @@ button:hover,
     min-width: 126px;
     padding: 16px 18px;
     border-radius: 18px;
-    background: linear-gradient(135deg, rgba(13, 122, 96, 0.12), rgba(13, 122, 96, 0.04));
-    border: 1px solid rgba(13, 122, 96, 0.16);
+    background: linear-gradient(135deg, rgba(26, 116, 191, 0.12), rgba(26, 116, 191, 0.04));
+    border: 1px solid rgba(26, 116, 191, 0.16);
 }
 
 .hero-stat strong {
@@ -268,10 +334,10 @@ button:hover,
     padding: 22px;
     color: var(--ink);
     background:
-        radial-gradient(circle at top right, rgba(13, 122, 96, 0.15), transparent 34%),
-        linear-gradient(180deg, #ffffff 0%, #f9fcfa 100%);
-    border-color: rgba(13, 122, 96, 0.14);
-    border: 1px solid rgba(13, 122, 96, 0.14);
+        radial-gradient(circle at top right, rgba(26, 166, 220, 0.16), transparent 36%),
+        linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    border-color: rgba(26, 116, 191, 0.15);
+    border: 1px solid rgba(26, 116, 191, 0.15);
 }
 
 .service-card-top {
@@ -286,7 +352,7 @@ button:hover,
     width: fit-content;
     padding: 6px 10px;
     border-radius: 999px;
-    background: #e3efe8;
+    background: #e8f1fc;
     color: var(--accent-strong);
     font-size: 12px;
     font-weight: 700;
@@ -314,9 +380,9 @@ button:hover,
     min-width: 116px;
     height: 40px;
     border-radius: 12px;
-    border: 1px solid #b6ddd1;
+    border: 1px solid #c5d8ee;
     padding: 0 14px;
-    background: #f7fffc;
+    background: #f4f9ff;
     color: var(--accent-strong);
     font-size: 13px;
     font-weight: 700;
@@ -327,8 +393,8 @@ button:hover,
 }
 
 .service-action-btn:disabled {
-    border: 1px solid #b6ddd1;
-    background: #f7fffc;
+    border: 1px solid #c5d8ee;
+    background: #f4f9ff;
     color: var(--accent-strong);
     opacity: 1;
     cursor: default;
@@ -380,13 +446,13 @@ button:hover,
 }
 
 .secondary-btn {
-    background: #f0f5f2;
-    color: #2f4a3c;
-    border: 1px solid #d7e4dc;
+    background: #ecf4ff;
+    color: #23466f;
+    border: 1px solid #c9dcef;
 }
 
 .secondary-btn:hover {
-    background: #e8f1ec;
+    background: #e3effd;
 }
 
 .service-form-mode {
@@ -399,12 +465,12 @@ button:hover,
 }
 
 .service-edit-row:hover {
-    background: #f6fbf8;
+    background: #f3f8ff;
 }
 
 .service-edit-row.is-selected {
-    background: #e9f5ef;
-    box-shadow: inset 4px 0 0 #2f9f65;
+    background: #e8f1fd;
+    box-shadow: inset 4px 0 0 #1a74bf;
 }
 
 .grid-form button {
@@ -423,7 +489,7 @@ button:hover,
     grid-template-columns: 120px 1fr 120px;
     gap: 12px;
     padding: 12px 14px;
-    border-top: 1px solid #edf2ee;
+    border-top: 1px solid #e8eef6;
 }
 
 .list-row-service {
@@ -435,7 +501,7 @@ button:hover,
 }
 
 .list-head {
-    background: #eef4f0;
+    background: #edf3fb;
     font-weight: 700;
     border-top: none;
 }
@@ -495,9 +561,9 @@ button:hover,
 }
 
 .viewer-mobile-tab {
-    border: 1px solid #d8e3dd;
-    background: #f7faf8;
-    color: #264438;
+    border: 1px solid #cdd9e9;
+    background: #f5f8fc;
+    color: #23466f;
     white-space: nowrap;
     padding: 10px 12px;
     border-radius: 10px;
@@ -521,7 +587,7 @@ button:hover,
     background: #fff;
     border-radius: 20px;
     overflow: hidden;
-    box-shadow: 0 12px 30px rgba(16, 45, 34, 0.08);
+    box-shadow: 0 12px 30px rgba(20, 44, 78, 0.1);
     min-height: 560px;
 }
 
@@ -531,8 +597,8 @@ button:hover,
     justify-content: space-between;
     gap: 12px;
     padding: 14px 16px;
-    border-bottom: 1px solid #e8efeb;
-    background: linear-gradient(180deg, #f8fbf9 0%, #f2f7f4 100%);
+    border-bottom: 1px solid #e4ebf4;
+    background: linear-gradient(180deg, #f8fbff 0%, #f1f6fd 100%);
 }
 
 .viewer-card-head strong {
@@ -550,9 +616,9 @@ button:hover,
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid #b6ddd1;
+    border: 1px solid #c5d8ee;
     color: var(--accent-strong);
-    background: #f5fffb;
+    background: #f4f9ff;
     border-radius: 10px;
     padding: 9px 12px;
     font-weight: 700;
@@ -575,6 +641,25 @@ button:hover,
     .hero-card {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .services-page .page-shell {
+        align-items: flex-start;
+        padding: 20px 0 28px;
+    }
+
+    .mediplat-services-shell {
+        width: min(1100px, calc(100% - 24px));
+    }
+
+    .mediplat-service-grid {
+        grid-template-columns: minmax(180px, 1fr);
+        gap: 14px;
+    }
+
+    .mediplat-service-card {
+        min-height: 58px;
+        font-size: 17px;
     }
 
     .hero-stats {

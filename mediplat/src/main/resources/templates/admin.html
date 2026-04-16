@@ -71,6 +71,24 @@
                 </label>
                 <button type="submit">권한 저장</button>
             </form>
+            <form method="post" th:action="@{/admin/integrations}" class="stack-form">
+                <input type="hidden" name="instCode" th:value="${selectedInstCode}">
+                <label class="checkbox-row">
+                    <input type="checkbox"
+                           name="enabledIntegrationCodes"
+                           value="ROOMBOARD_CSM_LINK"
+                           th:checked="${#lists.contains(enabledIntegrationCodes, 'ROOMBOARD_CSM_LINK')}"
+                           th:disabled="${!roomBoardCounselPairEnabled}">
+                    <span>병실현황판-입원상담 연동</span>
+                </label>
+                <p class="service-form-mode"
+                   th:text="${roomBoardCounselPairEnabled
+                       ? 'CounselMan 서비스 권한 + ROOM_BOARD 기능이 모두 활성화된 기관은 연동을 켤 수 있습니다.'
+                       : 'CounselMan 서비스 권한 또는 ROOM_BOARD 기능이 비활성화되어 현재는 연동을 켤 수 없습니다.'}">
+                    연동 조건 안내
+                </p>
+                <button type="submit">연동 저장</button>
+            </form>
         </div>
 
         <div class="admin-card admin-card-wide">

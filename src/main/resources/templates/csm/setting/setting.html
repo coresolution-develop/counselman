@@ -96,7 +96,7 @@
                                 </label>
                             </div>
                             <div id="main" class="cateButton">
-                                <button class="btn orderBtn" id="save-order-main" style="display: none;" onclick="saveOrder('main')">순서저장</button>
+                                <button class="btn orderBtn" id="save-order-main" onclick="saveOrder('main')">순서저장</button>
                                 <button class="btn delBtn setting-btn" id="del-maincategory" data-category-type="parent" onclick="showDeleteConfirmation(this)">- 삭제</button>
                                 <button class="btn newBtn" id="new-maincategory" data-category-type="parent" onclick="showAddCategoryModal(this)">+ 추가</button>
                             </div>
@@ -113,7 +113,7 @@
                         <div class="category-container-wrap">
                             <div id="subCategoryDiv"></div>
                             <div id="sub" class="cateButton">
-                                <button class="btn orderBtn" id="save-order-sub" style="display: none;" onclick="saveOrder('sub')">순서저장</button>
+                                <button class="btn orderBtn" id="save-order-sub" onclick="saveOrder('sub')">순서저장</button>
                                 <button class="btn delBtn setting-btn" id="del-subcategory" data-category-type="child" onclick="showDeleteConfirmation(this)" disabled>- 삭제</button>
                                 <button class="btn newBtn" id="new-subcategory" data-category-type="child" onclick="showAddCategoryModal(this)" disabled>+ 추가</button>
                             </div>
@@ -130,7 +130,7 @@
                         <div class="category-container-wrap">
                             <div id="optionCategoryDiv"></div>
                             <div id="option" class="cateButton">
-                                <button class="btn orderBtn" id="save-order-option" style="display: none;" onclick="saveOrder('option')">순서저장</button>
+                                <button class="btn orderBtn" id="save-order-option" onclick="saveOrder('option')">순서저장</button>
                                 <button class="btn delBtn setting-btn" id="del-optioncategory" data-category-type="option" onclick="showDeleteConfirmation(this)" disabled> 삭제</button>
                                 <button class="btn newBtn" id="new-optioncategory" data-category-type="option" onclick="showAddCategoryModal(this)" disabled>+ 추가</button>
                             </div>

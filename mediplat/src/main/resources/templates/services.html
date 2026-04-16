@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MediPlat Services</title>
+    <title>MediPlat</title>
     <link rel="stylesheet" th:href="@{/css/mediplat.css}">
 </head>
-<body>
+<body class="services-page">
 <header class="topbar">
     <div>
         <p class="eyebrow">MediPlat</p>
-        <h1>서비스 선택</h1>
+        <h1>MEDIPLAT</h1>
     </div>
     <div class="topbar-actions">
         <div class="user-meta">
@@ -24,54 +24,21 @@
 </header>
 
 <main class="page-shell">
-    <section class="hero-card">
-        <div class="hero-copy">
-            <p class="eyebrow">Service Catalog</p>
-            <h2>등록된 서비스를 카드로 확인하고 필요한 화면으로 빠르게 이동하세요.</h2>
-            <p class="hero-note">서비스 코드를 기준으로 원하는 기능을 바로 찾아 실행할 수 있습니다.</p>
-        </div>
-        <div class="hero-stats">
-            <div class="hero-stat">
-                <strong th:text="${#lists.size(services)}">0</strong>
-                <span>총 서비스</span>
-            </div>
-            <div class="hero-stat hero-stat-muted">
-                <strong th:text="${roomBoardViewerInstitutionCount}">0</strong>
-                <span>병실현황 기관</span>
-            </div>
-        </div>
-    </section>
-
-    <section class="service-section" th:if="${!#lists.isEmpty(services)}">
-        <div class="section-head service-section-head">
-            <div>
-                <p class="eyebrow">All Services</p>
-                <h2>서비스 목록</h2>
+    <section class="mediplat-services-shell">
+        <div class="mediplat-service-grid">
+            <th:block th:if="${!#lists.isEmpty(services)}" th:each="service : ${services}">
+                <a class="mediplat-service-card"
+                   th:if="${service.accessible}"
+                   th:href="@{/launch/{serviceCode}(serviceCode=${service.serviceCode})}"
+                   th:text="${service.serviceName}">CounselMan</a>
+                <div class="mediplat-service-card is-disabled"
+                     th:if="${!service.accessible}"
+                     th:text="${service.serviceName}">추가 시스템</div>
+            </th:block>
+            <div class="empty-card" th:if="${#lists.isEmpty(services)}">
+                표시할 서비스가 없습니다.
             </div>
         </div>
-        <div class="service-grid service-grid-cards">
-            <article class="service-card" th:each="service : ${services}">
-                <div class="service-card-top">
-                    <span class="service-code" th:text="${service.serviceCode}">COUNSELMAN</span>
-                </div>
-                <strong th:text="${service.serviceName}">CounselMan</strong>
-                <p th:text="${service.description}">기관별 상담관리 서비스</p>
-                <div class="service-actions">
-                    <a class="service-action-btn"
-                       th:if="${service.accessible}"
-                       th:href="@{/launch/{serviceCode}(serviceCode=${service.serviceCode})}">서비스 열기</a>
-                    <button type="button"
-                            class="service-action-btn"
-                            th:if="${!service.accessible}"
-                            disabled
-                            aria-disabled="true">서비스 열기</button>
-                </div>
-            </article>
-        </div>
-    </section>
-
-    <section class="empty-card" th:if="${#lists.isEmpty(services)}">
-        등록된 서비스가 없습니다. 플랫폼 관리자에게 서비스 설정을 요청해 주세요.
     </section>
 </main>
 </body>

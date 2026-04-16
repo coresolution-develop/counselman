@@ -54,11 +54,11 @@
 					<strong id="global-mobile-menu-title">메뉴</strong>
 					<button type="button" id="global-mobile-menu-close" aria-label="메뉴 닫기">×</button>
 				</div>
-				<nav class="global-mobile-menu-list" aria-label="모바일 전체 메뉴">
-					<a class="global-mobile-menu-item" th:href="@{/counsel/reservation(status='RESERVED')}">
-						<span class="global-mobile-menu-item-icon icon-reservation" aria-hidden="true"></span>
-						<span>상담예약</span>
-					</a>
+					<nav class="global-mobile-menu-list" aria-label="모바일 전체 메뉴">
+						<a class="global-mobile-menu-item" th:href="@{/counsel/reservation(status='RESERVED')}">
+							<span class="global-mobile-menu-item-icon icon-reservation" aria-hidden="true"></span>
+							<span>상담 접수</span>
+						</a>
 					<a class="global-mobile-menu-item" th:href="@{/counsel/new}">
 						<span class="global-mobile-menu-item-icon icon-new" aria-hidden="true"></span>
 						<span>입원상담</span>
@@ -151,13 +151,13 @@
   </ul>
 
   <ul th:unless="${isCore}">
-    <!-- 상담예약 -->
+    <!-- 상담 접수 -->
     <li class="nav_link menu0"
         data-menu="reservation" data-content="all"
         th:classappend="${activeMenu == 'reservation' ? ' on active' : ''}"
         th:attr="data-base-url=@{/counsel/reservation(status='RESERVED')}"
-        role="link" tabindex="0" aria-label="상담예약 페이지로 이동">
-      <span>상담예약</span>
+        role="link" tabindex="0" aria-label="상담 접수 페이지로 이동">
+      <span>상담 접수</span>
     </li>
 
     <!-- 입원상담 -->

@@ -2,6 +2,7 @@ package com.coresolution.mediplat.controller;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -28,6 +29,7 @@ import jakarta.servlet.http.HttpSession;
 public class MediplatController {
 
     private static final String SESSION_USER = "mediplatUser";
+    private static final String SERVICE_CODE_ROOM_BOARD = "ROOM_BOARD";
 
     private final PlatformStoreService storeService;
     private final CounselManSsoLinkService counselManSsoLinkService;
@@ -148,7 +150,23 @@ public class MediplatController {
         if (user == null) {
             return "redirect:/login";
         }
-        var service = storeService.findService(serviceCode);
+        String normalizedServiceCode = serviceCode == null ? "" : serviceCode.trim().toUpperCase(Locale.ROOT);
+        if (SERVICE_CODE_ROOM_BOARD.equals(normalizedServiceCode)) {
+            if (user.isPlatformAdmin() || !storeService.isRoomBoardCounselLinkEnabled(user.getInstCode())) {
+                return "redirect:/services";
+            }
+            PlatformService counselManService = storeService.findService("COUNSELMAN");
+            if (counselManService == null || !counselManService.isEnabled()) {
+                return "redirect:/services";
+            }
+            String launchUrl = counselManSsoLinkService.createLaunchUrl(
+                    counselManService,
+                    user,
+                    user.getInstCode(),
+                    "/room-board?popup=1");
+            return "redirect:" + launchUrl;
+        }
+        var service = storeService.findService(normalizedServiceCode);
         if (service == null) {
             return "redirect:/services";
         }
@@ -189,6 +207,8 @@ public class MediplatController {
         model.addAttribute("runtimeEnvCode", storeService.getRuntimeEnvCode());
         model.addAttribute("selectedInstCode", selectedInstCode);
         model.addAttribute("enabledServiceCodes", storeService.listEnabledServiceCodes(selectedInstCode));
+        model.addAttribute("enabledIntegrationCodes", storeService.listEnabledIntegrationCodes(selectedInstCode));
+        model.addAttribute("roomBoardCounselPairEnabled", storeService.isRoomBoardCounselPairEnabled(selectedInstCode));
         model.addAttribute("message", message);
         model.addAttribute("error", error);
         populateViewerAdminModel(model, selectedInstCode, viewerUsername);
@@ -319,6 +339,26 @@ public class MediplatController {
             redirectAttributes.addAttribute("instCode", instCode);
         } catch (IllegalArgumentException e) {
             redirectAttributes.addAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin";
+    }
+
+    @PostMapping("/admin/integrations")
+    public String saveIntegrations(
+            @RequestParam("instCode") String instCode,
+            @RequestParam(name = "enabledIntegrationCodes", required = false) List<String> enabledIntegrationCodes,
+            HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        if (!isAdminSession(session)) {
+            return "redirect:/login";
+        }
+        try {
+            storeService.saveInstitutionIntegrationAccess(instCode, enabledIntegrationCodes);
+            redirectAttributes.addAttribute("message", "기관별 연동 설정이 저장되었습니다.");
+            redirectAttributes.addAttribute("instCode", instCode);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addAttribute("error", e.getMessage());
+            redirectAttributes.addAttribute("instCode", instCode);
         }
         return "redirect:/admin";
     }

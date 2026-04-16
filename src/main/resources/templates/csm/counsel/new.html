@@ -130,11 +130,11 @@
                     <div class="reservation-link-banner"
                         th:if="${reservationLink != null and reservationLink['id'] != null}">
                         <div class="reservation-link-left">
-                            <strong>상담예약 연계</strong>
+                            <strong>상담 접수 연계</strong>
                             <span th:text="|#${reservationLink['id']} / ${reservationLink['patientName']} / ${reservationLink['reservedAt']}|">#1 / 홍길동 / 2026-04-14 09:00:00</span>
                         </div>
                         <a class="reservation-link-btn"
-                            th:href="@{/counsel/reservation(status='ALL', reservationId=${reservationLink['id']})}">예약 상세</a>
+                            th:href="@{/counsel/reservation(status='ALL', reservationId=${reservationLink['id']})}">접수 상세</a>
                     </div>
                     <div class="content-body">
                         <div class="contentbox">
