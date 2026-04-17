@@ -54,7 +54,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CsmAuthService {
     private static final Logger log = LoggerFactory.getLogger(CsmAuthService.class);
-    private static final String PLATFORM_SERVICE_COUNSELMAN = "COUNSELMAN";
     private static final String PLATFORM_INTEGRATION_ROOMBOARD_CSM_LINK = "ROOMBOARD_CSM_LINK";
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -177,26 +176,7 @@ public class CsmAuthService {
         } catch (IllegalArgumentException e) {
             return false;
         }
-        return isPlatformCounselServiceEnabled(safeInst) && isPlatformIntegrationEnabled(safeInst);
-    }
-
-    private boolean isPlatformCounselServiceEnabled(String inst) {
-        try {
-            if (!tableExistsInCsm("mp_institution_service")) {
-                return true;
-            }
-            Integer count = jdbcTemplate.queryForObject("""
-                    SELECT COUNT(*)
-                    FROM csm.mp_institution_service
-                    WHERE inst_code = ?
-                      AND service_code = ?
-                      AND use_yn = 'Y'
-                    """, Integer.class, inst, PLATFORM_SERVICE_COUNSELMAN);
-            return count != null && count > 0;
-        } catch (Exception e) {
-            log.warn("[platform] counselman service check skipped inst={}, err={}", inst, e.toString());
-            return true;
-        }
+        return isPlatformIntegrationEnabled(safeInst);
     }
 
     private boolean isPlatformIntegrationEnabled(String inst) {

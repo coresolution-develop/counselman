@@ -65,16 +65,13 @@ document.addEventListener("DOMContentLoaded", function () {
       sd.style.height = '1px';
       sd.style.width = '100%';
       sd.style.pointerEvents = 'none';
-      console.log('Created #scrollDetector');
     }
     if (!container.contains(sd)) {
       container.appendChild(sd);
-      console.log('#scrollDetector appended to container');
     }
     if (observer) {
       try { observer.unobserve(sd); } catch (e) {}
       observer.observe(sd);
-      console.log('#scrollDetector observed');
     }
     return sd;
   }
@@ -107,7 +104,6 @@ document.addEventListener("DOMContentLoaded", function () {
   document.querySelectorAll('.selected-row').forEach(row => row.classList.remove('selected-row'));
   clickedRow.classList.add('selected-row');
   selectedCsIdx = clickedRow.getAttribute('data-cs-idx'); // 이미 위에서 getVal로 넣음
-  console.log('Selected cs_idx:', selectedCsIdx);
     });
 
     tableBodyEl.addEventListener('dblclick', function (event) {
@@ -315,7 +311,6 @@ if (clean.length !== data.length) {
   // ========= 데이터 로드 =========
   function loadCounselData(formData) {
   if (isLoading || !hasMoreData) {
-    console.log('Loading blocked: isLoading=', isLoading, 'hasMoreData=', hasMoreData);
     return;
   }
   isLoading = true;
@@ -330,11 +325,6 @@ if (clean.length !== data.length) {
     data: payload,
     dataType: 'json',
     success: function (response) {
-      console.log('RAW response:', response);
-      try { console.log('RAW as JSON:', JSON.stringify(response).slice(0, 2000)); } catch (e) {}
-
-      if (page === 1) debugFirstPayload(response);  // ★ 첫 로드 디버깅
-
       if (response.success) {
         if (page === 1) {
           orderItems = normalizeOrderItems(response.orderItems || []);
@@ -345,13 +335,10 @@ if (clean.length !== data.length) {
         }
 
         const list = Array.isArray(response.cslist) ? response.cslist : [];
-        console.log('[DEBUG] append list length:', list.length);
-
         appendCounselData(list, orderItems);
 
         page++;
         hasMoreData = !!response.hasMore;
-        console.log('Updated: page=', page, 'hasMoreData=', hasMoreData);
 
         adjustScrollDetector();
         checkScrollPosition();
@@ -378,10 +365,7 @@ if (clean.length !== data.length) {
     const scrollTop = tableContainer.scrollTop || document.documentElement.scrollTop || 0;
     const distanceToBottom = scrollHeight - scrollTop - containerHeight;
 
-    console.log('Scroll check:', { containerHeight, scrollHeight, scrollTop, distanceToBottom });
-
     if (hasMoreData && !isLoading && (distanceToBottom < 300 || scrollHeight <= containerHeight)) {
-      console.log('Forcing load due to scroll position or small table');
       loadCounselData();
     }
   }
@@ -419,18 +403,8 @@ if (clean.length !== data.length) {
 
   let bodyHtml = '';
 
-  cslist.forEach((row, rowIdx) => {
+  cslist.forEach((row) => {
     if (!row || typeof row !== 'object') return;
-// 디버깅: 각 행에서 핵심 컬럼 찍기
-    if (rowIdx === 0) {
-      console.log('[DEBUG] render row0 snapshot:', {
-        cs_idx: row?.cs_idx,
-        cs_col_01: row?.cs_col_01,
-        cs_col_08: row?.cs_col_08,
-        cs_col_07: row?.cs_col_07,
-        cs_col_11: row?.cs_col_11
-      });
-    }
     const guardians = Array.isArray(row.guardians) ? row.guardians : [];
 
     let className = '';
@@ -590,29 +564,6 @@ function getVal(row, key) {
   const upper = key.toUpperCase();
   if (upper in row) return row[upper] ?? '';
   return '';
-}
-
-// 2-3) 아주 자세한 1회성 디버깅 로그 (첫 페이지 최초 호출 때만)
-function debugFirstPayload(response) {
-  try {
-    console.log('[DEBUG] orderItems raw:', response.orderItems);
-    const o0 = (response.orderItems && response.orderItems[0]) || null;
-    if (o0) console.log('[DEBUG] orderItems[0] keys:', Object.keys(o0));
-
-    console.log('[DEBUG] cslist length:', Array.isArray(response.cslist) ? response.cslist.length : 'NA');
-    console.log('[DEBUG] cslist :', response.cslist);
-    if (Array.isArray(response.cslist) && response.cslist.length) {
-      const r0 = response.cslist[0];
-      console.log('[DEBUG] cslist[0] keys:', Object.keys(r0 || {}));
-      console.log('[DEBUG] cslist[0] dump:', JSON.stringify(r0).slice(0, 1200));
-      // 서버가 실제로 값을 담아보내는지 가장 중요한 컬럼 2~3개 확인
-      console.log('[DEBUG] r0.cs_idx =', r0?.cs_idx);
-      console.log('[DEBUG] r0.cs_col_01 =', r0?.cs_col_01, ' / camel:', r0?.csCol01);
-      console.log('[DEBUG] r0.cs_col_08 =', r0?.cs_col_08, ' / camel:', r0?.csCol08);
-      console.log('[DEBUG] r0.cs_col_07 =', r0?.cs_col_07, ' / camel:', r0?.csCol07);
-      console.log('[DEBUG] r0.cs_col_11 =', r0?.cs_col_11, ' / camel:', r0?.csCol11);
-    }
-  } catch (e) {}
 }
   // ======== 초기 첫 로드 강제 호출(중요!) ========
   loadCounselData(getCurrentFilters());

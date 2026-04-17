@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const stopRecordingBtn = document.getElementById('stopRecordingBtn');
   const uploadAudioFileBtn = document.getElementById('uploadAudioFileBtn');
   const audioFileInput = document.getElementById('audioFileInput');
+  const audioDropZoneEl = document.getElementById('audioDropZone');
   const applyDiseaseMatchBtn = document.getElementById('applyDiseaseMatchBtn');
   const generateSummaryBtn = document.getElementById('generateSummaryBtn');
   const recordingStatusEl = document.getElementById('recordingStatus');
@@ -2094,6 +2095,64 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  function bindAudioDropZone() {
+    if (!audioDropZoneEl || !audioFileInput) return;
+
+    const preventDefault = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    const markDragOver = (active) => {
+      audioDropZoneEl.classList.toggle('is-dragover', !!active);
+    };
+
+    ['dragenter', 'dragover'].forEach((eventName) => {
+      audioDropZoneEl.addEventListener(eventName, function (event) {
+        preventDefault(event);
+        if (!isRecording) {
+          markDragOver(true);
+        }
+      });
+    });
+
+    ['dragleave', 'dragend', 'drop'].forEach((eventName) => {
+      audioDropZoneEl.addEventListener(eventName, function (event) {
+        preventDefault(event);
+        markDragOver(false);
+      });
+    });
+
+    audioDropZoneEl.addEventListener('drop', function (event) {
+      if (isRecording) {
+        setRecordingStatus('녹음 중에는 파일 업로드를 할 수 없습니다.', true);
+        return;
+      }
+
+      const files = Array.from(event.dataTransfer?.files || []);
+      if (!files.length) {
+        setRecordingStatus('드롭한 파일을 찾을 수 없습니다.', true);
+        return;
+      }
+
+      const file = files.find((candidate) => isAudioUploadCandidate(candidate)) || files[0];
+      uploadAudioFile(file);
+    });
+
+    audioDropZoneEl.addEventListener('click', function () {
+      if (isRecording) {
+        setRecordingStatus('녹음 중에는 파일 업로드를 할 수 없습니다.', true);
+        return;
+      }
+      audioFileInput.click();
+    });
+
+    audioDropZoneEl.addEventListener('keydown', function (event) {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      audioDropZoneEl.click();
+    });
+  }
+
   function createMediaRecorder(stream, options) {
     try {
       if (options && options.mimeType) {
@@ -2335,6 +2394,7 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     });
   }
+  bindAudioDropZone();
   if (applyDiseaseMatchBtn) {
     applyDiseaseMatchBtn.addEventListener('click', function () {
       const source = counselContentInput ? counselContentInput.value : '';

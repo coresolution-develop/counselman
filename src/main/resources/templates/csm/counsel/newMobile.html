@@ -544,6 +544,10 @@
             </div>
 
             <div class="floating-tools">
+                <div th:if="${moduleCounselAudioEnabled}" id="audioDropZone" class="audio-drop-zone" role="button" tabindex="0" aria-label="음성 파일 드래그 앤 드롭 업로드">
+                    <span class="audio-drop-zone-title">녹음 파일을 여기에 끌어놓거나 클릭해 업로드</span>
+                    <span class="audio-drop-zone-help">지원 형식: mp3, m4a, wav, ogg, aac, flac, ac3, webm</span>
+                </div>
                 <div th:if="${moduleCounselAudioEnabled}" id="recordingIndicator" class="recording-indicator" aria-live="polite">
                     <span class="recording-dot" aria-hidden="true"></span>
                     <span class="recording-label">녹음 중</span>
@@ -552,7 +556,6 @@
                 <div class="record-tools">
                     <button th:if="${moduleCounselAudioEnabled}" type="button" id="startRecordingBtn" class="mini-btn">녹음 시작</button>
                     <button th:if="${moduleCounselAudioEnabled}" type="button" id="stopRecordingBtn" class="mini-btn" disabled>녹음 중지</button>
-                    <button th:if="${moduleCounselAudioEnabled}" type="button" id="uploadAudioFileBtn" class="mini-btn upload-btn">파일 업로드</button>
                     <button th:if="${moduleCounselAudioEnabled}" type="button" id="applyDiseaseMatchBtn" class="mini-btn">커스텀 매칭</button>
                     <button type="button" id="generateSummaryBtn" class="mini-btn summary-btn"
                             th:disabled="${!openAiConfigured}"

@@ -29,10 +29,12 @@ public class PlatformStoreService {
 
     private static final String USE_Y = "Y";
     private static final String ROLE_PLATFORM_ADMIN = "PLATFORM_ADMIN";
+    private static final String ROLE_INSTITUTION_ADMIN = "INSTITUTION_ADMIN";
     private static final String ROLE_ROOM_BOARD_VIEWER = "ROOM_BOARD_VIEWER";
     private static final String ROLE_USER = "USER";
     private static final String SERVICE_CODE_COUNSELMAN = "COUNSELMAN";
     private static final String SERVICE_CODE_ROOM_BOARD = "ROOM_BOARD";
+    private static final String SERVICE_CODE_SEMINAR_ROOM = "SEMINAR_ROOM";
     private static final String INTEGRATION_CODE_ROOMBOARD_CSM_LINK = "ROOMBOARD_CSM_LINK";
     private static final String DEFAULT_SERVICE_CODE = SERVICE_CODE_COUNSELMAN;
     private static final String VIEWER_ACCOUNT_INST_CODE = "core";
@@ -85,6 +87,7 @@ public class PlatformStoreService {
     public PlatformSessionUser authenticate(String instCodeOrName, String username, String rawPassword) {
         String normalizedInstInput = StringUtils.hasText(instCodeOrName) ? instCodeOrName.trim() : "";
         String normalizedUsername = normalizeUsername(username);
+        String normalizedRawPassword = StringUtils.hasText(rawPassword) ? rawPassword.trim() : "";
 
         if (!StringUtils.hasText(normalizedInstInput)) {
             PlatformSessionUser roomBoardViewerSession = authenticateRoomBoardViewerAccount(normalizedUsername, rawPassword);
@@ -98,22 +101,47 @@ public class PlatformStoreService {
         if (!StringUtils.hasText(resolvedInstCode)) {
             return null;
         }
+        if (!StringUtils.hasText(normalizedUsername) || !StringUtils.hasText(normalizedRawPassword)) {
+            return null;
+        }
+        PlatformInstitution institution = findStoredInstitution(resolvedInstCode);
+        if (institution == null || !USE_Y.equalsIgnoreCase(institution.getUseYn())) {
+            return null;
+        }
+        PlatformUser managedUser = findUser(resolvedInstCode, normalizedUsername);
+        if (managedUser != null) {
+            if (!USE_Y.equalsIgnoreCase(managedUser.getUseYn())) {
+                return null;
+            }
+            if (ROLE_ROOM_BOARD_VIEWER.equalsIgnoreCase(managedUser.getRoleCode())) {
+                return null;
+            }
+            if (!passwordEncoder.matches(normalizedRawPassword, managedUser.getPasswordHash())) {
+                return null;
+            }
+            String roleCode = resolveSessionRole(resolvedInstCode, normalizedUsername, managedUser);
+            String displayName = StringUtils.hasText(managedUser.getDisplayName())
+                    ? managedUser.getDisplayName().trim()
+                    : managedUser.getUsername();
+            return new PlatformSessionUser(
+                    resolvedInstCode,
+                    managedUser.getUsername(),
+                    displayName,
+                    roleCode);
+        }
+
         CounselManAccountService.AuthenticatedUser authenticatedUser = counselManAccountService.authenticate(
                 resolvedInstCode,
                 normalizedUsername,
-                rawPassword);
+                normalizedRawPassword);
         if (authenticatedUser == null) {
             return null;
         }
-        PlatformUser managedUser = findUser(authenticatedUser.instCode(), authenticatedUser.username());
-        String roleCode = isPlatformAdminAccount(authenticatedUser.instCode(), authenticatedUser.username(), managedUser)
-                        ? ROLE_PLATFORM_ADMIN
-                        : ROLE_USER;
         return new PlatformSessionUser(
-                authenticatedUser.instCode(),
+                resolvedInstCode,
                 authenticatedUser.username(),
                 authenticatedUser.displayName(),
-                roleCode);
+                ROLE_USER);
     }
 
     private PlatformSessionUser authenticateRoomBoardViewerAccount(String username, String rawPassword) {
@@ -178,6 +206,17 @@ public class PlatformStoreService {
                 && ROLE_PLATFORM_ADMIN.equalsIgnoreCase(managedUser.getRoleCode());
     }
 
+    private String resolveSessionRole(String instCode, String username, PlatformUser managedUser) {
+        if (isPlatformAdminAccount(instCode, username, managedUser)) {
+            return ROLE_PLATFORM_ADMIN;
+        }
+        String normalizedRole = normalizeRole(managedUser == null ? null : managedUser.getRoleCode());
+        if (ROLE_INSTITUTION_ADMIN.equalsIgnoreCase(normalizedRole)) {
+            return ROLE_INSTITUTION_ADMIN;
+        }
+        return ROLE_USER;
+    }
+
     public List<PlatformService> listAccessibleServices(PlatformSessionUser user) {
         return listServicesForUser(user).stream()
                 .filter(PlatformService::isAccessible)
@@ -228,29 +267,19 @@ public class PlatformStoreService {
                 """, (rs, rowNum) -> mapPlatformService(rs, rs.getString("access_yn")),
                 runtimeEnvCode,
                 normalizedInstCode);
+        List<PlatformService> scopedServices;
         if (institutionEnabled) {
-            return appendRoomBoardServiceCard(services, normalizedInstCode);
+            scopedServices = appendRoomBoardServiceCard(services, normalizedInstCode);
+        } else {
+            scopedServices = services.stream()
+                    .map(service -> withAccess(service, "N"))
+                    .toList();
         }
-        return services.stream()
-                .map(service -> withAccess(service, "N"))
-                .toList();
+        return applyUserServiceAccess(scopedServices, user);
     }
 
     public List<PlatformInstitution> listInstitutions() {
-        Map<String, PlatformInstitution> mergedInstitutions = new LinkedHashMap<>();
-        for (CounselManAccountService.CounselManInstitution institution : counselManAccountService.listInstitutions()) {
-            mergedInstitutions.put(
-                    institution.instCode(),
-                    new PlatformInstitution(
-                            null,
-                            institution.instCode(),
-                            institution.instName(),
-                            institution.useYn()));
-        }
-        for (PlatformInstitution institution : listStoredInstitutions()) {
-            mergedInstitutions.put(institution.getInstCode(), institution);
-        }
-        return mergedInstitutions.values().stream()
+        return listStoredInstitutions().stream()
                 .sorted((left, right) -> {
                     int rankCompare = Integer.compare(institutionRank(left.getInstCode()), institutionRank(right.getInstCode()));
                     if (rankCompare != 0) {
@@ -282,6 +311,76 @@ public class PlatformStoreService {
                         rs.getString("display_name"),
                         rs.getString("role_code"),
                         rs.getString("use_yn")));
+    }
+
+    public List<PlatformUser> listInstitutionAdminUsers() {
+        return listUsers().stream()
+                .filter(user -> user != null && ROLE_INSTITUTION_ADMIN.equalsIgnoreCase(user.getRoleCode()))
+                .sorted((left, right) -> {
+                    int instCompare = String.CASE_INSENSITIVE_ORDER.compare(
+                            Objects.toString(left.getInstCode(), ""),
+                            Objects.toString(right.getInstCode(), ""));
+                    if (instCompare != 0) {
+                        return instCompare;
+                    }
+                    return String.CASE_INSENSITIVE_ORDER.compare(
+                            Objects.toString(left.getUsername(), ""),
+                            Objects.toString(right.getUsername(), ""));
+                })
+                .toList();
+    }
+
+    public List<PlatformUser> listInstitutionUsers(String instCode) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        if (!StringUtils.hasText(normalizedInstCode)) {
+            return List.of();
+        }
+        return listUsers().stream()
+                .filter(user -> user != null)
+                .filter(user -> normalizedInstCode.equalsIgnoreCase(normalizeInstCode(user.getInstCode())))
+                .filter(user -> isUserManageableRole(user.getRoleCode()))
+                .sorted((left, right) -> String.CASE_INSENSITIVE_ORDER.compare(
+                        Objects.toString(left.getUsername(), ""),
+                        Objects.toString(right.getUsername(), "")))
+                .toList();
+    }
+
+    public List<String> listEnabledServiceCodesForUser(PlatformSessionUser user) {
+        if (user == null) {
+            return List.of();
+        }
+        if (user.isPlatformAdmin()) {
+            return listAllServices().stream()
+                    .filter(PlatformService::isEnabled)
+                    .map(PlatformService::getServiceCode)
+                    .toList();
+        }
+        return listServicesForUser(user).stream()
+                .filter(PlatformService::isAccessible)
+                .map(PlatformService::getServiceCode)
+                .toList();
+    }
+
+    public List<String> listEnabledServiceCodesForUser(String instCode, String username) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        String normalizedUsername = normalizeUsername(username);
+        if (!StringUtils.hasText(normalizedInstCode) || !StringUtils.hasText(normalizedUsername)) {
+            return List.of();
+        }
+        List<String> institutionEnabledCodes = listEnabledServiceCodes(normalizedInstCode).stream()
+                .map(this::normalizeServiceCode)
+                .filter(StringUtils::hasText)
+                .toList();
+        if (institutionEnabledCodes.isEmpty()) {
+            return List.of();
+        }
+        if (!hasUserServiceAccessConfig(normalizedInstCode, normalizedUsername)) {
+            return institutionEnabledCodes;
+        }
+        List<String> userEnabledCodes = listConfiguredEnabledUserServiceCodes(normalizedInstCode, normalizedUsername);
+        return institutionEnabledCodes.stream()
+                .filter(code -> userEnabledCodes.stream().anyMatch(code::equalsIgnoreCase))
+                .toList();
     }
 
     public List<RoomBoardViewerAccount> listRoomBoardViewerAccounts() {
@@ -357,6 +456,7 @@ public class PlatformStoreService {
                 .filter(Objects::nonNull)
                 .filter(institution -> !"core".equalsIgnoreCase(institution.getInstCode()))
                 .filter(institution -> USE_Y.equalsIgnoreCase(institution.getUseYn()))
+                .filter(institution -> isRoomBoardServiceEnabledForInstitution(institution.getInstCode()))
                 .filter(institution -> isRoomBoardCounselLinkEnabled(institution.getInstCode()))
                 .toList();
     }
@@ -380,9 +480,6 @@ public class PlatformStoreService {
             throw new IllegalArgumentException("최소 1개 기관을 선택해 주세요.");
         }
         PlatformUser existingViewerUser = findRoomBoardViewerUser(normalizedUsername);
-        if (counselManAccountService.isUsernameUsedInAnyInstitution(normalizedUsername)) {
-            throw new IllegalArgumentException("이미 기관 계정에서 사용하는 아이디입니다. 다른 아이디를 사용해 주세요.");
-        }
         if (isUsernameUsedByOtherPlatformUsers(normalizedUsername, existingViewerUser)) {
             throw new IllegalArgumentException("이미 사용 중인 아이디입니다. 다른 아이디를 사용해 주세요.");
         }
@@ -489,7 +586,7 @@ public class PlatformStoreService {
         if (!enabledCodes.isEmpty()) {
             return enabledCodes;
         }
-        return isRoomBoardCounselPairEnabled(normalizedInstCode)
+        return isRoomBoardFeatureEnabled(normalizedInstCode)
                 ? List.of(INTEGRATION_CODE_ROOMBOARD_CSM_LINK)
                 : List.of();
     }
@@ -504,6 +601,7 @@ public class PlatformStoreService {
                     .map(this::findInstitution)
                     .filter(Objects::nonNull)
                     .filter(institution -> USE_Y.equalsIgnoreCase(institution.getUseYn()))
+                    .filter(institution -> isRoomBoardServiceEnabledForInstitution(institution.getInstCode()))
                     .filter(institution -> isRoomBoardCounselLinkEnabled(institution.getInstCode()))
                     .toList();
         }
@@ -521,6 +619,9 @@ public class PlatformStoreService {
         if (!counselManAccountService.hasAvailableUser(normalizedInstCode, username)) {
             return List.of();
         }
+        if (!isRoomBoardServiceEnabledForInstitution(normalizedInstCode)) {
+            return List.of();
+        }
         if (!isRoomBoardCounselLinkEnabled(normalizedInstCode)) {
             return List.of();
         }
@@ -532,8 +633,8 @@ public class PlatformStoreService {
         if (!StringUtils.hasText(normalizedInstCode)) {
             return false;
         }
-        return isServiceEnabledForInstitution(normalizedInstCode, SERVICE_CODE_COUNSELMAN)
-                && counselManAccountService.isRoomBoardEnabled(normalizedInstCode);
+        return isRoomBoardServiceEnabledForInstitution(normalizedInstCode)
+                && isRoomBoardFeatureEnabled(normalizedInstCode);
     }
 
     public boolean isRoomBoardCounselLinkEnabled(String instCode) {
@@ -541,7 +642,7 @@ public class PlatformStoreService {
         if (!StringUtils.hasText(normalizedInstCode)) {
             return false;
         }
-        if (!isRoomBoardCounselPairEnabled(normalizedInstCode)) {
+        if (!isRoomBoardFeatureEnabled(normalizedInstCode)) {
             return false;
         }
         return isIntegrationEnabledForInstitution(normalizedInstCode, INTEGRATION_CODE_ROOMBOARD_CSM_LINK);
@@ -598,6 +699,29 @@ public class PlatformStoreService {
         return count != null && count > 0;
     }
 
+    private boolean isRoomBoardFeatureEnabled(String instCode) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        if (!StringUtils.hasText(normalizedInstCode)) {
+            return false;
+        }
+        return counselManAccountService.isRoomBoardEnabled(normalizedInstCode);
+    }
+
+    private boolean isRoomBoardServiceEnabledForInstitution(String instCode) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        if (!StringUtils.hasText(normalizedInstCode)) {
+            return false;
+        }
+        PlatformService roomBoardService = findService(SERVICE_CODE_ROOM_BOARD);
+        if (roomBoardService == null) {
+            return true;
+        }
+        if (!roomBoardService.isEnabled()) {
+            return false;
+        }
+        return isServiceEnabledForInstitution(normalizedInstCode, SERVICE_CODE_ROOM_BOARD);
+    }
+
     public void saveInstitution(String instCode, String instName, String useYn) {
         String normalizedInstCode = normalizeInstCode(instCode);
         String normalizedUseYn = normalizeYn(useYn);
@@ -622,6 +746,43 @@ public class PlatformStoreService {
         }
         String hash = passwordEncoder.encode(rawPassword.trim());
         upsertUser(normalizedInstCode, normalizedUsername, hash, displayName.trim(), normalizedRole, normalizedUseYn);
+    }
+
+    public void saveUserServiceAccess(String instCode, String username, List<String> enabledServiceCodes) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        String normalizedUsername = normalizeUsername(username);
+        if (!StringUtils.hasText(normalizedInstCode) || !StringUtils.hasText(normalizedUsername)) {
+            throw new IllegalArgumentException("기관과 사용자 정보를 확인해 주세요.");
+        }
+        PlatformUser targetUser = findUser(normalizedInstCode, normalizedUsername);
+        if (targetUser == null || !isUserManageableRole(targetUser.getRoleCode())) {
+            throw new IllegalArgumentException("권한을 관리할 수 있는 사용자가 아닙니다.");
+        }
+        List<String> allowedServiceCodes = listEnabledServiceCodes(normalizedInstCode).stream()
+                .map(this::normalizeServiceCode)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .toList();
+        if (allowedServiceCodes.isEmpty()) {
+            throw new IllegalArgumentException("해당 기관에 활성화된 서비스가 없습니다.");
+        }
+        List<String> normalizedEnabledCodes = new ArrayList<>();
+        if (enabledServiceCodes != null) {
+            enabledServiceCodes.stream()
+                    .filter(Objects::nonNull)
+                    .map(this::normalizeServiceCode)
+                    .filter(StringUtils::hasText)
+                    .filter(allowedServiceCodes::contains)
+                    .distinct()
+                    .forEach(normalizedEnabledCodes::add);
+        }
+        for (String serviceCode : allowedServiceCodes) {
+            upsertUserServiceAccess(
+                    normalizedInstCode,
+                    normalizedUsername,
+                    serviceCode,
+                    normalizedEnabledCodes.contains(serviceCode) ? "Y" : "N");
+        }
     }
 
     public void saveService(
@@ -734,8 +895,12 @@ public class PlatformStoreService {
                     .forEach(normalizedCodes::add);
         }
         if (normalizedCodes.contains(INTEGRATION_CODE_ROOMBOARD_CSM_LINK)
-                && !isRoomBoardCounselPairEnabled(normalizedInstCode)) {
-            throw new IllegalArgumentException("CounselMan 서비스 권한과 ROOM_BOARD 기능이 모두 활성화되어야 연동을 사용할 수 있습니다.");
+                && !isRoomBoardFeatureEnabled(normalizedInstCode)) {
+            throw new IllegalArgumentException("ROOM_BOARD 기능이 활성화되어야 연동을 사용할 수 있습니다.");
+        }
+        if (normalizedCodes.contains(INTEGRATION_CODE_ROOMBOARD_CSM_LINK)
+                && !isRoomBoardServiceEnabledForInstitution(normalizedInstCode)) {
+            throw new IllegalArgumentException("ROOM_BOARD 서비스 권한이 활성화되어야 연동을 사용할 수 있습니다.");
         }
         upsertInstitutionIntegration(
                 normalizedInstCode,
@@ -781,6 +946,17 @@ public class PlatformStoreService {
                     inst_code VARCHAR(50) NOT NULL,
                     use_yn CHAR(1) NOT NULL DEFAULT 'Y',
                     UNIQUE KEY uq_mp_user_scope (username, inst_code)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """);
+
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS mp_user_service (
+                    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    inst_code VARCHAR(50) NOT NULL,
+                    username VARCHAR(100) NOT NULL,
+                    service_code VARCHAR(50) NOT NULL,
+                    use_yn CHAR(1) NOT NULL DEFAULT 'Y',
+                    UNIQUE KEY uq_mp_user_service (inst_code, username, service_code)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
                 """);
 
@@ -864,6 +1040,17 @@ public class PlatformStoreService {
                 """);
 
         jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS mp_user_service (
+                    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                    inst_code VARCHAR(50) NOT NULL,
+                    username VARCHAR(100) NOT NULL,
+                    service_code VARCHAR(50) NOT NULL,
+                    use_yn CHAR(1) NOT NULL DEFAULT 'Y',
+                    UNIQUE (inst_code, username, service_code)
+                )
+                """);
+
+        jdbcTemplate.execute("""
                 CREATE TABLE IF NOT EXISTS mp_service (
                     id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
                     service_code VARCHAR(50) NOT NULL UNIQUE,
@@ -935,7 +1122,35 @@ public class PlatformStoreService {
                 "기관별 상담관리 서비스",
                 USE_Y,
                 1);
-        saveInstitutionServiceAccess(bootstrapAdminInstCode, List.of(DEFAULT_SERVICE_CODE));
+        saveService(
+                SERVICE_CODE_ROOM_BOARD,
+                "병실현황판",
+                bootstrapCounselmanBaseUrl,
+                localBaseUrl,
+                devBaseUrl,
+                prodBaseUrl,
+                "/mediplat/sso/entry",
+                "/room-board?popup=1",
+                "/room-board?popup=1",
+                "기관별 병실현황판 서비스",
+                USE_Y,
+                2);
+        saveService(
+                SERVICE_CODE_SEMINAR_ROOM,
+                "세미나실 예약",
+                bootstrapCounselmanBaseUrl,
+                localBaseUrl,
+                devBaseUrl,
+                prodBaseUrl,
+                "/mediplat/sso/entry",
+                "/seminar-room",
+                "/seminar-room",
+                "기관별 세미나실 예약 관리 서비스",
+                USE_Y,
+                3);
+        saveInstitutionServiceAccess(
+                bootstrapAdminInstCode,
+                List.of(DEFAULT_SERVICE_CODE, SERVICE_CODE_ROOM_BOARD, SERVICE_CODE_SEMINAR_ROOM));
     }
 
     private PlatformUser findUser(String instCode, String username) {
@@ -1058,19 +1273,7 @@ public class PlatformStoreService {
     }
 
     private PlatformInstitution findInstitution(String instCode) {
-        PlatformInstitution storedInstitution = findStoredInstitution(instCode);
-        if (storedInstitution != null) {
-            return storedInstitution;
-        }
-        CounselManAccountService.CounselManInstitution counselManInstitution = counselManAccountService.findInstitution(instCode);
-        if (counselManInstitution == null) {
-            return null;
-        }
-        return new PlatformInstitution(
-                null,
-                counselManInstitution.instCode(),
-                counselManInstitution.instName(),
-                counselManInstitution.useYn());
+        return findStoredInstitution(instCode);
     }
 
     private List<PlatformInstitution> listStoredInstitutions() {
@@ -1105,30 +1308,15 @@ public class PlatformStoreService {
     }
 
     private PlatformInstitution ensureInstitutionRegistered(String instCode, String preferredInstName) {
-        PlatformInstitution storedInstitution = findStoredInstitution(instCode);
-        if (storedInstitution != null) {
-            return storedInstitution;
-        }
-        String normalizedInstCode = normalizeInstCode(instCode);
-        String resolvedInstName = resolveInstitutionName(normalizedInstCode, preferredInstName);
-        if (!StringUtils.hasText(resolvedInstName)) {
-            return null;
-        }
-        CounselManAccountService.CounselManInstitution counselManInstitution = counselManAccountService.findInstitution(normalizedInstCode);
-        upsertInstitution(
-                normalizedInstCode,
-                resolvedInstName,
-                counselManInstitution == null ? USE_Y : normalizeYn(counselManInstitution.useYn()));
-        return findStoredInstitution(normalizedInstCode);
+        return findStoredInstitution(instCode);
     }
 
     private String resolveInstitutionName(String instCode, String preferredInstName) {
         if (StringUtils.hasText(preferredInstName)) {
             return preferredInstName.trim();
         }
-        CounselManAccountService.CounselManInstitution counselManInstitution = counselManAccountService.findInstitution(instCode);
-        if (counselManInstitution != null && StringUtils.hasText(counselManInstitution.instName())) {
-            return counselManInstitution.instName().trim();
+        if (StringUtils.hasText(instCode)) {
+            return instCode;
         }
         return null;
     }
@@ -1268,6 +1456,28 @@ public class PlatformStoreService {
                 """, instCode, serviceCode, useYn);
     }
 
+    private void upsertUserServiceAccess(String instCode, String username, String serviceCode, String useYn) {
+        if (isMySql()) {
+            jdbcTemplate.update("""
+                    INSERT INTO mp_user_service (inst_code, username, service_code, use_yn)
+                    VALUES (?, ?, ?, ?)
+                    ON DUPLICATE KEY UPDATE
+                        use_yn = ?
+                    """,
+                    instCode,
+                    username,
+                    serviceCode,
+                    useYn,
+                    useYn);
+            return;
+        }
+        jdbcTemplate.update("""
+                MERGE INTO mp_user_service (inst_code, username, service_code, use_yn)
+                KEY (inst_code, username, service_code)
+                VALUES (?, ?, ?, ?)
+                """, instCode, username, serviceCode, useYn);
+    }
+
     private void upsertInstitutionIntegration(String instCode, String integrationCode, String useYn) {
         if (isMySql()) {
             jdbcTemplate.update("""
@@ -1304,10 +1514,10 @@ public class PlatformStoreService {
     }
 
     private void syncDefaultIntegrationFlags(String instCode, List<String> enabledServiceCodes) {
-        boolean counselManEnabled = enabledServiceCodes != null
-                && enabledServiceCodes.stream().anyMatch(code -> SERVICE_CODE_COUNSELMAN.equalsIgnoreCase(code));
-        boolean roomBoardEnabled = counselManAccountService.isRoomBoardEnabled(instCode);
-        if (!counselManEnabled || !roomBoardEnabled) {
+        boolean roomBoardServiceEnabled = enabledServiceCodes != null
+                && enabledServiceCodes.stream().anyMatch(code -> SERVICE_CODE_ROOM_BOARD.equalsIgnoreCase(code));
+        boolean roomBoardEnabled = isRoomBoardFeatureEnabled(instCode);
+        if (!roomBoardEnabled || !roomBoardServiceEnabled) {
             upsertInstitutionIntegration(instCode, INTEGRATION_CODE_ROOMBOARD_CSM_LINK, "N");
             return;
         }
@@ -1546,7 +1756,69 @@ public class PlatformStoreService {
     }
 
     private String normalizeRole(String roleCode) {
-        return ROLE_PLATFORM_ADMIN.equalsIgnoreCase(roleCode) ? ROLE_PLATFORM_ADMIN : ROLE_USER;
+        if (ROLE_PLATFORM_ADMIN.equalsIgnoreCase(roleCode)) {
+            return ROLE_PLATFORM_ADMIN;
+        }
+        if (ROLE_INSTITUTION_ADMIN.equalsIgnoreCase(roleCode)) {
+            return ROLE_INSTITUTION_ADMIN;
+        }
+        if (ROLE_ROOM_BOARD_VIEWER.equalsIgnoreCase(roleCode)) {
+            return ROLE_ROOM_BOARD_VIEWER;
+        }
+        return ROLE_USER;
+    }
+
+    private List<PlatformService> applyUserServiceAccess(List<PlatformService> services, PlatformSessionUser user) {
+        if (user == null || user.isPlatformAdmin() || user.isRoomBoardViewer()) {
+            return services;
+        }
+        String normalizedInstCode = normalizeInstCode(user.getInstCode());
+        String normalizedUsername = normalizeUsername(user.getUsername());
+        if (!StringUtils.hasText(normalizedInstCode) || !StringUtils.hasText(normalizedUsername)) {
+            return services;
+        }
+        if (!hasUserServiceAccessConfig(normalizedInstCode, normalizedUsername)) {
+            return services;
+        }
+        List<String> enabledCodes = listConfiguredEnabledUserServiceCodes(normalizedInstCode, normalizedUsername);
+        return services.stream()
+                .map(service -> {
+                    if (service == null) {
+                        return null;
+                    }
+                    boolean accessible = service.isAccessible()
+                            && enabledCodes.stream().anyMatch(code -> code.equalsIgnoreCase(service.getServiceCode()));
+                    return withAccess(service, accessible ? "Y" : "N");
+                })
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    private boolean hasUserServiceAccessConfig(String instCode, String username) {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM mp_user_service
+                WHERE inst_code = ?
+                  AND LOWER(username) = LOWER(?)
+                """, Integer.class, instCode, username);
+        return count != null && count > 0;
+    }
+
+    private List<String> listConfiguredEnabledUserServiceCodes(String instCode, String username) {
+        return jdbcTemplate.query("""
+                SELECT service_code
+                FROM mp_user_service
+                WHERE inst_code = ?
+                  AND LOWER(username) = LOWER(?)
+                  AND use_yn = 'Y'
+                ORDER BY service_code ASC
+                """, (rs, rowNum) -> normalizeServiceCode(rs.getString("service_code")), instCode, username).stream()
+                .filter(StringUtils::hasText)
+                .toList();
+    }
+
+    private boolean isUserManageableRole(String roleCode) {
+        return ROLE_USER.equalsIgnoreCase(roleCode) || ROLE_INSTITUTION_ADMIN.equalsIgnoreCase(roleCode);
     }
 
     private String normalizeYn(String useYn) {

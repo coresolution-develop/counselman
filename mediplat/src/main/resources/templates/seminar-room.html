@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediPlat Seminar Room</title>
+    <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
+    <link rel="icon" type="image/png" sizes="32x32" th:href="@{/favicon-32x32.png}">
+    <link rel="icon" type="image/png" sizes="16x16" th:href="@{/favicon-16x16.png}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/apple-touch-icon.png}">
+    <link rel="stylesheet" th:href="@{/css/mediplat.css}">
+</head>
+<body>
+<header class="topbar">
+    <div>
+        <p class="eyebrow">MediPlat</p>
+        <h1>세미나실 예약</h1>
+    </div>
+    <div class="topbar-actions">
+        <div class="user-meta">
+            <strong th:text="${user.displayName}">사용자</strong>
+            <span th:text="${user.instCode + ' · ' + user.roleCode}">FALH · USER</span>
+        </div>
+        <a class="ghost-btn" th:href="@{/services}">서비스 선택</a>
+        <a class="ghost-btn" th:href="@{/logout}">로그아웃</a>
+    </div>
+</header>
+
+<main class="page-shell admin-shell"
+      th:attr="data-calendar-year=${calendarMonth.year},data-calendar-month=${calendarMonth.monthValue}">
+    <div class="message success" th:if="${message != null}" th:text="${message}">완료</div>
+    <div class="message error" th:if="${error != null}" th:text="${error}">오류</div>
+
+    <section class="admin-grid">
+        <div class="admin-card admin-card-wide">
+            <div class="section-head">
+                <h2>예약 캘린더</h2>
+                <p>관리자와 사용자 모두 월간 예약 현황을 확인할 수 있습니다.</p>
+                <div class="calendar-toolbar">
+                    <form method="get" th:action="@{/seminar-room}" class="inline-form inline-form-compact" th:if="${user.platformAdmin}">
+                        <input type="hidden" name="year" th:value="${calendarMonth.year}">
+                        <input type="hidden" name="month" th:value="${calendarMonth.monthValue}">
+                        <select name="instCode" class="js-seminar-inst-select">
+                            <option th:each="institution : ${institutions}"
+                                    th:value="${institution.instCode}"
+                                    th:text="${institution.instName + ' (' + institution.instCode + ')'}"
+                                    th:selected="${institution.instCode == selectedInstCode}">
+                                기관
+                            </option>
+                        </select>
+                    </form>
+                    <div class="inline-form inline-form-compact calendar-nav">
+                        <a class="ghost-btn"
+                           th:href="@{/seminar-room(instCode=${selectedInstCode}, year=${calendarPrevYear}, month=${calendarPrevMonth})}">이전 달</a>
+                        <strong th:text="${calendarMonthTitle}">2026년 4월</strong>
+                        <a class="ghost-btn"
+                           th:href="@{/seminar-room(instCode=${selectedInstCode}, year=${calendarNextYear}, month=${calendarNextMonth})}">다음 달</a>
+                    </div>
+                    <div class="calendar-actions">
+                        <strong id="calendar-selected-chip" class="calendar-selected-chip">선택 날짜: -</strong>
+                        <button type="button" id="open-reservation-request" class="secondary-btn" disabled>선택 날짜로 예약 신청</button>
+                    </div>
+                </div>
+            </div>
+            <div class="calendar-shell">
+                <div class="calendar-grid">
+                    <div class="calendar-weekday">일</div>
+                    <div class="calendar-weekday">월</div>
+                    <div class="calendar-weekday">화</div>
+                    <div class="calendar-weekday">수</div>
+                    <div class="calendar-weekday">목</div>
+                    <div class="calendar-weekday">금</div>
+                    <div class="calendar-weekday">토</div>
+
+                    <div class="calendar-day is-empty"
+                         th:each="offset : ${#numbers.sequence(1, calendarStartOffset)}"></div>
+
+                    <button type="button"
+                            class="calendar-day"
+                            th:each="day : ${#numbers.sequence(1, calendarMonthLength)}"
+                            th:attr="data-date=${calendarYearMonth + '-' + #numbers.formatInteger(day, 2)}">
+                        <span class="calendar-day-number" th:text="${day}">1</span>
+                        <span class="calendar-day-count">0건</span>
+                        <span class="calendar-day-dot"></span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="calendar-event-sources" hidden>
+                <div class="calendar-event-source"
+                     th:each="reservation : ${calendarReservations}"
+                     th:attr="data-date=${reservation.reservationDate},
+                              data-seminar-id=${reservation.seminarId},
+                              data-start=${reservation.startTime},
+                              data-end=${reservation.endTime},
+                              data-seminar=${reservation.seminarName},
+                              data-status=${reservation.statusCode}"></div>
+            </div>
+
+            <div class="calendar-day-panel">
+                <h3 id="calendar-selected-date-title">선택 날짜 일정</h3>
+                <div id="calendar-selected-date-list" class="calendar-day-list"></div>
+            </div>
+        </div>
+
+        <div class="admin-card">
+            <div class="section-head">
+                <h2>내 예약 내역</h2>
+                <p>내가 신청한 세미나실 예약 상태를 확인합니다.</p>
+            </div>
+            <div class="compact-list" th:if="${!#lists.isEmpty(myReservations)}">
+                <button type="button"
+                        class="compact-item js-open-my-detail"
+                        th:each="reservation : ${myReservations}"
+                        th:attr="data-seminar=${reservation.seminarName},
+                                 data-date=${reservation.reservationDate},
+                                 data-start=${reservation.startTime},
+                                 data-end=${reservation.endTime},
+                                 data-attendee=${reservation.attendeeCount},
+                                 data-status=${reservation.statusCode},
+                                 data-used-items=${#strings.isEmpty(reservation.usedItems) ? '-' : reservation.usedItems},
+                                 data-needed-items=${#strings.isEmpty(reservation.neededItems) ? '-' : reservation.neededItems},
+                                 data-purpose=${#strings.isEmpty(reservation.purpose) ? '-' : reservation.purpose},
+                                 data-manager-note=${#strings.isEmpty(reservation.managerNote) ? '-' : reservation.managerNote},
+                                 data-created-at=${reservation.createdAt}">
+                    <span class="compact-item-main">
+                        <strong th:text="${reservation.seminarName}">월간 세미나</strong>
+                        <small th:text="${reservation.reservationDate + ' ' + reservation.startTime + '~' + reservation.endTime + ' · ' + reservation.attendeeCount + '명'}">2026-04-17 10:00~11:00 · 12명</small>
+                    </span>
+                    <strong class="status-badge"
+                            th:classappend="${reservation.statusCode == 'APPROVED'} ? ' is-approved' : (${reservation.statusCode == 'REJECTED'} ? ' is-rejected' : ' is-pending')"
+                            th:text="${reservation.statusCode == 'APPROVED'} ? '승인' : (${reservation.statusCode == 'REJECTED'} ? '반려' : '대기')">대기</strong>
+                </button>
+            </div>
+            <p class="compact-empty" th:if="${#lists.isEmpty(myReservations)}">예약 내역이 없습니다.</p>
+        </div>
+
+        <div class="admin-card" th:if="${canManageSeminars}" id="seminar-setup-card">
+            <div class="section-head">
+                <h2>세미나/세미나실 등록</h2>
+                <p>기관 내 세미나실 예약 단위를 등록하고 사용할 수 있습니다.</p>
+            </div>
+            <form method="get" th:action="@{/seminar-room}" class="inline-form inline-form-compact" th:if="${user.platformAdmin}">
+                <input type="hidden" name="year" th:value="${calendarMonth.year}">
+                <input type="hidden" name="month" th:value="${calendarMonth.monthValue}">
+                <select name="instCode" class="js-seminar-inst-select">
+                    <option th:each="institution : ${institutions}"
+                            th:value="${institution.instCode}"
+                            th:text="${institution.instName + ' (' + institution.instCode + ')'}"
+                            th:selected="${institution.instCode == selectedInstCode}">
+                        기관
+                    </option>
+                </select>
+            </form>
+            <form method="post" th:action="@{/seminar-room/seminars}" class="stack-form" id="seminar-edit-form">
+                <input type="hidden" name="instCode" th:value="${selectedInstCode}">
+                <input type="hidden" name="seminarId" id="seminar-edit-id">
+                <input name="seminarName" id="seminar-edit-name" type="text" placeholder="세미나명" required>
+                <input name="roomName" id="seminar-edit-room" type="text" placeholder="세미나실명" required>
+                <input name="capacity" id="seminar-edit-capacity" type="number" min="1" max="1000" placeholder="수용 인원" required>
+                <select name="useYn" id="seminar-edit-use-yn">
+                    <option value="Y">사용</option>
+                    <option value="N">중지</option>
+                </select>
+                <p class="service-form-mode" id="seminar-form-mode">새 세미나 등록 모드입니다. 아래 목록 항목을 누르면 수정할 수 있습니다.</p>
+                <div class="inline-form inline-form-compact">
+                    <button type="button" class="secondary-btn" id="seminar-form-reset">새 등록</button>
+                    <button type="submit" id="seminar-form-submit">세미나 저장</button>
+                </div>
+            </form>
+
+            <div class="table-list" id="seminar-list-table">
+                <div class="list-row list-head list-row-seminar">
+                    <span>ID</span><span>세미나명</span><span>세미나실</span><span>정원</span><span>상태</span>
+                </div>
+                <div id="seminar-list-body">
+                    <div class="list-row list-row-seminar service-edit-row js-seminar-edit-row"
+                         th:each="seminar : ${seminars}"
+                         tabindex="0"
+                         role="button"
+                         th:attr="data-seminar-id=${seminar.id},
+                                  data-seminar-name=${seminar.seminarName},
+                                  data-room-name=${seminar.roomName},
+                                  data-capacity=${seminar.capacity},
+                                  data-use-yn=${seminar.useYn}">
+                        <span th:text="${seminar.id}">1</span>
+                        <span th:text="${seminar.seminarName}">월간 세미나</span>
+                        <span th:text="${seminar.roomName}">A 세미나실</span>
+                        <span th:text="${seminar.capacity + '명'}">20명</span>
+                        <span th:text="${seminar.useYn}">Y</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-card" th:if="${canManageSeminars}">
+            <div class="section-head">
+                <h2>세미나 관리자 지정</h2>
+                <p>선택한 세미나 예약을 승인/반려할 담당자를 지정합니다.</p>
+            </div>
+            <form method="get" th:action="@{/seminar-room}" class="inline-form">
+                <input type="hidden" name="instCode" th:value="${selectedInstCode}">
+                <input type="hidden" name="year" th:value="${calendarMonth.year}">
+                <input type="hidden" name="month" th:value="${calendarMonth.monthValue}">
+                <select id="seminar-manager-select" name="seminarId" th:disabled="${#lists.isEmpty(seminars)}">
+                    <option th:each="seminar : ${seminars}"
+                            th:value="${seminar.id}"
+                            th:text="${seminar.seminarName + ' / ' + seminar.roomName}"
+                            th:selected="${seminar.id == selectedSeminarId}">
+                        세미나
+                    </option>
+                </select>
+            </form>
+            <p class="service-form-mode" id="seminar-manager-empty-message" th:hidden="${!#lists.isEmpty(seminars)}">먼저 세미나를 등록해 주세요.</p>
+            <form method="post" th:action="@{/seminar-room/seminar-managers}" class="stack-form" id="seminar-manager-form">
+                <input type="hidden" name="instCode" th:value="${selectedInstCode}">
+                <input type="hidden" name="seminarId" id="seminar-manager-id" th:value="${selectedSeminarId}">
+                <div id="seminar-manager-user-list">
+                    <label class="checkbox-row" th:each="institutionUser : ${institutionUsers}">
+                        <input type="checkbox"
+                               name="managerUsernames"
+                               th:value="${institutionUser.username}"
+                               th:checked="${#lists.contains(selectedManagerUsernames, institutionUser.username)}"
+                               th:disabled="${#lists.isEmpty(seminars)}">
+                        <span th:text="${institutionUser.displayName + ' (' + institutionUser.username + ')'}">담당자</span>
+                    </label>
+                </div>
+                <button type="submit" id="seminar-manager-save-button" th:disabled="${#lists.isEmpty(seminars)}">관리자 저장</button>
+            </form>
+        </div>
+
+        <div class="admin-card admin-card-wide" th:if="${seminarManager}">
+            <div class="section-head">
+                <h2>예약 승인 대기</h2>
+                <p th:text="${'신청 알림 ' + unreadNotificationCount + '건'}">신청 알림 0건</p>
+                <form method="post" th:action="@{/seminar-room/notifications/read-all}" class="inline-form"
+                      th:if="${unreadNotificationCount > 0}">
+                    <input type="hidden" name="instCode" th:value="${selectedInstCode}">
+                    <button type="submit" class="secondary-btn">알림 모두 읽음 처리</button>
+                </form>
+            </div>
+            <div class="compact-list" th:if="${!#lists.isEmpty(pendingReservations)}">
+                <button type="button"
+                        class="compact-item js-open-pending-detail"
+                        th:each="reservation : ${pendingReservations}"
+                        th:attr="data-reservation-id=${reservation.id},
+                                 data-seminar=${reservation.seminarName},
+                                 data-requester=${reservation.requesterName + ' (' + reservation.requesterUsername + ')'},
+                                 data-date=${reservation.reservationDate},
+                                 data-start=${reservation.startTime},
+                                 data-end=${reservation.endTime},
+                                 data-attendee=${reservation.attendeeCount},
+                                 data-used-items=${#strings.isEmpty(reservation.usedItems) ? '-' : reservation.usedItems},
+                                 data-needed-items=${#strings.isEmpty(reservation.neededItems) ? '-' : reservation.neededItems},
+                                 data-purpose=${#strings.isEmpty(reservation.purpose) ? '-' : reservation.purpose},
+                                 data-created-at=${reservation.createdAt}">
+                    <span class="compact-item-main">
+                        <strong th:text="${reservation.seminarName}">월간 세미나</strong>
+                        <small th:text="${reservation.requesterName + ' · ' + reservation.reservationDate + ' ' + reservation.startTime + '~' + reservation.endTime + ' · ' + reservation.attendeeCount + '명'}">홍길동 · 2026-04-17 10:00~11:00 · 12명</small>
+                    </span>
+                    <strong class="status-badge is-pending">대기</strong>
+                </button>
+            </div>
+            <p class="compact-empty" th:if="${#lists.isEmpty(pendingReservations)}">승인 대기 예약이 없습니다.</p>
+
+            <div class="compact-list compact-list-notice" th:if="${!#lists.isEmpty(notifications)}">
+                <div class="compact-static-item" th:each="notification : ${notifications}">
+                    <span class="compact-item-main">
+                        <strong th:text="${notification.message}">신청 알림</strong>
+                        <small th:text="${notification.createdAt}">2026-04-17T10:00</small>
+                    </span>
+                    <strong class="status-badge"
+                            th:classappend="${notification.read} ? ' is-neutral' : ' is-pending'"
+                            th:text="${notification.read} ? '읽음' : '미확인'">읽음</strong>
+                </div>
+            </div>
+            <p class="compact-empty" th:if="${#lists.isEmpty(notifications)}">알림이 없습니다.</p>
+        </div>
+    </section>
+</main>
+
+<div id="reservation-request-modal" class="modal-backdrop" hidden>
+    <div class="modal-card modal-card-medium" role="dialog" aria-modal="true" aria-labelledby="reservation-request-title">
+        <div class="modal-head">
+            <h3 id="reservation-request-title">예약 신청</h3>
+            <button type="button" class="modal-close-btn" data-modal-close>닫기</button>
+        </div>
+        <form method="post" th:action="@{/seminar-room/reservations}" class="stack-form modal-form" id="reservation-form">
+            <input type="hidden" name="instCode" th:value="${selectedInstCode}">
+            <input type="hidden" name="reservationDate" id="reservation-date" required>
+
+            <div class="field-readonly">
+                <span class="field-label">예약 날짜</span>
+                <strong id="reservation-date-display">-</strong>
+            </div>
+
+            <label class="input-wrap">
+                <span>세미나실 선택</span>
+                <select name="seminarId" id="reservation-seminar-id" class="input-skin" required>
+                    <option value="">세미나 선택</option>
+                    <option th:each="seminar : ${seminars}"
+                            th:value="${seminar.id}"
+                            th:attr="data-capacity=${seminar.capacity},data-enabled=${seminar.enabled}"
+                            th:text="${seminar.seminarName + ' / ' + seminar.roomName + ' (정원 ' + seminar.capacity + '명)'}"
+                            th:disabled="${!seminar.enabled}">
+                        세미나
+                    </option>
+                </select>
+            </label>
+
+            <div class="input-grid input-grid-2">
+                <label class="input-wrap">
+                    <span>시작 시간</span>
+                    <div class="custom-time-picker">
+                        <select id="reservation-start-hour" class="input-skin input-time-part"></select>
+                        <span class="time-separator">:</span>
+                        <select id="reservation-start-minute" class="input-skin input-time-part"></select>
+                    </div>
+                    <input name="startTime" id="reservation-start-time" type="hidden" required>
+                </label>
+                <label class="input-wrap">
+                    <span>종료 시간</span>
+                    <div class="custom-time-picker">
+                        <select id="reservation-end-hour" class="input-skin input-time-part"></select>
+                        <span class="time-separator">:</span>
+                        <select id="reservation-end-minute" class="input-skin input-time-part"></select>
+                    </div>
+                    <input name="endTime" id="reservation-end-time" type="hidden" required>
+                </label>
+            </div>
+
+            <label class="input-wrap">
+                <span>참여 인원</span>
+                <input name="attendeeCount" id="reservation-attendee-count" type="number" min="1" max="1000" class="input-skin" placeholder="예: 24" required>
+            </label>
+            <p class="form-helper" id="reservation-capacity-hint">세미나를 선택하면 정원 기준 안내를 표시합니다.</p>
+            <p class="form-error inline-error" id="reservation-date-error" hidden>캘린더에서 날짜를 먼저 선택해 주세요.</p>
+            <p class="form-error inline-error" id="reservation-time-error" hidden>종료 시간은 시작 시간보다 늦어야 합니다.</p>
+            <p class="form-error inline-error" id="reservation-conflict-error" hidden>선택 시간에 이미 예약이 있습니다.</p>
+            <p class="form-error inline-error" id="reservation-attendee-error" hidden>참여 인원이 세미나 정원을 초과했습니다.</p>
+
+            <label class="input-wrap">
+                <span>사용 물품</span>
+                <input name="usedItems" type="text" class="input-skin" placeholder="예: 빔프로젝터, 마이크">
+            </label>
+            <label class="input-wrap">
+                <span>필요 물품</span>
+                <input name="neededItems" type="text" class="input-skin" placeholder="예: 생수 20병, 필기구">
+            </label>
+            <label class="input-wrap">
+                <span>세미나 목적/내용</span>
+                <textarea name="purpose" class="input-skin input-textarea" rows="3" placeholder="세미나 목적을 입력하세요."></textarea>
+            </label>
+
+            <div class="modal-actions">
+                <button type="button" class="secondary-btn" data-modal-close>취소</button>
+                <button type="submit" id="reservation-submit-button">예약 신청</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="my-reservation-detail-modal" class="modal-backdrop" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="my-reservation-detail-title">
+        <div class="modal-head">
+            <h3 id="my-reservation-detail-title">예약 상세</h3>
+            <button type="button" class="modal-close-btn" data-modal-close>닫기</button>
+        </div>
+        <div class="detail-stack">
+            <div class="detail-row"><span>세미나</span><strong id="my-detail-seminar">-</strong></div>
+            <div class="detail-row"><span>일정</span><strong id="my-detail-schedule">-</strong></div>
+            <div class="detail-row"><span>인원</span><strong id="my-detail-attendee">-</strong></div>
+            <div class="detail-row"><span>상태</span><strong id="my-detail-status" class="status-badge is-neutral">-</strong></div>
+            <div class="detail-row"><span>사용 물품</span><strong id="my-detail-used-items">-</strong></div>
+            <div class="detail-row"><span>필요 물품</span><strong id="my-detail-needed-items">-</strong></div>
+            <div class="detail-row"><span>세미나 목적</span><strong id="my-detail-purpose">-</strong></div>
+            <div class="detail-row"><span>관리자 메모</span><strong id="my-detail-manager-note">-</strong></div>
+            <div class="detail-row"><span>신청 시간</span><strong id="my-detail-created-at">-</strong></div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="secondary-btn" data-modal-close>닫기</button>
+        </div>
+    </div>
+</div>
+
+<div id="pending-detail-modal" class="modal-backdrop" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="pending-detail-title">
+        <div class="modal-head">
+            <h3 id="pending-detail-title">승인 대기 예약 상세</h3>
+            <button type="button" class="modal-close-btn" data-modal-close>닫기</button>
+        </div>
+
+        <div class="detail-stack">
+            <div class="detail-row"><span>세미나</span><strong id="pending-detail-seminar">-</strong></div>
+            <div class="detail-row"><span>신청자</span><strong id="pending-detail-requester">-</strong></div>
+            <div class="detail-row"><span>일정</span><strong id="pending-detail-schedule">-</strong></div>
+            <div class="detail-row"><span>인원</span><strong id="pending-detail-attendee">-</strong></div>
+            <div class="detail-row"><span>사용 물품</span><strong id="pending-detail-used-items">-</strong></div>
+            <div class="detail-row"><span>필요 물품</span><strong id="pending-detail-needed-items">-</strong></div>
+            <div class="detail-row"><span>세미나 목적</span><strong id="pending-detail-purpose">-</strong></div>
+            <div class="detail-row"><span>신청 시간</span><strong id="pending-detail-created-at">-</strong></div>
+        </div>
+
+        <form method="post" th:action="@{/seminar-room/reservations/decision}" class="stack-form modal-form modal-form-divider">
+            <input type="hidden" name="instCode" th:value="${selectedInstCode}">
+            <input type="hidden" name="reservationId" id="pending-reservation-id">
+            <label class="input-wrap">
+                <span>처리 상태</span>
+                <select name="decision" class="input-skin">
+                    <option value="APPROVED">승인</option>
+                    <option value="REJECTED">반려</option>
+                </select>
+            </label>
+            <label class="input-wrap">
+                <span>관리자 메모</span>
+                <input name="managerNote" type="text" class="input-skin" placeholder="예: 준비 물품 확인 필요">
+            </label>
+            <div class="modal-actions">
+                <button type="button" class="secondary-btn" data-modal-close>취소</button>
+                <button type="submit">저장</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+(() => {
+    const modalBackdrops = Array.from(document.querySelectorAll('.modal-backdrop'));
+    const openModal = (modal) => {
+        if (!modal) {
+            return;
+        }
+        modal.hidden = false;
+        document.body.classList.add('modal-open');
+        const focusTarget = modal.querySelector('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])');
+        if (focusTarget) {
+            focusTarget.focus();
+        }
+    };
+    const closeModal = (modal) => {
+        if (!modal) {
+            return;
+        }
+        modal.hidden = true;
+        if (modalBackdrops.every((backdrop) => backdrop.hidden)) {
+            document.body.classList.remove('modal-open');
+        }
+    };
+    document.querySelectorAll('[data-modal-close]').forEach((button) => {
+        button.addEventListener('click', () => closeModal(button.closest('.modal-backdrop')));
+    });
+    modalBackdrops.forEach((modal) => {
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                closeModal(modal);
+            }
+        });
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') {
+            return;
+        }
+        const openedModals = modalBackdrops.filter((modal) => !modal.hidden);
+        if (!openedModals.length) {
+            return;
+        }
+        closeModal(openedModals[openedModals.length - 1]);
+    });
+
+    const statusLabel = (status) => {
+        if (status === 'APPROVED') {
+            return '승인';
+        }
+        if (status === 'REJECTED') {
+            return '반려';
+        }
+        return '대기';
+    };
+    const statusClass = (status) => {
+        if (status === 'APPROVED') {
+            return 'is-approved';
+        }
+        if (status === 'REJECTED') {
+            return 'is-rejected';
+        }
+        return 'is-pending';
+    };
+    const textOrDash = (value) => {
+        const normalized = String(value || '').trim();
+        return normalized ? normalized : '-';
+    };
+    const setText = (id, value) => {
+        const node = document.getElementById(id);
+        if (node) {
+            node.textContent = textOrDash(value);
+        }
+    };
+    const escapeHtml = (value) => {
+        return String(value || '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    };
+
+    const mainShell = document.querySelector('main.page-shell.admin-shell');
+    const currentCalendarYear = mainShell ? String(mainShell.dataset.calendarYear || '') : '';
+    const currentCalendarMonth = mainShell ? String(mainShell.dataset.calendarMonth || '') : '';
+    const institutionSelects = Array.from(document.querySelectorAll('.js-seminar-inst-select'));
+    const seminarListBody = document.getElementById('seminar-list-body');
+    const seminarEditForm = document.getElementById('seminar-edit-form');
+    const seminarEditIdInput = document.getElementById('seminar-edit-id');
+    const seminarEditNameInput = document.getElementById('seminar-edit-name');
+    const seminarEditRoomInput = document.getElementById('seminar-edit-room');
+    const seminarEditCapacityInput = document.getElementById('seminar-edit-capacity');
+    const seminarEditUseYnInput = document.getElementById('seminar-edit-use-yn');
+    const seminarFormMode = document.getElementById('seminar-form-mode');
+    const seminarFormSubmitButton = document.getElementById('seminar-form-submit');
+    const seminarFormResetButton = document.getElementById('seminar-form-reset');
+    const seminarManagerSelect = document.getElementById('seminar-manager-select');
+    const seminarManagerForm = document.getElementById('seminar-manager-form');
+    const seminarManagerIdInput = document.getElementById('seminar-manager-id');
+    const seminarManagerUserList = document.getElementById('seminar-manager-user-list');
+    const seminarManagerEmptyMessage = document.getElementById('seminar-manager-empty-message');
+    const seminarManagerSaveButton = document.getElementById('seminar-manager-save-button');
+    const calendarEventSourceContainer = document.getElementById('calendar-event-sources');
+
+    const reservationRequestModal = document.getElementById('reservation-request-modal');
+    const openRequestButton = document.getElementById('open-reservation-request');
+    const selectedDateChip = document.getElementById('calendar-selected-chip');
+    const reservationForm = document.getElementById('reservation-form');
+    const seminarSelect = document.getElementById('reservation-seminar-id');
+    const reservationDate = document.getElementById('reservation-date');
+    const reservationDateDisplay = document.getElementById('reservation-date-display');
+    const startHour = document.getElementById('reservation-start-hour');
+    const startMinute = document.getElementById('reservation-start-minute');
+    const endHour = document.getElementById('reservation-end-hour');
+    const endMinute = document.getElementById('reservation-end-minute');
+    const startTime = document.getElementById('reservation-start-time');
+    const endTime = document.getElementById('reservation-end-time');
+    const attendeeCount = document.getElementById('reservation-attendee-count');
+    const capacityHint = document.getElementById('reservation-capacity-hint');
+    const dateError = document.getElementById('reservation-date-error');
+    const timeError = document.getElementById('reservation-time-error');
+    const conflictError = document.getElementById('reservation-conflict-error');
+    const attendeeError = document.getElementById('reservation-attendee-error');
+    const submitButton = document.getElementById('reservation-submit-button');
+
+    const toMinutes = (value) => {
+        if (!value || !value.includes(':')) {
+            return null;
+        }
+        const parts = value.split(':');
+        if (parts.length !== 2) {
+            return null;
+        }
+        const hour = Number(parts[0]);
+        const minute = Number(parts[1]);
+        if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+            return null;
+        }
+        return (hour * 60) + minute;
+    };
+    const currentCapacity = () => {
+        const selectedOption = seminarSelect ? seminarSelect.selectedOptions[0] : null;
+        if (!selectedOption) {
+            return null;
+        }
+        const parsedCapacity = Number(selectedOption.dataset.capacity || '');
+        if (!Number.isFinite(parsedCapacity) || parsedCapacity <= 0) {
+            return null;
+        }
+        return parsedCapacity;
+    };
+    const parseTimeToMinutes = (value) => {
+        if (!value || !value.includes(':')) {
+            return null;
+        }
+        const parts = value.split(':');
+        if (parts.length !== 2) {
+            return null;
+        }
+        const hour = Number(parts[0]);
+        const minute = Number(parts[1]);
+        if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+            return null;
+        }
+        return (hour * 60) + minute;
+    };
+    const formatTime = (minutes) => {
+        if (!Number.isFinite(minutes) || minutes < 0) {
+            return '--:--';
+        }
+        const hour = Math.floor(minutes / 60).toString().padStart(2, '0');
+        const minute = (minutes % 60).toString().padStart(2, '0');
+        return `${hour}:${minute}`;
+    };
+
+    const timeSlotReservations = new Map();
+    let eventSources = [];
+    const rebuildTimeSlotReservations = () => {
+        timeSlotReservations.clear();
+        eventSources = Array.from(document.querySelectorAll('.calendar-event-source'));
+        eventSources.forEach((source) => {
+            const date = String(source.dataset.date || '');
+            const seminarId = String(source.dataset.seminarId || '');
+            const status = String(source.dataset.status || 'PENDING').toUpperCase();
+            const start = String(source.dataset.start || '');
+            const end = String(source.dataset.end || '');
+            if (!date || !seminarId || !start || !end) {
+                return;
+            }
+            if (status === 'REJECTED') {
+                return;
+            }
+            const startMinutes = parseTimeToMinutes(start);
+            const endMinutes = parseTimeToMinutes(end);
+            if (startMinutes === null || endMinutes === null) {
+                return;
+            }
+            const slotKey = `${date}::${seminarId}`;
+            const bucket = timeSlotReservations.get(slotKey) || [];
+            bucket.push({
+                status,
+                start,
+                end,
+                startMinutes,
+                endMinutes
+            });
+            timeSlotReservations.set(slotKey, bucket);
+        });
+    };
+    rebuildTimeSlotReservations();
+    const findOverlaps = (date, seminarId, startMinutes, endMinutes) => {
+        if (!date || !seminarId || startMinutes === null || endMinutes === null) {
+            return [];
+        }
+        const slotKey = `${date}::${seminarId}`;
+        const bucket = timeSlotReservations.get(slotKey) || [];
+        return bucket
+            .filter((reservation) => !(reservation.endMinutes <= startMinutes || reservation.startMinutes >= endMinutes))
+            .sort((left, right) => left.startMinutes - right.startMinutes);
+    };
+    const syncTimeInputValue = (hourSelect, minuteSelect, hiddenInput) => {
+        if (!hiddenInput) {
+            return;
+        }
+        const hour = hourSelect ? String(hourSelect.value || '') : '';
+        const minute = minuteSelect ? String(minuteSelect.value || '') : '';
+        if (hour.length !== 2 || minute.length !== 2) {
+            hiddenInput.value = '';
+            return;
+        }
+        hiddenInput.value = `${hour}:${minute}`;
+    };
+    const populateTimeSelect = (hourSelect, minuteSelect) => {
+        if (!hourSelect || !minuteSelect) {
+            return;
+        }
+        const defaultHour = '<option value="">시</option>';
+        const defaultMinute = '<option value="">분</option>';
+        let hourOptions = defaultHour;
+        for (let hour = 0; hour < 24; hour += 1) {
+            const value = String(hour).padStart(2, '0');
+            hourOptions += `<option value="${value}">${value}</option>`;
+        }
+        let minuteOptions = defaultMinute;
+        for (let minute = 0; minute < 60; minute += 10) {
+            const value = String(minute).padStart(2, '0');
+            minuteOptions += `<option value="${value}">${value}</option>`;
+        }
+        hourSelect.innerHTML = hourOptions;
+        minuteSelect.innerHTML = minuteOptions;
+    };
+    populateTimeSelect(startHour, startMinute);
+    populateTimeSelect(endHour, endMinute);
+    const applyDefaultMinuteForHour = (hourSelect, minuteSelect) => {
+        const hourValue = hourSelect ? String(hourSelect.value || '').trim() : '';
+        if (!hourValue || !minuteSelect) {
+            return;
+        }
+        const minuteValue = String(minuteSelect.value || '').trim();
+        if (!minuteValue) {
+            minuteSelect.value = '00';
+        }
+    };
+
+    function refreshReservationValidation() {
+        let valid = true;
+
+        const hasDate = reservationDate && String(reservationDate.value || '').trim().length > 0;
+        const dateInvalid = !hasDate;
+        if (dateError) {
+            dateError.hidden = !dateInvalid;
+        }
+        if (dateInvalid) {
+            valid = false;
+        }
+
+        const startMinutes = toMinutes(startTime ? startTime.value : '');
+        const endMinutes = toMinutes(endTime ? endTime.value : '');
+        const timeMissing = startMinutes === null || endMinutes === null;
+        const timeInvalid = !timeMissing && startMinutes >= endMinutes;
+        if (timeError) {
+            timeError.hidden = !(timeMissing || timeInvalid);
+            timeError.textContent = timeMissing
+                ? '시작 시간과 종료 시간을 모두 선택해 주세요.'
+                : '종료 시간은 시작 시간보다 늦어야 합니다.';
+        }
+        if (timeMissing || timeInvalid) {
+            valid = false;
+        }
+        const selectedSeminarId = seminarSelect ? String(seminarSelect.value || '').trim() : '';
+        const selectedDate = reservationDate ? String(reservationDate.value || '').trim() : '';
+        const overlaps = (!timeMissing && !timeInvalid)
+            ? findOverlaps(selectedDate, selectedSeminarId, startMinutes, endMinutes)
+            : [];
+        const hasConflict = overlaps.length > 0;
+        if (conflictError) {
+            if (hasConflict) {
+                const conflictText = overlaps
+                    .slice(0, 2)
+                    .map((reservation) => `${reservation.start}~${reservation.end}`)
+                    .join(', ');
+                const rangeText = `${formatTime(startMinutes)}~${formatTime(endMinutes)}`;
+                conflictError.textContent = overlaps.length > 2
+                    ? `선택 시간(${rangeText})에 기존 예약이 겹칩니다. 예: ${conflictText} 외 ${overlaps.length - 2}건`
+                    : `선택 시간(${rangeText})에 기존 예약이 겹칩니다: ${conflictText}`;
+                conflictError.hidden = false;
+            } else {
+                conflictError.hidden = true;
+                conflictError.textContent = '선택 시간에 이미 예약이 있습니다.';
+            }
+        }
+        if (hasConflict) {
+            valid = false;
+        }
+
+        const selectedCapacity = currentCapacity();
+        const attendees = Number(attendeeCount ? attendeeCount.value : '');
+        const hasAttendee = Number.isFinite(attendees) && attendees > 0;
+        const attendeeInvalid = selectedCapacity !== null && hasAttendee && attendees > selectedCapacity;
+        if (attendeeError) {
+            attendeeError.hidden = !attendeeInvalid;
+        }
+        if (attendeeInvalid) {
+            valid = false;
+        }
+
+        if (capacityHint) {
+            if (selectedCapacity === null) {
+                capacityHint.textContent = '세미나를 선택하면 정원 기준 안내를 표시합니다.';
+            } else if (!hasAttendee) {
+                capacityHint.textContent = `선택 세미나 정원은 ${selectedCapacity}명입니다.`;
+            } else {
+                capacityHint.textContent = `선택 세미나 정원 ${selectedCapacity}명 / 현재 입력 인원 ${attendees}명`;
+            }
+        }
+
+        if (submitButton) {
+            submitButton.disabled = !valid;
+        }
+        return valid;
+    }
+
+    let selectedCalendarDate = '';
+    const syncSelectedDate = (date) => {
+        selectedCalendarDate = String(date || '').trim();
+        if (selectedDateChip) {
+            selectedDateChip.textContent = selectedCalendarDate ? `선택 날짜: ${selectedCalendarDate}` : '선택 날짜: -';
+        }
+        if (reservationDate) {
+            reservationDate.value = selectedCalendarDate;
+        }
+        if (reservationDateDisplay) {
+            reservationDateDisplay.textContent = selectedCalendarDate || '-';
+        }
+        if (openRequestButton) {
+            openRequestButton.disabled = !selectedCalendarDate;
+        }
+        refreshReservationValidation();
+    };
+    const syncAllInstCodeInputs = (instCode) => {
+        const normalizedInstCode = String(instCode || '').trim();
+        if (!normalizedInstCode) {
+            return;
+        }
+        document.querySelectorAll('input[name=\"instCode\"]').forEach((input) => {
+            input.value = normalizedInstCode;
+        });
+        institutionSelects.forEach((select) => {
+            if (!select) {
+                return;
+            }
+            select.value = normalizedInstCode;
+        });
+    };
+    const clearSeminarEditSelection = () => {
+        document.querySelectorAll('.js-seminar-edit-row.is-selected').forEach((row) => {
+            row.classList.remove('is-selected');
+        });
+    };
+    const setSeminarCreateMode = () => {
+        if (!seminarEditForm) {
+            return;
+        }
+        clearSeminarEditSelection();
+        if (seminarEditIdInput) {
+            seminarEditIdInput.value = '';
+        }
+        if (seminarEditNameInput) {
+            seminarEditNameInput.value = '';
+        }
+        if (seminarEditRoomInput) {
+            seminarEditRoomInput.value = '';
+        }
+        if (seminarEditCapacityInput) {
+            seminarEditCapacityInput.value = '';
+        }
+        if (seminarEditUseYnInput) {
+            seminarEditUseYnInput.value = 'Y';
+        }
+        if (seminarFormMode) {
+            seminarFormMode.textContent = '새 세미나 등록 모드입니다. 아래 목록 항목을 누르면 수정할 수 있습니다.';
+        }
+        if (seminarFormSubmitButton) {
+            seminarFormSubmitButton.textContent = '세미나 저장';
+        }
+    };
+    const setSeminarEditMode = (row) => {
+        if (!row || !seminarEditForm) {
+            return;
+        }
+        const seminarId = String(row.dataset.seminarId || '').trim();
+        if (!seminarId) {
+            return;
+        }
+        clearSeminarEditSelection();
+        row.classList.add('is-selected');
+        if (seminarEditIdInput) {
+            seminarEditIdInput.value = seminarId;
+        }
+        if (seminarEditNameInput) {
+            seminarEditNameInput.value = String(row.dataset.seminarName || '').trim();
+        }
+        if (seminarEditRoomInput) {
+            seminarEditRoomInput.value = String(row.dataset.roomName || '').trim();
+        }
+        if (seminarEditCapacityInput) {
+            seminarEditCapacityInput.value = String(row.dataset.capacity || '').trim();
+        }
+        if (seminarEditUseYnInput) {
+            seminarEditUseYnInput.value = String(row.dataset.useYn || 'Y').trim().toUpperCase() === 'N' ? 'N' : 'Y';
+        }
+        if (seminarFormMode) {
+            seminarFormMode.textContent = `세미나 ID ${seminarId} 수정 모드입니다. 변경 후 저장하면 즉시 반영됩니다.`;
+        }
+        if (seminarFormSubmitButton) {
+            seminarFormSubmitButton.textContent = '세미나 수정 저장';
+        }
+        if (seminarEditNameInput) {
+            seminarEditNameInput.focus();
+        }
+    };
+    const bindSeminarEditRows = () => {
+        document.querySelectorAll('.js-seminar-edit-row').forEach((row) => {
+            row.addEventListener('click', () => {
+                setSeminarEditMode(row);
+            });
+            row.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') {
+                    return;
+                }
+                event.preventDefault();
+                setSeminarEditMode(row);
+            });
+        });
+    };
+    const renderSeminarListRows = (seminars) => {
+        if (!seminarListBody) {
+            return;
+        }
+        if (!Array.isArray(seminars) || seminars.length === 0) {
+            seminarListBody.innerHTML = `
+                <div class="list-row list-row-seminar">
+                    <span>등록된 세미나가 없습니다.</span><span></span><span></span><span></span><span></span>
+                </div>
+            `;
+            setSeminarCreateMode();
+            return;
+        }
+        seminarListBody.innerHTML = seminars.map((seminar) => {
+            const id = escapeHtml(seminar.id);
+            const seminarName = escapeHtml(seminar.seminarName);
+            const roomName = escapeHtml(seminar.roomName);
+            const capacityText = escapeHtml(`${seminar.capacity}명`);
+            const useYn = escapeHtml(seminar.useYn);
+            return `
+                <div class="list-row list-row-seminar service-edit-row js-seminar-edit-row"
+                     tabindex="0"
+                     role="button"
+                     data-seminar-id="${id}"
+                     data-seminar-name="${seminarName}"
+                     data-room-name="${roomName}"
+                     data-capacity="${escapeHtml(seminar.capacity)}"
+                     data-use-yn="${useYn}">
+                    <span>${id}</span>
+                    <span>${seminarName}</span>
+                    <span>${roomName}</span>
+                    <span>${capacityText}</span>
+                    <span>${useYn}</span>
+                </div>
+            `;
+        }).join('');
+        bindSeminarEditRows();
+    };
+    const renderSeminarSelectOptions = (seminars, selectedSeminarId) => {
+        if (!seminarSelect) {
+            return;
+        }
+        const selectedId = String(selectedSeminarId || '');
+        const options = ['<option value=\"\">세미나 선택</option>'];
+        (Array.isArray(seminars) ? seminars : []).forEach((seminar) => {
+            const seminarId = String(seminar.id || '');
+            const selectedAttr = seminarId === selectedId ? ' selected' : '';
+            const disabledAttr = seminar.enabled ? '' : ' disabled';
+            const caption = `${seminar.seminarName} / ${seminar.roomName} (정원 ${seminar.capacity}명)`;
+            options.push(
+                `<option value=\"${escapeHtml(seminarId)}\" data-capacity=\"${escapeHtml(seminar.capacity)}\" data-enabled=\"${seminar.enabled ? 'true' : 'false'}\"${selectedAttr}${disabledAttr}>${escapeHtml(caption)}</option>`
+            );
+        });
+        seminarSelect.innerHTML = options.join('');
+    };
+    const renderManagerControls = (seminars, institutionUsers, selectedSeminarId, selectedManagerUsernames) => {
+        const normalizedSeminars = Array.isArray(seminars) ? seminars : [];
+        const normalizedUsers = Array.isArray(institutionUsers) ? institutionUsers : [];
+        const selectedSeminarValue = String(selectedSeminarId || '');
+        const selectedManagers = new Set(Array.isArray(selectedManagerUsernames) ? selectedManagerUsernames.map((value) => String(value || '')) : []);
+        const hasSeminars = normalizedSeminars.length > 0;
+
+        if (seminarManagerSelect) {
+            if (!hasSeminars) {
+                seminarManagerSelect.innerHTML = '<option value=\"\">세미나 없음</option>';
+                seminarManagerSelect.disabled = true;
+            } else {
+                seminarManagerSelect.disabled = false;
+                seminarManagerSelect.innerHTML = normalizedSeminars.map((seminar) => {
+                    const seminarId = String(seminar.id || '');
+                    const selectedAttr = seminarId === selectedSeminarValue ? ' selected' : '';
+                    return `<option value=\"${escapeHtml(seminarId)}\"${selectedAttr}>${escapeHtml(`${seminar.seminarName} / ${seminar.roomName}`)}</option>`;
+                }).join('');
+            }
+        }
+        if (seminarManagerIdInput) {
+            seminarManagerIdInput.value = hasSeminars ? selectedSeminarValue : '';
+        }
+        if (seminarManagerEmptyMessage) {
+            seminarManagerEmptyMessage.hidden = hasSeminars;
+        }
+        if (seminarManagerSaveButton) {
+            seminarManagerSaveButton.disabled = !hasSeminars;
+        }
+        if (seminarManagerUserList) {
+            if (!normalizedUsers.length) {
+                seminarManagerUserList.innerHTML = '<p class=\"service-form-mode\">활성 사용자 계정이 없습니다.</p>';
+            } else {
+                seminarManagerUserList.innerHTML = normalizedUsers.map((user) => {
+                    const username = String(user.username || '');
+                    const checkedAttr = selectedManagers.has(username) ? ' checked' : '';
+                    const disabledAttr = hasSeminars ? '' : ' disabled';
+                    const caption = `${String(user.displayName || username)} (${username})`;
+                    return `
+                        <label class=\"checkbox-row\">
+                            <input type=\"checkbox\" name=\"managerUsernames\" value=\"${escapeHtml(username)}\"${checkedAttr}${disabledAttr}>
+                            <span>${escapeHtml(caption)}</span>
+                        </label>
+                    `;
+                }).join('');
+            }
+        }
+    };
+    const renderCalendarEventSources = (reservations) => {
+        if (!calendarEventSourceContainer) {
+            return;
+        }
+        const normalizedReservations = Array.isArray(reservations) ? reservations : [];
+        const fragment = document.createDocumentFragment();
+        normalizedReservations.forEach((reservation) => {
+            const node = document.createElement('div');
+            node.className = 'calendar-event-source';
+            node.dataset.date = String(reservation.reservationDate || '');
+            node.dataset.seminarId = String(reservation.seminarId || '');
+            node.dataset.start = String(reservation.startTime || '');
+            node.dataset.end = String(reservation.endTime || '');
+            node.dataset.seminar = String(reservation.seminarName || '');
+            node.dataset.status = String(reservation.statusCode || 'PENDING');
+            fragment.appendChild(node);
+        });
+        calendarEventSourceContainer.innerHTML = '';
+        calendarEventSourceContainer.appendChild(fragment);
+    };
+    let refreshCalendarFromAsync = () => {};
+    let institutionDataLoading = false;
+    const fetchAndApplyInstitutionData = async (instCode, requestedSeminarId) => {
+        const normalizedInstCode = String(instCode || '').trim();
+        if (!normalizedInstCode || institutionDataLoading) {
+            return;
+        }
+        institutionDataLoading = true;
+        institutionSelects.forEach((select) => {
+            select.disabled = true;
+        });
+        if (seminarManagerSelect) {
+            seminarManagerSelect.disabled = true;
+        }
+        try {
+            const query = new URLSearchParams();
+            query.set('instCode', normalizedInstCode);
+            if (currentCalendarYear) {
+                query.set('year', currentCalendarYear);
+            }
+            if (currentCalendarMonth) {
+                query.set('month', currentCalendarMonth);
+            }
+            if (requestedSeminarId !== undefined && requestedSeminarId !== null && String(requestedSeminarId).trim()) {
+                query.set('seminarId', String(requestedSeminarId).trim());
+            }
+            const response = await fetch(`/seminar-room/async-data?${query.toString()}`, {
+                headers: {
+                    Accept: 'application/json'
+                }
+            });
+            if (!response.ok) {
+                throw new Error(`failed-${response.status}`);
+            }
+            const payload = await response.json();
+            const selectedInstCode = String(payload.selectedInstCode || normalizedInstCode);
+            const selectedSeminarId = payload.selectedSeminarId == null ? '' : String(payload.selectedSeminarId);
+            const seminars = Array.isArray(payload.seminars) ? payload.seminars : [];
+            const institutionUsers = Array.isArray(payload.institutionUsers) ? payload.institutionUsers : [];
+            const selectedManagerUsernames = Array.isArray(payload.selectedManagerUsernames) ? payload.selectedManagerUsernames : [];
+            const calendarReservations = Array.isArray(payload.calendarReservations) ? payload.calendarReservations : [];
+            const editingSeminarId = seminarEditIdInput ? String(seminarEditIdInput.value || '').trim() : '';
+
+            syncAllInstCodeInputs(selectedInstCode);
+            renderSeminarListRows(seminars);
+            if (editingSeminarId) {
+                const selectedEditRow = document.querySelector(`.js-seminar-edit-row[data-seminar-id="${editingSeminarId}"]`);
+                if (selectedEditRow) {
+                    setSeminarEditMode(selectedEditRow);
+                } else {
+                    setSeminarCreateMode();
+                }
+            }
+            renderSeminarSelectOptions(seminars, selectedSeminarId);
+            renderManagerControls(seminars, institutionUsers, selectedSeminarId, selectedManagerUsernames);
+            renderCalendarEventSources(calendarReservations);
+            rebuildTimeSlotReservations();
+            refreshCalendarFromAsync();
+            refreshReservationValidation();
+        } catch (error) {
+            console.error('Failed to fetch seminar room data', error);
+            window.alert('기관 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+        } finally {
+            institutionDataLoading = false;
+            institutionSelects.forEach((select) => {
+                select.disabled = false;
+            });
+        }
+    };
+
+    const onTimePartChanged = () => {
+        applyDefaultMinuteForHour(startHour, startMinute);
+        applyDefaultMinuteForHour(endHour, endMinute);
+        syncTimeInputValue(startHour, startMinute, startTime);
+        syncTimeInputValue(endHour, endMinute, endTime);
+        refreshReservationValidation();
+    };
+    [startHour, startMinute, endHour, endMinute].forEach((element) => {
+        if (!element) {
+            return;
+        }
+        element.addEventListener('change', onTimePartChanged);
+    });
+    [seminarSelect, attendeeCount].forEach((element) => {
+        if (!element) {
+            return;
+        }
+        element.addEventListener('change', refreshReservationValidation);
+        element.addEventListener('input', refreshReservationValidation);
+    });
+    if (reservationForm) {
+        reservationForm.addEventListener('submit', (event) => {
+            if (!refreshReservationValidation()) {
+                event.preventDefault();
+            }
+        });
+    }
+    if (openRequestButton) {
+        openRequestButton.addEventListener('click', () => {
+            if (!selectedCalendarDate) {
+                refreshReservationValidation();
+                return;
+            }
+            openModal(reservationRequestModal);
+        });
+    }
+
+    const dayButtons = Array.from(document.querySelectorAll('.calendar-day[data-date]'));
+    const selectedDateTitle = document.getElementById('calendar-selected-date-title');
+    const selectedDateList = document.getElementById('calendar-selected-date-list');
+    if (dayButtons.length && selectedDateTitle && selectedDateList) {
+        let eventsByDate = new Map();
+        const rebuildEventsByDate = () => {
+            eventsByDate = new Map();
+            eventSources.forEach((source) => {
+                const date = String(source.dataset.date || '');
+                if (!date) {
+                    return;
+                }
+                const event = {
+                    start: String(source.dataset.start || ''),
+                    end: String(source.dataset.end || ''),
+                    seminar: String(source.dataset.seminar || ''),
+                    status: String(source.dataset.status || 'PENDING')
+                };
+                const bucket = eventsByDate.get(date) || [];
+                bucket.push(event);
+                eventsByDate.set(date, bucket);
+            });
+        };
+        const setDaySummary = (button, events) => {
+            const countNode = button.querySelector('.calendar-day-count');
+            const dotNode = button.querySelector('.calendar-day-dot');
+            const totalCount = events.length;
+            if (countNode) {
+                countNode.textContent = `${totalCount}건`;
+            }
+            const hasApproved = events.some((event) => event.status === 'APPROVED');
+            const hasPending = events.some((event) => event.status === 'PENDING');
+            const hasRejected = events.some((event) => event.status === 'REJECTED');
+            button.classList.toggle('has-events', totalCount > 0);
+            button.classList.toggle('has-approved', hasApproved);
+            button.classList.toggle('has-pending', hasPending);
+            button.classList.toggle('has-rejected', hasRejected);
+            if (dotNode) {
+                dotNode.hidden = totalCount === 0;
+            }
+        };
+        const renderDayDetails = (date, events) => {
+            selectedDateTitle.textContent = `${date} 일정`;
+            if (!events.length) {
+                selectedDateList.innerHTML = '<p class="calendar-empty-text">등록된 일정이 없습니다.</p>';
+                return;
+            }
+            const sortedEvents = [...events].sort((left, right) => {
+                const leftStart = left.start || '';
+                const rightStart = right.start || '';
+                return leftStart.localeCompare(rightStart);
+            });
+            const html = sortedEvents.map((event) => {
+                const safeSeminar = escapeHtml(event.seminar);
+                const safeStart = escapeHtml(event.start);
+                const safeEnd = escapeHtml(event.end);
+                return `
+                    <div class="calendar-item">
+                        <div class="calendar-item-time">${safeStart} ~ ${safeEnd}</div>
+                        <div class="calendar-item-main">
+                            <strong>${safeSeminar}</strong>
+                            <span class="status-badge ${statusClass(event.status)}">${statusLabel(event.status)}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            selectedDateList.innerHTML = html;
+        };
+
+        let selectedButton = null;
+        const selectDay = (button) => {
+            if (selectedButton) {
+                selectedButton.classList.remove('is-selected');
+            }
+            selectedButton = button;
+            if (selectedButton) {
+                selectedButton.classList.add('is-selected');
+            }
+            const date = String(button.dataset.date || '');
+            const events = eventsByDate.get(date) || [];
+            syncSelectedDate(date);
+            renderDayDetails(date, events);
+        };
+
+        dayButtons.forEach((button) => {
+            button.addEventListener('click', () => selectDay(button));
+        });
+        refreshCalendarFromAsync = () => {
+            rebuildEventsByDate();
+            dayButtons.forEach((button) => {
+                const date = String(button.dataset.date || '');
+                const events = eventsByDate.get(date) || [];
+                setDaySummary(button, events);
+            });
+            const selectedDate = selectedButton ? String(selectedButton.dataset.date || '') : '';
+            const fallbackToday = new Date().toISOString().slice(0, 10);
+            const targetButton = dayButtons.find((button) => button.dataset.date === selectedDate)
+                    || dayButtons.find((button) => button.dataset.date === fallbackToday)
+                    || dayButtons[0];
+            if (targetButton) {
+                selectDay(targetButton);
+            } else {
+                syncSelectedDate('');
+            }
+        };
+        refreshCalendarFromAsync();
+    } else {
+        syncSelectedDate('');
+    }
+
+    const myDetailModal = document.getElementById('my-reservation-detail-modal');
+    const myDetailStatus = document.getElementById('my-detail-status');
+    document.querySelectorAll('.js-open-my-detail').forEach((button) => {
+        button.addEventListener('click', () => {
+            const schedule = `${textOrDash(button.dataset.date)} ${textOrDash(button.dataset.start)} ~ ${textOrDash(button.dataset.end)}`;
+            const attendeeValue = textOrDash(button.dataset.attendee);
+            setText('my-detail-seminar', button.dataset.seminar);
+            setText('my-detail-schedule', schedule);
+            setText('my-detail-attendee', attendeeValue === '-' ? '-' : `${attendeeValue}명`);
+            setText('my-detail-used-items', button.dataset.usedItems);
+            setText('my-detail-needed-items', button.dataset.neededItems);
+            setText('my-detail-purpose', button.dataset.purpose);
+            setText('my-detail-manager-note', button.dataset.managerNote);
+            setText('my-detail-created-at', button.dataset.createdAt);
+            if (myDetailStatus) {
+                const status = String(button.dataset.status || 'PENDING');
+                myDetailStatus.className = `status-badge ${statusClass(status)}`;
+                myDetailStatus.textContent = statusLabel(status);
+            }
+            openModal(myDetailModal);
+        });
+    });
+
+    const pendingDetailModal = document.getElementById('pending-detail-modal');
+    const pendingReservationId = document.getElementById('pending-reservation-id');
+    document.querySelectorAll('.js-open-pending-detail').forEach((button) => {
+        button.addEventListener('click', () => {
+            const schedule = `${textOrDash(button.dataset.date)} ${textOrDash(button.dataset.start)} ~ ${textOrDash(button.dataset.end)}`;
+            const attendeeValue = textOrDash(button.dataset.attendee);
+            setText('pending-detail-seminar', button.dataset.seminar);
+            setText('pending-detail-requester', button.dataset.requester);
+            setText('pending-detail-schedule', schedule);
+            setText('pending-detail-attendee', attendeeValue === '-' ? '-' : `${attendeeValue}명`);
+            setText('pending-detail-used-items', button.dataset.usedItems);
+            setText('pending-detail-needed-items', button.dataset.neededItems);
+            setText('pending-detail-purpose', button.dataset.purpose);
+            setText('pending-detail-created-at', button.dataset.createdAt);
+            if (pendingReservationId) {
+                pendingReservationId.value = String(button.dataset.reservationId || '');
+            }
+            openModal(pendingDetailModal);
+        });
+    });
+
+    const currentInstCode = () => {
+        const firstSelect = institutionSelects.find((select) => select && String(select.value || '').trim());
+        if (firstSelect) {
+            return String(firstSelect.value || '').trim();
+        }
+        const hiddenInstInput = document.querySelector('input[name=\"instCode\"]');
+        return hiddenInstInput ? String(hiddenInstInput.value || '').trim() : '';
+    };
+    institutionSelects.forEach((select) => {
+        select.addEventListener('change', () => {
+            const nextInstCode = String(select.value || '').trim();
+            if (!nextInstCode) {
+                return;
+            }
+            const requestedSeminarId = seminarManagerSelect ? String(seminarManagerSelect.value || '').trim() : '';
+            fetchAndApplyInstitutionData(nextInstCode, requestedSeminarId);
+        });
+    });
+    if (seminarManagerSelect) {
+        seminarManagerSelect.addEventListener('change', () => {
+            const instCode = currentInstCode();
+            const requestedSeminarId = String(seminarManagerSelect.value || '').trim();
+            fetchAndApplyInstitutionData(instCode, requestedSeminarId);
+        });
+    }
+    if (seminarFormResetButton) {
+        seminarFormResetButton.addEventListener('click', () => {
+            setSeminarCreateMode();
+            if (seminarEditNameInput) {
+                seminarEditNameInput.focus();
+            }
+        });
+    }
+    bindSeminarEditRows();
+    setSeminarCreateMode();
+
+    refreshReservationValidation();
+})();
+</script>
+</body>
+</html>

@@ -35,6 +35,10 @@ public class PlatformSessionUser implements Serializable {
         return "PLATFORM_ADMIN".equalsIgnoreCase(roleCode);
     }
 
+    public boolean isInstitutionAdmin() {
+        return "INSTITUTION_ADMIN".equalsIgnoreCase(roleCode);
+    }
+
     public boolean isRoomBoardViewer() {
         return "ROOM_BOARD_VIEWER".equalsIgnoreCase(roleCode);
     }

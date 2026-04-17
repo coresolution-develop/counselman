@@ -280,6 +280,42 @@ body {
     background: #f2fbf6;
 }
 
+.audio-drop-zone {
+    margin-bottom: 8px;
+    border: 1px dashed #98aed2;
+    border-radius: 8px;
+    background: #f7fbff;
+    padding: 9px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.audio-drop-zone:focus {
+    outline: none;
+    border-color: #2f62a2;
+    box-shadow: 0 0 0 3px rgba(47, 98, 162, 0.2);
+}
+
+.audio-drop-zone.is-dragover {
+    border-color: #06603A;
+    background: #effaf4;
+}
+
+.audio-drop-zone-title {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #29456f;
+}
+
+.audio-drop-zone-help {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    color: #6a798f;
+}
+
 .recording-indicator {
     display: none;
     align-items: center;

@@ -175,7 +175,7 @@ div[class^="left-content-1"] {
     padding: 10px 25px;
     display: grid;
     position: sticky;
-    top: 55px;
+    /* top: 55px; */
 }
 
 .left-content-1 > div {

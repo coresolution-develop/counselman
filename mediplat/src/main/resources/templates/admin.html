@@ -4,13 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MediPlat Admin</title>
+    <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
+    <link rel="icon" type="image/png" sizes="32x32" th:href="@{/favicon-32x32.png}">
+    <link rel="icon" type="image/png" sizes="16x16" th:href="@{/favicon-16x16.png}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/apple-touch-icon.png}">
     <link rel="stylesheet" th:href="@{/css/mediplat.css}">
 </head>
 <body>
 <header class="topbar">
     <div>
         <p class="eyebrow">MediPlat Admin</p>
-        <h1>플랫폼 관리</h1>
+        <h1 th:text="${canManagePlatform ? '플랫폼 관리' : '기관 관리'}">플랫폼 관리</h1>
     </div>
     <div class="topbar-actions">
         <a class="ghost-btn" th:href="@{/services}">서비스 선택</a>
@@ -18,19 +22,20 @@
     </div>
 </header>
 
-<main class="page-shell admin-shell">
+<main class="page-shell admin-shell"
+      th:attr="data-can-manage-platform=${canManagePlatform},data-can-manage-institution-users=${canManageInstitutionUsers}">
     <div class="message success" th:if="${message != null}" th:text="${message}">완료</div>
     <div class="message error" th:if="${error != null}" th:text="${error}">오류</div>
 
     <section class="admin-grid">
-        <div class="admin-card">
+        <div class="admin-card" th:if="${canManagePlatform}">
             <div class="section-head">
                 <h2>기관 상태 관리</h2>
-                <p>CounselMan 기관은 자동으로 표시되며, 여기서는 플랫폼용 이름과 사용 상태만 보정합니다.</p>
+                <p>Mediplat에서 사용할 기관을 직접 등록하고 사용 상태를 관리합니다.</p>
             </div>
             <form method="post" th:action="@{/admin/institutions}" class="stack-form">
                 <input name="instCode" type="text" placeholder="기관코드" required>
-                <input name="instName" type="text" placeholder="기관명 미입력 시 CounselMan 이름 사용">
+                <input name="instName" type="text" placeholder="기관명" required>
                 <select name="useYn">
                     <option value="Y">사용</option>
                     <option value="N">중지</option>
@@ -47,13 +52,13 @@
             </div>
         </div>
 
-        <div class="admin-card">
+        <div class="admin-card" th:if="${canManagePlatform}">
             <div class="section-head">
                 <h2>기관별 서비스 권한</h2>
                 <p>로그인은 계정 기준으로 허용되며, 여기서 선택한 서비스만 실제로 노출됩니다.</p>
             </div>
             <form method="get" th:action="@{/admin}" class="inline-form">
-                <select name="instCode" onchange="this.form.requestSubmit()">
+                <select name="instCode" class="js-admin-inst-select">
                     <option th:each="institution : ${institutions}"
                             th:value="${institution.instCode}"
                             th:text="${institution.instName + ' (' + institution.instCode + ')'}"
@@ -63,35 +68,168 @@
                 </select>
             </form>
             <form method="post" th:action="@{/admin/access}" class="stack-form">
-                <input type="hidden" name="instCode" th:value="${selectedInstCode}">
-                <label class="checkbox-row" th:each="service : ${services}">
-                    <input type="checkbox" name="enabledServiceCodes" th:value="${service.serviceCode}"
-                           th:checked="${#lists.contains(enabledServiceCodes, service.serviceCode)}">
-                    <span th:text="${service.serviceName + ' (' + service.serviceCode + ')'}">CounselMan</span>
-                </label>
+                <input type="hidden" name="instCode" class="js-admin-inst-code-input" th:value="${selectedInstCode}">
+                <div id="admin-institution-service-list">
+                    <label class="checkbox-row" th:each="service : ${services}">
+                        <input type="checkbox" name="enabledServiceCodes" th:value="${service.serviceCode}"
+                               th:checked="${#lists.contains(enabledServiceCodes, service.serviceCode)}">
+                        <span th:text="${service.serviceName + ' (' + service.serviceCode + ')'}">CounselMan</span>
+                    </label>
+                </div>
                 <button type="submit">권한 저장</button>
             </form>
             <form method="post" th:action="@{/admin/integrations}" class="stack-form">
-                <input type="hidden" name="instCode" th:value="${selectedInstCode}">
+                <input type="hidden" name="instCode" class="js-admin-inst-code-input" th:value="${selectedInstCode}">
                 <label class="checkbox-row">
                     <input type="checkbox"
+                           id="admin-integration-checkbox"
                            name="enabledIntegrationCodes"
                            value="ROOMBOARD_CSM_LINK"
                            th:checked="${#lists.contains(enabledIntegrationCodes, 'ROOMBOARD_CSM_LINK')}"
                            th:disabled="${!roomBoardCounselPairEnabled}">
                     <span>병실현황판-입원상담 연동</span>
                 </label>
-                <p class="service-form-mode"
+                <p class="service-form-mode" id="admin-integration-guide"
                    th:text="${roomBoardCounselPairEnabled
-                       ? 'CounselMan 서비스 권한 + ROOM_BOARD 기능이 모두 활성화된 기관은 연동을 켤 수 있습니다.'
-                       : 'CounselMan 서비스 권한 또는 ROOM_BOARD 기능이 비활성화되어 현재는 연동을 켤 수 없습니다.'}">
+                       ? 'ROOM_BOARD 서비스 권한 + ROOM_BOARD 기능이 모두 활성화된 기관은 연동을 켤 수 있습니다.'
+                       : 'ROOM_BOARD 서비스 권한 또는 ROOM_BOARD 기능이 비활성화되어 현재는 연동을 켤 수 없습니다.'}">
                     연동 조건 안내
                 </p>
                 <button type="submit">연동 저장</button>
             </form>
         </div>
 
-        <div class="admin-card admin-card-wide">
+        <div class="admin-card" th:if="${canManagePlatform}">
+            <div class="section-head">
+                <h2>기관 관리자 계정</h2>
+                <p>기관별 관리자 계정을 Mediplat에서 직접 등록합니다.</p>
+            </div>
+            <form method="post" th:action="@{/admin/users}" class="stack-form">
+                <input type="hidden" name="roleCode" value="INSTITUTION_ADMIN">
+                <select name="instCode" required>
+                    <option value="">기관 선택</option>
+                    <option th:each="institution : ${institutions}"
+                            th:value="${institution.instCode}"
+                            th:text="${institution.instName + ' (' + institution.instCode + ')'}"
+                            th:selected="${institution.instCode == selectedInstCode}">
+                        기관
+                    </option>
+                </select>
+                <input name="username" type="text" placeholder="아이디" required>
+                <input name="password" type="password" placeholder="비밀번호" required>
+                <input name="displayName" type="text" placeholder="표시 이름" required>
+                <select name="useYn">
+                    <option value="Y">사용</option>
+                    <option value="N">중지</option>
+                </select>
+                <button type="submit">기관 관리자 저장</button>
+            </form>
+            <div class="table-list">
+                <div class="list-row list-head list-row-admin-user"><span>기관코드</span><span>아이디</span><span>표시 이름</span><span>상태</span></div>
+                <div class="list-row list-row-admin-user" th:each="user : ${institutionAdminUsers}">
+                    <span th:text="${user.instCode}">FALH</span>
+                    <span th:text="${user.username}">manager</span>
+                    <span th:text="${user.displayName}">기관 관리자</span>
+                    <span th:text="${user.useYn}">Y</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-card" th:if="${canManageInstitutionUsers}">
+            <div class="section-head">
+                <h2>기관 사용자 계정</h2>
+                <p>기관 관리자 계정으로 로그인해도 기관 사용자를 추가/수정할 수 있습니다.</p>
+            </div>
+            <form method="get" th:action="@{/admin}" class="inline-form" th:if="${canManagePlatform}">
+                <select name="instCode" class="js-admin-inst-select">
+                    <option th:each="institution : ${institutions}"
+                            th:value="${institution.instCode}"
+                            th:text="${institution.instName + ' (' + institution.instCode + ')'}"
+                            th:selected="${institution.instCode == selectedInstCode}">
+                        기관
+                    </option>
+                </select>
+            </form>
+            <form method="post" th:action="@{/admin/users}" class="stack-form">
+                <input type="hidden" name="roleCode" value="USER">
+                <input type="hidden" name="instCode" class="js-admin-inst-code-input" th:value="${selectedInstCode}">
+                <input type="text" class="js-admin-inst-display" th:value="${selectedInstCode}" readonly>
+                <input name="username" type="text" placeholder="아이디" required>
+                <input name="password" type="password" placeholder="비밀번호" required>
+                <input name="displayName" type="text" placeholder="표시 이름" required>
+                <select name="useYn">
+                    <option value="Y">사용</option>
+                    <option value="N">중지</option>
+                </select>
+                <button type="submit">사용자 저장</button>
+            </form>
+            <div class="table-list">
+                <div class="list-row list-head list-row-user"><span>기관코드</span><span>아이디</span><span>표시 이름</span><span>권한</span><span>상태</span></div>
+                <div id="admin-institution-user-list">
+                    <div class="list-row list-row-user" th:each="institutionUser : ${institutionUsers}">
+                        <span th:text="${institutionUser.instCode}">FALH</span>
+                        <span th:text="${institutionUser.username}">user01</span>
+                        <span th:text="${institutionUser.displayName}">병동 사용자</span>
+                        <span th:text="${institutionUser.roleCode}">USER</span>
+                        <span th:text="${institutionUser.useYn}">Y</span>
+                    </div>
+                    <div class="list-row list-row-user" th:if="${#lists.isEmpty(institutionUsers)}">
+                        <span>등록된 사용자가 없습니다.</span>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-card" th:if="${canManageInstitutionUsers}">
+            <div class="section-head">
+                <h2>사용자 기능 권한</h2>
+                <p>기관에서 허용된 서비스 중 사용자별로 실제 노출할 기능을 설정합니다.</p>
+            </div>
+            <form method="get" th:action="@{/admin}" class="inline-form">
+                <th:block th:if="${canManagePlatform}">
+                    <select name="instCode" class="js-admin-inst-select">
+                        <option th:each="institution : ${institutions}"
+                                th:value="${institution.instCode}"
+                                th:text="${institution.instName + ' (' + institution.instCode + ')'}"
+                                th:selected="${institution.instCode == selectedInstCode}">
+                            기관
+                        </option>
+                    </select>
+                </th:block>
+                <select name="userAccessUsername" id="admin-user-access-select" th:disabled="${#lists.isEmpty(institutionUsers)}">
+                    <option th:each="institutionUser : ${institutionUsers}"
+                            th:value="${institutionUser.username}"
+                            th:text="${institutionUser.displayName + ' (' + institutionUser.username + ')'}"
+                            th:selected="${institutionUser.username == selectedUserAccessUsername}">
+                        사용자
+                    </option>
+                </select>
+            </form>
+            <p class="service-form-mode" id="admin-user-access-empty-users" th:hidden="${!#lists.isEmpty(institutionUsers)}">권한을 설정할 사용자가 없습니다.</p>
+            <form method="post" th:action="@{/admin/user-access}" class="stack-form" id="admin-user-access-form">
+                <input type="hidden" name="instCode" id="admin-user-access-inst-code" class="js-admin-inst-code-input" th:value="${selectedInstCode}">
+                <input type="hidden" name="username" id="admin-user-access-username" th:value="${selectedUserAccessUsername}">
+                <div id="admin-user-access-service-list">
+                    <label class="checkbox-row" th:each="service : ${institutionEnabledServices}">
+                        <input type="checkbox"
+                               name="enabledServiceCodes"
+                               th:value="${service.serviceCode}"
+                               th:checked="${#lists.contains(userEnabledServiceCodes, service.serviceCode)}">
+                        <span th:text="${service.serviceName + ' (' + service.serviceCode + ')'}">서비스</span>
+                    </label>
+                </div>
+                <button type="submit" id="admin-user-access-save-button"
+                        th:disabled="${#lists.isEmpty(institutionUsers) or #lists.isEmpty(institutionEnabledServices)}">사용자 권한 저장</button>
+            </form>
+            <p class="service-form-mode" id="admin-user-access-empty-services"
+               th:hidden="${#lists.isEmpty(institutionUsers) or !#lists.isEmpty(institutionEnabledServices)}">기관에 활성화된 서비스가 없습니다.</p>
+        </div>
+
+        <div class="admin-card admin-card-wide" th:if="${canManagePlatform}">
             <div class="section-head">
                 <h2>병실현황판 전용 계정</h2>
                 <p>기관코드 없이 로그인 가능한 전용 아이디/비밀번호를 만들고, 조회 가능한 기관을 선택합니다. 아이디는 기관 계정과 중복되면 저장되지 않습니다.</p>
@@ -143,7 +281,7 @@
             </div>
         </div>
 
-        <div class="admin-card admin-card-wide">
+        <div class="admin-card admin-card-wide" th:if="${canManagePlatform}">
             <div class="section-head">
                 <h2>서비스 등록</h2>
                 <p>연동 서비스의 진입 URL과 기본 이동 경로를 등록합니다. 현재 적용 환경: <strong th:text="${runtimeEnvCode}">LOCAL</strong></p>
@@ -319,6 +457,246 @@
 
     if (resetButton) {
         resetButton.addEventListener('click', setNewMode);
+    }
+})();
+
+(() => {
+    const adminShell = document.querySelector('main.page-shell.admin-shell');
+    if (!adminShell) {
+        return;
+    }
+
+    const instSelects = Array.from(document.querySelectorAll('.js-admin-inst-select'));
+    const userAccessSelect = document.getElementById('admin-user-access-select');
+    const serviceCheckboxContainer = document.getElementById('admin-institution-service-list');
+    const integrationCheckbox = document.getElementById('admin-integration-checkbox');
+    const integrationGuide = document.getElementById('admin-integration-guide');
+    const instCodeInputs = Array.from(document.querySelectorAll('.js-admin-inst-code-input'));
+    const instDisplays = Array.from(document.querySelectorAll('.js-admin-inst-display'));
+    const institutionUserList = document.getElementById('admin-institution-user-list');
+    const userAccessEmptyUsers = document.getElementById('admin-user-access-empty-users');
+    const userAccessForm = document.getElementById('admin-user-access-form');
+    const userAccessUsernameInput = document.getElementById('admin-user-access-username');
+    const userAccessServiceList = document.getElementById('admin-user-access-service-list');
+    const userAccessSaveButton = document.getElementById('admin-user-access-save-button');
+    const userAccessEmptyServices = document.getElementById('admin-user-access-empty-services');
+
+    if (!instSelects.length
+        && !serviceCheckboxContainer
+        && !integrationCheckbox
+        && !institutionUserList
+        && !userAccessSelect
+        && !userAccessServiceList) {
+        return;
+    }
+
+    const escapeHtml = (value) => {
+        return String(value || '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    };
+
+    const integrationEnabledMessage = 'ROOM_BOARD 서비스 권한 + ROOM_BOARD 기능이 모두 활성화된 기관은 연동을 켤 수 있습니다.';
+    const integrationDisabledMessage = 'ROOM_BOARD 서비스 권한 또는 ROOM_BOARD 기능이 비활성화되어 현재는 연동을 켤 수 없습니다.';
+    const currentInstCode = () => {
+        const select = instSelects.find((node) => String(node.value || '').trim());
+        if (select) {
+            return String(select.value || '').trim();
+        }
+        const input = instCodeInputs.find((node) => String(node.value || '').trim());
+        return input ? String(input.value || '').trim() : '';
+    };
+    const currentUserAccessUsername = () => userAccessSelect ? String(userAccessSelect.value || '').trim() : '';
+    const syncInstCode = (instCode) => {
+        const normalized = String(instCode || '').trim();
+        instSelects.forEach((select) => {
+            select.value = normalized;
+        });
+        instCodeInputs.forEach((input) => {
+            input.value = normalized;
+        });
+        instDisplays.forEach((display) => {
+            display.value = normalized;
+        });
+    };
+    const renderInstitutionServiceAccess = (services, enabledServiceCodes) => {
+        if (!serviceCheckboxContainer) {
+            return;
+        }
+        const enabledSet = new Set(Array.isArray(enabledServiceCodes) ? enabledServiceCodes.map((code) => String(code || '').toUpperCase()) : []);
+        serviceCheckboxContainer.innerHTML = (Array.isArray(services) ? services : []).map((service) => {
+            const code = String(service.serviceCode || '');
+            const checkedAttr = enabledSet.has(code.toUpperCase()) ? ' checked' : '';
+            const caption = `${String(service.serviceName || code)} (${code})`;
+            return `
+                <label class="checkbox-row">
+                    <input type="checkbox" name="enabledServiceCodes" value="${escapeHtml(code)}"${checkedAttr}>
+                    <span>${escapeHtml(caption)}</span>
+                </label>
+            `;
+        }).join('');
+    };
+    const renderInstitutionUsers = (users) => {
+        if (!institutionUserList) {
+            return;
+        }
+        const normalizedUsers = Array.isArray(users) ? users : [];
+        if (!normalizedUsers.length) {
+            institutionUserList.innerHTML = `
+                <div class="list-row list-row-user">
+                    <span>등록된 사용자가 없습니다.</span><span></span><span></span><span></span><span></span>
+                </div>
+            `;
+            return;
+        }
+        institutionUserList.innerHTML = normalizedUsers.map((institutionUser) => `
+            <div class="list-row list-row-user">
+                <span>${escapeHtml(institutionUser.instCode)}</span>
+                <span>${escapeHtml(institutionUser.username)}</span>
+                <span>${escapeHtml(institutionUser.displayName)}</span>
+                <span>${escapeHtml(institutionUser.roleCode)}</span>
+                <span>${escapeHtml(institutionUser.useYn)}</span>
+            </div>
+        `).join('');
+    };
+    const renderUserAccessUsers = (users, selectedUsername) => {
+        if (!userAccessSelect) {
+            return;
+        }
+        const normalizedUsers = Array.isArray(users) ? users : [];
+        if (!normalizedUsers.length) {
+            userAccessSelect.innerHTML = '<option value="">사용자 없음</option>';
+            userAccessSelect.disabled = true;
+            if (userAccessEmptyUsers) {
+                userAccessEmptyUsers.hidden = false;
+            }
+            if (userAccessUsernameInput) {
+                userAccessUsernameInput.value = '';
+            }
+            return;
+        }
+        userAccessSelect.disabled = false;
+        if (userAccessEmptyUsers) {
+            userAccessEmptyUsers.hidden = true;
+        }
+        const selected = String(selectedUsername || normalizedUsers[0].username || '');
+        userAccessSelect.innerHTML = normalizedUsers.map((institutionUser) => {
+            const username = String(institutionUser.username || '');
+            const selectedAttr = username === selected ? ' selected' : '';
+            const caption = `${String(institutionUser.displayName || username)} (${username})`;
+            return `<option value="${escapeHtml(username)}"${selectedAttr}>${escapeHtml(caption)}</option>`;
+        }).join('');
+        if (userAccessUsernameInput) {
+            userAccessUsernameInput.value = selected;
+        }
+    };
+    const renderUserAccessServices = (services, enabledServiceCodes, hasUsers) => {
+        if (!userAccessServiceList) {
+            return;
+        }
+        const normalizedServices = Array.isArray(services) ? services : [];
+        const enabledSet = new Set(Array.isArray(enabledServiceCodes) ? enabledServiceCodes.map((code) => String(code || '').toUpperCase()) : []);
+        userAccessServiceList.innerHTML = normalizedServices.map((service) => {
+            const code = String(service.serviceCode || '');
+            const checkedAttr = enabledSet.has(code.toUpperCase()) ? ' checked' : '';
+            const caption = `${String(service.serviceName || code)} (${code})`;
+            return `
+                <label class="checkbox-row">
+                    <input type="checkbox" name="enabledServiceCodes" value="${escapeHtml(code)}"${checkedAttr}>
+                    <span>${escapeHtml(caption)}</span>
+                </label>
+            `;
+        }).join('');
+
+        const hasServices = normalizedServices.length > 0;
+        if (userAccessSaveButton) {
+            userAccessSaveButton.disabled = !hasUsers || !hasServices;
+        }
+        if (userAccessEmptyServices) {
+            userAccessEmptyServices.hidden = !hasUsers || hasServices;
+        }
+        if (userAccessForm) {
+            userAccessForm.hidden = !hasUsers;
+        }
+    };
+
+    let loading = false;
+    const fetchAdminAsyncData = async (instCode, userAccessUsername) => {
+        const normalizedInstCode = String(instCode || '').trim();
+        if (!normalizedInstCode || loading) {
+            return;
+        }
+        loading = true;
+        instSelects.forEach((select) => {
+            select.disabled = true;
+        });
+        if (userAccessSelect) {
+            userAccessSelect.disabled = true;
+        }
+        try {
+            const query = new URLSearchParams();
+            query.set('instCode', normalizedInstCode);
+            if (String(userAccessUsername || '').trim()) {
+                query.set('userAccessUsername', String(userAccessUsername).trim());
+            }
+            const response = await fetch(`/admin/async-data?${query.toString()}`, {
+                headers: {
+                    Accept: 'application/json'
+                }
+            });
+            if (!response.ok) {
+                throw new Error(`failed-${response.status}`);
+            }
+            const payload = await response.json();
+            const selectedInstCode = String(payload.selectedInstCode || normalizedInstCode);
+            const institutionUsers = Array.isArray(payload.institutionUsers) ? payload.institutionUsers : [];
+            const selectedUserAccessUsername = String(payload.selectedUserAccessUsername || '');
+            const services = Array.isArray(payload.services) ? payload.services : [];
+            const institutionEnabledServices = Array.isArray(payload.institutionEnabledServices) ? payload.institutionEnabledServices : [];
+            const enabledServiceCodes = Array.isArray(payload.enabledServiceCodes) ? payload.enabledServiceCodes : [];
+            const enabledIntegrationCodes = Array.isArray(payload.enabledIntegrationCodes) ? payload.enabledIntegrationCodes : [];
+            const userEnabledServiceCodes = Array.isArray(payload.userEnabledServiceCodes) ? payload.userEnabledServiceCodes : [];
+            const roomBoardCounselPairEnabled = payload.roomBoardCounselPairEnabled === true;
+
+            syncInstCode(selectedInstCode);
+            renderInstitutionServiceAccess(services, enabledServiceCodes);
+            renderInstitutionUsers(institutionUsers);
+            renderUserAccessUsers(institutionUsers, selectedUserAccessUsername);
+            renderUserAccessServices(institutionEnabledServices, userEnabledServiceCodes, institutionUsers.length > 0);
+
+            if (integrationCheckbox) {
+                integrationCheckbox.checked = enabledIntegrationCodes.some((code) => String(code || '').toUpperCase() === 'ROOMBOARD_CSM_LINK');
+                integrationCheckbox.disabled = !roomBoardCounselPairEnabled;
+            }
+            if (integrationGuide) {
+                integrationGuide.textContent = roomBoardCounselPairEnabled ? integrationEnabledMessage : integrationDisabledMessage;
+            }
+        } catch (error) {
+            console.error('Failed to fetch admin async data', error);
+            window.alert('기관 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+        } finally {
+            loading = false;
+            instSelects.forEach((select) => {
+                select.disabled = false;
+            });
+            if (userAccessSelect && userAccessSelect.options.length > 0) {
+                userAccessSelect.disabled = userAccessSelect.options.length <= 1 && userAccessSelect.value === '';
+            }
+        }
+    };
+
+    instSelects.forEach((select) => {
+        select.addEventListener('change', () => {
+            fetchAdminAsyncData(String(select.value || '').trim(), currentUserAccessUsername());
+        });
+    });
+    if (userAccessSelect) {
+        userAccessSelect.addEventListener('change', () => {
+            fetchAdminAsyncData(currentInstCode(), currentUserAccessUsername());
+        });
     }
 })();
 </script>
