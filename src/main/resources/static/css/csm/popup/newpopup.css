@@ -154,6 +154,7 @@ html, body {
 
 .left-content {
 /* 	margin-right: 7px; */
+    height: 100%;
 }
 
 .left-content-1, div[class^="right-content-"]{
@@ -409,7 +410,7 @@ div[class^="left-content-2"] {
 .category-container {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 207px);
+    height: calc(100% - 130px);
     overflow-x: auto;
     overflow-y: auto;
 }
@@ -555,7 +556,7 @@ div[class^="left-content-2"] {
     background: #F9F9F9;
     box-shadow: none;
     height: calc(100vh - 140px);
-    padding: 0;
+    padding: 10px;
 }
 
 .section-top {
@@ -1098,6 +1099,7 @@ input[type="radio"]:checked {
     min-width: 200px;
     display: flex;
     justify-content: center;
+    margin-bottom: 10px;
 }
 
 #reservationFields > .form-group,

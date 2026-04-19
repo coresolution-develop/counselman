@@ -562,38 +562,50 @@ td, th {
     align-items: center;
     gap: 8px;
     width: 100%;
-    padding: 8px 10px 8px 28px;
+    padding: 8px 10px;
     margin: 6px 0;
     border: 1px solid transparent;
     border-radius: 8px;
     transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
-    cursor: grab;
-}
-
-#mainCategoryDiv .custom-radio:active,
-#subCategoryDiv .custom-radio:active,
-#optionCategoryDiv .custom-radio:active {
-    cursor: grabbing;
-}
-
-#mainCategoryDiv .custom-radio::before,
-#subCategoryDiv .custom-radio::before,
-#optionCategoryDiv .custom-radio::before {
-    content: "⋮⋮";
-    position: absolute;
-    left: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 11px;
-    letter-spacing: -1px;
-    color: #94a3b1;
-    pointer-events: none;
+    cursor: pointer;
 }
 
 #mainCategoryDiv .custom-radio .custom-radio-mark,
 #subCategoryDiv .custom-radio .custom-radio-mark,
 #optionCategoryDiv .custom-radio .custom-radio-mark {
-    display: none !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    min-width: 14px;
+    height: 18px;
+    margin-right: 6px;
+    border: none;
+    background: transparent;
+    position: relative;
+    cursor: grab;
+}
+
+#mainCategoryDiv .custom-radio .custom-radio-mark::before,
+#subCategoryDiv .custom-radio .custom-radio-mark::before,
+#optionCategoryDiv .custom-radio .custom-radio-mark::before {
+    content: "☰";
+    font-size: 12px;
+    letter-spacing: 0;
+    color: #94a3b1;
+    line-height: 1;
+}
+
+#mainCategoryDiv .custom-radio .custom-radio-mark::after,
+#subCategoryDiv .custom-radio .custom-radio-mark::after,
+#optionCategoryDiv .custom-radio .custom-radio-mark::after {
+    content: none !important;
+}
+
+#mainCategoryDiv .custom-radio .custom-radio-mark:active,
+#subCategoryDiv .custom-radio .custom-radio-mark:active,
+#optionCategoryDiv .custom-radio .custom-radio-mark:active {
+    cursor: grabbing;
 }
 
 #mainCategoryDiv .custom-radio.is-selected,
@@ -626,4 +638,369 @@ td, th {
 #subCategoryDiv .drag-ghost,
 #optionCategoryDiv .drag-ghost {
     opacity: 0.55;
+}
+
+/* 상담일지 관리 추가 모달 디자인 */
+.modal4 {
+    background-color: rgba(35, 44, 52, 0.55);
+}
+
+.modal4 .modal_body4 {
+    width: min(560px, calc(100vw - 32px));
+    padding: 0;
+    top: 50%;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 24px 56px rgba(17, 24, 31, 0.24);
+}
+
+.modal4 .modal_body4 > .modal4-card {
+    width: 100%;
+    padding: 38px 44px 0;
+    background: #f5f7f7;
+}
+
+.modal4 .modal4-icon-wrap {
+    width: 76px;
+    height: 76px;
+    margin: 0 auto;
+    border-radius: 50%;
+    background: #dce4e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal4 .menu_icon.modal4-icon {
+    width: 36px;
+    height: 36px;
+    padding-top: 0;
+}
+
+.modal4 .modal4-title {
+    margin: 22px 0 10px;
+    color: #263137;
+    font-size: 2.2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.modal4 .menu_msg4 {
+    margin: 0 0 18px;
+    padding: 0;
+    color: #6b7882;
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.modal4 .modal4-label {
+    display: block;
+    text-align: left;
+    margin-bottom: 8px;
+    color: #5d676f;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.modal4 #addCategoryName.modal-input,
+.modal4 #selectboxOptions.modal-input {
+    width: 100%;
+    border: none;
+    border-bottom: 2px solid #c5cec8;
+    border-radius: 0;
+    background: transparent;
+    padding: 10px 0 !important;
+    margin-bottom: 22px;
+    color: #44515a;
+    font-size: 1.45rem;
+    text-align: left;
+}
+
+.modal4 #addCategoryName.modal-input::placeholder,
+.modal4 #selectboxOptions.modal-input::placeholder {
+    color: #c4cdd3;
+}
+
+.modal4 #addCategoryName.modal-input:focus,
+.modal4 #selectboxOptions.modal-input:focus {
+    border-bottom-color: #0b6f44;
+    outline: none;
+}
+
+.modal4 #checkboxContainer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 10px 16px;
+    margin: 0 0 24px;
+}
+
+.modal4 #checkboxContainer .custom-checkbox {
+    margin: 0;
+    min-width: calc(50% - 8px);
+    font-size: 1.05rem;
+    color: #44515a;
+}
+
+.modal4 #checkboxContainer .custom-checkbox .custom-checkbox-mark {
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+}
+
+.modal4 #selectOptions {
+    margin-bottom: 2px;
+}
+
+.modal4 .modal_footer4 {
+    gap: 16px;
+    padding: 8px 0 28px;
+}
+
+.modal4 .modal_footer4 .btn {
+    margin: 0;
+    width: calc(50% - 8px);
+    height: 52px;
+    border-radius: 10px;
+    font-size: 1.3rem !important;
+    font-weight: 700;
+}
+
+.modal4 .modal_footer4 .modal_btn2 {
+    background: #06603A;
+}
+
+.modal4 .modal_footer4 .pink_btn2 {
+    background: #6f7276;
+}
+
+.modal4 .modal4-copyright {
+    margin: 0 -44px;
+    padding: 16px 10px;
+    background: #e9edee;
+    color: #95a2ad;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+@media all and (max-width: 768px) {
+    .modal4 .modal_body4 > .modal4-card {
+        padding: 30px 18px 0;
+    }
+
+    .modal4 .modal4-title {
+        font-size: 1.8rem;
+        margin-top: 16px;
+    }
+
+    .modal4 .menu_msg4 {
+        font-size: 1rem;
+    }
+
+    .modal4 #addCategoryName.modal-input,
+    .modal4 #selectboxOptions.modal-input {
+        font-size: 1.25rem;
+    }
+
+    .modal4 #checkboxContainer .custom-checkbox {
+        min-width: 100%;
+    }
+
+    .modal4 .modal_footer4 {
+        padding-bottom: 20px;
+    }
+
+    .modal4 .modal_footer4 .btn {
+        height: 48px;
+        font-size: 1.2rem !important;
+    }
+
+    .modal4 .modal4-copyright {
+        margin: 0 -18px;
+        font-size: 0.88rem;
+    }
+}
+
+/* 상담일지 관리 수정 모달 디자인 */
+.modal2 {
+    background-color: rgba(35, 44, 52, 0.55);
+}
+
+.modal2 .modal_body2 {
+    width: min(560px, calc(100vw - 32px));
+    padding: 0;
+    top: 50%;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 24px 56px rgba(17, 24, 31, 0.24);
+}
+
+.modal2 .modal_body2 > .modal2-card {
+    width: 100%;
+    padding: 32px 44px 0;
+    background: #f5f7f7;
+}
+
+.modal2 .modal2-icon-wrap {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto;
+    border-radius: 50%;
+    background: #dce4e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal2 .menu_icon.modal2-icon {
+    width: 34px;
+    height: 34px;
+    padding-top: 0;
+}
+
+.modal2 .modal2-title {
+    margin: 18px 0 8px;
+    color: #263137;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.modal2 .menu_msg2 {
+    margin: 0 0 14px;
+    padding: 0;
+    color: #6b7882;
+    font-size: 1.05rem;
+    font-weight: 500;
+}
+
+.modal2 .modal2-label {
+    display: block;
+    text-align: left;
+    margin-bottom: 8px;
+    color: #5d676f;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.modal2 #cc_col_02.modal-input {
+    width: 100%;
+    border: none;
+    border-bottom: 2px solid #c5cec8;
+    border-radius: 0;
+    background: transparent;
+    padding: 10px 0 !important;
+    margin-bottom: 18px;
+    color: #44515a;
+    font-size: 1.35rem;
+    text-align: left;
+}
+
+.modal2 #cc_col_02.modal-input::placeholder {
+    color: #c4cdd3;
+}
+
+.modal2 #cc_col_02.modal-input:focus {
+    border-bottom-color: #0b6f44;
+    outline: none;
+}
+
+.modal2 .modal2-meta-wrap {
+    text-align: left;
+    margin: 0 0 20px;
+    padding: 12px 14px;
+    border: 1px solid #d8dfe3;
+    border-radius: 10px;
+    background: #f0f4f3;
+}
+
+.modal2 .modal2-meta-title {
+    color: #4f5b64;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.modal2 .modal2-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.modal2 .modal2-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid #a9b8b2;
+    background: #fff;
+    color: #375248;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.modal2 .modal2-chip-muted {
+    border-color: #c8d1d5;
+    color: #77838d;
+}
+
+.modal2 .modal2-meta-note {
+    margin: 10px 0 0;
+    color: #6b7882;
+    font-size: 0.9rem;
+    line-height: 1.35;
+}
+
+.modal2 .modal_footer2 {
+    gap: 16px;
+    padding: 6px 0 24px;
+}
+
+.modal2 .modal_footer2 .btn {
+    margin: 0;
+    width: calc(50% - 8px);
+    height: 50px;
+    border-radius: 10px;
+    font-size: 1.25rem !important;
+    font-weight: 700;
+}
+
+.modal2 .modal_footer2 .modal_btn2 {
+    background: #06603A;
+}
+
+.modal2 .modal_footer2 .pink_btn2 {
+    background: #6f7276;
+}
+
+.modal2 .modal2-copyright {
+    margin: 0 -44px;
+    padding: 14px 10px;
+    background: #e9edee;
+    color: #95a2ad;
+    font-size: 0.92rem;
+    font-weight: 600;
+}
+
+@media all and (max-width: 768px) {
+    .modal2 .modal_body2 > .modal2-card {
+        padding: 26px 18px 0;
+    }
+
+    .modal2 .modal2-title {
+        font-size: 1.65rem;
+    }
+
+    .modal2 #cc_col_02.modal-input {
+        font-size: 1.2rem;
+    }
+
+    .modal2 .modal_footer2 .btn {
+        height: 46px;
+        font-size: 1.08rem !important;
+    }
+
+    .modal2 .modal2-copyright {
+        margin: 0 -18px;
+        font-size: 0.84rem;
+    }
 }

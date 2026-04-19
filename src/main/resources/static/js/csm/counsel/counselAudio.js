@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const audioFileInput = document.getElementById('audioFileInput');
   const audioDropZoneEl = document.getElementById('audioDropZone');
   const applyDiseaseMatchBtn = document.getElementById('applyDiseaseMatchBtn');
+  const generateSummaryBtn = document.getElementById('generateSummaryBtn');
   const recordingStatusEl = document.getElementById('recordingStatus');
   const recordingIndicatorEl = document.getElementById('recordingIndicator');
   const recordingTimerEl = document.getElementById('recordingTimer');
@@ -70,6 +71,13 @@ document.addEventListener('DOMContentLoaded', function () {
     return 'empty';
   }
 
+  function renderPreviewToggle(mode, hasSummary, hasSource) {
+    if (!hasSummary || !hasSource) return '';
+    const nextView = mode === 'summary' ? 'source' : 'summary';
+    const label = nextView === 'summary' ? '요약 보기' : '원문 보기';
+    return `<button type="button" class="counsel-preview-toggle" data-view-target="${nextView}">${label}</button>`;
+  }
+
   function renderAudioPreview(item) {
     const summary = String(item?.summaryText || '').trim();
     const transcript = String(item?.transcript || '').trim();
@@ -85,8 +93,7 @@ document.addEventListener('DOMContentLoaded', function () {
     return `
       <div class="counsel-preview-card" data-view="${escapeHtml(mode)}">
         <div class="counsel-preview-toolbar">
-          ${summary ? `<button type="button" class="counsel-preview-toggle" data-view-target="summary">요약 보기</button>` : ''}
-          ${transcript ? `<button type="button" class="counsel-preview-toggle" data-view-target="source">원문 보기</button>` : ''}
+          ${renderPreviewToggle(mode, !!summary, !!transcript)}
           ${transcript && !summary && openAiSummaryAvailable ? `<button type="button" class="counsel-preview-generate audio-record-summary" data-audio-id="${escapeHtml(item.id)}">요약 생성</button>` : ''}
         </div>
         ${summary ? `<div class="counsel-preview-body counsel-preview-summary">${escapeHtml(summary)}</div>` : ''}
@@ -99,6 +106,11 @@ document.addEventListener('DOMContentLoaded', function () {
   function updatePreviewMode(card, mode) {
     if (!card || !mode) return;
     card.setAttribute('data-view', mode);
+    const toggleBtn = card.querySelector('.counsel-preview-toggle');
+    if (!toggleBtn) return;
+    const nextView = mode === 'summary' ? 'source' : 'summary';
+    toggleBtn.setAttribute('data-view-target', nextView);
+    toggleBtn.textContent = nextView === 'summary' ? '요약 보기' : '원문 보기';
   }
 
   function ensureAudioTempKey() {
@@ -118,6 +130,31 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!recordingStatusEl) return;
     recordingStatusEl.textContent = message || '대기 중';
     recordingStatusEl.style.color = isError ? '#cc2d2d' : '#5a5a5a';
+  }
+
+  function summaryTimestamp() {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+  }
+
+  function stripSummaryBlock(text) {
+    const raw = String(text || '');
+    return raw.replace(/\[상담요약[^\]]*\][\s\S]*?\[\/상담요약\]\s*/g, '').trim();
+  }
+
+  function upsertSummaryBlock(summaryText) {
+    if (!counselContentInput) return;
+    const summary = String(summaryText || '').trim();
+    if (!summary) return;
+
+    const block = `[상담요약 ${summaryTimestamp()}]\n${summary}\n[/상담요약]`;
+    const withoutSummary = stripSummaryBlock(counselContentInput.value || '');
+    counselContentInput.value = withoutSummary ? `${block}\n\n${withoutSummary}` : block;
   }
 
   const STOP_WORDS = new Set([
@@ -618,6 +655,69 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  async function generateCounselSummary() {
+    if (!counselContentInput) return;
+    if (!openAiSummaryAvailable) {
+      setRecordingStatus('OpenAI API 키 설정 후 상담 요약을 사용할 수 있습니다.', true);
+      return;
+    }
+    if (isRecording) {
+      setRecordingStatus('녹음 중에는 요약을 생성할 수 없습니다.', true);
+      return;
+    }
+
+    const source = stripSummaryBlock(counselContentInput.value || '');
+    if (!source) {
+      setRecordingStatus('요약할 상담 내용이 없습니다.', true);
+      return;
+    }
+
+    if (generateSummaryBtn) {
+      generateSummaryBtn.disabled = true;
+      generateSummaryBtn.textContent = '요약 중...';
+    }
+    setRecordingStatus('GPT 요약 생성 중...');
+
+    try {
+      const response = await fetch(`${CONTEXT_PATH}/counsel/summary/generate`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          ...csrfHeaders()
+        },
+        body: JSON.stringify({ content: source, csIdx: csIdx || null })
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        setRecordingStatus(data?.message || '상담 요약 생성 실패', true);
+        return;
+      }
+
+      const summary = String(data?.summary || '').trim();
+      if (!summary) {
+        setRecordingStatus('요약 결과가 비어 있습니다.', true);
+        return;
+      }
+
+      upsertSummaryBlock(summary);
+      const matched = applyDiseaseMatchFromText(counselContentInput.value || '');
+      if (matched > 0) {
+        setRecordingStatus(`상담 요약 반영 완료 (커스텀 ${matched}건 매칭)`);
+      } else {
+        setRecordingStatus('상담 요약 반영 완료');
+      }
+    } catch (_) {
+      setRecordingStatus('상담 요약 생성 중 오류', true);
+    } finally {
+      if (generateSummaryBtn) {
+        generateSummaryBtn.disabled = false;
+        generateSummaryBtn.textContent = '상담 요약';
+      }
+    }
+  }
+
   function extensionFromMimeType(mimeType) {
     const mime = String(mimeType || '').toLowerCase();
     if (mime.includes('mpeg') || mime.includes('mp3')) return 'mp3';
@@ -1014,6 +1114,14 @@ document.addEventListener('DOMContentLoaded', function () {
         setRecordingStatus('매칭된 커스텀 항목이 없습니다.');
       }
     });
+  }
+
+  if (generateSummaryBtn) {
+    generateSummaryBtn.addEventListener('click', generateCounselSummary);
+    if (!openAiSummaryAvailable) {
+      generateSummaryBtn.disabled = true;
+      generateSummaryBtn.title = 'OpenAI API 키 설정 후 사용 가능합니다.';
+    }
   }
 
   if (audioRecordListEl) {

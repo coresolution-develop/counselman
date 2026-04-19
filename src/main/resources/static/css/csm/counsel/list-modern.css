@@ -23,7 +23,7 @@ body.counsel-list-modern .wrapper {
 }
 
 body.counsel-list-modern .logo {
-    min-height: 72px;
+    min-height: 64px;
     padding: 0 24px;
     background: rgba(248, 251, 249, 0.92);
     border-bottom: 1px solid #dbe5df;
@@ -53,12 +53,10 @@ body.counsel-list-modern .wrapper.header-mode-list .logo {
     justify-content: flex-start;
 }
 
-body.counsel-list-modern .wrapper.header-mode-list .logo-img {
-    display: none;
-}
-
 body.counsel-list-modern .logo-img > img {
-    display: none;
+    display: block;
+    width: 30px;
+    height: auto;
 }
 
 body.counsel-list-modern .sys-name {
@@ -173,8 +171,8 @@ body.counsel-list-modern .header-list-search button {
 
 body.counsel-list-modern .nav_section {
     width: 230px;
-    top: 72px !important;
-    height: calc(100% - 72px);
+    top: 64px !important;
+    height: calc(100% - 64px);
     background: linear-gradient(180deg, #04281d 0%, #053726 56%, #022419 100%);
     border-right: 1px solid rgba(160, 205, 178, 0.16);
     box-shadow: 8px 0 26px rgba(2, 24, 14, 0.34);
@@ -228,15 +226,15 @@ body.counsel-list-modern .main {
 }
 
 body.counsel-list-modern .section {
-    height: calc(100vh - 108px);
+    height: calc(100vh - 150px);
     border-radius: 22px;
     border: 1px solid #dce7e1;
     background: rgba(255, 255, 255, 0.78);
     box-shadow: 0 14px 36px rgba(19, 42, 31, 0.08);
-    padding: 18px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
 }
 
 body.counsel-list-modern .list-modern-toolbar {
@@ -420,22 +418,52 @@ body.counsel-list-modern .modern-date-range-inputs {
     align-items: center;
     gap: 6px;
     width: 100%;
+    position: relative;
 }
 
-body.counsel-list-modern .modern-date-range-inputs input[type="date"] {
+body.counsel-list-modern .modern-date-range-inputs .sh-date-input-wrap {
+    position: relative;
+    width: 100%;
+}
+
+body.counsel-list-modern .modern-date-range-inputs input[type="date"],
+body.counsel-list-modern .modern-date-range-inputs input[type="text"] {
     width: 100%;
     min-width: 0;
     height: 40px;
     border: 1px solid #cfdcd4;
     border-radius: 9px;
-    padding: 0 10px;
+    padding: 0 34px 0 10px;
     font-size: 13px;
     color: #1f3a2d;
     background: #fff;
     box-sizing: border-box;
 }
 
-body.counsel-list-modern .modern-date-range-inputs input[type="date"]::-webkit-calendar-picker-indicator {
+body.counsel-list-modern .modern-date-range-inputs .filter-cal-btn {
+    position: absolute;
+    right: 7px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 22px;
+    height: 22px;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+body.counsel-list-modern .modern-date-range-inputs .filter-cal-btn .filter-icon {
+    width: 15px;
+    height: 15px;
+    opacity: 0.85;
+}
+
+body.counsel-list-modern .modern-date-range-inputs input[type="date"]::-webkit-calendar-picker-indicator,
+body.counsel-list-modern .modern-date-range-inputs input[type="text"]::-webkit-calendar-picker-indicator {
     opacity: 0.72;
     cursor: pointer;
 }
@@ -443,6 +471,127 @@ body.counsel-list-modern .modern-date-range-inputs input[type="date"]::-webkit-c
 body.counsel-list-modern .modern-date-range-inputs span {
     color: #5f756a;
     font-weight: 600;
+}
+
+body.counsel-list-modern .modern-date-range-inputs .sh-calendar {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 40;
+    width: 292px;
+    background: #fff;
+    border: 1px solid #d5e3da;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(7, 42, 25, 0.16);
+    padding: 10px;
+    display: none;
+}
+
+body.counsel-list-modern .modern-date-range-inputs .sh-calendar.is-open {
+    display: block;
+}
+
+body.counsel-list-modern .modern-date-range-inputs .sh-cal-head {
+    display: grid;
+    grid-template-columns: 32px 1fr 32px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+body.counsel-list-modern .modern-date-range-inputs .sh-cal-title {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f3a24;
+}
+
+body.counsel-list-modern .modern-date-range-inputs .sh-cal-nav {
+    width: 30px;
+    height: 30px;
+    border: 1px solid #d4e1d8;
+    border-radius: 8px;
+    background: #f8fbf9;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+body.counsel-list-modern .modern-date-range-inputs .sh-cal-nav img {
+    width: 12px;
+    height: 12px;
+    object-fit: contain;
+}
+
+body.counsel-list-modern .modern-date-range-inputs .sh-cal-week {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    margin-bottom: 6px;
+}
+
+body.counsel-list-modern .modern-date-range-inputs .sh-cal-week span {
+    text-align: center;
+    font-size: 11px;
+    color: #667d71;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+body.counsel-list-modern .modern-date-range-inputs .sh-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 3px;
+}
+
+body.counsel-list-modern .modern-date-range-inputs .sh-cal-day {
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: #fff;
+    min-height: 36px;
+    padding: 4px 2px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 2px;
+}
+
+body.counsel-list-modern .modern-date-range-inputs .sh-cal-day:hover {
+    background: #f3f8f5;
+    border-color: #d6e5dc;
+}
+
+body.counsel-list-modern .modern-date-range-inputs .sh-cal-day .sh-cal-num {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1b3f2d;
+    line-height: 1;
+}
+
+body.counsel-list-modern .modern-date-range-inputs .sh-cal-day .sh-cal-sub {
+    font-size: 10px;
+    color: #0a6b3a;
+    line-height: 1;
+    min-height: 10px;
+}
+
+body.counsel-list-modern .modern-date-range-inputs .sh-cal-day.is-muted .sh-cal-num {
+    color: #98aca1;
+}
+
+body.counsel-list-modern .modern-date-range-inputs .sh-cal-day.is-sun .sh-cal-num {
+    color: #d04242;
+}
+
+body.counsel-list-modern .modern-date-range-inputs .sh-cal-day.is-selected {
+    background: #0a5e37;
+    border-color: #0a5e37;
+}
+
+body.counsel-list-modern .modern-date-range-inputs .sh-cal-day.is-selected .sh-cal-num,
+body.counsel-list-modern .modern-date-range-inputs .sh-cal-day.is-selected .sh-cal-sub {
+    color: #fff;
 }
 
 body.counsel-list-modern .modern-filter-item select:disabled {
@@ -521,15 +670,15 @@ body.counsel-list-modern .btn.search-box.listBtn.btnw100 {
 }
 
 body.counsel-list-modern .integrated-reservation-box {
-    border: 1px solid #dbe8e1;
-    border-radius: 18px;
-    background: linear-gradient(135deg, #f9fcfa, #f0f6f2);
-    padding: 14px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 2px 0 0;
     margin-bottom: 0;
 }
 
 body.counsel-list-modern .integrated-reservation-head {
-    margin-bottom: 10px;
+    margin-bottom: 6px;
 }
 
 body.counsel-list-modern .integrated-reservation-head h3 {
@@ -566,7 +715,7 @@ body.counsel-list-modern .integrated-reservation-manage {
 
 body.counsel-list-modern .integrated-reservation-body {
     overflow: hidden;
-    max-height: 230px;
+    max-height: 182px;
     transition: max-height 0.22s ease, opacity 0.22s ease;
 }
 
@@ -580,14 +729,19 @@ body.counsel-list-modern .integrated-reservation-box.is-collapsed .integrated-re
 }
 
 body.counsel-list-modern .integrated-reservation-list {
-    max-height: 180px;
+    max-height: 146px;
 }
 
 body.counsel-list-modern .integrated-reservation-item {
-    border: 1px solid #e2ece6;
-    border-radius: 12px;
-    background: #fff;
-    padding: 10px;
+    border: 0;
+    border-bottom: 1px solid #e5ede8;
+    border-radius: 0;
+    background: transparent;
+    padding: 7px 2px;
+}
+
+body.counsel-list-modern .integrated-reservation-item:last-child {
+    border-bottom: 0;
 }
 
 body.counsel-list-modern .reservation-link-btn {
@@ -599,17 +753,17 @@ body.counsel-list-modern .reservation-link-btn {
 body.counsel-list-modern .list-table-shell {
     flex: 1;
     min-height: 0;
-    border: 1px solid #dce7e1;
-    border-radius: 20px;
-    background: #fff;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: visible;
 }
 
 body.counsel-list-modern .list-table-head {
-    padding: 14px 16px;
-    border-bottom: 1px solid #ecf2ee;
+    padding: 0 2px 6px;
+    border-bottom: 0;
 }
 
 body.counsel-list-modern .list-table-head h3 {
@@ -622,6 +776,10 @@ body.counsel-list-modern .content-mid {
     flex: 1;
     min-height: 0;
     height: auto;
+    border: 1px solid #dce7e1;
+    border-radius: 14px;
+    background: #fff;
+    overflow: hidden;
 }
 
 body.counsel-list-modern .section-mid {
@@ -698,46 +856,6 @@ body.counsel-list-modern #del-counsel {
     color: #8f2020;
 }
 
-body.counsel-list-modern .list-nav-logout {
-    position: fixed;
-    left: 10px;
-    bottom: 14px;
-    z-index: 1002;
-    width: 210px;
-    height: 44px;
-    border-radius: 11px;
-    border: 1px solid rgba(185, 224, 204, 0.24);
-    background: rgba(13, 62, 43, 0.76);
-    color: rgba(223, 243, 232, 0.92);
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-}
-
-body.counsel-list-modern.nav-collapsed .list-nav-logout {
-    display: none;
-}
-
-body.counsel-list-modern .list-nav-logout:hover {
-    background: rgba(21, 82, 58, 0.9);
-}
-
-body.counsel-list-modern .list-nav-logout-icon {
-    width: 13px;
-    height: 13px;
-    display: inline-block;
-    background-image: url('../../../icon/ev/logout_new.png');
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: contain;
-    filter: brightness(2.4);
-}
-
 @media screen and (max-width: 1260px) {
     body.counsel-list-modern .nav_section {
         width: 205px;
@@ -774,9 +892,6 @@ body.counsel-list-modern .list-nav-logout-icon {
         flex-basis: 170px;
     }
 
-    body.counsel-list-modern .list-nav-logout {
-        width: 185px;
-    }
 }
 
 @media screen and (max-width: 900px) {
@@ -831,7 +946,7 @@ body.counsel-list-modern .list-nav-logout-icon {
         min-height: 360px;
     }
 
-    body.counsel-list-modern .list-nav-logout {
+    body.counsel-list-modern .nav-bottom-logout {
         display: none;
     }
 }
@@ -926,7 +1041,8 @@ body.counsel-list-modern .modern-date-range-inputs {
     gap: 4px;
 }
 
-body.counsel-list-modern .modern-date-range-inputs input[type="date"] {
+body.counsel-list-modern .modern-date-range-inputs input[type="date"],
+body.counsel-list-modern .modern-date-range-inputs input[type="text"] {
     height: 36px;
     min-width: 0;
 }
@@ -1013,13 +1129,14 @@ body.counsel-list-modern .content-top #searchForm .modern-date-range-inputs {
     width: 100%;
 }
 
-body.counsel-list-modern .content-top #searchForm .modern-date-range-inputs input[type="date"] {
+body.counsel-list-modern .content-top #searchForm .modern-date-range-inputs input[type="date"],
+body.counsel-list-modern .content-top #searchForm .modern-date-range-inputs input[type="text"] {
     width: 100%;
     min-width: 0;
     height: 38px;
     border: 1px solid #cfddd5;
     border-radius: 9px;
-    padding: 0 8px;
+    padding: 0 30px 0 8px;
     box-sizing: border-box;
 }
 
@@ -1077,6 +1194,20 @@ body.counsel-list-modern .content-top #searchForm .content-inner {
     overflow: visible !important;
 }
 
+/* orb-deco가 자식마다 z-index:1을 부여해서 달력이 아래 카드에 가려지므로
+   content-top 스택을 명시적으로 올린다. */
+body.counsel-list-modern .section.orb-deco > .content-top {
+    position: relative;
+    z-index: 12;
+}
+
+body.counsel-list-modern .section.orb-deco > .integrated-reservation-box,
+body.counsel-list-modern .section.orb-deco > .list-table-shell,
+body.counsel-list-modern .section.orb-deco > .section-bot {
+    position: relative;
+    z-index: 2;
+}
+
 body.counsel-list-modern .content-top #searchForm .modern-filter-grid {
     display: grid !important;
     grid-template-columns: minmax(340px, 1.45fr) minmax(170px, 1fr) minmax(170px, 1fr) auto auto;
@@ -1116,38 +1247,225 @@ body.counsel-list-modern .content-top #searchForm .modern-filter-action {
     }
 }
 
-/* ===== Header Search Center Align (list page) ===== */
-body.counsel-list-modern .wrapper.header-mode-list .logo {
-    position: relative;
-    justify-content: space-between;
+/* ===== Filter Compact Tuning (2026-04-19) ===== */
+body.counsel-list-modern .content-top {
+    padding: 5px 8px;
 }
 
-body.counsel-list-modern .wrapper.header-mode-list .header-list-context {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    margin-left: 0;
-    max-width: min(56vw, 620px);
-    width: auto;
+body.counsel-list-modern .content-top #searchForm .modern-filter-grid {
+    grid-template-columns: minmax(300px, 1.55fr) minmax(140px, 0.9fr) minmax(140px, 0.9fr) auto auto;
+    gap: 6px !important;
+    align-items: center !important;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-filter-item {
+    padding: 5px 8px;
+    border-radius: 9px;
+    gap: 4px;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-filter-item label {
+    margin-bottom: 2px;
+    font-size: 10px;
+    line-height: 1.2;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-filter-item:not(:first-child) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-filter-item:not(:first-child) label {
+    margin: 0;
+    white-space: nowrap;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-filter-item select {
+    height: 30px;
+    font-size: 12px;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-date-range-inputs {
+    margin-top: 2px;
+    gap: 3px;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-date-range-inputs input[type="date"],
+body.counsel-list-modern .content-top #searchForm .modern-date-range-inputs input[type="text"] {
+    height: 30px;
+    padding: 0 26px 0 6px;
+    font-size: 12px;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-filter-check {
+    gap: 6px;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-filter-check label span {
+    font-size: 12px;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-filter-action {
+    gap: 6px;
+}
+
+body.counsel-list-modern .content-top #searchForm #searchBtn,
+body.counsel-list-modern .content-top #searchForm #setting {
+    height: 32px;
+}
+
+@media screen and (max-width: 1340px) {
+    body.counsel-list-modern .content-top #searchForm .modern-filter-grid {
+        grid-template-columns: minmax(280px, 1.35fr) minmax(150px, 1fr) minmax(150px, 1fr);
+    }
+}
+
+/* ===== Header Filter Layout (2026-04-19) ===== */
+body.counsel-list-modern .wrapper.header-mode-list .logo {
+    justify-content: flex-start;
     gap: 10px;
 }
 
-body.counsel-list-modern .wrapper.header-mode-list .header-list-breadcrumb {
-    font-size: 13px;
+body.counsel-list-modern .wrapper.header-mode-list .header-list-context {
+    position: static !important;
+    left: auto !important;
+    transform: none !important;
+    max-width: none !important;
+    margin-left: 12px;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
 }
 
-body.counsel-list-modern .wrapper.header-mode-list .header-list-search {
-    width: clamp(180px, 22vw, 280px);
+body.counsel-list-modern .wrapper.header-mode-list .header-list-filter-form {
+    width: 100%;
     min-width: 0;
 }
 
-body.counsel-list-modern .wrapper.header-mode-list .header-list-search input {
+body.counsel-list-modern .wrapper.header-mode-list .header-list-filter-form .content-inner.header-filter-grid {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    align-content: normal !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex-wrap: nowrap;
+    min-width: 0;
     width: 100%;
-    flex: 1 1 auto;
+    height: auto !important;
 }
 
-@media screen and (max-width: 1260px) {
-    body.counsel-list-modern .wrapper.header-mode-list .header-list-context {
-        max-width: min(50vw, 500px);
+body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid .modern-filter-item {
+    min-width: 0;
+    max-width: none;
+    border: none;
+    background: transparent;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-direction: row;
+    justify-content: flex-start;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid .modern-filter-item select,
+body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid .keyword-filter-item input[type="text"] {
+    height: 34px;
+    border: 1px solid #cfdcd4;
+    border-radius: 9px;
+    padding: 0 30px 0 10px;
+    font-size: 12px;
+    color: #1f3a2d;
+    background: #fff;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid .date-filter-item {
+    flex: 1 1 340px;
+    min-width: 300px;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid .date-filter-item #dateRange {
+    width: 98px;
+    min-width: 98px;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid .date-filter-item .modern-date-range-inputs {
+    display: grid;
+    margin-top: 0;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 4px;
+    width: 100%;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid .date-filter-item .modern-date-range-inputs input[type="text"] {
+    height: 34px;
+    font-size: 12px;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid .compact-filter-item {
+    flex: 0 0 auto;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid #statusFilter,
+body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid #pathTypeFilter {
+    width: 100px;
+    min-width: 100px;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid .keyword-filter-item {
+    flex: 1 1 150px;
+    min-width: 120px;
+    flex-shrink: 1;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid .keyword-filter-item input[type="text"] {
+    width: 100%;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid .modern-filter-check {
+    flex: 0 0 auto;
+    padding: 0;
+    margin: 0;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid .modern-filter-check label span {
+    font-size: 12px;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid .modern-filter-action {
+    flex: 0 0 auto;
+    padding: 0;
+    margin: 0;
+    gap: 6px;
+    align-items: center;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid #setting,
+body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid #searchBtn {
+    height: 34px;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid #searchBtn {
+    width: 70px;
+    min-width: 70px;
+    margin: 0 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid #dateField .sh-calendar {
+    z-index: 1300;
+}
+
+@media screen and (max-width: 1480px) {
+    body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid #statusFilter,
+    body.counsel-list-modern .wrapper.header-mode-list .header-filter-grid #pathTypeFilter {
+        width: 90px;
+        min-width: 90px;
     }
 }

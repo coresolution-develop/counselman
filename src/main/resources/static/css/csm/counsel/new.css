@@ -1,9 +1,39 @@
 .main {
-    padding: 70px 6px 100px 6px;
+    padding: 72px 0px 58px 0px;
     margin-left: 145px;
 	max-width: 2560px;
 	height: 100%;
 	width: calc(100% - 145px);
+}
+
+#counselForm .section-content {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+#counselForm .content-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+}
+
+#counselForm .contentbox,
+#counselForm .content-inner,
+#counselForm .inner-left,
+#counselForm .inner-right {
+    min-height: 0;
+}
+
+#counselForm .inner-left {
+    overflow-y: auto;
+    padding-right: 7px;
+    box-sizing: border-box;
+}
+
+#counselForm .inner-right {
+    padding-bottom: 86px;
+    box-sizing: border-box;
 }
 
 .reservation-link-banner {

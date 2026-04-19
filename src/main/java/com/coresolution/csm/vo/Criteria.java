@@ -19,6 +19,8 @@ public class Criteria {
     private String key;
     private String searchType;
     private String end;
+    private String status;
+    private String pathType;
 
     private String fail;
 
@@ -52,7 +54,25 @@ public class Criteria {
         this.key = "";
         this.searchType = ""; // 기본값 추가
         this.end = "";
+        this.status = "";
+        this.pathType = "";
         this.fail = "";
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = (status == null) ? "" : status;
+    }
+
+    public String getPathType() {
+        return pathType;
+    }
+
+    public void setPathType(String pathType) {
+        this.pathType = (pathType == null) ? "" : pathType;
     }
 
     public String getEnd() {
@@ -169,7 +189,8 @@ public class Criteria {
         return "Criteria [page=" + page + ", perPageNum=" + perPageNum + ", keyword=" + keyword + ", keywordBytes="
                 + Arrays.toString(keywordBytes) + ", type=" + type + ", dateRange=" + dateRange + ", counselor="
                 + counselor + ", inst=" + inst + ", startDate=" + startDate + ", endDate=" + endDate + ", key=" + key
-                + ", searchType=" + searchType + ", end=" + end + ", fail=" + fail + "]";
+                + ", searchType=" + searchType + ", end=" + end + ", status=" + status + ", pathType=" + pathType
+                + ", fail=" + fail + "]";
     }
 
 }

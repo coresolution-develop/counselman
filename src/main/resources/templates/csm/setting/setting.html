@@ -96,7 +96,6 @@
                                 </label>
                             </div>
                             <div id="main" class="cateButton">
-                                <button class="btn orderBtn" id="save-order-main" onclick="saveOrder('main')">순서저장</button>
                                 <button class="btn delBtn setting-btn" id="del-maincategory" data-category-type="parent" onclick="showDeleteConfirmation(this)">- 삭제</button>
                                 <button class="btn newBtn" id="new-maincategory" data-category-type="parent" onclick="showAddCategoryModal(this)">+ 추가</button>
                             </div>
@@ -113,7 +112,6 @@
                         <div class="category-container-wrap">
                             <div id="subCategoryDiv"></div>
                             <div id="sub" class="cateButton">
-                                <button class="btn orderBtn" id="save-order-sub" onclick="saveOrder('sub')">순서저장</button>
                                 <button class="btn delBtn setting-btn" id="del-subcategory" data-category-type="child" onclick="showDeleteConfirmation(this)" disabled>- 삭제</button>
                                 <button class="btn newBtn" id="new-subcategory" data-category-type="child" onclick="showAddCategoryModal(this)" disabled>+ 추가</button>
                             </div>
@@ -130,7 +128,6 @@
                         <div class="category-container-wrap">
                             <div id="optionCategoryDiv"></div>
                             <div id="option" class="cateButton">
-                                <button class="btn orderBtn" id="save-order-option" onclick="saveOrder('option')">순서저장</button>
                                 <button class="btn delBtn setting-btn" id="del-optioncategory" data-category-type="option" onclick="showDeleteConfirmation(this)" disabled> 삭제</button>
                                 <button class="btn newBtn" id="new-optioncategory" data-category-type="option" onclick="showAddCategoryModal(this)" disabled>+ 추가</button>
                             </div>
@@ -177,14 +174,24 @@
 
 <div class="modal2 normal">
     <div class="modal_body2">
-        <div>
-            <img class="menu_icon" th:src="@{/img/alert_img.png}" src="/csm/img/alert_img.png">
-            <div class="menu_msg2">text</div>
+        <div class="modal2-card">
+            <div class="modal2-icon-wrap">
+                <img class="menu_icon modal2-icon" th:src="@{/icon/ev/menu-list.svg}" src="/csm/icon/ev/menu-list.svg" alt="수정 아이콘">
+            </div>
+            <h3 class="modal2-title">상담항목 수정</h3>
+            <div class="menu_msg2" id="modal2Context">수정할 항목을 입력해주세요.</div>
+            <label class="modal2-label" id="modal2FieldLabel" for="cc_col_02">수정명</label>
             <input type="text" class="modal-input" id="cc_col_02" name="cc_col_02" placeholder="분류/옵션을 입력하세요.">
+            <div class="modal2-meta-wrap" id="modal2MetaWrap" style="display: none;">
+                <div class="modal2-meta-title">현재 입력 방식</div>
+                <div class="modal2-meta" id="modal2Meta"></div>
+                <p class="modal2-meta-note" id="modal2TypeNotice">기존 상담 데이터 보호를 위해 입력 방식 변경은 제공하지 않습니다.</p>
+            </div>
             <div class="modal_footer2">
                 <div class="btn modal_btn2 listBtn" id="ModifyBtn">확인</div>
                 <div class="btn pink_btn2 listBtn" onclick="closePopup2()">취소</div>
             </div>
+            <div class="modal2-copyright">Copyright by Coresolution</div>
         </div>
     </div>
 </div>
@@ -225,9 +232,13 @@
 
 <div class="modal4 normal">
     <div class="modal_body4">
-        <div>
-            <img class="menu_icon" th:src="@{/img/alert_img.png}" src="/csm/img/alert_img.png">
+        <div class="modal4-card">
+            <div class="modal4-icon-wrap">
+                <img class="menu_icon modal4-icon" th:src="@{/icon/ev/menu-list.svg}" src="/csm/icon/ev/menu-list.svg" alt="상담항목 관리 아이콘">
+            </div>
+            <h3 class="modal4-title">상담항목 관리</h3>
             <div class="menu_msg4">새로운 분류를 입력해주세요.</div>
+            <label class="modal4-label" id="modal4FieldLabel" for="addCategoryName">상담 분류명</label>
             <input type="text" class="modal-input" id="addCategoryName" name="cc_col_02" placeholder="분류 이름 입력">
 
             <div id="checkboxContainer">
@@ -254,13 +265,14 @@
             </div>
 
             <div id="selectOptions" style="display: none;">
-                <input type="text" id="selectboxOptions" placeholder="선택박스 옵션(콤마로 구분)">
+                <input type="text" class="modal-input" id="selectboxOptions" placeholder="선택박스 옵션(콤마로 구분)">
             </div>
 
             <div class="modal_footer4">
                 <div class="btn modal_btn2 listBtn" id="addbtn">확인</div>
                 <div class="btn pink_btn2 listBtn" onclick="closePopup4()">취소</div>
             </div>
+            <div class="modal4-copyright">Copyright by Coresolution</div>
         </div>
     </div>
 </div>

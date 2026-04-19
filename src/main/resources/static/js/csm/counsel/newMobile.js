@@ -1441,6 +1441,13 @@ document.addEventListener('DOMContentLoaded', function () {
     return 'empty';
   }
 
+  function renderPreviewToggle(mode, hasSummary, hasSource) {
+    if (!hasSummary || !hasSource) return '';
+    const nextView = mode === 'summary' ? 'source' : 'summary';
+    const label = nextView === 'summary' ? '요약 보기' : '원문 보기';
+    return `<button type="button" class="counsel-preview-toggle" data-view-target="${nextView}">${label}</button>`;
+  }
+
   function renderAudioPreview(item) {
     const summary = String(item?.summaryText || '').trim();
     const transcript = String(item?.transcript || '').trim();
@@ -1458,8 +1465,7 @@ document.addEventListener('DOMContentLoaded', function () {
     return `
       <div class="counsel-preview-card" data-view="${escapeHtml(mode)}">
         <div class="counsel-preview-toolbar">
-          ${summary ? `<button type="button" class="counsel-preview-toggle" data-view-target="summary">요약 보기</button>` : ''}
-          ${transcript ? `<button type="button" class="counsel-preview-toggle" data-view-target="source">원문 보기</button>` : ''}
+          ${renderPreviewToggle(mode, !!summary, !!transcript)}
           ${transcript && !summary && openAiSummaryAvailable ? `<button type="button" class="counsel-preview-generate audio-record-summary" data-audio-id="${escapeHtml(item.id)}">요약 생성</button>` : ''}
         </div>
         ${summary ? `<div class="counsel-preview-body counsel-preview-summary">${escapeHtml(summary)}</div>` : ''}
@@ -1472,6 +1478,11 @@ document.addEventListener('DOMContentLoaded', function () {
   function updatePreviewMode(card, mode) {
     if (!card || !mode) return;
     card.setAttribute('data-view', mode);
+    const toggleBtn = card.querySelector('.counsel-preview-toggle');
+    if (!toggleBtn) return;
+    const nextView = mode === 'summary' ? 'source' : 'summary';
+    toggleBtn.setAttribute('data-view-target', nextView);
+    toggleBtn.textContent = nextView === 'summary' ? '요약 보기' : '원문 보기';
   }
 
   async function generateCounselSummary() {

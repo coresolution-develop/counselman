@@ -92,7 +92,10 @@ import com.coresolution.csm.serivce.ExternalSmsGatewayService;
 import com.coresolution.csm.serivce.SmsService;
 import com.coresolution.csm.util.AES128;
 import com.coresolution.csm.vo.Card;
+import com.coresolution.csm.vo.Category1;
+import com.coresolution.csm.vo.Category2;
 import com.coresolution.csm.vo.Category1WithSubcategoriesAndOptions;
+import com.coresolution.csm.vo.Category2WithOptions;
 import com.coresolution.csm.vo.Category3;
 import com.coresolution.csm.vo.CounselData;
 import com.coresolution.csm.vo.CounselDataEntry;
@@ -1406,6 +1409,8 @@ public class PageController {
             @RequestParam(value = "dateRange", defaultValue = "") String dateRange,
             @RequestParam(value = "startDate", defaultValue = "") String startDate,
             @RequestParam(value = "endDate", defaultValue = "") String endDate,
+            @RequestParam(value = "status", defaultValue = "all") String status,
+            @RequestParam(value = "pathType", defaultValue = "all") String pathType,
             @RequestParam(value = "searchType", defaultValue = "") String searchType,
             @RequestParam(value = "keyword", defaultValue = "") String keyword,
             @RequestParam(value = "end", defaultValue = "on") String end,
@@ -1416,7 +1421,8 @@ public class PageController {
         if (inst == null)
             return new ModelAndView("redirect:/login");
 
-        bindCriteria(cri, inst, page, perPageNum, dateRange, startDate, endDate, searchType, keyword, end);
+        bindCriteria(cri, inst, page, perPageNum, dateRange, startDate, endDate, status, pathType, searchType, keyword,
+                end);
 
         List<CounselData> cslist = cs.searchCounselData(cri);
         int totalCnt = cs.CounselListCnt(cri);
@@ -1430,8 +1436,10 @@ public class PageController {
         }
 
         Set<String> hiddenListColumns = getHiddenListColumns();
-        List<Map<String, Object>> orderItems = filterListSettingItems(cs.getOrderItems(inst), hiddenListColumns);
-        List<Map<String, Object>> innerContentItems = filterListSettingItems(cs.getInnerContentItems(inst),
+        List<Map<String, Object>> orderItems = normalizeDynamicOrderItemComments(
+                inst,
+                filterListSettingItems(cs.getOrderItems(inst), hiddenListColumns));
+        List<Map<String, Object>> innerContentItems = buildListSettingInnerContentItems(inst, orderItems,
                 hiddenListColumns);
 
         mv.addObject("orderItems", orderItems != null ? orderItems : Collections.emptyList());
@@ -1443,6 +1451,8 @@ public class PageController {
         mv.addObject("cri", cri);
         mv.addObject("cnt", totalCnt);
         mv.addObject("cslist", cslist);
+        mv.addObject("statusOptions", cs.getCounselStatusOptions(inst));
+        mv.addObject("pathTypeOptions", cs.getCounselPathTypeOptions(inst));
         mv.addObject("reservedCounselReservations",
                 reservedCounselReservations != null ? reservedCounselReservations : Collections.emptyList());
         boolean mobile = isMobile(req);
@@ -1460,14 +1470,17 @@ public class PageController {
             @RequestParam(value = "dateRange", defaultValue = "") String dateRange,
             @RequestParam(value = "startDate", defaultValue = "") String startDate,
             @RequestParam(value = "endDate", defaultValue = "") String endDate,
+            @RequestParam(value = "status", defaultValue = "all") String status,
+            @RequestParam(value = "pathType", defaultValue = "all") String pathType,
             @RequestParam(value = "searchType", defaultValue = "") String searchType,
             @RequestParam(value = "keyword", defaultValue = "") String keyword,
             @RequestParam(value = "end", defaultValue = "on") String end,
             @RequestParam(value = "page", defaultValue = "1") int page,
             @RequestParam(value = "perPageNum", defaultValue = "30") int perPageNum) {
 
-        log.warn("[JSON] /counsel/list ENTER page={} perPageNum={} range={} start={} endDate={} st={} kw='{}' end={}",
-                page, perPageNum, dateRange, startDate, endDate, searchType, keyword, end);
+        log.warn(
+                "[JSON] /counsel/list ENTER page={} perPageNum={} range={} start={} endDate={} status={} pathType={} st={} kw='{}' end={}",
+                page, perPageNum, dateRange, startDate, endDate, status, pathType, searchType, keyword, end);
 
         String inst = ensureInst(session);
         if (inst == null) {
@@ -1475,7 +1488,8 @@ public class PageController {
             return Map.of("success", false, "redirect", loginRedirectPath(request));
         }
 
-        bindCriteria(cri, inst, page, perPageNum, dateRange, startDate, endDate, searchType, keyword, end);
+        bindCriteria(cri, inst, page, perPageNum, dateRange, startDate, endDate, status, pathType, searchType, keyword,
+                end);
 
         // 1) 조회
         List<CounselData> raw = cs.searchCounselData(cri);
@@ -1500,8 +1514,10 @@ public class PageController {
 
         // 4) 화면 컬럼 메타
         Set<String> hiddenListColumns = getHiddenListColumns();
-        List<Map<String, Object>> orderItems = filterListSettingItems(cs.getOrderItems(inst), hiddenListColumns);
-        List<Map<String, Object>> innerContentItems = filterListSettingItems(cs.getInnerContentItems(inst),
+        List<Map<String, Object>> orderItems = normalizeDynamicOrderItemComments(
+                inst,
+                filterListSettingItems(cs.getOrderItems(inst), hiddenListColumns));
+        List<Map<String, Object>> innerContentItems = buildListSettingInnerContentItems(inst, orderItems,
                 hiddenListColumns);
 
         // 5) 직렬화 안전한 맵으로 변환 (byte[] 등 제거)
@@ -1755,6 +1771,225 @@ public class PageController {
         model.addAttribute("fieldTypeMapping", categoryDataMap.get("fieldTypeMapping"));
         model.addAttribute("fieldOptionsMapping", categoryDataMap.get("fieldOptionsMapping"));
         return "csm/setting/setting";
+    }
+
+    @GetMapping({ "setting/templates", "/setting/templates" })
+    @ResponseBody
+    public ResponseEntity<?> settingTemplates(HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "세션이 만료되었습니다."));
+        }
+
+        List<Map<String, Object>> rows = Optional.ofNullable(cs.coreTemplateSelect())
+                .orElse(Collections.emptyList())
+                .stream()
+                .filter(Objects::nonNull)
+                .filter(row -> !"Y".equalsIgnoreCase(Objects.toString(row.get("del_yn"), "N")))
+                .map(row -> {
+                    Map<String, Object> out = new LinkedHashMap<>();
+                    out.put("idx", parseIntSafely(row.get("idx"), 0));
+                    out.put("name", readAsString(row, "name"));
+                    out.put("description", readAsString(row, "description"));
+                    return out;
+                })
+                .filter(row -> parseIntSafely(row.get("idx"), 0) > 0)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(rows);
+    }
+
+    @GetMapping({ "setting/getTemplate/{templateIdx}", "/setting/getTemplate/{templateIdx}" })
+    @ResponseBody
+    public ResponseEntity<?> settingGetTemplate(HttpSession session, @PathVariable int templateIdx) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "세션이 만료되었습니다."));
+        }
+        if (templateIdx <= 0) {
+            return ResponseEntity.badRequest().body(Map.of("message", "templateIdx가 올바르지 않습니다."));
+        }
+
+        List<Map<String, Object>> mainCategories = Optional.ofNullable(cs.coreTemplateMainSelect(templateIdx))
+                .orElse(Collections.emptyList());
+
+        Map<String, List<Map<String, Object>>> subCategoryMap = new LinkedHashMap<>();
+        Map<String, List<Map<String, Object>>> optionMap = new LinkedHashMap<>();
+        Map<String, String> fieldTypeMapping = new LinkedHashMap<>();
+        Map<String, List<Map<String, Object>>> fieldOptionsMapping = new LinkedHashMap<>();
+
+        for (Map<String, Object> main : mainCategories) {
+            if (main == null) {
+                continue;
+            }
+            int mainIdx = parseIntSafely(main.get("idx"), 0);
+            if (mainIdx <= 0) {
+                continue;
+            }
+
+            List<Map<String, Object>> subCategories = Optional.ofNullable(cs.coreTemplateSubSelect(mainIdx))
+                    .orElse(Collections.emptyList());
+            subCategoryMap.put(String.valueOf(mainIdx), subCategories);
+
+            for (Map<String, Object> sub : subCategories) {
+                if (sub == null) {
+                    continue;
+                }
+                int subIdx = parseIntSafely(sub.get("idx"), 0);
+                if (subIdx <= 0) {
+                    continue;
+                }
+
+                int chk = parseIntSafely(sub.get("sub_col_02"), 0);
+                int rad = parseIntSafely(sub.get("sub_col_03"), 0);
+                int txt = parseIntSafely(sub.get("sub_col_04"), 0);
+                int sel = parseIntSafely(sub.get("sub_col_05"), 0);
+                String fieldKey = "field_" + mainIdx + "_" + subIdx;
+
+                fieldTypeMapping.put(fieldKey, resolveTemplateFieldType(chk, rad, txt, sel));
+
+                List<Map<String, Object>> options = Optional.ofNullable(cs.coreTemplateOptionSelect(subIdx))
+                        .orElse(Collections.emptyList());
+                optionMap.put(String.valueOf(subIdx), options);
+                fieldOptionsMapping.put(fieldKey, options);
+            }
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("mainCategories", mainCategories);
+        response.put("subCategoryMap", subCategoryMap);
+        response.put("optionMap", optionMap);
+        response.put("fieldTypeMapping", fieldTypeMapping);
+        response.put("fieldOptionsMapping", fieldOptionsMapping);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping({ "setting/postTemplate/{templateIdx}", "/setting/postTemplate/{templateIdx}" })
+    @ResponseBody
+    public ResponseEntity<?> settingPostTemplate(HttpSession session, @PathVariable int templateIdx) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "세션이 만료되었습니다."));
+        }
+        if (templateIdx <= 0) {
+            return ResponseEntity.badRequest().body(Map.of("message", "templateIdx가 올바르지 않습니다."));
+        }
+
+        List<Map<String, Object>> mainCategories = Optional.ofNullable(cs.coreTemplateMainSelect(templateIdx))
+                .orElse(Collections.emptyList());
+        if (mainCategories.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "적용할 템플릿 데이터가 없습니다."));
+        }
+
+        try {
+            List<Category1> existingMain = Optional.ofNullable(cs.selectCategory1(inst)).orElse(Collections.emptyList());
+            for (Category1 c1 : existingMain) {
+                if (c1 == null || c1.getCc_col_01() <= 0) {
+                    continue;
+                }
+                cs.deleteCategory(inst, "parent", c1.getCc_col_01());
+            }
+
+            for (Map<String, Object> main : mainCategories) {
+                if (main == null) {
+                    continue;
+                }
+                int templateMainIdx = parseIntSafely(main.get("idx"), 0);
+                String mainName = readAsString(main, "main_col_01").trim();
+                if (templateMainIdx <= 0 || mainName.isBlank()) {
+                    continue;
+                }
+
+                Category1 insertedMain = cs.insertCategory1(inst, mainName);
+                int insertedMainIdx = insertedMain.getCc_col_01();
+                if (insertedMainIdx <= 0) {
+                    continue;
+                }
+
+                List<Map<String, Object>> subCategories = Optional.ofNullable(cs.coreTemplateSubSelect(templateMainIdx))
+                        .orElse(Collections.emptyList());
+
+                for (Map<String, Object> sub : subCategories) {
+                    if (sub == null) {
+                        continue;
+                    }
+                    int templateSubIdx = parseIntSafely(sub.get("idx"), 0);
+                    String subName = readAsString(sub, "sub_col_01").trim();
+                    int chk = parseIntSafely(sub.get("sub_col_02"), 0);
+                    int rad = parseIntSafely(sub.get("sub_col_03"), 0);
+                    int txt = parseIntSafely(sub.get("sub_col_04"), 0);
+                    int sel = parseIntSafely(sub.get("sub_col_05"), 0);
+
+                    if (templateSubIdx <= 0 || subName.isBlank()) {
+                        continue;
+                    }
+
+                    Category2 insertedSub = cs.insertCategory2(inst, insertedMainIdx, subName, chk, rad, txt, sel);
+                    if (insertedSub == null || insertedSub.getCc_col_01() <= 0 || sel != 1) {
+                        continue;
+                    }
+
+                    List<String> options = Optional.ofNullable(cs.coreTemplateOptionSelect(templateSubIdx))
+                            .orElse(Collections.emptyList())
+                            .stream()
+                            .map(opt -> Objects.toString(opt.get("option_col_01"), "").trim())
+                            .filter(v -> !v.isBlank())
+                            .collect(Collectors.toList());
+                    if (!options.isEmpty()) {
+                        cs.insertCategory3(inst, insertedSub.getCc_col_01(), subName, options);
+                    }
+                }
+            }
+            return ResponseEntity.ok(Map.of("result", "1"));
+        } catch (Exception e) {
+            log.error("[setting/postTemplate] fail inst={}, templateIdx={}", inst, templateIdx, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("result", "0", "message", "템플릿 적용 중 오류가 발생했습니다."));
+        }
+    }
+
+    @GetMapping({ "setting/TemplatePreview", "/setting/TemplatePreview", "setting/templatePreview",
+            "/setting/templatePreview" })
+    @ResponseBody
+    public ResponseEntity<?> settingTemplatePreview(HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "세션이 만료되었습니다."));
+        }
+        Map<String, Object> categoryDataMap = cs.getCategoryData(inst);
+        return ResponseEntity.ok(Map.of(
+                "categoryData", categoryDataMap.get("categoryData"),
+                "fieldTypeMapping", categoryDataMap.get("fieldTypeMapping"),
+                "fieldOptionsMapping", categoryDataMap.get("fieldOptionsMapping")));
+    }
+
+    private String resolveTemplateFieldType(int chk, int rad, int txt, int sel) {
+        boolean hasChk = chk == 1;
+        boolean hasRad = rad == 1;
+        boolean hasTxt = txt == 1;
+        boolean hasSel = sel == 1;
+
+        if (hasChk && !hasRad && !hasTxt && !hasSel)
+            return "checkbox_only";
+        if (hasRad && !hasChk && !hasTxt && !hasSel)
+            return "radio_only";
+        if (hasSel && !hasChk && !hasRad && !hasTxt)
+            return "select_only";
+        if (hasTxt && !hasChk && !hasRad && !hasSel)
+            return "text_only";
+        if (hasChk && hasTxt && !hasRad && !hasSel)
+            return "checkbox_text";
+        if (hasChk && hasSel && !hasRad && !hasTxt)
+            return "checkbox_select";
+        if (hasRad && hasTxt && !hasChk && !hasSel)
+            return "radio_text";
+        if (hasRad && hasSel && !hasChk && !hasTxt)
+            return "radio_select";
+        if (hasChk && hasTxt && hasSel && !hasRad)
+            return "checkbox_select_text";
+        if (hasRad && hasTxt && hasSel && !hasChk)
+            return "radio_select_text";
+        return "unknown";
     }
 
     @GetMapping({ "statistics", "/statistics", "statistics/", "/statistics/" })
@@ -3522,16 +3757,16 @@ public class PageController {
                     "message", "OpenAI API 키가 설정되지 않았습니다."));
         }
 
-        String summary = summarizeCounselWithOpenAi(rawContent);
-        if (summary.isBlank()) {
-            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of(
+        OpenAiSummaryResult summaryResult = summarizeCounselWithOpenAi(rawContent);
+        if (!summaryResult.success()) {
+            return ResponseEntity.status(summaryResult.status()).body(Map.of(
                     "success", false,
-                    "message", "요약 생성에 실패했습니다. 잠시 후 다시 시도해 주세요."));
+                    "message", summaryResult.message()));
         }
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
-                "summary", summary,
+                "summary", summaryResult.summary(),
                 "provider", "openai"));
     }
 
@@ -3580,18 +3815,18 @@ public class PageController {
             }
 
             String filename = objectString(row.get("original_filename")).trim();
-            String summary = summarizeAttachmentWithOpenAi("녹취", transcript, filename);
-            if (summary.isBlank()) {
-                return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of(
+            OpenAiSummaryResult summaryResult = summarizeAttachmentWithOpenAi("녹취", transcript, filename);
+            if (!summaryResult.success()) {
+                return ResponseEntity.status(summaryResult.status()).body(Map.of(
                         "success", false,
-                        "message", "요약 생성에 실패했습니다. 잠시 후 다시 시도해 주세요."));
+                        "message", summaryResult.message()));
             }
 
-            cs.updateCounselAudioSummary(inst, audioId, summary);
+            cs.updateCounselAudioSummary(inst, audioId, summaryResult.summary());
             Map<String, Object> updated = cs.getCounselAudioById(inst, audioId);
             return ResponseEntity.ok(Map.of(
                     "success", true,
-                    "summary", summary,
+                    "summary", summaryResult.summary(),
                     "item", toCounselAudioPayload(updated, request),
                     "cached", false));
         } catch (Exception e) {
@@ -3661,18 +3896,18 @@ public class PageController {
             }
 
             String filename = objectString(row.get("original_filename")).trim();
-            String summary = summarizeAttachmentWithOpenAi("첨부문서", extractedText, filename);
-            if (summary.isBlank()) {
-                return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of(
+            OpenAiSummaryResult summaryResult = summarizeAttachmentWithOpenAi("첨부문서", extractedText, filename);
+            if (!summaryResult.success()) {
+                return ResponseEntity.status(summaryResult.status()).body(Map.of(
                         "success", false,
-                        "message", "요약 생성에 실패했습니다. 잠시 후 다시 시도해 주세요."));
+                        "message", summaryResult.message()));
             }
 
-            cs.updateCounselFileSummary(inst, fileId, summary);
+            cs.updateCounselFileSummary(inst, fileId, summaryResult.summary());
             Map<String, Object> updated = cs.getCounselFileById(inst, fileId);
             return ResponseEntity.ok(Map.of(
                     "success", true,
-                    "summary", summary,
+                    "summary", summaryResult.summary(),
                     "item", toCounselFilePayload(updated, request),
                     "cached", false));
         } catch (Exception e) {
@@ -4365,31 +4600,41 @@ public class PageController {
         return v.substring(0, max) + "...";
     }
 
-    private String summarizeCounselWithOpenAi(String content) {
+    private record OpenAiSummaryResult(boolean success, String summary, HttpStatus status, String message) {
+        static OpenAiSummaryResult success(String summary) {
+            return new OpenAiSummaryResult(true, summary, HttpStatus.OK, "");
+        }
+
+        static OpenAiSummaryResult failure(HttpStatus status, String message) {
+            return new OpenAiSummaryResult(false, "", status, message);
+        }
+    }
+
+    private OpenAiSummaryResult summarizeCounselWithOpenAi(String content) {
         String clipped = clipSummarySourceText(content, 12000);
         if (clipped.isBlank()) {
-            return "";
+            return OpenAiSummaryResult.failure(HttpStatus.BAD_REQUEST, "요약할 상담 내용이 없습니다.");
         }
         return summarizeWithOpenAi(buildCounselSummaryPrompt(clipped), 500);
     }
 
-    private String summarizeAttachmentWithOpenAi(String sourceType, String content, String filename) {
+    private OpenAiSummaryResult summarizeAttachmentWithOpenAi(String sourceType, String content, String filename) {
         String clipped = clipSummarySourceText(content, 12000);
         if (clipped.isBlank()) {
-            return "";
+            return OpenAiSummaryResult.failure(HttpStatus.BAD_REQUEST, "요약할 원문이 없습니다.");
         }
         return summarizeWithOpenAi(buildAttachmentSummaryPrompt(sourceType, clipped, filename), 500);
     }
 
-    private String summarizeWithOpenAi(String prompt, int maxOutputTokens) {
+    private OpenAiSummaryResult summarizeWithOpenAi(String prompt, int maxOutputTokens) {
         String endpoint = resolveOpenAiResponsesEndpoint();
         String apiKey = safeString(openAiApiKey).trim();
         if (endpoint.isBlank() || apiKey.isBlank()) {
-            return "";
+            return OpenAiSummaryResult.failure(HttpStatus.BAD_REQUEST, "OpenAI API 키가 설정되지 않았습니다.");
         }
         String normalizedPrompt = safeString(prompt).trim();
         if (normalizedPrompt.isBlank()) {
-            return "";
+            return OpenAiSummaryResult.failure(HttpStatus.BAD_REQUEST, "요약할 내용이 없습니다.");
         }
 
         try {
@@ -4419,13 +4664,61 @@ public class PageController {
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 log.warn("[openai] summary fail status={} body={}", response.statusCode(),
                         truncateLogBody(response.body()));
-                return "";
+                return resolveOpenAiFailureResult(response.statusCode(), response.body());
             }
-            return extractSummaryFromOpenAiResponse(response.body());
+            String summary = extractSummaryFromOpenAiResponse(response.body());
+            if (summary.isBlank()) {
+                return OpenAiSummaryResult.failure(HttpStatus.BAD_GATEWAY, "요약 결과를 생성하지 못했습니다.");
+            }
+            return OpenAiSummaryResult.success(summary);
         } catch (Exception e) {
             log.warn("[openai] summary call error {}", e.toString());
-            return "";
+            return OpenAiSummaryResult.failure(HttpStatus.BAD_GATEWAY, "OpenAI 호출 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
         }
+    }
+
+    private OpenAiSummaryResult resolveOpenAiFailureResult(int statusCode, String responseBody) {
+        HttpStatus status = HttpStatus.resolve(statusCode);
+        if (status == null) {
+            status = HttpStatus.BAD_GATEWAY;
+        }
+
+        String code = "";
+        String type = "";
+        String upstreamMessage = "";
+        try {
+            JsonNode root = objectMapper.readTree(safeString(responseBody));
+            JsonNode error = root.path("error");
+            code = safeString(error.path("code").asText("")).trim();
+            type = safeString(error.path("type").asText("")).trim();
+            upstreamMessage = safeString(error.path("message").asText("")).trim();
+        } catch (Exception ignored) {
+            // 응답 본문 파싱 실패 시 기본 메시지 사용
+        }
+
+        if (statusCode == 429 && "insufficient_quota".equalsIgnoreCase(code)) {
+            return OpenAiSummaryResult.failure(HttpStatus.TOO_MANY_REQUESTS,
+                    "OpenAI 사용 한도(쿼터)를 초과했습니다. OpenAI 결제/사용량을 확인해 주세요.");
+        }
+        if (statusCode == 429) {
+            return OpenAiSummaryResult.failure(HttpStatus.TOO_MANY_REQUESTS,
+                    "요청이 많아 OpenAI 호출이 제한되었습니다. 잠시 후 다시 시도해 주세요.");
+        }
+        if (statusCode == 401 || "invalid_api_key".equalsIgnoreCase(code)) {
+            return OpenAiSummaryResult.failure(HttpStatus.UNAUTHORIZED,
+                    "OpenAI API 키가 유효하지 않습니다. 설정값을 확인해 주세요.");
+        }
+        if (statusCode >= 500 && statusCode < 600) {
+            return OpenAiSummaryResult.failure(HttpStatus.BAD_GATEWAY,
+                    "OpenAI 서버 응답이 불안정합니다. 잠시 후 다시 시도해 주세요.");
+        }
+        if (!upstreamMessage.isBlank()) {
+            return OpenAiSummaryResult.failure(status, "OpenAI 오류: " + upstreamMessage);
+        }
+        if (!type.isBlank()) {
+            return OpenAiSummaryResult.failure(status, "OpenAI 오류(" + type + ")가 발생했습니다.");
+        }
+        return OpenAiSummaryResult.failure(status, "요약 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.");
     }
 
     private String resolveOpenAiResponsesEndpoint() {
@@ -5893,7 +6186,8 @@ public class PageController {
     /** Criteria 바인딩 & 검색 키워드 처리 */
     private void bindCriteria(
             Criteria cri, String inst, int page, int perPageNum,
-            String dateRange, String startDate, String endDate, String searchType, String keyword, String end) {
+            String dateRange, String startDate, String endDate, String status, String pathType,
+            String searchType, String keyword, String end) {
 
         cri.setInst(inst);
         cri.setPage(page);
@@ -5901,6 +6195,8 @@ public class PageController {
         cri.setDateRange(nullToEmpty(dateRange));
         cri.setStartDate(normalizeDateParam(startDate));
         cri.setEndDate(normalizeDateParam(endDate));
+        cri.setStatus(normalizeListFilterParam(status));
+        cri.setPathType(normalizeListFilterParam(pathType));
         cri.setSearchType(nullToEmpty(searchType));
         cri.setKey(nullToEmpty(keyword)); // 기존 코드 호환: setKey 사용하더라도 아래 setKeyword가 최종 적용
 
@@ -5934,6 +6230,14 @@ public class PageController {
         }
 
         cri.setEnd(end);
+    }
+
+    private String normalizeListFilterParam(String value) {
+        String normalized = nullToEmpty(value).trim();
+        if (normalized.isBlank()) {
+            return "all";
+        }
+        return normalized;
     }
 
     private String normalizeDateParam(String value) {
@@ -6327,6 +6631,7 @@ public class PageController {
 
         // 안전: orderItems가 null이어도 최소한 cs_idx, 일부 기본 필드는 넣을 수 있게
         List<Map<String, Object>> cols = orderItems != null ? orderItems : List.of();
+        Set<String> requestedDynamicColumns = extractRequestedDynamicColumns(cols);
 
         List<Map<String, Object>> out = new ArrayList<>(list.size());
         for (CounselData cd : list) {
@@ -6337,6 +6642,19 @@ public class PageController {
             // 항상 필요한 키
             row.put("cs_idx", safeGet(cd, "cs_idx"));
 
+            Map<String, String> dynamicValueMap = Collections.emptyMap();
+            if (!requestedDynamicColumns.isEmpty()) {
+                List<CounselDataEntry> entries = cd.getEntries();
+                if (entries == null || entries.isEmpty()) {
+                    try {
+                        entries = cs.getEntriesByInstAndCsIdx(inst, cd.getCs_idx());
+                    } catch (Exception ignore) {
+                        entries = Collections.emptyList();
+                    }
+                }
+                dynamicValueMap = buildDynamicValueMap(entries);
+            }
+
             // 화면에서 선택된 컬럼만 넣기(직렬화 안전)
             for (Map<String, Object> col : cols) {
                 if (col == null)
@@ -6344,6 +6662,12 @@ public class PageController {
                 String name = normalizeOrderColumnName(col);
                 if (name == null || name.isBlank())
                     continue;
+
+                String normalizedName = normalizeListColumnKey(name);
+                if (requestedDynamicColumns.contains(normalizedName)) {
+                    row.put(name, dynamicValueMap.getOrDefault(normalizedName, ""));
+                    continue;
+                }
 
                 Object val = safeGet(cd, name); // 스네이크/카멜 대응
                 // byte[], Blob 같은 건 날린다(직렬화 이슈 예방)
@@ -6395,6 +6719,209 @@ public class PageController {
             }
 
             out.add(row);
+        }
+        return out;
+    }
+
+    private List<Map<String, Object>> buildListSettingInnerContentItems(
+            String inst,
+            List<Map<String, Object>> orderItems,
+            Set<String> hiddenColumns) {
+        List<Map<String, Object>> baseItems = filterListSettingItems(cs.getInnerContentItems(inst), hiddenColumns);
+        Set<String> selectedColumns = extractSelectedColumns(orderItems);
+
+        List<Map<String, Object>> dynamicCandidates = buildDynamicListSettingCandidates(inst);
+        List<Map<String, Object>> merged = new ArrayList<>(baseItems);
+        for (Map<String, Object> candidate : dynamicCandidates) {
+            String columnName = normalizeOrderColumnName(candidate);
+            String normalized = normalizeListColumnKey(columnName);
+            if (normalized.isBlank()) {
+                continue;
+            }
+            if (isHiddenListColumn(columnName, hiddenColumns) || selectedColumns.contains(normalized)) {
+                continue;
+            }
+            merged.add(candidate);
+        }
+        return merged;
+    }
+
+    private List<Map<String, Object>> normalizeDynamicOrderItemComments(
+            String inst,
+            List<Map<String, Object>> orderItems) {
+        if (orderItems == null || orderItems.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Map<Integer, String> categoryNameMap = buildCategoryNameMap(inst);
+        if (categoryNameMap.isEmpty()) {
+            return orderItems;
+        }
+
+        List<Map<String, Object>> normalized = new ArrayList<>(orderItems.size());
+        for (Map<String, Object> item : orderItems) {
+            if (item == null) {
+                continue;
+            }
+            Map<String, Object> copy = new LinkedHashMap<>(item);
+            String columnName = normalizeListColumnKey(normalizeOrderColumnName(item));
+            Integer categoryId = extractDynamicCategoryId(columnName);
+            if (categoryId != null) {
+                String comment = safeString(categoryNameMap.get(categoryId)).trim();
+                if (!comment.isBlank()) {
+                    copy.put("column_comment", comment);
+                    copy.put("comment", comment);
+                }
+            }
+            normalized.add(copy);
+        }
+        return normalized;
+    }
+
+    private List<Map<String, Object>> buildDynamicListSettingCandidates(String inst) {
+        try {
+            Map<String, Object> categoryDataMap = cs.getCategoryData(inst);
+            Object raw = categoryDataMap == null ? null : categoryDataMap.get("categoryData");
+            if (!(raw instanceof List<?> wrappers) || wrappers.isEmpty()) {
+                return Collections.emptyList();
+            }
+
+            List<Map<String, Object>> items = new ArrayList<>();
+            for (Object wrapperObj : wrappers) {
+                if (!(wrapperObj instanceof Category1WithSubcategoriesAndOptions wrapper)) {
+                    continue;
+                }
+                Category1 c1 = wrapper.getCategory1();
+                if (c1 == null || c1.getCc_col_01() <= 0) {
+                    continue;
+                }
+                String c1Name = safeString(c1.getCc_col_02()).trim();
+                String columnName = "category_" + c1.getCc_col_01();
+                String comment = c1Name.isBlank() ? columnName : c1Name;
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("column_name", columnName);
+                item.put("column_comment", comment);
+                items.add(item);
+            }
+            return items;
+        } catch (Exception e) {
+            log.warn("[list-setting] dynamic field candidates load failed inst={}, err={}", inst, e.toString());
+            return Collections.emptyList();
+        }
+    }
+
+    private Map<Integer, String> buildCategoryNameMap(String inst) {
+        try {
+            Map<String, Object> categoryDataMap = cs.getCategoryData(inst);
+            Object raw = categoryDataMap == null ? null : categoryDataMap.get("categoryData");
+            if (!(raw instanceof List<?> wrappers) || wrappers.isEmpty()) {
+                return Collections.emptyMap();
+            }
+            Map<Integer, String> out = new LinkedHashMap<>();
+            for (Object wrapperObj : wrappers) {
+                if (!(wrapperObj instanceof Category1WithSubcategoriesAndOptions wrapper)) {
+                    continue;
+                }
+                Category1 c1 = wrapper.getCategory1();
+                if (c1 == null || c1.getCc_col_01() <= 0) {
+                    continue;
+                }
+                String c1Name = safeString(c1.getCc_col_02()).trim();
+                if (!c1Name.isBlank()) {
+                    out.put(c1.getCc_col_01(), c1Name);
+                }
+            }
+            return out;
+        } catch (Exception e) {
+            log.warn("[list-setting] category name map load failed inst={}, err={}", inst, e.toString());
+            return Collections.emptyMap();
+        }
+    }
+
+    private Integer extractDynamicCategoryId(String normalizedColumn) {
+        if (normalizedColumn == null || normalizedColumn.isBlank()) {
+            return null;
+        }
+        try {
+            if (normalizedColumn.matches("^category_\\d+$")) {
+                return Integer.valueOf(normalizedColumn.substring("category_".length()));
+            }
+            if (normalizedColumn.matches("^field_\\d+_\\d+$")) {
+                String[] parts = normalizedColumn.split("_");
+                if (parts.length >= 3) {
+                    return Integer.valueOf(parts[1]);
+                }
+            }
+        } catch (NumberFormatException ignore) {
+            return null;
+        }
+        return null;
+    }
+
+    private Set<String> extractSelectedColumns(List<Map<String, Object>> items) {
+        if (items == null || items.isEmpty()) {
+            return Collections.emptySet();
+        }
+        LinkedHashSet<String> out = new LinkedHashSet<>();
+        for (Map<String, Object> item : items) {
+            String normalized = normalizeListColumnKey(normalizeOrderColumnName(item));
+            if (!normalized.isBlank()) {
+                out.add(normalized);
+            }
+        }
+        return out;
+    }
+
+    private Set<String> extractRequestedDynamicColumns(List<Map<String, Object>> items) {
+        if (items == null || items.isEmpty()) {
+            return Collections.emptySet();
+        }
+        LinkedHashSet<String> out = new LinkedHashSet<>();
+        for (Map<String, Object> item : items) {
+            String normalized = normalizeListColumnKey(normalizeOrderColumnName(item));
+            if (isDynamicListColumn(normalized)) {
+                out.add(normalized);
+            }
+        }
+        return out;
+    }
+
+    private boolean isDynamicListColumn(String key) {
+        if (key == null) {
+            return false;
+        }
+        return key.matches("^field_\\d+_\\d+$") || key.matches("^category_\\d+$");
+    }
+
+    private Map<String, String> buildDynamicValueMap(List<CounselDataEntry> entries) {
+        if (entries == null || entries.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<String, LinkedHashSet<String>> fieldValues = new LinkedHashMap<>();
+        Map<String, LinkedHashSet<String>> categoryValues = new LinkedHashMap<>();
+        for (CounselDataEntry entry : entries) {
+            if (entry == null || entry.getCategory_id() <= 0) {
+                continue;
+            }
+            String value = safeString(entry.getValue()).trim();
+            if (value.isBlank()) {
+                continue;
+            }
+
+            String categoryKey = "category_" + entry.getCategory_id();
+            categoryValues.computeIfAbsent(categoryKey, k -> new LinkedHashSet<>()).add(value);
+
+            if (entry.getSubcategory_id() > 0) {
+                String fieldKey = "field_" + entry.getCategory_id() + "_" + entry.getSubcategory_id();
+                fieldValues.computeIfAbsent(fieldKey, k -> new LinkedHashSet<>()).add(value);
+            }
+        }
+
+        Map<String, String> out = new LinkedHashMap<>();
+        for (Map.Entry<String, LinkedHashSet<String>> e : fieldValues.entrySet()) {
+            out.put(e.getKey(), String.join(" / ", e.getValue()));
+        }
+        for (Map.Entry<String, LinkedHashSet<String>> e : categoryValues.entrySet()) {
+            out.put(e.getKey(), String.join(" / ", e.getValue()));
         }
         return out;
     }

@@ -671,6 +671,38 @@ public class CsmAuthService {
         return normalized;
     }
 
+    public List<String> getCounselStatusOptions(String inst) {
+        return getDistinctCounselColumnValues(inst, "cs_col_19");
+    }
+
+    public List<String> getCounselPathTypeOptions(String inst) {
+        return getDistinctCounselColumnValues(inst, "cs_col_08");
+    }
+
+    private List<String> getDistinctCounselColumnValues(String inst, String columnName) {
+        String safe = sanitizeInst(inst);
+        if (!"cs_col_19".equals(columnName) && !"cs_col_08".equals(columnName)) {
+            throw new IllegalArgumentException("Unsupported columnName: " + columnName);
+        }
+
+        String sql = "SELECT DISTINCT TRIM(" + columnName + ") AS v "
+                + "FROM csm.counsel_data_" + safe + " "
+                + "WHERE " + columnName + " IS NOT NULL AND TRIM(" + columnName + ") <> '' "
+                + "ORDER BY v ASC";
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
+        if (rows == null || rows.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> out = new ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            String value = Objects.toString(row.get("v"), "").trim();
+            if (!value.isBlank()) {
+                out.add(value);
+            }
+        }
+        return out;
+    }
+
     public int coreInstUpdate(Instdata instdata) {
         return cs.coreInstUpdate(instdata);
     }

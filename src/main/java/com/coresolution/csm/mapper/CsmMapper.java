@@ -863,6 +863,12 @@ public interface CsmMapper {
       if (!nonEmpty(cri.getEnd())) {
         sb.append(" AND c.cs_col_19 != '입원완료' ");
       }
+      if (nonEmpty(cri.getStatus()) && !"all".equalsIgnoreCase(cri.getStatus())) {
+        sb.append(" AND c.cs_col_19 = #{status} ");
+      }
+      if (nonEmpty(cri.getPathType()) && !"all".equalsIgnoreCase(cri.getPathType())) {
+        sb.append(" AND c.cs_col_08 = #{pathType} ");
+      }
 
       boolean hasKeyword = nonEmpty(cri.getKeyword()) || cri.getKeywordBytes() != null;
       if (hasKeyword) {
@@ -911,6 +917,12 @@ public interface CsmMapper {
       }
       if (!nonEmpty(cri.getEnd())) {
         sb.append(" AND c.cs_col_19 != '입원완료' ");
+      }
+      if (nonEmpty(cri.getStatus()) && !"all".equalsIgnoreCase(cri.getStatus())) {
+        sb.append(" AND c.cs_col_19 = #{status} ");
+      }
+      if (nonEmpty(cri.getPathType()) && !"all".equalsIgnoreCase(cri.getPathType())) {
+        sb.append(" AND c.cs_col_08 = #{pathType} ");
       }
 
       boolean hasKeyword = nonEmpty(cri.getKeyword()) || cri.getKeywordBytes() != null;

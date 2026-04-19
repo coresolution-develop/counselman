@@ -11,13 +11,13 @@ MEDIPLAT_PID=""
 init_local_defaults() {
   export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-local}"
 
-  export LOCAL_DB_HOST="${LOCAL_DB_HOST:-127.0.0.1}"
+  export LOCAL_DB_HOST="${LOCAL_DB_HOST:-49.247.42.59}"
   export LOCAL_DB_PORT="${LOCAL_DB_PORT:-3306}"
   export LOCAL_DB_NAME="${LOCAL_DB_NAME:-csm}"
-  export LOCAL_DB_USERNAME="${LOCAL_DB_USERNAME:-root}"
-  export LOCAL_DB_PASSWORD="${LOCAL_DB_PASSWORD:-core0220!!}"
+  export LOCAL_DB_USERNAME="${LOCAL_DB_USERNAME:-csdev}"
+  export LOCAL_DB_PASSWORD="${LOCAL_DB_PASSWORD:-Core0220!_!@@}"
 
-  # csm/mediplat 모두 동일한 로컬 DB를 기본으로 사용
+  # csm/mediplat 모두 동일한 DB를 기본으로 사용 (필요 시 환경변수로 로컬 DB로 오버라이드)
   export SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL:-jdbc:mysql://${LOCAL_DB_HOST}:${LOCAL_DB_PORT}/${LOCAL_DB_NAME}?serverTimezone=Asia/Seoul&useSSL=false&characterEncoding=UTF-8&allowPublicKeyRetrieval=true}"
   export SPRING_DATASOURCE_USERNAME="${SPRING_DATASOURCE_USERNAME:-${LOCAL_DB_USERNAME}}"
   export SPRING_DATASOURCE_PASSWORD="${SPRING_DATASOURCE_PASSWORD:-${LOCAL_DB_PASSWORD}}"

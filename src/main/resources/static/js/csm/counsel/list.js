@@ -11,18 +11,25 @@ document.addEventListener("DOMContentLoaded", function () {
   let originalRows = []; // 초기 데이터 순서 저장
   let sortOrder = [];    // 각 열의 정렬 상태
   let observer;
+  let activeQueryToken = 0;
 
   // DOM 캐시
   const tableBodyEl = document.querySelector('#table-body');
   const deleteButton = document.getElementById('del-counsel');
   const newCounselLink = document.getElementById('new-counsel');
   const newReservationLink = document.getElementById('new-reservation');
-  const searchButtonTop = document.getElementById('searchBtnTop');
   const reservationToggleBtn = document.getElementById('reservationToggleBtn');
   const reservationBox = document.querySelector('.integrated-reservation-box');
   const dateRangeSelectEl = document.getElementById('dateRange');
   const startDateEl = document.getElementById('startDate');
   const endDateEl = document.getElementById('endDate');
+  const dateFieldEl = document.getElementById('dateField');
+  const calendarEl = document.getElementById('statusCalendar');
+  const calTitleEl = document.getElementById('calTitle');
+  const calGridEl = document.getElementById('calGrid');
+  const calPrevEl = document.getElementById('calPrev');
+  const calNextEl = document.getElementById('calNext');
+  const dateInputToggleButtons = document.querySelectorAll('.date-input-toggle');
   const dateRangeCardEl = dateRangeSelectEl ? dateRangeSelectEl.closest('.modern-filter-item') : null;
   const detail = document.getElementById('detail');
   const set = document.getElementById('setting');
@@ -30,6 +37,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // 선택된 행
   let selectedCsIdx = null;
+  const today = new Date();
+  const todayStr = formatDateValue(today);
+  let calendarViewYear = today.getFullYear();
+  let calendarViewMonth = today.getMonth();
+  let activeCalendarInput = startDateEl || endDateEl || null;
 
   // ========= 유틸 =========
   function escapeHTML(v) {
@@ -58,6 +70,8 @@ document.addEventListener("DOMContentLoaded", function () {
       dateRange: $('#dateRange').val(),
       startDate: $('#startDate').val() || '',
       endDate: $('#endDate').val() || '',
+      status: $('#statusFilter').val() || 'all',
+      pathType: $('#pathTypeFilter').val() || 'all',
       searchType: $('#searchType').val() || '',
       keyword: $('#keywordInput').val() || '',
       end: $('#end').is(':checked') ? 'on' : ''
@@ -77,7 +91,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const today = new Date();
     const start = new Date(today);
-    start.setDate(today.getDate() - (days - 1));
+    start.setDate(today.getDate() - days);
 
     $('#startDate').val(formatDateValue(start));
     $('#endDate').val(formatDateValue(today));
@@ -93,9 +107,109 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function updateCustomDateRangeVisibility() {
-    if (!dateRangeCardEl || !dateRangeSelectEl) return;
-    const isCustom = dateRangeSelectEl.value === 'custom';
-    dateRangeCardEl.classList.toggle('is-custom-range', isCustom);
+    if (!dateRangeCardEl) return;
+    // 날짜 입력창은 항상 노출
+    dateRangeCardEl.classList.add('is-custom-range');
+  }
+
+  function parseDateFromValue(raw) {
+    if (!raw) return null;
+    const m = String(raw).trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return null;
+    const yyyy = Number(m[1]);
+    const mm = Number(m[2]);
+    const dd = Number(m[3]);
+    if (yyyy < 1900 || mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+    return new Date(yyyy, mm - 1, dd);
+  }
+
+  function closeCalendar() {
+    if (!calendarEl) return;
+    calendarEl.classList.remove('is-open');
+    dateFieldEl?.classList.remove('is-open');
+  }
+
+  function renderCalendar(year, month) {
+    if (!calTitleEl || !calGridEl) return;
+
+    calTitleEl.textContent = `${year}.${month + 1}`;
+    calGridEl.innerHTML = '';
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const lastDate = new Date(year, month + 1, 0).getDate();
+    const prevLastDate = new Date(year, month, 0).getDate();
+    const selectedDate = (activeCalendarInput && activeCalendarInput.value) ? activeCalendarInput.value : todayStr;
+
+    const onPickDate = (val, targetYear, targetMonth) => {
+      if (!activeCalendarInput) return;
+      activeCalendarInput.value = val;
+      activeCalendarInput.dispatchEvent(new Event('change', { bubbles: true }));
+      calendarViewYear = targetYear;
+      calendarViewMonth = targetMonth;
+      renderCalendar(calendarViewYear, calendarViewMonth);
+      closeCalendar();
+    };
+
+    const prevYear = month === 0 ? year - 1 : year;
+    const prevMonth = month === 0 ? 11 : month - 1;
+    for (let i = firstDay - 1; i >= 0; i--) {
+      const d = prevLastDate - i;
+      const val = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'sh-cal-day is-muted';
+      btn.innerHTML = `<span class="sh-cal-num">${d}</span><span class="sh-cal-sub"></span>`;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onPickDate(val, prevYear, prevMonth);
+      });
+      calGridEl.appendChild(btn);
+    }
+
+    for (let d = 1; d <= lastDate; d++) {
+      const val = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const isToday = val === todayStr;
+      const dow = new Date(year, month, d).getDay();
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'sh-cal-day';
+      if (dow === 0) btn.classList.add('is-sun');
+      if (val === selectedDate) btn.classList.add('is-selected');
+      btn.innerHTML = `<span class="sh-cal-num">${d}</span><span class="sh-cal-sub">${isToday ? '오늘' : ''}</span>`;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onPickDate(val, year, month);
+      });
+      calGridEl.appendChild(btn);
+    }
+
+    const nextYear = month === 11 ? year + 1 : year;
+    const nextMonth = month === 11 ? 0 : month + 1;
+    const totalCells = calGridEl.children.length;
+    const nextFill = totalCells <= 35 ? 35 - totalCells : 42 - totalCells;
+    for (let i = 1; i <= nextFill; i++) {
+      const val = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'sh-cal-day is-muted';
+      btn.innerHTML = `<span class="sh-cal-num">${i}</span><span class="sh-cal-sub"></span>`;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onPickDate(val, nextYear, nextMonth);
+      });
+      calGridEl.appendChild(btn);
+    }
+  }
+
+  function openCalendar(targetInput) {
+    if (!calendarEl) return;
+    activeCalendarInput = targetInput || activeCalendarInput || startDateEl || endDateEl;
+    const baseDate = parseDateFromValue(activeCalendarInput?.value) || today;
+    calendarViewYear = baseDate.getFullYear();
+    calendarViewMonth = baseDate.getMonth();
+    calendarEl.classList.add('is-open');
+    dateFieldEl?.classList.add('is-open');
+    renderCalendar(calendarViewYear, calendarViewMonth);
   }
 
   function validateDateFilterBeforeSearch() {
@@ -370,6 +484,9 @@ if (clean.length !== data.length) {
 
   $('#dateRange').on('change', function () {
     const selected = $(this).val();
+    if (selected !== 'custom') {
+      closeCalendar();
+    }
     if (selected === 'all') {
       $('#startDate').val('');
       $('#endDate').val('');
@@ -384,6 +501,66 @@ if (clean.length !== data.length) {
 
   $('#startDate, #endDate').on('change', function () {
     syncDateRangeByInput();
+  });
+
+  if (startDateEl) {
+    startDateEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openCalendar(startDateEl);
+    });
+  }
+  if (endDateEl) {
+    endDateEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openCalendar(endDateEl);
+    });
+  }
+  if (dateInputToggleButtons && dateInputToggleButtons.length > 0) {
+    dateInputToggleButtons.forEach((button) => {
+      button.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const targetId = button.getAttribute('data-target');
+        const targetInput = targetId ? document.getElementById(targetId) : null;
+        const isOpen = calendarEl?.classList.contains('is-open');
+        const isSameTarget = targetInput && targetInput === activeCalendarInput;
+        closeCalendar();
+        if (!isOpen || !isSameTarget) {
+          openCalendar(targetInput || startDateEl || endDateEl);
+        }
+      });
+    });
+  }
+  if (calPrevEl) {
+    calPrevEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      calendarViewMonth--;
+      if (calendarViewMonth < 0) {
+        calendarViewMonth = 11;
+        calendarViewYear--;
+      }
+      renderCalendar(calendarViewYear, calendarViewMonth);
+    });
+  }
+  if (calNextEl) {
+    calNextEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      calendarViewMonth++;
+      if (calendarViewMonth > 11) {
+        calendarViewMonth = 0;
+        calendarViewYear++;
+      }
+      renderCalendar(calendarViewYear, calendarViewMonth);
+    });
+  }
+  if (calendarEl) {
+    calendarEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+  }
+  document.addEventListener('click', (e) => {
+    if (dateFieldEl && !dateFieldEl.contains(e.target)) {
+      closeCalendar();
+    }
   });
 
   (function initDateFilter() {
@@ -422,6 +599,7 @@ if (clean.length !== data.length) {
     if (!validateDateFilterBeforeSearch()) {
       return;
     }
+    activeQueryToken += 1;
     // 상태 초기화
     page = 1;
     hasMoreData = true;
@@ -430,14 +608,8 @@ if (clean.length !== data.length) {
     $('#table-header').empty();
     originalRows = [];
     // 새 필터로 첫 페이지
-    loadCounselData(getCurrentFilters());
+    loadCounselData(getCurrentFilters(), activeQueryToken);
   });
-
-  if (searchButtonTop) {
-    searchButtonTop.addEventListener('click', function () {
-      $('#searchBtn').click();
-    });
-  }
 
   // ========= 서버 키 정규화 =========
   function normalizeOrderItems(items) {
@@ -452,7 +624,24 @@ if (clean.length !== data.length) {
 }
 
   // ========= 데이터 로드 =========
-  function loadCounselData(formData) {
+  function hasSameColumnOrder(prevItems, nextItems) {
+    if (!Array.isArray(prevItems) || !Array.isArray(nextItems)) return false;
+    if (prevItems.length !== nextItems.length) return false;
+    for (let i = 0; i < prevItems.length; i++) {
+      const prev = String(prevItems[i]?.column_name || '').trim();
+      const next = String(nextItems[i]?.column_name || '').trim();
+      if (prev !== next) return false;
+    }
+    return true;
+  }
+
+  function loadCounselData(formData, queryToken) {
+  const token = (Number.isInteger(queryToken) && queryToken > 0)
+    ? queryToken
+    : (activeQueryToken > 0 ? activeQueryToken : 1);
+  if (activeQueryToken === 0) {
+    activeQueryToken = token;
+  }
   if (isLoading || !hasMoreData) {
     return;
   }
@@ -468,9 +657,17 @@ if (clean.length !== data.length) {
     data: payload,
     dataType: 'json',
     success: function (response) {
+      if (token !== activeQueryToken) {
+        return;
+      }
       if (response.success) {
         if (page === 1) {
-          orderItems = normalizeOrderItems(response.orderItems || []);
+          const responseOrderItems = normalizeOrderItems(response.orderItems || []);
+          if (orderItems.length === 0) {
+            orderItems = responseOrderItems;
+          } else if (responseOrderItems.length > 0 && !hasSameColumnOrder(orderItems, responseOrderItems)) {
+            console.warn('[List] 필터 조회 중 변경된 orderItems 응답은 무시합니다.');
+          }
           renderTableHeader(orderItems);
           bindSortEvents();
           sortOrder = Array(orderItems.length).fill(0);
@@ -490,10 +687,16 @@ if (clean.length !== data.length) {
       }
     },
     error: function (xhr, status, error) {
+      if (token !== activeQueryToken) {
+        return;
+      }
       console.error('Data load failed:', status, error);
       alert('데이터 로드 실패');
     },
     complete: function () {
+      if (token !== activeQueryToken) {
+        return;
+      }
       isLoading = false;
       $('#loading').hide();
     }
@@ -709,5 +912,8 @@ function getVal(row, key) {
   return '';
 }
   // ======== 초기 첫 로드 강제 호출(중요!) ========
-  loadCounselData(getCurrentFilters());
+  if (activeQueryToken === 0) {
+    activeQueryToken = 1;
+  }
+  loadCounselData(getCurrentFilters(), activeQueryToken);
 });

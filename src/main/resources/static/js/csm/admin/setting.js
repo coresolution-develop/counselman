@@ -4,6 +4,7 @@ let Id;
 let SubId;
 let OptionId;
 let Type = '';
+const orderSaveTimers = {};
 
 (() => {
 	const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content') || '';
@@ -47,6 +48,45 @@ function updateSelectedCategoryStyles() {
 			label.classList.toggle('is-selected', Boolean(input && input.checked));
 		});
 	});
+}
+
+function isEnabledFlag(value) {
+	return value === 1 || value === '1' || value === true;
+}
+
+function buildSubcategoryInputTypes(category = {}) {
+	const types = [];
+	if (isEnabledFlag(category.cc_col_04)) types.push('checkbox');
+	if (isEnabledFlag(category.cc_col_05)) types.push('radio');
+	if (isEnabledFlag(category.cc_col_07)) types.push('select');
+	if (isEnabledFlag(category.cc_col_06)) types.push('text');
+	return types.join(',');
+}
+
+function getLabelTextFromCategory(labelElement) {
+	if (!labelElement) return '';
+	const text = Array.from(labelElement.childNodes)
+		.filter((node) => node.nodeType === Node.TEXT_NODE)
+		.map((node) => node.textContent.replace(/\s+/g, ' ').trim())
+		.filter(Boolean)
+		.join(' ')
+		.trim();
+	return text;
+}
+
+function formatInputTypeChips(inputTypeText = '') {
+	const map = {
+		checkbox: '체크박스',
+		radio: '라디오박스',
+		select: '셀렉트박스',
+		text: '텍스트박스'
+	};
+	return inputTypeText
+		.split(',')
+		.map((type) => type.trim())
+		.filter(Boolean)
+		.map((type) => `<span class="modal2-chip">${map[type] || type}</span>`)
+		.join('');
 }
 
 //function getSubCategories(parentId, element) {
@@ -1045,8 +1085,9 @@ function templatePost() {
 	});
 }
 
-function ModifyMainCategory(event, type, id) {
+function ModifyMainCategory(event, type, id, currentName = '', inputType = '') {
     console.log(`Editing category with ID: ${id}, TYPE: ${type}`);
+    let text = '';
     if(type == 'main') {
 		text = '상담항목을';
 	} else if (type == 'sub') {
@@ -1054,18 +1095,56 @@ function ModifyMainCategory(event, type, id) {
 	} else {
 		text = 'SelectBox설정값을';
 	}
-    showModifyCategoryModal(type, id, `수정 할 ${text} 입력해주세요.`);
+    showModifyCategoryModal(type, id, `수정할 ${text} 입력해주세요.`, currentName, inputType);
 }
 
-function showModifyCategoryModal(type, id, message){
+function showModifyCategoryModal(type, id, message, currentName = '', inputType = ''){
     const modal2 = $('.modal2');
     $('.menu_msg2').text(message);
+    $('#cc_col_02').val(currentName || '');
     
     $('#ModifyBtn').attr('data-type', type);
     $('#ModifyBtn').attr('data-id', id);
+
+    const fieldLabel = $('#modal2FieldLabel');
+    const metaWrap = $('#modal2MetaWrap');
+    const meta = $('#modal2Meta');
+    const typeNotice = $('#modal2TypeNotice');
+    const context = $('#modal2Context');
+
+    if (type === 'main') {
+		$('.modal2-title').text('상담항목 수정');
+		fieldLabel.text('상담항목명');
+		$('#cc_col_02').attr('placeholder', '상담항목 이름 입력');
+		metaWrap.hide();
+    } else if (type === 'sub') {
+		$('.modal2-title').text('설정값 수정');
+		fieldLabel.text('설정값명');
+		$('#cc_col_02').attr('placeholder', '설정값 이름 입력');
+		const chips = formatInputTypeChips(inputType);
+		meta.html(chips || '<span class="modal2-chip modal2-chip-muted">유형 정보 없음</span>');
+		typeNotice.show();
+		metaWrap.show();
+    } else {
+		$('.modal2-title').text('Select Box 설정값 수정');
+		fieldLabel.text('Select Box 설정값');
+		$('#cc_col_02').attr('placeholder', 'Select Box 설정값 입력');
+		metaWrap.hide();
+    }
+
+    if (context.length > 0) {
+		context.text(message);
+    }
     
     modal2.addClass('show');
     $('body').css('overflow', 'hidden');
+    setTimeout(() => {
+		const input = document.getElementById('cc_col_02');
+		if (input) {
+			input.focus();
+			input.select();
+		}
+	}, 0);
 	
 }
 function templateModalOpen() {
@@ -1297,11 +1376,12 @@ window.getSubCategories = function(categoryId, element) {
 		        data: { categoryId: categoryId },
 		        success: function(data) {
 		            var html = '';
-		            $.each(data, function (index, category) {
-				    html += `
-				        <label class="custom-radio" data-category-type="sub">
-				            <input 
-				                type="radio" 
+			            $.each(data, function (index, category) {
+			            	const inputType = buildSubcategoryInputTypes(category);
+					    html += `
+					        <label class="custom-radio" data-category-type="sub" data-input-type="${inputType}">
+					            <input 
+					                type="radio" 
 				                data-category-type="child" 
 				                name="subCategory" 
 				                value="${category.cc_col_01}" 
@@ -1339,10 +1419,11 @@ window.getSubCategories = function(categoryId, element) {
         data: { categoryId: categoryId },
         success: function(data) {
             var html = '';
-            $.each(data, function (index, category) {
-                html += `
-                    <label class="custom-radio" data-category-type="sub">
-                        <input type="radio"
+	            $.each(data, function (index, category) {
+	            	const inputType = buildSubcategoryInputTypes(category);
+	                html += `
+	                    <label class="custom-radio" data-category-type="sub" data-input-type="${inputType}">
+	                        <input type="radio"
                             data-category-type="child"
                             name="subCategory"
                             value="${category.cc_col_01}"
@@ -1496,10 +1577,6 @@ $(document).ready(function() {
 	    initSortable('optionCategoryDiv', 'option');
 
 		['main', 'sub', 'option'].forEach((type) => {
-			const saveOrderButton = document.getElementById(`save-order-${type}`);
-			if (saveOrderButton) {
-				saveOrderButton.style.display = 'inline-block';
-			}
 			const settingIcon = document.getElementById(`setting-${type}`);
 			const settingWrapper = settingIcon ? settingIcon.closest('.settingDiv') : null;
 			if (settingWrapper) {
@@ -1520,10 +1597,24 @@ $(document).ready(function() {
 		new Sortable(container, {
 			animation: 150,
 			draggable: '.custom-radio',
+			handle: '.custom-radio-mark',
 			disabled: false,
 			ghostClass: 'drag-ghost',
-			chosenClass: 'drag-chosen'
+			chosenClass: 'drag-chosen',
+			onEnd: function(evt) {
+				if (evt && evt.oldIndex === evt.newIndex) return;
+				scheduleAutoSaveOrder(type);
+			}
 		});
+	}
+
+	function scheduleAutoSaveOrder(type) {
+		if (orderSaveTimers[type]) {
+			clearTimeout(orderSaveTimers[type]);
+		}
+		orderSaveTimers[type] = setTimeout(() => {
+			window.saveOrder(type, { auto: true });
+		}, 200);
 	}
 	
 	// ✅ 빈 함수로 미리 정의하여 오류 방지
@@ -1616,7 +1707,9 @@ $(document).ready(function() {
         console.log("🚀 Calling getOptions:", subCategoryId);
         window.getOptions(subCategoryId, clickedElement);
     });
-	window.saveOrder = function (type) {
+	window.saveOrder = function (type, options = {}) {
+		const auto = options.auto === true;
+		const originalType = type;
 	    let categoryId = null;
 	    let subcategoryId = null;
 	    let containerId;
@@ -1646,7 +1739,9 @@ $(document).ready(function() {
 	        if (checkedMainCategory) {
 	            categoryId = checkedMainCategory.value; // Main category ID
 	        } else {
-	            alert('Please select a main category.');
+	        	if (!auto) {
+		            alert('Please select a main category.');
+	        	}
 	            return;
 	        }
 	    }
@@ -1657,7 +1752,9 @@ $(document).ready(function() {
 	        if (checkedSubCategory) {
 	            subcategoryId = checkedSubCategory.value; // Subcategory ID
 	        } else {
-	            alert('Please select a subcategory.');
+	        	if (!auto) {
+		            alert('Please select a subcategory.');
+	        	}
 	            return;
 	        }
 	    }
@@ -1685,7 +1782,9 @@ $(document).ready(function() {
 	    });
 	
 	    console.log(newOrder); // For debugging
-		spinner();
+	    if (!auto) {
+			spinner();
+	    }
         const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content') || '';
         const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
         const headers = {};
@@ -1700,11 +1799,20 @@ $(document).ready(function() {
             headers: headers,
 		    data: JSON.stringify(newOrder),
 		    success: function (data) {
-		        console.log(`${type} order saved successfully:`, data);
-		        window.location.reload();
+		    	if (auto) {
+			        console.log(`${originalType} order auto-saved successfully:`, data);
+		    	} else {
+			        console.log(`${type} order saved successfully:`, data);
+		        	window.location.reload();
+		    	}
 		    },
 		    error: function (xhr, status, error) {
 		        console.error(`Error saving ${type} order:`, xhr.responseText || error);
+		    },
+		    complete: function () {
+		    	if (!auto) {
+					hideSpinner();
+		    	}
 		    }
 		});
 		// 템플릿 체크박스
@@ -1759,24 +1867,35 @@ $(document).ready(function() {
 	    var modal4 = document.querySelector('.modal4');
 	    var body = document.querySelector('body');
 	    const menuMsg4 = document.querySelector(".menu_msg4");
+	    const modal4FieldLabel = document.querySelector("#modal4FieldLabel");
 	    const checkboxOptionsDiv = document.querySelector("#selectOptions");
 	    const checkboxContainer = document.querySelector("#checkboxContainer");
 	    const CategoryInput = document.querySelector("#addCategoryName");
 	    const OptionInput = document.querySelector('#selectboxOptions');
+	    const inputTargetId = currentCategoryType === "option" ? "selectboxOptions" : "addCategoryName";
+	    if (modal4FieldLabel) {
+	        modal4FieldLabel.setAttribute('for', inputTargetId);
+	    }
 	    // 모달 메시지 설정
     	menuMsg4.innerText = "새로운 " + (currentCategoryType === "parent" ? "상담항목" : currentCategoryType === "child" ? "설정값" : "Select Box 설정값") + "을 입력해주세요.";
 		CategoryInput.value = '';
 		OptionInput.value = '';
 	    // Show/Hide elements based on category type
 	    if (currentCategoryType === "parent") {
+	        if (modal4FieldLabel) modal4FieldLabel.innerText = "상담항목명";
+	        if (CategoryInput) CategoryInput.placeholder = "분류 이름 입력";
 	        if (checkboxContainer) checkboxContainer.style.display = "none";
 	        if (checkboxOptionsDiv) checkboxOptionsDiv.style.display = "none";
 	        if (CategoryInput) CategoryInput.style.display = "inline-block"; 
 	    } else if (currentCategoryType === "child") {
+	        if (modal4FieldLabel) modal4FieldLabel.innerText = "설정값명";
+	        if (CategoryInput) CategoryInput.placeholder = "설정값 이름 입력";
 	        if (checkboxContainer) checkboxContainer.style.display = "flex";
 	        if (checkboxOptionsDiv) checkboxOptionsDiv.style.display = "none";
 	        if (CategoryInput) CategoryInput.style.display = "inline-block"; 
 	    } else if (currentCategoryType === "option") {
+	        if (modal4FieldLabel) modal4FieldLabel.innerText = "Select Box 설정값";
+	        if (OptionInput) OptionInput.placeholder = "옵션 입력 (콤마로 구분)";
 	        if (checkboxContainer) checkboxContainer.style.display = "none";  // Hide checkboxes for options
 	        if (checkboxOptionsDiv) checkboxOptionsDiv.style.display = "block"; // Show options input
 	        if (CategoryInput) CategoryInput.style.display = "none"; 
@@ -2582,10 +2701,12 @@ $(document).ready(function() {
 	        const categoryIdx = penIcon.getAttribute('value');
 	        const parentLabel = penIcon.closest('.custom-radio');
 	        const categoryType = parentLabel ? parentLabel.getAttribute('data-category-type') : null;
+	        const currentName = getLabelTextFromCategory(parentLabel);
+	        const inputType = parentLabel ? (parentLabel.getAttribute('data-input-type') || '') : '';
 	
 	        if (categoryType) {
 	            console.log(`Editing category with ID: ${categoryIdx}, TYPE: ${categoryType}`);
-	            ModifyMainCategory(event, categoryType, categoryIdx);
+	            ModifyMainCategory(event, categoryType, categoryIdx, currentName, inputType);
 	        } else {
 	            console.warn('Category type not found.');
 	        }
@@ -2732,7 +2853,7 @@ $(document).ready(function() {
 	        }
 	        // 🚀 소분류 추가 UI 업데이트
 	        categoryHTML = `
-	        	<label class="custom-radio" data-category-type="sub">
+	        	<label class="custom-radio" data-category-type="sub" data-input-type="${buildSubcategoryInputTypes(response.data)}">
 	        		<input
 	        			type="radio" checked
 	        			data-category-type="sub"

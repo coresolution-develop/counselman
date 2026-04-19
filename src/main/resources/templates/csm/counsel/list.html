@@ -26,7 +26,7 @@
     <link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
     <link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
     <link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
-    <link rel="stylesheet" th:href="@{/css/csm/counsel/list-modern.css(v='20260418a')}">
+    <link rel="stylesheet" th:href="@{/css/csm/counsel/list-modern.css(v='20260419i')}">
 
     <style>
         #scrollDetector {
@@ -76,68 +76,6 @@
     <div class="main">
         <!-- 중앙 콘텐츠 -->
         <div class="section orb-deco">
-            <div class="content-top">
-                <div class="section-top">
-                    <form id="searchForm" th:action="@{/counsel/list}" method="get" style="width:100%;height:100%;">
-                        <input type="hidden" name="searchType" id="searchType"
-                               th:value="${#strings.isEmpty(cri.searchType) ? 'patient' : cri.searchType}">
-                        <div class="content-inner modern-filter-grid">
-                            <div class="modern-filter-item">
-                                <label for="dateRange">조회 기간</label>
-                                <select name="dateRange" id="dateRange">
-                                    <option th:value="all" th:selected="${cri.dateRange} == 'all'">전체기간</option>
-                                    <option th:value="10" th:selected="${cri.dateRange} == '10'">최근 10일</option>
-                                    <option th:value="30" th:selected="${cri.dateRange} == '30'">최근 30일</option>
-                                    <option th:value="90" th:selected="${cri.dateRange} == '90'">최근 90일</option>
-                                    <option th:value="custom" th:selected="${cri.dateRange} == 'custom'">직접 선택</option>
-                                </select>
-                                <div class="modern-date-range-inputs">
-                                    <label class="visually-hidden" for="startDate">조회 시작일</label>
-                                    <input type="date"
-                                           id="startDate"
-                                           name="startDate"
-                                           th:value="${cri.startDate}">
-                                    <span aria-hidden="true">~</span>
-                                    <label class="visually-hidden" for="endDate">조회 종료일</label>
-                                    <input type="date"
-                                           id="endDate"
-                                           name="endDate"
-                                           th:value="${cri.endDate}">
-                                </div>
-                            </div>
-                            <div class="modern-filter-item">
-                                <label for="statusFilter">상태</label>
-                                <select id="statusFilter" disabled aria-disabled="true">
-                                    <option>전체 상태</option>
-                                    <option>접수</option>
-                                    <option>입원상담 연계</option>
-                                    <option>취소</option>
-                                </select>
-                            </div>
-                            <div class="modern-filter-item">
-                                <label for="pathTypeFilter">상담유입경로</label>
-                                <select id="pathTypeFilter" disabled aria-disabled="true">
-                                    <option>전체 경로</option>
-                                    <option>소개</option>
-                                    <option>광고</option>
-                                    <option>기타</option>
-                                </select>
-                            </div>
-                            <div class="modern-filter-check">
-                                <input type="checkbox" name="end" id="end" th:checked="${cri.end} == 'on'" />
-                                <label for="end"><span>완료 항목 포함</span></label>
-                            </div>
-                            <div class="modern-filter-action">
-                                <button type="button" id="setting" class="toolbar-icon-btn list-setting-btn" aria-label="리스트 항목 설정 열기">
-                                    <img th:src="@{/icon/ev/fix-icon.png}" alt="">
-                                </button>
-                                <div class="btn search-box listBtn btnw100" id="searchBtn">필터 적용</div>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
             <section class="integrated-reservation-box">
                 <div class="integrated-reservation-head">
                     <h3>상담 접수 대기 (우선순위순)</h3>
@@ -241,11 +179,6 @@
 
         </div> <!-- /.section -->
     </div> <!-- /.main -->
-
-    <a class="list-nav-logout" th:href="@{/logout}" aria-label="로그아웃">
-        <span class="list-nav-logout-icon" aria-hidden="true"></span>
-        <span>로그아웃</span>
-    </a>
 
     <!-- 모달 -->
     <div class="popup-wrap" id="popup">

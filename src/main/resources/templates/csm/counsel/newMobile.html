@@ -235,6 +235,7 @@
                             <th:block th:each="c2Wrap : ${c1Wrap.subcategories}"
                                       th:with="
                                         c2=${c2Wrap.category2},
+                                        sameName=${#strings.trim(c2.cc_col_02) == #strings.trim(c1.cc_col_02)},
                                         fieldKey=${'field_' + c1.cc_col_01 + '_' + c2.cc_col_01},
                                         chk=${c2.cc_col_04 == 1},
                                         rad=${c2.cc_col_05 == 1},
@@ -279,7 +280,7 @@
                                 </div>
 
                                 <div th:if="${type == 'select_only'}" class="custom-input-row">
-                                    <label class="custom-input-label" th:text="${c2.cc_col_02}">항목</label>
+                                    <label th:if="${!sameName}" class="custom-input-label" th:text="${c2.cc_col_02}">항목</label>
                                     <select th:if="${opts != null and !#lists.isEmpty(opts)}"
                                             th:name="|${fieldKey}_select|"
                                             th:attr="data-field-base=${fieldKey},data-label=${c2.cc_col_02}">
@@ -296,7 +297,7 @@
                                 </div>
 
                                 <div th:if="${type == 'text_only'}" class="custom-input-row">
-                                    <label class="custom-input-label" th:text="${c2.cc_col_02}">항목</label>
+                                    <label th:if="${!sameName}" class="custom-input-label" th:text="${c2.cc_col_02}">항목</label>
                                     <input type="text"
                                            th:name="|${fieldKey}_text|"
                                            th:value="${valueMap[fieldKey + '_text']}"
@@ -583,7 +584,7 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
 <script th:replace="~{csm/Include/layout :: scripts}"></script>
-<script th:src="@{/js/csm/counsel/newMobile.js}"></script>
-<script th:src="@{/js/csm/counsel/counselFile.js}"></script>
+<script th:src="@{/js/csm/counsel/newMobile.js(v='20260419a')}"></script>
+<script th:src="@{/js/csm/counsel/counselFile.js(v='20260419a')}"></script>
 </body>
 </html>

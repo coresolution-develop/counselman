@@ -248,8 +248,6 @@
                                                         <option value="입원환자소개" th:selected="${v}=='입원환자소개'">입원환자소개</option>
                                                         <option value="재입원" th:selected="${v}=='재입원'">재입원</option>
                                                         <option value="기타" th:selected="${v}=='기타'">기타</option>
-                                                        <!-- 생략 -->
-                                                        <option value="기타" th:selected="${v}=='기타'">기타</option>
                                                     </select>
                                                     <input type="text" id="cs_col_08_text" name="cs_col_08_text"
          th:value="${t}"
@@ -288,6 +286,7 @@
     <th:block th:each="c2Wrap : ${c1Wrap.subcategories}"
               th:with="
                 c2=${c2Wrap.category2},
+                sameName=${#strings.trim(c2.cc_col_02) == #strings.trim(c1.cc_col_02)},
                 fieldKey=${'field_' + c1.cc_col_01 + '_' + c2.cc_col_01},
                 chk=${c2.cc_col_04 == 1},
                 rad=${c2.cc_col_05 == 1},
@@ -329,7 +328,7 @@
 
       <!-- select_only -->
       <div th:if="${type == 'select_only'}" class="input-wrapper">
-        <span th:text="${c2.cc_col_02}">라벨</span>
+        <span th:if="${!sameName}" th:text="${c2.cc_col_02}">라벨</span>
         <select th:if="${opts != null and !#lists.isEmpty(opts)}"
                 th:name="|${fieldKey}_select|">
           <option value="">선택하세요</option>
@@ -346,7 +345,7 @@
 
       <!-- text_only -->
       <div th:if="${type == 'text_only'}" class="input-wrapper">
-        <span th:text="${c2.cc_col_02}">라벨</span>
+        <span th:if="${!sameName}" th:text="${c2.cc_col_02}">라벨</span>
         <input type="text"
                th:name="|${fieldKey}_text|"
                th:value="${valueMap[fieldKey + '_text']}">
@@ -649,6 +648,9 @@
                                                             <button type="button" id="startRecordingBtn" class="btn counsel-file-btn">녹음 시작</button>
                                                             <button type="button" id="stopRecordingBtn" class="btn counsel-file-btn" disabled>녹음 중지</button>
                                                             <button type="button" id="applyDiseaseMatchBtn" class="btn counsel-file-btn">커스텀 매칭</button>
+                                                            <button type="button" id="generateSummaryBtn" class="btn counsel-file-btn"
+                                                                    th:disabled="${!openAiConfigured}"
+                                                                    th:title="${!openAiConfigured ? 'OpenAI API 키 설정 후 사용 가능합니다.' : ''}">상담 요약</button>
                                                         </div>
                                                         <p id="recordingStatus" class="recording-status">대기 중</p>
                                                         <audio id="recordPreview" controls class="record-preview" style="display:none;"></audio>
@@ -965,8 +967,8 @@
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script th:replace="~{csm/Include/layout :: scripts}"></script>
     <script th:src="@{/js/csm/counsel/new.js}"></script>
-    <script th:src="@{/js/csm/counsel/counselFile.js}"></script>
-    <script th:src="@{/js/csm/counsel/counselAudio.js}"></script>
+    <script th:src="@{/js/csm/counsel/counselFile.js(v='20260419a')}"></script>
+    <script th:src="@{/js/csm/counsel/counselAudio.js(v='20260419b')}"></script>
 </body>
 
 </html>
