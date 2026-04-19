@@ -10,7 +10,9 @@
 <body>
 	<div class="wrapper" th:fragment="header(info)"
 	     th:with="u=${info != null ? info : session.userInfo}"
-	     th:attr="data-inst=${u != null ? u.us_col_04 : ''}">
+	     th:attr="data-inst=${u != null ? u.us_col_04 : ''}"
+	     th:classappend="${headerMode == 'list' ? ' header-mode-list' : ''}">
+		<link rel="stylesheet" th:href="@{/css/csm/Include/layout-modern-shell.css(v='20260418d')}">
 		<div class="logo">
 			<div class="home-icon">
 				<button type="button" id="global-menu-toggle" class="menu-toggle-btn" aria-label="메뉴 열기" aria-expanded="false">
@@ -20,6 +22,23 @@
 						<span class="menu-toggle-bar"></span>
 					</span>
 				</button>
+			</div>
+			<div class="header-list-context" th:if="${headerMode == 'list'}" aria-label="상담리스트 헤더 컨텍스트">
+				<div class="header-list-breadcrumb">
+					<span>상담관리</span>
+					<span class="header-list-breadcrumb-sep" aria-hidden="true">›</span>
+					<strong>상담리스트</strong>
+				</div>
+				<div class="header-list-search">
+					<label class="header-list-search-label" for="keywordInput">검색</label>
+					<input id="keywordInput"
+					       name="keyword"
+					       form="searchForm"
+					       type="text"
+					       th:value="${cri != null ? cri.keyword : ''}"
+					       placeholder="환자명, 보호자명, 전화번호, 상담내용 검색">
+					<button type="button" id="searchBtnTop">검색</button>
+				</div>
 			</div>
 			<div class="logo-img">
 				<img th:src="@{/icon/ev/sosyge_logo_w2.png}">

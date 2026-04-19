@@ -18,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.coresolution.csm.config.InstDetails;
 import com.coresolution.csm.serivce.CsmAuthService;
+import com.coresolution.csm.serivce.CsmSchemaBootstrapService;
 import com.coresolution.csm.serivce.MediplatSsoService;
 import com.coresolution.csm.vo.Userdata;
 
@@ -32,6 +33,7 @@ public class MediplatSsoController {
 
     private final MediplatSsoService mediplatSsoService;
     private final CsmAuthService cs;
+    private final CsmSchemaBootstrapService schemaBootstrapService;
 
     @GetMapping({ "mediplat/sso/entry", "/mediplat/sso/entry" })
     public String mediplatSsoEntry(
@@ -42,6 +44,10 @@ public class MediplatSsoController {
             @RequestParam(name = "target", required = false) String target,
             HttpServletRequest request) {
         String normalizedInst = cs.resolveInst(inst);
+        if (normalizedInst == null) {
+            schemaBootstrapService.refreshFromPlatform();
+            normalizedInst = cs.resolveInst(inst);
+        }
         if (normalizedInst == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효하지 않은 기관코드입니다.");
         }
@@ -76,6 +82,10 @@ public class MediplatSsoController {
         }
 
         Userdata info = cs.loadUserInfo(normalizedInst, userId);
+        if (info == null) {
+            schemaBootstrapService.refreshFromPlatform();
+            info = cs.loadUserInfo(normalizedInst, userId);
+        }
         if (!cs.isUserAvailable(info)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "사용 가능한 계정이 아닙니다.");
         }

@@ -854,7 +854,10 @@ public interface CsmMapper {
           .append("LEFT JOIN csm.counsel_data_").append(inst).append("_guardians g ON c.cs_idx = g.cs_idx ")
           .append("WHERE 1=1 ");
 
-      if (nonEmpty(cri.getDateRange()) && !"all".equals(cri.getDateRange())) {
+      if (nonEmpty(cri.getStartDate()) && nonEmpty(cri.getEndDate())) {
+        sb.append(
+            " AND STR_TO_DATE(c.cs_col_16, '%Y-%m-%d') BETWEEN STR_TO_DATE(#{startDate}, '%Y-%m-%d') AND STR_TO_DATE(#{endDate}, '%Y-%m-%d') ");
+      } else if (nonEmpty(cri.getDateRange()) && !"all".equals(cri.getDateRange()) && !"custom".equals(cri.getDateRange())) {
         sb.append(" AND STR_TO_DATE(c.cs_col_16, '%Y-%m-%d') >= DATE_SUB(CURDATE(), INTERVAL #{dateRange} DAY) ");
       }
       if (!nonEmpty(cri.getEnd())) {
@@ -900,7 +903,10 @@ public interface CsmMapper {
           .append("LEFT JOIN csm.counsel_data_").append(inst).append("_guardians g ON c.cs_idx = g.cs_idx ")
           .append("WHERE 1=1 ");
 
-      if (nonEmpty(cri.getDateRange()) && !"all".equals(cri.getDateRange())) {
+      if (nonEmpty(cri.getStartDate()) && nonEmpty(cri.getEndDate())) {
+        sb.append(
+            " AND STR_TO_DATE(c.cs_col_16, '%Y-%m-%d') BETWEEN STR_TO_DATE(#{startDate}, '%Y-%m-%d') AND STR_TO_DATE(#{endDate}, '%Y-%m-%d') ");
+      } else if (nonEmpty(cri.getDateRange()) && !"all".equals(cri.getDateRange()) && !"custom".equals(cri.getDateRange())) {
         sb.append(" AND STR_TO_DATE(c.cs_col_16, '%Y-%m-%d') >= DATE_SUB(CURDATE(), INTERVAL #{dateRange} DAY) ");
       }
       if (!nonEmpty(cri.getEnd())) {

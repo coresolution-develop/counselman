@@ -1,0 +1,221 @@
+@charset "UTF-8";
+
+/* shared modern shell for pages using csm/Include/layout fragments */
+.wrapper {
+    top: 0;
+}
+
+.logo {
+    min-height: 72px;
+    padding: 0 16px;
+    background: rgba(248, 251, 249, 0.94);
+    border-bottom: 1px solid #dbe5df;
+    backdrop-filter: blur(10px);
+}
+
+.menu-toggle-btn {
+    width: 38px;
+    height: 38px;
+    border: 1px solid #c9d6ce;
+    border-radius: 11px;
+    background: #fff;
+}
+
+.menu-toggle-bar {
+    background: #1c4633;
+}
+
+.logo-img {
+    position: static;
+    transform: none;
+    pointer-events: auto;
+    margin-left: 12px;
+}
+
+.logo-img > img {
+    display: none;
+}
+
+.sys-name {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: #143d2c;
+    letter-spacing: -0.02em;
+}
+
+.sys-name .line {
+    display: none;
+}
+
+.header-right {
+    margin-left: auto;
+    gap: 12px;
+}
+
+.info-header {
+    color: #42554c;
+}
+
+.info-header-name,
+.info-header-user,
+.info-header-position {
+    color: #224334;
+    font-weight: 600;
+}
+
+.logout-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    border: 1px solid #cad9d0;
+    background: #fff;
+}
+
+.logout-img > a > img {
+    width: 14px;
+    filter: brightness(0.52);
+}
+
+.wrapper.header-mode-list .logo {
+    position: relative;
+    justify-content: flex-start;
+}
+
+.wrapper.header-mode-list .logo-img {
+    display: none;
+}
+
+.header-list-context {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.header-list-breadcrumb {
+    min-width: max-content;
+    font-size: 14px;
+    color: #5b7066;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.header-list-breadcrumb strong {
+    color: #1f4836;
+}
+
+.header-list-search {
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.header-list-search-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+}
+
+.header-list-search input {
+    width: clamp(170px, 18vw, 240px);
+    height: 40px;
+    border: 1px solid #d3e0d9;
+    border-radius: 999px;
+    padding: 0 16px;
+    font-size: 14px;
+    color: #1e382d;
+}
+
+.header-list-search input:focus {
+    outline: none;
+    border-color: #8db7a3;
+    box-shadow: 0 0 0 3px rgba(74, 147, 111, 0.18);
+}
+
+.header-list-search button {
+    height: 40px;
+    min-width: 68px;
+    border: 1px solid #0f5f3f;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #0f613f, #138657);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.nav_section {
+    top: 72px !important;
+    background: linear-gradient(180deg, #04281d 0%, #053726 56%, #022419 100%);
+    border-right: 1px solid rgba(160, 205, 178, 0.16);
+    box-shadow: 8px 0 26px rgba(2, 24, 14, 0.34);
+    padding-top: 14px;
+}
+
+.nav_section ul {
+    padding: 0 8px;
+}
+
+.nav_section .nav_link {
+    min-height: 46px;
+    border-radius: 11px;
+    margin-bottom: 6px;
+}
+
+.nav_section .nav_link > a,
+.nav_section .nav_link > span,
+.nav_section .nav_link > [data-base-url],
+.nav_section .nav_link > .disabled-link {
+    min-height: 46px;
+    padding: 11px 14px;
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(223, 243, 232, 0.8);
+}
+
+.nav_section .nav_link:hover {
+    background: rgba(109, 179, 143, 0.16);
+}
+
+.nav_section .nav_link.active,
+.nav_section .nav_link.on {
+    border-left: none;
+    background: linear-gradient(90deg, rgba(26, 121, 83, 0.56), rgba(43, 154, 109, 0.28));
+}
+
+.nav_section .nav_link.active > a,
+.nav_section .nav_link.on > a,
+.nav_section .nav_link.active > span,
+.nav_section .nav_link.on > span,
+.nav_section .nav_link.active > [data-base-url],
+.nav_section .nav_link.on > [data-base-url],
+.nav_section .nav_link.active > .disabled-link,
+.nav_section .nav_link.on > .disabled-link {
+    color: #fff;
+}
+
+.nav_section .disabled-link {
+    color: rgba(175, 197, 186, 0.52);
+}
+
+@media screen and (max-width: 900px) {
+    .logo {
+        min-height: 62px;
+        padding: 0 12px;
+    }
+
+    .nav_section {
+        top: 62px !important;
+    }
+
+    .header-list-context {
+        display: none;
+    }
+}

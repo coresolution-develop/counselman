@@ -1404,6 +1404,8 @@ public class PageController {
     public ModelAndView getCounselListView(
             ModelAndView mv, HttpSession session, HttpServletRequest req, Criteria cri,
             @RequestParam(value = "dateRange", defaultValue = "") String dateRange,
+            @RequestParam(value = "startDate", defaultValue = "") String startDate,
+            @RequestParam(value = "endDate", defaultValue = "") String endDate,
             @RequestParam(value = "searchType", defaultValue = "") String searchType,
             @RequestParam(value = "keyword", defaultValue = "") String keyword,
             @RequestParam(value = "end", defaultValue = "on") String end,
@@ -1414,7 +1416,7 @@ public class PageController {
         if (inst == null)
             return new ModelAndView("redirect:/login");
 
-        bindCriteria(cri, inst, page, perPageNum, dateRange, searchType, keyword, end);
+        bindCriteria(cri, inst, page, perPageNum, dateRange, startDate, endDate, searchType, keyword, end);
 
         List<CounselData> cslist = cs.searchCounselData(cri);
         int totalCnt = cs.CounselListCnt(cri);
@@ -1443,7 +1445,11 @@ public class PageController {
         mv.addObject("cslist", cslist);
         mv.addObject("reservedCounselReservations",
                 reservedCounselReservations != null ? reservedCounselReservations : Collections.emptyList());
-        mv.setViewName(isMobile(req) ? "csm/counsel/list_m" : "csm/counsel/list");
+        boolean mobile = isMobile(req);
+        if (!mobile) {
+            mv.addObject("headerMode", "list");
+        }
+        mv.setViewName(mobile ? "csm/counsel/list_m" : "csm/counsel/list");
         return mv;
     }
 
@@ -1452,14 +1458,16 @@ public class PageController {
     public Map<String, Object> getCounselListJson(
             HttpSession session, HttpServletRequest request, Criteria cri,
             @RequestParam(value = "dateRange", defaultValue = "") String dateRange,
+            @RequestParam(value = "startDate", defaultValue = "") String startDate,
+            @RequestParam(value = "endDate", defaultValue = "") String endDate,
             @RequestParam(value = "searchType", defaultValue = "") String searchType,
             @RequestParam(value = "keyword", defaultValue = "") String keyword,
             @RequestParam(value = "end", defaultValue = "on") String end,
             @RequestParam(value = "page", defaultValue = "1") int page,
             @RequestParam(value = "perPageNum", defaultValue = "30") int perPageNum) {
 
-        log.warn("[JSON] /counsel/list ENTER page={} perPageNum={} st={} kw='{}' end={}",
-                page, perPageNum, searchType, keyword, end);
+        log.warn("[JSON] /counsel/list ENTER page={} perPageNum={} range={} start={} endDate={} st={} kw='{}' end={}",
+                page, perPageNum, dateRange, startDate, endDate, searchType, keyword, end);
 
         String inst = ensureInst(session);
         if (inst == null) {
@@ -1467,7 +1475,7 @@ public class PageController {
             return Map.of("success", false, "redirect", loginRedirectPath(request));
         }
 
-        bindCriteria(cri, inst, page, perPageNum, dateRange, searchType, keyword, end);
+        bindCriteria(cri, inst, page, perPageNum, dateRange, startDate, endDate, searchType, keyword, end);
 
         // 1) 조회
         List<CounselData> raw = cs.searchCounselData(cri);
@@ -5885,12 +5893,14 @@ public class PageController {
     /** Criteria 바인딩 & 검색 키워드 처리 */
     private void bindCriteria(
             Criteria cri, String inst, int page, int perPageNum,
-            String dateRange, String searchType, String keyword, String end) {
+            String dateRange, String startDate, String endDate, String searchType, String keyword, String end) {
 
         cri.setInst(inst);
         cri.setPage(page);
         cri.setPerPageNum(perPageNum);
         cri.setDateRange(nullToEmpty(dateRange));
+        cri.setStartDate(normalizeDateParam(startDate));
+        cri.setEndDate(normalizeDateParam(endDate));
         cri.setSearchType(nullToEmpty(searchType));
         cri.setKey(nullToEmpty(keyword)); // 기존 코드 호환: setKey 사용하더라도 아래 setKeyword가 최종 적용
 
@@ -5924,6 +5934,14 @@ public class PageController {
         }
 
         cri.setEnd(end);
+    }
+
+    private String normalizeDateParam(String value) {
+        String normalized = nullToEmpty(value).trim();
+        if (normalized.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            return normalized;
+        }
+        return "";
     }
 
     /** 목록 후처리: 복호화 + 기관별 마스킹 */

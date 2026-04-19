@@ -17,6 +17,13 @@ document.addEventListener("DOMContentLoaded", function () {
   const deleteButton = document.getElementById('del-counsel');
   const newCounselLink = document.getElementById('new-counsel');
   const newReservationLink = document.getElementById('new-reservation');
+  const searchButtonTop = document.getElementById('searchBtnTop');
+  const reservationToggleBtn = document.getElementById('reservationToggleBtn');
+  const reservationBox = document.querySelector('.integrated-reservation-box');
+  const dateRangeSelectEl = document.getElementById('dateRange');
+  const startDateEl = document.getElementById('startDate');
+  const endDateEl = document.getElementById('endDate');
+  const dateRangeCardEl = dateRangeSelectEl ? dateRangeSelectEl.closest('.modern-filter-item') : null;
   const detail = document.getElementById('detail');
   const set = document.getElementById('setting');
   const confirmed = document.getElementById('confirm');
@@ -49,10 +56,73 @@ document.addEventListener("DOMContentLoaded", function () {
   function getCurrentFilters() {
     return {
       dateRange: $('#dateRange').val(),
-      searchType: $('#searchType').val(),
-      keyword: $('#keywordInput').val(),
+      startDate: $('#startDate').val() || '',
+      endDate: $('#endDate').val() || '',
+      searchType: $('#searchType').val() || '',
+      keyword: $('#keywordInput').val() || '',
       end: $('#end').is(':checked') ? 'on' : ''
     };
+  }
+
+  function formatDateValue(dateObj) {
+    const yyyy = dateObj.getFullYear();
+    const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const dd = String(dateObj.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function applyQuickDateRange(daysText) {
+    const days = parseInt(daysText, 10);
+    if (Number.isNaN(days) || days <= 0) return;
+
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(today.getDate() - (days - 1));
+
+    $('#startDate').val(formatDateValue(start));
+    $('#endDate').val(formatDateValue(today));
+  }
+
+  function syncDateRangeByInput() {
+    const startDate = $('#startDate').val();
+    const endDate = $('#endDate').val();
+    if (startDate || endDate) {
+      $('#dateRange').val('custom');
+    }
+    updateCustomDateRangeVisibility();
+  }
+
+  function updateCustomDateRangeVisibility() {
+    if (!dateRangeCardEl || !dateRangeSelectEl) return;
+    const isCustom = dateRangeSelectEl.value === 'custom';
+    dateRangeCardEl.classList.toggle('is-custom-range', isCustom);
+  }
+
+  function validateDateFilterBeforeSearch() {
+    const dateRange = $('#dateRange').val();
+    const startDate = $('#startDate').val();
+    const endDate = $('#endDate').val();
+
+    if (dateRange === 'custom') {
+      if (!startDate || !endDate) {
+        alert('직접 선택은 시작일과 종료일을 모두 입력해주세요.');
+        return false;
+      }
+      if (startDate > endDate) {
+        alert('종료일은 시작일보다 빠를 수 없습니다.');
+        return false;
+      }
+      return true;
+    }
+
+    if (dateRange === 'all') {
+      $('#startDate').val('');
+      $('#endDate').val('');
+      return true;
+    }
+
+    applyQuickDateRange(dateRange);
+    return true;
   }
 
   // scrollDetector를 .content-mid(있으면) 또는 body에 보장
@@ -94,6 +164,35 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function showSpinnerAndNavigate() {
     navigateWithSpinner('/csm/counsel/new');
+  }
+
+  // ========= 상담 접수 카드 아코디언 =========
+  if (reservationToggleBtn && reservationBox) {
+    const RESERVATION_COLLAPSE_KEY = 'csm-list-reservation-collapsed';
+
+    function applyReservationCollapsedState(collapsed) {
+      reservationBox.classList.toggle('is-collapsed', collapsed);
+      reservationToggleBtn.setAttribute('aria-expanded', String(!collapsed));
+      reservationToggleBtn.textContent = collapsed ? '펼치기' : '접기';
+    }
+
+    let collapsed = false;
+    try {
+      collapsed = localStorage.getItem(RESERVATION_COLLAPSE_KEY) === 'true';
+    } catch (e) {
+      collapsed = false;
+    }
+    applyReservationCollapsedState(collapsed);
+
+    reservationToggleBtn.addEventListener('click', function () {
+      const nextCollapsed = !reservationBox.classList.contains('is-collapsed');
+      applyReservationCollapsedState(nextCollapsed);
+      try {
+        localStorage.setItem(RESERVATION_COLLAPSE_KEY, String(nextCollapsed));
+      } catch (e) {
+        // localStorage 접근이 제한된 경우에도 UI는 동작하도록 무시
+      }
+    });
   }
 
   // ========= 이벤트 위임(행 선택/더블클릭) =========
@@ -269,6 +368,41 @@ if (clean.length !== data.length) {
     if (e.keyCode === 13) $('#searchBtn').click();
   });
 
+  $('#dateRange').on('change', function () {
+    const selected = $(this).val();
+    if (selected === 'all') {
+      $('#startDate').val('');
+      $('#endDate').val('');
+      updateCustomDateRangeVisibility();
+      return;
+    }
+    if (selected !== 'custom') {
+      applyQuickDateRange(selected);
+    }
+    updateCustomDateRangeVisibility();
+  });
+
+  $('#startDate, #endDate').on('change', function () {
+    syncDateRangeByInput();
+  });
+
+  (function initDateFilter() {
+    const startDate = $('#startDate').val();
+    const endDate = $('#endDate').val();
+    const dateRange = $('#dateRange').val();
+
+    if (startDate && endDate) {
+      $('#dateRange').val('custom');
+      return;
+    }
+
+    if (dateRange === '10' || dateRange === '30' || dateRange === '90') {
+      applyQuickDateRange(dateRange);
+    }
+
+    updateCustomDateRangeVisibility();
+  })();
+
   // ========= 무한 스크롤 =========
   (function initObserver() {
     const rootEl = document.querySelector('.content-mid') || null; // 없으면 viewport
@@ -285,6 +419,9 @@ if (clean.length !== data.length) {
   // 검색 버튼
   $('#searchBtn').click(function (event) {
     event.preventDefault();
+    if (!validateDateFilterBeforeSearch()) {
+      return;
+    }
     // 상태 초기화
     page = 1;
     hasMoreData = true;
@@ -295,6 +432,12 @@ if (clean.length !== data.length) {
     // 새 필터로 첫 페이지
     loadCounselData(getCurrentFilters());
   });
+
+  if (searchButtonTop) {
+    searchButtonTop.addEventListener('click', function () {
+      $('#searchBtn').click();
+    });
+  }
 
   // ========= 서버 키 정규화 =========
   function normalizeOrderItems(items) {

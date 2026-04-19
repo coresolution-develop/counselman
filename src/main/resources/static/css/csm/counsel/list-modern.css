@@ -1,0 +1,1153 @@
+@charset "UTF-8";
+
+body.counsel-list-modern {
+    background:
+        radial-gradient(circle at 85% -5%, rgba(26, 89, 62, 0.18), transparent 34%),
+        linear-gradient(180deg, #f2f6f3 0%, #eef3f0 100%);
+    color: #16271f;
+}
+
+body.counsel-list-modern .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
+body.counsel-list-modern .wrapper {
+    top: 0;
+}
+
+body.counsel-list-modern .logo {
+    min-height: 72px;
+    padding: 0 24px;
+    background: rgba(248, 251, 249, 0.92);
+    border-bottom: 1px solid #dbe5df;
+    backdrop-filter: blur(10px);
+}
+
+body.counsel-list-modern .menu-toggle-btn {
+    width: 38px;
+    height: 38px;
+    border: 1px solid #c9d6ce;
+    border-radius: 11px;
+    background: #fff;
+}
+
+body.counsel-list-modern .menu-toggle-bar {
+    background: #1c4633;
+}
+
+body.counsel-list-modern .logo-img {
+    position: static;
+    transform: none;
+    pointer-events: auto;
+    margin-left: 12px;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .logo {
+    justify-content: flex-start;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .logo-img {
+    display: none;
+}
+
+body.counsel-list-modern .logo-img > img {
+    display: none;
+}
+
+body.counsel-list-modern .sys-name {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: #143d2c;
+    letter-spacing: -0.02em;
+}
+
+body.counsel-list-modern .sys-name .line {
+    display: none;
+}
+
+body.counsel-list-modern .header-right {
+    margin-left: auto;
+    gap: 12px;
+}
+
+body.counsel-list-modern .info-header {
+    color: #42554c;
+}
+
+body.counsel-list-modern .info-header-name,
+body.counsel-list-modern .info-header-user,
+body.counsel-list-modern .info-header-position {
+    color: #224334;
+    font-weight: 600;
+}
+
+body.counsel-list-modern .logout-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    border: 1px solid #cad9d0;
+    background: #fff;
+}
+
+body.counsel-list-modern .logout-img {
+    display: none;
+}
+
+body.counsel-list-modern .header-list-context {
+    flex: 0 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-left: 14px;
+}
+
+body.counsel-list-modern .header-list-breadcrumb {
+    min-width: max-content;
+    font-size: 14px;
+    color: #5b7066;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+body.counsel-list-modern .header-list-breadcrumb strong {
+    color: #1f4836;
+}
+
+body.counsel-list-modern .header-list-search {
+    flex: 0 0 auto;
+    min-width: 320px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+body.counsel-list-modern .header-list-search-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+}
+
+body.counsel-list-modern .header-list-search input {
+    width: 220px;
+    flex: 0 0 220px;
+    height: 40px;
+    border: 1px solid #d3e0d9;
+    border-radius: 999px;
+    padding: 0 16px;
+    font-size: 14px;
+    color: #1e382d;
+}
+
+body.counsel-list-modern .header-list-search input:focus {
+    outline: none;
+    border-color: #8db7a3;
+    box-shadow: 0 0 0 3px rgba(74, 147, 111, 0.18);
+}
+
+body.counsel-list-modern .header-list-search button {
+    height: 40px;
+    min-width: 72px;
+    border: 1px solid #0f5f3f;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #0f613f, #138657);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+body.counsel-list-modern .nav_section {
+    width: 230px;
+    top: 72px !important;
+    height: calc(100% - 72px);
+    background: linear-gradient(180deg, #04281d 0%, #053726 56%, #022419 100%);
+    border-right: 1px solid rgba(160, 205, 178, 0.16);
+    box-shadow: 8px 0 26px rgba(2, 24, 14, 0.34);
+    padding-top: 14px;
+}
+
+body.counsel-list-modern .nav_section ul {
+    padding: 0 10px;
+}
+
+body.counsel-list-modern .nav_link {
+    min-height: 46px;
+    border-radius: 11px;
+    margin-bottom: 6px;
+}
+
+body.counsel-list-modern .nav_link > a,
+body.counsel-list-modern .nav_link > span,
+body.counsel-list-modern .nav_link > [data-base-url],
+body.counsel-list-modern .nav_link > .disabled-link {
+    min-height: 46px;
+    padding: 11px 14px;
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(223, 243, 232, 0.8);
+}
+
+body.counsel-list-modern .nav_link:hover {
+    background: rgba(109, 179, 143, 0.16);
+}
+
+body.counsel-list-modern .nav_link.active,
+body.counsel-list-modern .nav_link.on,
+body.counsel-list-modern .active,
+body.counsel-list-modern .on {
+    border-left: none;
+    color: #fff;
+    background: linear-gradient(90deg, rgba(26, 121, 83, 0.56), rgba(43, 154, 109, 0.28));
+}
+
+body.counsel-list-modern .disabled-link {
+    color: rgba(175, 197, 186, 0.52);
+}
+
+body.counsel-list-modern .main {
+    margin-left: 230px;
+    width: calc(100% - 230px);
+    max-width: none;
+    padding: 86px 22px 22px;
+    height: 100vh;
+}
+
+body.counsel-list-modern .section {
+    height: calc(100vh - 108px);
+    border-radius: 22px;
+    border: 1px solid #dce7e1;
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: 0 14px 36px rgba(19, 42, 31, 0.08);
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+body.counsel-list-modern .list-modern-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 2px;
+}
+
+body.counsel-list-modern .list-modern-breadcrumb {
+    margin: 0;
+    font-size: 13px;
+    color: #587066;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+body.counsel-list-modern .list-modern-toolbar h2 {
+    margin: 6px 0 0;
+    font-size: 24px;
+    letter-spacing: -0.03em;
+    color: #173d2d;
+}
+
+body.counsel-list-modern .list-modern-toolbar-center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+}
+
+body.counsel-list-modern .toolbar-search-wrap {
+    width: min(100%, 620px);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+body.counsel-list-modern .toolbar-search-input {
+    width: 100%;
+    height: 42px;
+    border-radius: 999px;
+    border: 1px solid #d3e0d9;
+    background: #fff;
+    padding: 0 18px;
+    font-size: 14px;
+    color: #1e382d;
+}
+
+body.counsel-list-modern .toolbar-search-input::placeholder {
+    color: #7b8f85;
+}
+
+body.counsel-list-modern .toolbar-search-input:focus {
+    outline: none;
+    border-color: #8db7a3;
+    box-shadow: 0 0 0 3px rgba(74, 147, 111, 0.18);
+}
+
+body.counsel-list-modern .toolbar-search-btn {
+    height: 42px;
+    min-width: 78px;
+    border-radius: 999px;
+    border: 1px solid #0f5f3f;
+    background: linear-gradient(135deg, #0f613f, #138657);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+body.counsel-list-modern .toolbar-icon-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid #d4e1da;
+    background: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+body.counsel-list-modern #setting {
+    width: 40px;
+    height: 40px;
+    margin: 0;
+    border: 1px solid #d4e1da;
+    border-radius: 10px;
+    background: #fff;
+    padding: 0;
+}
+
+body.counsel-list-modern .list-setting-btn {
+    width: 38px;
+    height: 38px;
+}
+
+body.counsel-list-modern .toolbar-icon-btn img {
+    width: 18px;
+    height: 18px;
+}
+
+body.counsel-list-modern .content-top {
+    background: #f4f7f5;
+    border-radius: 16px;
+    border: 1px solid #dce7e1;
+    padding: 10px 12px;
+    margin-bottom: 0;
+}
+
+body.counsel-list-modern .section-top form {
+    height: auto !important;
+}
+
+body.counsel-list-modern .content-inner {
+    display: block;
+}
+
+body.counsel-list-modern .search-container {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+body.counsel-list-modern .modern-filter-grid {
+    display: grid;
+    grid-template-columns: minmax(380px, 1.45fr) minmax(190px, 1fr) minmax(190px, 1fr) auto auto;
+    gap: 12px;
+    align-items: stretch;
+}
+
+body.counsel-list-modern .modern-filter-item {
+    min-width: 0;
+    background: #ffffff;
+    border: 1px solid #d7e4dc;
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+}
+
+body.counsel-list-modern .modern-filter-item label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: #446457;
+    letter-spacing: 0.02em;
+    margin: 0;
+}
+
+body.counsel-list-modern .modern-filter-item select {
+    width: 100%;
+    height: 40px;
+    border: 1px solid #cfdcd4;
+    border-radius: 9px;
+    padding: 0 36px 0 12px;
+    background-color: #fff;
+    color: #224031;
+    font-size: 13px;
+    font-weight: 500;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, #6c8176 50%), linear-gradient(135deg, #6c8176 50%, transparent 50%);
+    background-position: calc(100% - 16px) calc(50% - 2px), calc(100% - 11px) calc(50% - 2px);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+}
+
+body.counsel-list-modern .modern-date-range-inputs {
+    margin-top: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+body.counsel-list-modern .modern-date-range-inputs input[type="date"] {
+    width: 100%;
+    min-width: 0;
+    height: 40px;
+    border: 1px solid #cfdcd4;
+    border-radius: 9px;
+    padding: 0 10px;
+    font-size: 13px;
+    color: #1f3a2d;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+body.counsel-list-modern .modern-date-range-inputs input[type="date"]::-webkit-calendar-picker-indicator {
+    opacity: 0.72;
+    cursor: pointer;
+}
+
+body.counsel-list-modern .modern-date-range-inputs span {
+    color: #5f756a;
+    font-weight: 600;
+}
+
+body.counsel-list-modern .modern-filter-item select:disabled {
+    color: #5b7267;
+    background-color: #f7faf8;
+    opacity: 1;
+}
+
+body.counsel-list-modern .modern-filter-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 2px 10px;
+}
+
+body.counsel-list-modern .modern-filter-check label {
+    margin: 0;
+}
+
+body.counsel-list-modern .modern-filter-action {
+    display: inline-flex;
+    align-items: end;
+    gap: 8px;
+    padding-bottom: 1px;
+}
+
+body.counsel-list-modern .inner-top,
+body.counsel-list-modern .inner-bot,
+body.counsel-list-modern .inner-section,
+body.counsel-list-modern .inner-area {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+body.counsel-list-modern .inner-area select,
+body.counsel-list-modern .search-mobile {
+    border: 1px solid #cfddd5;
+    border-radius: 10px;
+    height: 38px;
+    margin: 0;
+    color: #1f3a2d;
+    background-color: #fff;
+}
+
+body.counsel-list-modern .inner-area select {
+    min-width: 128px;
+    font-size: 13px;
+}
+
+body.counsel-list-modern .search-mobile {
+    width: 280px;
+    font-size: 13px;
+}
+
+body.counsel-list-modern #end {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+}
+
+body.counsel-list-modern #end + label span {
+    color: #2a4137 !important;
+    font-weight: 600;
+}
+
+body.counsel-list-modern .btn.search-box.listBtn.btnw100 {
+    width: 100px;
+    margin: 0;
+    border-radius: 10px;
+    height: 38px;
+    background: linear-gradient(135deg, #0d5f3f, #128553);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+body.counsel-list-modern .integrated-reservation-box {
+    border: 1px solid #dbe8e1;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #f9fcfa, #f0f6f2);
+    padding: 14px;
+    margin-bottom: 0;
+}
+
+body.counsel-list-modern .integrated-reservation-head {
+    margin-bottom: 10px;
+}
+
+body.counsel-list-modern .integrated-reservation-head h3 {
+    font-size: 15px;
+    color: #173b2d;
+}
+
+body.counsel-list-modern .integrated-reservation-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+body.counsel-list-modern .reservation-toggle-btn,
+body.counsel-list-modern .integrated-reservation-manage {
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid #caded2;
+    background: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    color: #1b553d;
+    cursor: pointer;
+}
+
+body.counsel-list-modern .integrated-reservation-manage {
+    background: #f6fbf8;
+}
+
+body.counsel-list-modern .integrated-reservation-body {
+    overflow: hidden;
+    max-height: 230px;
+    transition: max-height 0.22s ease, opacity 0.22s ease;
+}
+
+body.counsel-list-modern .integrated-reservation-box.is-collapsed .integrated-reservation-head {
+    margin-bottom: 0;
+}
+
+body.counsel-list-modern .integrated-reservation-box.is-collapsed .integrated-reservation-body {
+    max-height: 0;
+    opacity: 0;
+}
+
+body.counsel-list-modern .integrated-reservation-list {
+    max-height: 180px;
+}
+
+body.counsel-list-modern .integrated-reservation-item {
+    border: 1px solid #e2ece6;
+    border-radius: 12px;
+    background: #fff;
+    padding: 10px;
+}
+
+body.counsel-list-modern .reservation-link-btn {
+    border: 1px solid #c9ddd2;
+    border-radius: 8px;
+    font-weight: 700;
+}
+
+body.counsel-list-modern .list-table-shell {
+    flex: 1;
+    min-height: 0;
+    border: 1px solid #dce7e1;
+    border-radius: 20px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+body.counsel-list-modern .list-table-head {
+    padding: 14px 16px;
+    border-bottom: 1px solid #ecf2ee;
+}
+
+body.counsel-list-modern .list-table-head h3 {
+    margin: 0;
+    color: #1a3f2f;
+    font-size: 19px;
+}
+
+body.counsel-list-modern .content-mid {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+}
+
+body.counsel-list-modern .section-mid {
+    height: 100%;
+    overflow: auto;
+    padding-right: 0;
+}
+
+body.counsel-list-modern #table-header {
+    top: 0;
+    z-index: 4;
+}
+
+body.counsel-list-modern #myTable th {
+    padding: 12px;
+    background: #f4f8f5;
+    color: #426055;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+body.counsel-list-modern #myTable td {
+    border: 1px solid #eef3ef;
+    color: #2a4137;
+    font-size: 13px;
+}
+
+body.counsel-list-modern .counselRow:hover td {
+    background: #f7fbf8 !important;
+}
+
+body.counsel-list-modern .counselRow.selected-row,
+body.counsel-list-modern .counselRow.selected-row * {
+    background-color: #e9f4ee !important;
+}
+
+body.counsel-list-modern .section-bot {
+    margin-top: 0;
+}
+
+body.counsel-list-modern .search-status-area {
+    border-top: 1px solid #edf4ef;
+    padding-top: 12px;
+}
+
+body.counsel-list-modern .status-area {
+    width: 100%;
+}
+
+body.counsel-list-modern #del-counsel,
+body.counsel-list-modern #new-reservation,
+body.counsel-list-modern #new-counsel {
+    border-radius: 10px;
+    border: 1px solid transparent;
+    min-width: 118px;
+    height: 38px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+body.counsel-list-modern #new-reservation {
+    background: #e7f3ec;
+    border-color: #d0e5d9;
+    color: #194d35;
+}
+
+body.counsel-list-modern #new-counsel {
+    background: linear-gradient(135deg, #0d5f3f, #128553);
+}
+
+body.counsel-list-modern #del-counsel {
+    background: #fff3f3;
+    border-color: #f2d4d4;
+    color: #8f2020;
+}
+
+body.counsel-list-modern .list-nav-logout {
+    position: fixed;
+    left: 10px;
+    bottom: 14px;
+    z-index: 1002;
+    width: 210px;
+    height: 44px;
+    border-radius: 11px;
+    border: 1px solid rgba(185, 224, 204, 0.24);
+    background: rgba(13, 62, 43, 0.76);
+    color: rgba(223, 243, 232, 0.92);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+body.counsel-list-modern.nav-collapsed .list-nav-logout {
+    display: none;
+}
+
+body.counsel-list-modern .list-nav-logout:hover {
+    background: rgba(21, 82, 58, 0.9);
+}
+
+body.counsel-list-modern .list-nav-logout-icon {
+    width: 13px;
+    height: 13px;
+    display: inline-block;
+    background-image: url('../../../icon/ev/logout_new.png');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    filter: brightness(2.4);
+}
+
+@media screen and (max-width: 1260px) {
+    body.counsel-list-modern .nav_section {
+        width: 205px;
+    }
+
+    body.counsel-list-modern .main {
+        margin-left: 205px;
+        width: calc(100% - 205px);
+        padding: 82px 14px 14px;
+    }
+
+    body.counsel-list-modern .section {
+        padding: 14px;
+    }
+
+    body.counsel-list-modern .modern-filter-grid {
+        grid-template-columns: minmax(320px, 1.3fr) minmax(170px, 1fr) minmax(170px, 1fr);
+    }
+
+    body.counsel-list-modern .header-list-context {
+        gap: 10px;
+    }
+
+    body.counsel-list-modern .header-list-breadcrumb {
+        font-size: 13px;
+    }
+
+    body.counsel-list-modern .header-list-search {
+        min-width: 260px;
+    }
+
+    body.counsel-list-modern .header-list-search input {
+        width: 170px;
+        flex-basis: 170px;
+    }
+
+    body.counsel-list-modern .list-nav-logout {
+        width: 185px;
+    }
+}
+
+@media screen and (max-width: 900px) {
+    body.counsel-list-modern .logo {
+        min-height: 62px;
+    }
+
+    body.counsel-list-modern .nav_section {
+        display: none !important;
+    }
+
+    body.counsel-list-modern .main {
+        margin-left: 0;
+        width: 100%;
+        padding: 74px 10px 12px;
+        height: auto;
+        min-height: 100vh;
+    }
+
+    body.counsel-list-modern .section {
+        height: auto;
+        min-height: calc(100vh - 90px);
+        border-radius: 14px;
+    }
+
+    body.counsel-list-modern .wrapper.header-mode-list .logo-img {
+        display: inline-flex;
+    }
+
+    body.counsel-list-modern .header-list-context {
+        display: none;
+    }
+
+    body.counsel-list-modern .logout-img {
+        display: flex;
+    }
+
+    body.counsel-list-modern .content-top {
+        padding: 10px;
+    }
+
+    body.counsel-list-modern .modern-filter-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    body.counsel-list-modern .modern-filter-check {
+        padding-bottom: 2px;
+    }
+
+    body.counsel-list-modern .list-table-shell {
+        min-height: 360px;
+    }
+
+    body.counsel-list-modern .list-nav-logout {
+        display: none;
+    }
+}
+
+@media screen and (max-width: 720px) {
+    body.counsel-list-modern .integrated-reservation-box {
+        display: block;
+    }
+
+    body.counsel-list-modern .integrated-reservation-head {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    body.counsel-list-modern .integrated-reservation-head-actions {
+        width: 100%;
+    }
+
+    body.counsel-list-modern .reservation-toggle-btn,
+    body.counsel-list-modern .integrated-reservation-manage {
+        flex: 1;
+    }
+
+    body.counsel-list-modern .content-mid {
+        margin-top: 0;
+    }
+
+    body.counsel-list-modern .section-mid {
+        display: block;
+    }
+}
+
+/* ===== Stability Hotfix (2026-04-18) ===== */
+body.counsel-list-modern .wrapper.header-mode-list .logo {
+    min-height: 64px;
+    padding: 0 14px;
+}
+
+body.counsel-list-modern .main {
+    padding-top: 76px;
+}
+
+body.counsel-list-modern .header-list-context {
+    max-width: 560px;
+    flex: 1 1 auto;
+}
+
+body.counsel-list-modern .header-list-search {
+    min-width: 0;
+    width: auto;
+}
+
+body.counsel-list-modern .header-list-search input {
+    width: 150px;
+    flex: 0 0 150px;
+}
+
+body.counsel-list-modern .header-list-search button {
+    min-width: 62px;
+    height: 36px;
+}
+
+body.counsel-list-modern .content-top {
+    padding: 12px;
+}
+
+body.counsel-list-modern .modern-filter-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+body.counsel-list-modern .modern-filter-item {
+    flex: 1 1 240px;
+    min-width: 220px;
+    max-width: 360px;
+    padding: 10px 12px;
+}
+
+body.counsel-list-modern .modern-filter-item:first-child {
+    flex: 1 1 420px;
+    max-width: 520px;
+}
+
+body.counsel-list-modern .modern-filter-item select {
+    height: 36px;
+}
+
+body.counsel-list-modern .modern-date-range-inputs {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 4px;
+}
+
+body.counsel-list-modern .modern-date-range-inputs input[type="date"] {
+    height: 36px;
+    min-width: 0;
+}
+
+body.counsel-list-modern .modern-filter-check {
+    flex: 0 0 auto;
+    padding: 0 4px 8px;
+}
+
+body.counsel-list-modern .modern-filter-action {
+    flex: 0 0 auto;
+    padding-bottom: 0;
+}
+
+body.counsel-list-modern .modern-filter-action .btn.search-box.listBtn.btnw100 {
+    height: 36px;
+}
+
+@media screen and (max-width: 1360px) {
+    body.counsel-list-modern .header-list-breadcrumb {
+        display: none;
+    }
+
+    body.counsel-list-modern .header-list-context {
+        max-width: 300px;
+    }
+}
+
+@media screen and (max-width: 1100px) {
+    body.counsel-list-modern .header-list-search input {
+        width: 130px;
+        flex-basis: 130px;
+    }
+
+    body.counsel-list-modern .modern-filter-item:first-child {
+        flex-basis: 100%;
+        max-width: 100%;
+    }
+}
+
+/* ===== SearchForm Final Fix ===== */
+body.counsel-list-modern .content-top #searchForm {
+    width: 100% !important;
+    height: auto !important;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-filter-grid {
+    display: grid !important;
+    grid-template-columns: minmax(360px, 1.45fr) minmax(170px, 1fr) minmax(170px, 1fr) auto auto;
+    gap: 10px;
+    align-items: end;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-filter-item {
+    min-width: 0;
+    max-width: none;
+    background: #fff;
+    border: 1px solid #d7e4dc;
+    border-radius: 12px;
+    padding: 10px 12px;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-filter-item label {
+    margin-bottom: 6px;
+    font-size: 12px;
+    color: #446457;
+    letter-spacing: 0.01em;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-filter-item select {
+    width: 100%;
+    height: 38px;
+    border: 1px solid #cfddd5;
+    border-radius: 9px;
+    padding: 0 34px 0 10px;
+    background-color: #fff;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-date-range-inputs {
+    margin-top: 6px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 6px;
+    width: 100%;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-date-range-inputs input[type="date"] {
+    width: 100%;
+    min-width: 0;
+    height: 38px;
+    border: 1px solid #cfddd5;
+    border-radius: 9px;
+    padding: 0 8px;
+    box-sizing: border-box;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-filter-check {
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-filter-action {
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+}
+
+body.counsel-list-modern .content-top #searchForm #searchBtn {
+    width: 96px;
+    height: 38px;
+    margin: 0;
+}
+
+@media screen and (max-width: 1340px) {
+    body.counsel-list-modern .content-top #searchForm .modern-filter-grid {
+        grid-template-columns: minmax(320px, 1.35fr) minmax(160px, 1fr) minmax(160px, 1fr);
+    }
+
+    body.counsel-list-modern .content-top #searchForm .modern-filter-check,
+    body.counsel-list-modern .content-top #searchForm .modern-filter-action {
+        justify-self: start;
+    }
+}
+
+@media screen and (max-width: 980px) {
+    body.counsel-list-modern .content-top #searchForm .modern-filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    body.counsel-list-modern .content-top #searchForm .modern-filter-check,
+    body.counsel-list-modern .content-top #searchForm .modern-filter-action {
+        width: 100%;
+    }
+}
+
+/* ===== SearchForm Critical Layout (prevent overlap) ===== */
+body.counsel-list-modern .content-top,
+body.counsel-list-modern .content-top .section-top,
+body.counsel-list-modern .content-top #searchForm,
+body.counsel-list-modern .content-top #searchForm .content-inner {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-filter-grid {
+    display: grid !important;
+    grid-template-columns: minmax(340px, 1.45fr) minmax(170px, 1fr) minmax(170px, 1fr) auto auto;
+    align-items: start !important;
+    gap: 10px !important;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-filter-item {
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-date-range-inputs {
+    display: none !important;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-filter-item.is-custom-range .modern-date-range-inputs {
+    display: grid !important;
+}
+
+body.counsel-list-modern .content-top #searchForm .modern-filter-check,
+body.counsel-list-modern .content-top #searchForm .modern-filter-action {
+    align-self: center;
+}
+
+@media screen and (max-width: 1340px) {
+    body.counsel-list-modern .content-top #searchForm .modern-filter-grid {
+        grid-template-columns: minmax(300px, 1.35fr) minmax(160px, 1fr) minmax(160px, 1fr);
+    }
+}
+
+@media screen and (max-width: 980px) {
+    body.counsel-list-modern .content-top #searchForm .modern-filter-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===== Header Search Center Align (list page) ===== */
+body.counsel-list-modern .wrapper.header-mode-list .logo {
+    position: relative;
+    justify-content: space-between;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .header-list-context {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-left: 0;
+    max-width: min(56vw, 620px);
+    width: auto;
+    gap: 10px;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .header-list-breadcrumb {
+    font-size: 13px;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .header-list-search {
+    width: clamp(180px, 22vw, 280px);
+    min-width: 0;
+}
+
+body.counsel-list-modern .wrapper.header-mode-list .header-list-search input {
+    width: 100%;
+    flex: 1 1 auto;
+}
+
+@media screen and (max-width: 1260px) {
+    body.counsel-list-modern .wrapper.header-mode-list .header-list-context {
+        max-width: min(50vw, 500px);
+    }
+}

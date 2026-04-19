@@ -8,6 +8,29 @@ MEDIPLAT_PORT="${MEDIPLAT_PORT:-8082}"
 CSM_PID=""
 MEDIPLAT_PID=""
 
+init_local_defaults() {
+  export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-local}"
+
+  export LOCAL_DB_HOST="${LOCAL_DB_HOST:-127.0.0.1}"
+  export LOCAL_DB_PORT="${LOCAL_DB_PORT:-3306}"
+  export LOCAL_DB_NAME="${LOCAL_DB_NAME:-csm}"
+  export LOCAL_DB_USERNAME="${LOCAL_DB_USERNAME:-root}"
+  export LOCAL_DB_PASSWORD="${LOCAL_DB_PASSWORD:-core0220!!}"
+
+  # csm/mediplat 모두 동일한 로컬 DB를 기본으로 사용
+  export SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL:-jdbc:mysql://${LOCAL_DB_HOST}:${LOCAL_DB_PORT}/${LOCAL_DB_NAME}?serverTimezone=Asia/Seoul&useSSL=false&characterEncoding=UTF-8&allowPublicKeyRetrieval=true}"
+  export SPRING_DATASOURCE_USERNAME="${SPRING_DATASOURCE_USERNAME:-${LOCAL_DB_USERNAME}}"
+  export SPRING_DATASOURCE_PASSWORD="${SPRING_DATASOURCE_PASSWORD:-${LOCAL_DB_PASSWORD}}"
+
+  export MEDIPLAT_DATASOURCE_URL="${MEDIPLAT_DATASOURCE_URL:-${SPRING_DATASOURCE_URL}}"
+  export MEDIPLAT_DATASOURCE_USERNAME="${MEDIPLAT_DATASOURCE_USERNAME:-${SPRING_DATASOURCE_USERNAME}}"
+  export MEDIPLAT_DATASOURCE_PASSWORD="${MEDIPLAT_DATASOURCE_PASSWORD:-${SPRING_DATASOURCE_PASSWORD}}"
+
+  # 빈 로컬 DB에서 csm 기동 실패를 유발하는 bootstrap 기본값 OFF
+  export PLATFORM_ADMIN_BOOTSTRAP_ENABLED="${PLATFORM_ADMIN_BOOTSTRAP_ENABLED:-false}"
+  export PLATFORM_ADMIN_SYNC_PASSWORD_ON_STARTUP="${PLATFORM_ADMIN_SYNC_PASSWORD_ON_STARTUP:-false}"
+}
+
 ensure_java17() {
   local java_home_candidate=""
 
@@ -99,6 +122,7 @@ monitor_processes() {
 trap cleanup EXIT INT TERM
 
 ensure_java17
+init_local_defaults
 check_port "${CSM_PORT}" "csm"
 check_port "${MEDIPLAT_PORT}" "mediplat"
 
@@ -106,6 +130,8 @@ echo "Starting local services..."
 echo "- CounselMan : http://localhost:${CSM_PORT}/csm/login"
 echo "- MediPlat   : http://localhost:${MEDIPLAT_PORT}/login"
 echo "- JAVA_HOME  : ${JAVA_HOME}"
+echo "- SPRING_PROFILE : ${SPRING_PROFILES_ACTIVE}"
+echo "- DB_URL      : ${SPRING_DATASOURCE_URL}"
 
 start_csm
 start_mediplat
