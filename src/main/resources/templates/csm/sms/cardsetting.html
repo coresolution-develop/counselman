@@ -107,15 +107,35 @@
     </div>
 </div>
 
-<div class="modal normal">
-    <div class="modal_body">
-        <div>
-            <div class="menu_msg">text</div>
-            <input type="text" style="margin-bottom: 10px; font-size: 14px;" class="modal-input" id="card_title" name="card_title" placeholder="서명 이름을 입력하세요.">
-            <textarea style="height: 150px; font-size: 14px;" class="modal-input" id="card_content" placeholder="추가할 서명내용 입력하세요."></textarea>
+<div class="modal normal sms-template-modal card-template-modal"
+     id="cardTemplateModal"
+     role="dialog"
+     aria-modal="true"
+     aria-hidden="true"
+     aria-labelledby="cardTemplateModalTitle">
+    <div class="modal_body sms-template-modal-body">
+        <div class="sms-template-modal-inner">
+            <div class="sms-template-modal-header">
+                <div class="menu_msg" id="cardTemplateModalTitle">서명 추가</div>
+                <button type="button" class="sms-template-modal-close" id="cardModalCloseBtn" aria-label="모달 닫기">×</button>
+            </div>
+            <label class="sms-template-label" for="card_title">서명이름</label>
+            <input type="text"
+                   class="modal-input"
+                   id="card_title"
+                   name="card_title"
+                   maxlength="100"
+                   autocomplete="off"
+                   placeholder="서명 이름을 입력하세요.">
+            <label class="sms-template-label" for="card_content">서명내용</label>
+            <textarea class="modal-input"
+                      id="card_content"
+                      maxlength="2000"
+                      placeholder="추가할 서명내용을 입력하세요."></textarea>
+            <div class="sms-template-length"><span id="card_content_length">0</span>/2000자</div>
             <div class="modal_footer">
                 <div class="btn modal_btn" id="templateSaveBtn">확인</div>
-                <div class="btn pink_btn2 listBtn" onclick="closeModal()">취소</div>
+                <div class="btn pink_btn2 listBtn" id="cardCancelBtn">취소</div>
             </div>
         </div>
     </div>

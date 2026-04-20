@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', function () {
   const uploadBtn = document.getElementById('uploadCounselFileBtn');
   const fileInput = document.getElementById('counselFileInput');
+  const fileDropZoneEl = document.getElementById('counselFileDropZone');
   const fileListEl = document.getElementById('counselFileList');
   const fileStatusEl = document.getElementById('counselFileStatus');
   const fileTempKeyInput = document.getElementById('file_temp_key');
@@ -9,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const csIdxRaw = document.querySelector('input[name="cs_idx"]')?.value || '';
   const csIdx = /^\d+$/.test(csIdxRaw) ? Number(csIdxRaw) : null;
 
-  if (!uploadBtn || !fileInput || !fileListEl || !fileTempKeyInput) {
+  if (!fileInput || !fileListEl || !fileTempKeyInput) {
     return;
   }
 
@@ -74,6 +75,12 @@ document.addEventListener('DOMContentLoaded', function () {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function isCounselFileCandidate(file) {
+    if (!file) return false;
+    const name = String(file.name || '').trim();
+    return name.length > 0;
   }
 
   function previewMode(item) {
@@ -403,7 +410,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const extracted = String(item?.extractedText || '').trim();
     const mode = previewMode(item);
     const helperMessage = extracted
-      ? (openAiSummaryAvailable ? '원문은 저장되어 있습니다. 요약 생성 또는 적용을 선택해 주세요.' : '원문은 저장되어 있습니다. 적용 버튼으로 반영할 수 있습니다.')
+      ? (openAiSummaryAvailable ? '원문은 저장되어 있습니다. 요약 생성 또는 적용(커스텀 반영)을 선택해 주세요.' : '원문은 저장되어 있습니다. 적용 버튼으로 커스텀 항목을 반영할 수 있습니다.')
       : '문서 텍스트 추출 버튼을 눌러 원문과 매칭 후보를 먼저 확인해 주세요.';
 
     return `
@@ -534,8 +541,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function uploadCounselFile(file) {
     if (!file) return;
-    uploadBtn.disabled = true;
-    uploadBtn.textContent = '업로드 중...';
+    if (!isCounselFileCandidate(file)) {
+      setFileStatus('업로드 가능한 파일을 선택해 주세요.', true);
+      return;
+    }
+    if (uploadBtn) {
+      uploadBtn.disabled = true;
+      uploadBtn.textContent = '업로드 중...';
+    }
     setFileStatus('첨부파일 업로드 중...');
 
     try {
@@ -564,16 +577,11 @@ document.addEventListener('DOMContentLoaded', function () {
     } catch (_) {
       setFileStatus('첨부파일 업로드 중 오류', true);
     } finally {
-      uploadBtn.disabled = false;
-      uploadBtn.textContent = '서류 업로드';
+      if (uploadBtn) {
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = '서류 업로드';
+      }
     }
-  }
-
-  function hasExtractedTextInCounsel(text) {
-    if (!counselContentInput) return false;
-    const clean = String(text || '').trim();
-    if (!clean) return false;
-    return String(counselContentInput.value || '').includes(clean);
   }
 
   function applySelectedCustomMatches(matches) {
@@ -623,15 +631,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!clean) return { appended: false, matchedCount: 0 };
 
     const title = String(filename || '').trim();
-    let appended = false;
-    if (!hasExtractedTextInCounsel(clean)) {
-      const block = title
-        ? `[첨부문서:${title}]\n${clean}\n[/첨부문서]`
-        : clean;
-      const prev = String(counselContentInput.value || '').trim();
-      counselContentInput.value = prev ? `${prev}\n\n${block}` : block;
-      appended = true;
-    }
+    const appended = false;
     const matchedCount = applySelectedCustomMatches(selectedMatches);
 
     document.dispatchEvent(new CustomEvent('counsel-file-text', {
@@ -667,9 +667,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const matchedCandidates = analyzeCustomMatchFromText(text).length;
       if (matchedCandidates > 0) {
-        setFileStatus(`텍스트 추출 완료 (매칭 후보 ${matchedCandidates}건). 적용 버튼으로 반영해 주세요.`);
+        setFileStatus(`텍스트 추출 완료 (매칭 후보 ${matchedCandidates}건). 적용 버튼으로 커스텀 항목을 반영해 주세요.`);
       } else {
-        setFileStatus('텍스트 추출 완료. 적용 버튼으로 상담내용에 반영할 수 있습니다.');
+        setFileStatus('텍스트 추출 완료. 적용 가능한 커스텀 매칭 후보가 없습니다.');
       }
       await fetchCounselFileList();
     } catch (_) {
@@ -706,14 +706,10 @@ document.addEventListener('DOMContentLoaded', function () {
       })).filter((match) => match.base);
 
       const applied = applyExtractedTextToCounsel(extracted, filename, selectedMatches);
-      if (applied.matchedCount > 0 && applied.appended) {
-        setFileStatus(`문서 내용 + 선택 매칭 적용 완료 (커스텀 ${applied.matchedCount}건)`);
-      } else if (applied.matchedCount > 0) {
+      if (applied.matchedCount > 0) {
         setFileStatus(`선택 매칭 적용 완료 (커스텀 ${applied.matchedCount}건)`);
-      } else if (applied.appended) {
-        setFileStatus('문서 내용 적용 완료');
       } else {
-        setFileStatus('이미 반영된 텍스트이며, 선택된 매칭 후보는 추가 적용되지 않았습니다.');
+        setFileStatus('적용할 커스텀 매칭 후보가 없습니다.');
       }
     } finally {
       applyBtn.disabled = false;
@@ -776,9 +772,57 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  uploadBtn.addEventListener('click', function () {
-    fileInput.click();
-  });
+  function bindFileDropZone() {
+    if (!fileDropZoneEl || !fileInput) return;
+
+    const preventDefault = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    const markDragOver = (active) => {
+      fileDropZoneEl.classList.toggle('is-dragover', !!active);
+    };
+
+    ['dragenter', 'dragover'].forEach((eventName) => {
+      fileDropZoneEl.addEventListener(eventName, function (event) {
+        preventDefault(event);
+        markDragOver(true);
+      });
+    });
+
+    ['dragleave', 'dragend', 'drop'].forEach((eventName) => {
+      fileDropZoneEl.addEventListener(eventName, function (event) {
+        preventDefault(event);
+        markDragOver(false);
+      });
+    });
+
+    fileDropZoneEl.addEventListener('drop', function (event) {
+      const files = Array.from(event.dataTransfer?.files || []);
+      if (!files.length) {
+        setFileStatus('드롭한 파일을 찾을 수 없습니다.', true);
+        return;
+      }
+      const file = files.find((candidate) => isCounselFileCandidate(candidate)) || files[0];
+      uploadCounselFile(file);
+    });
+
+    fileDropZoneEl.addEventListener('click', function () {
+      fileInput.click();
+    });
+
+    fileDropZoneEl.addEventListener('keydown', function (event) {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      fileDropZoneEl.click();
+    });
+  }
+
+  if (uploadBtn) {
+    uploadBtn.addEventListener('click', function () {
+      fileInput.click();
+    });
+  }
 
   fileInput.addEventListener('change', function () {
     const file = this.files && this.files[0] ? this.files[0] : null;
@@ -787,6 +831,8 @@ document.addEventListener('DOMContentLoaded', function () {
       this.value = '';
     });
   });
+
+  bindFileDropZone();
 
   fileListEl.addEventListener('click', function (e) {
     const previewToggle = e.target.closest('.counsel-preview-toggle');

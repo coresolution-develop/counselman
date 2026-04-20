@@ -151,7 +151,7 @@
                                                 <div class="field-group">
                                                     <label for="cs_col_01" class="choose-text1">환자명</label>
                                                     <input class="input-name" type="text" name="cs_col_01"
-                                                        id="cs_col_01" th:field="*{cs_col_01}">
+                                                        id="cs_col_01" th:field="*{cs_col_01}" required>
                                                 </div>
                                                 <div style="display:none">cs_col_01(debug) = [[*{cs_col_01}]]</div>
                                                 <div class="field-group">
@@ -649,7 +649,6 @@
                                                             <button type="button" id="stopRecordingBtn" class="btn counsel-file-btn" disabled>녹음 중지</button>
                                                             <button type="button" id="applyDiseaseMatchBtn" class="btn counsel-file-btn">커스텀 매칭</button>
                                                             <button type="button" id="generateSummaryBtn" class="btn counsel-file-btn"
-                                                                    th:disabled="${!openAiConfigured}"
                                                                     th:title="${!openAiConfigured ? 'OpenAI API 키 설정 후 사용 가능합니다.' : ''}">상담 요약</button>
                                                         </div>
                                                         <p id="recordingStatus" class="recording-status">대기 중</p>
@@ -658,8 +657,11 @@
                                                     </div>
                                                     <div class="counsel-file-panel pc-file-panel" th:if="${moduleCounselFileEnabled}">
                                                         <div class="counsel-file-actions">
-                                                            <button type="button" id="uploadCounselFileBtn" class="btn counsel-file-btn">서류 업로드</button>
                                                             <span class="counsel-file-help">소견서/PDF/이미지/문서 첨부</span>
+                                                        </div>
+                                                        <div id="counselFileDropZone" class="counsel-file-drop-zone" role="button" tabindex="0" aria-label="서류 드래그 앤 드롭 업로드">
+                                                            <span class="counsel-file-drop-zone-title">서류 파일을 여기에 끌어놓거나 클릭해 업로드</span>
+                                                            <span class="counsel-file-drop-zone-help">지원 형식: PDF, 이미지, Word, Excel, 텍스트</span>
                                                         </div>
                                                         <div id="counselFileList" class="counsel-file-list"></div>
                                                         <p id="counselFileStatus" class="counsel-file-status"></p>
@@ -967,8 +969,8 @@
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script th:replace="~{csm/Include/layout :: scripts}"></script>
     <script th:src="@{/js/csm/counsel/new.js}"></script>
-    <script th:src="@{/js/csm/counsel/counselFile.js(v='20260419a')}"></script>
-    <script th:src="@{/js/csm/counsel/counselAudio.js(v='20260419b')}"></script>
+    <script th:src="@{/js/csm/counsel/counselFile.js(v='20260420a')}"></script>
+    <script th:src="@{/js/csm/counsel/counselAudio.js(v='20260420b')}"></script>
 </body>
 
 </html>

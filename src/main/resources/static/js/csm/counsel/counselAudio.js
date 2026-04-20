@@ -94,7 +94,7 @@ document.addEventListener('DOMContentLoaded', function () {
       <div class="counsel-preview-card" data-view="${escapeHtml(mode)}">
         <div class="counsel-preview-toolbar">
           ${renderPreviewToggle(mode, !!summary, !!transcript)}
-          ${transcript && !summary && openAiSummaryAvailable ? `<button type="button" class="counsel-preview-generate audio-record-summary" data-audio-id="${escapeHtml(item.id)}">요약 생성</button>` : ''}
+          ${!summary && openAiSummaryAvailable ? `<button type="button" class="counsel-preview-generate audio-record-summary" data-audio-id="${escapeHtml(item.id)}">요약 생성</button>` : ''}
         </div>
         ${summary ? `<div class="counsel-preview-body counsel-preview-summary">${escapeHtml(summary)}</div>` : ''}
         ${transcript ? `<div class="counsel-preview-body counsel-preview-source">${escapeHtml(transcript)}</div>` : ''}
@@ -656,6 +656,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   async function generateCounselSummary() {
+    if (generateCounselSummary._running) return;
     if (!counselContentInput) return;
     if (!openAiSummaryAvailable) {
       setRecordingStatus('OpenAI API 키 설정 후 상담 요약을 사용할 수 있습니다.', true);
@@ -672,6 +673,7 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
+    generateCounselSummary._running = true;
     if (generateSummaryBtn) {
       generateSummaryBtn.disabled = true;
       generateSummaryBtn.textContent = '요약 중...';
@@ -711,6 +713,7 @@ document.addEventListener('DOMContentLoaded', function () {
     } catch (_) {
       setRecordingStatus('상담 요약 생성 중 오류', true);
     } finally {
+      generateCounselSummary._running = false;
       if (generateSummaryBtn) {
         generateSummaryBtn.disabled = false;
         generateSummaryBtn.textContent = '상담 요약';
@@ -744,6 +747,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const serverTranscript = String(data?.item?.transcript || '').trim();
     const transcriptSource = String(data?.item?.transcriptSource || '').trim();
     const alreadyHadTranscript = serverTranscript ? hasTranscriptInCounselContent(serverTranscript) : false;
+    const summaryHint = (!openAiSummaryAvailable && serverTranscript && !alreadyHadTranscript)
+      ? ' / 상담요약은 OpenAI API 키 설정 후 사용 가능합니다.'
+      : '';
     let statusSet = false;
 
     if (serverTranscript && !alreadyHadTranscript) {
@@ -754,10 +760,10 @@ document.addEventListener('DOMContentLoaded', function () {
         setRecordingStatus('클로바 인식 실패로 브라우저 임시 인식으로 저장됨', true);
         statusSet = true;
       } else if (matchedFromServer > 0) {
-        setRecordingStatus(`전사 반영 완료 (커스텀 ${matchedFromServer}건 매칭)`);
+        setRecordingStatus(`전사 반영 완료 (커스텀 ${matchedFromServer}건 매칭)${summaryHint}`);
         statusSet = true;
       } else {
-        setRecordingStatus('전사 반영 완료');
+        setRecordingStatus(`전사 반영 완료${summaryHint}`);
         statusSet = true;
       }
     } else if (transcriptSource === 'browser') {
@@ -773,6 +779,10 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
     await fetchAudioList();
+    if (openAiSummaryAvailable && serverTranscript && !alreadyHadTranscript) {
+      setRecordingStatus('전사 반영 완료. 자동 상담 요약 생성 중...');
+      await generateCounselSummary();
+    }
   }
 
   async function uploadAudioBlob(blob, durationSeconds, transcript) {
@@ -1119,7 +1129,6 @@ document.addEventListener('DOMContentLoaded', function () {
   if (generateSummaryBtn) {
     generateSummaryBtn.addEventListener('click', generateCounselSummary);
     if (!openAiSummaryAvailable) {
-      generateSummaryBtn.disabled = true;
       generateSummaryBtn.title = 'OpenAI API 키 설정 후 사용 가능합니다.';
     }
   }

@@ -532,3 +532,94 @@ input[type=text], input[type=button] {
     font-weight: 500;
     margin: 0;
 }
+
+.sms-template-modal .modal_body {
+    padding: 0;
+    width: 560px;
+    max-width: calc(100vw - 32px);
+}
+
+.sms-template-modal-inner {
+    width: 100%;
+    padding: 22px 24px 20px;
+}
+
+.sms-template-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.sms-template-modal .menu_msg {
+    padding: 0;
+    font-size: 20px;
+}
+
+.sms-template-modal-close {
+    border: none;
+    background: transparent;
+    color: #777;
+    font-size: 28px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+}
+
+.sms-template-label {
+    display: block;
+    text-align: left;
+    color: #474747;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+#sms_title,
+#card_title {
+    margin-bottom: 12px;
+}
+
+#sms_template,
+#card_content {
+    height: 180px;
+    resize: vertical;
+    margin-bottom: 8px;
+}
+
+.sms-template-length {
+    text-align: right;
+    color: #888;
+    font-size: 12px;
+    margin-bottom: 18px;
+}
+
+.sms-template-modal .modal_footer {
+    padding-bottom: 0;
+    gap: 8px;
+}
+
+.sms-template-modal .modal_btn,
+.sms-template-modal .pink_btn2 {
+    width: 160px;
+}
+
+@media all and (max-width: 768px) {
+    .sms-template-modal .modal_body {
+        width: calc(100vw - 24px);
+    }
+
+    .sms-template-modal-inner {
+        padding: 18px 16px;
+    }
+
+    .sms-template-modal .menu_msg {
+        font-size: 18px;
+    }
+
+    .sms-template-modal .modal_btn,
+    .sms-template-modal .pink_btn2 {
+        width: 48%;
+        min-width: 120px;
+    }
+}

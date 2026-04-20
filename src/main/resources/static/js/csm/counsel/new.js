@@ -429,6 +429,17 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   window.validateCounselSubmit = function () {
+    const patientNameInput = document.getElementById('cs_col_01');
+    const patientName = String(patientNameInput?.value || '').trim();
+    if (patientNameInput) {
+      patientNameInput.value = patientName;
+    }
+    if (!patientName) {
+      alert('환자명을 입력해 주세요.');
+      patientNameInput?.focus();
+      return false;
+    }
+
     if ((admissionPledgeRequiredInput?.value || 'N') !== 'Y') {
       return true;
     }

@@ -22,9 +22,47 @@ $(document).ready(function() {
 	
 	const deleteButton = document.getElementById('templateDelete');
 	const modifyButton = document.getElementById('templateModify');
+	const modalElement = document.getElementById('cardTemplateModal');
+	const titleInput = document.getElementById('card_title');
+	const contentInput = document.getElementById('card_content');
+	const contentLength = document.getElementById('card_content_length');
+	const saveButton = document.getElementById('templateSaveBtn');
+	const cancelButton = document.getElementById('cardCancelBtn');
+	const closeButton = document.getElementById('cardModalCloseBtn');
 	let selectedidx = null;
     let selectedTitle = '';
     let selectedContent = '';
+	let isSaving = false;
+
+	function updateContentLength() {
+		if (!contentInput || !contentLength) {
+			return;
+		}
+		contentLength.textContent = contentInput.value.length;
+	}
+
+	function setSaveButtonState(disabled) {
+		isSaving = disabled;
+		if (!saveButton) {
+			return;
+		}
+		saveButton.style.pointerEvents = disabled ? 'none' : 'auto';
+		saveButton.style.opacity = disabled ? '0.6' : '1';
+	}
+
+	function validateCardForm(title, content) {
+		if (!title) {
+			alert('서명이름을 입력하세요.');
+			titleInput?.focus();
+			return false;
+		}
+		if (!content) {
+			alert('서명내용을 입력하세요.');
+			contentInput?.focus();
+			return false;
+		}
+		return true;
+	}
 
 	function setupRowClickEvents() {
 		const tableRows = document.querySelectorAll('.template-list .template-row');
@@ -71,6 +109,8 @@ $(document).ready(function() {
     modifyButton.addEventListener('click', function() {
         if (selectedidx) {
             openModal("modify", selectedTitle, selectedContent);
+        } else {
+            alert('수정할 서명을 선택하세요.');
         }
     });
 
@@ -81,24 +121,56 @@ $(document).ready(function() {
                 deleteCard();
             }
         } else {
-            alert('삭제할 명함을 선택하세요.');
+            alert('삭제할 서명을 선택하세요.');
         }
     });
 
     // ✅ 통합 저장 버튼 (추가 & 수정)
     $('#templateSaveBtn').click(function() {
-        const action = $(this).data('action'); // 현재 모달 동작 ("insert" or "modify")
-        const title = $('#card_title').val();
-        const content = $('#card_content').val();
+        if (isSaving) {
+            return;
+        }
 
+        const action = $(this).data('action');
+        const title = ($('#card_title').val() || '').trim();
+        const content = ($('#card_content').val() || '').trim();
+
+        if (!validateCardForm(title, content)) {
+            return;
+        }
+
+        if (action === "modify" && !selectedidx) {
+            alert('수정할 서명을 다시 선택하세요.');
+            closeModal();
+            return;
+        }
+
+        setSaveButtonState(true);
         if (action === "insert") {
             insertCard(title, content);
         } else if (action === "modify") {
             updateCard(selectedidx, title, content);
+        } else {
+            setSaveButtonState(false);
         }
     });
 
-    // ✅ 명함 추가 함수 (AJAX)
+    cancelButton?.addEventListener('click', closeModal);
+    closeButton?.addEventListener('click', closeModal);
+    contentInput?.addEventListener('input', updateContentLength);
+    modalElement?.addEventListener('click', function(event) {
+        if (event.target === modalElement) {
+            closeModal();
+        }
+    });
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && modalElement?.classList.contains('show')) {
+            closeModal();
+        }
+    });
+    updateContentLength();
+
+    // ✅ 서명 추가 함수 (AJAX)
     function insertCard(title, content) {
         console.log("추가: ", title, content);
         const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content') || '';
@@ -116,16 +188,24 @@ $(document).ready(function() {
             }),
             success: function(response) {
                 console.log('Insert Success:', response);
+                if (String(response?.result) !== '1') {
+                    alert(response?.message || '서명 저장에 실패했습니다.');
+                    return;
+                }
                 closeModal();
                 window.location.reload();
             },
             error: function(xhr, status, error) {
                 console.log('Error inserting card:', xhr.responseText);
+                alert('서명 저장 중 오류가 발생했습니다.');
+            },
+            complete: function() {
+                setSaveButtonState(false);
             }
         });
     }
 
-    // ✅ 명함 수정 함수 (AJAX)
+    // ✅ 서명 수정 함수 (AJAX)
     function updateCard(id, title, content) {
         console.log("수정: ", id, title, content);
         const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content') || '';
@@ -144,11 +224,19 @@ $(document).ready(function() {
             }),
             success: function(response) {
                 console.log('Update Success:', response);
+                if (String(response?.result) !== '1') {
+                    alert(response?.message || '서명 수정에 실패했습니다.');
+                    return;
+                }
                 closeModal();
                 window.location.reload();
             },
             error: function(xhr, status, error) {
                 console.log('Error updating card:', xhr.responseText);
+                alert('서명 수정 중 오류가 발생했습니다.');
+            },
+            complete: function() {
+                setSaveButtonState(false);
             }
         });
     }
@@ -281,17 +369,23 @@ $(document).ready(function() {
 	});
 // 돔 dom 끝 
 
+let lastFocusedElement = null;
+
 // ✅ 모달 창 열기 (추가 & 수정 통합)
 function openModal(action, title, content) {
-    var modal = document.querySelector('.modal');
+    var modal = document.getElementById('cardTemplateModal');
     var body = document.querySelector('body');
-    var modal_msg = document.querySelector('.menu_msg');
+    var modal_msg = document.getElementById('cardTemplateModalTitle');
     var titleInput = document.getElementById('card_title');
     var contentInput = document.getElementById('card_content');
+    var contentLength = document.getElementById('card_content_length');
     var saveButton = document.getElementById('templateSaveBtn');
 
     titleInput.value = title;
     contentInput.value = content;
+    if (contentLength) {
+        contentLength.textContent = contentInput.value.length;
+    }
 
     if (action === "insert") {
         modal_msg.textContent = '서명을 추가합니다.';
@@ -301,21 +395,44 @@ function openModal(action, title, content) {
         saveButton.textContent = "수정하기";
     }
 
-    saveButton.setAttribute("data-action", action); // 동작 설정
-    modal.classList.toggle('show');
-
-    if (modal.classList.contains('show')) {
-        body.style.overflow = 'hidden';
-    }
+    saveButton.setAttribute("data-action", action);
+    lastFocusedElement = document.activeElement;
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    body.style.overflow = 'hidden';
+    setTimeout(function() {
+        titleInput.focus();
+    }, 0);
 }
 
 // ✅ 모달 창 닫기
 function closeModal() {
-    var modal = document.querySelector('.modal');
+    var modal = document.getElementById('cardTemplateModal');
     var body = document.querySelector('body');
+    var saveButton = document.getElementById('templateSaveBtn');
+    var titleInput = document.getElementById('card_title');
+    var contentInput = document.getElementById('card_content');
+    var contentLength = document.getElementById('card_content_length');
 
     modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
     body.style.overflow = 'auto';
+    if (saveButton) {
+        saveButton.style.pointerEvents = 'auto';
+        saveButton.style.opacity = '1';
+    }
+    if (titleInput) {
+        titleInput.value = '';
+    }
+    if (contentInput) {
+        contentInput.value = '';
+    }
+    if (contentLength) {
+        contentLength.textContent = '0';
+    }
+    if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+        lastFocusedElement.focus();
+    }
 }
 
 // ✅ 스피너 표시

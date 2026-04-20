@@ -538,6 +538,41 @@ body {
     color: #6f6f6f;
 }
 
+.counsel-file-drop-zone {
+    border: 1px dashed #b7c7db;
+    border-radius: 8px;
+    background: #f8fbff;
+    padding: 9px 10px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color 0.16s ease, background-color 0.16s ease;
+}
+
+.counsel-file-drop-zone:focus {
+    outline: none;
+    border-color: #7ea0ca;
+    background: #f0f6ff;
+}
+
+.counsel-file-drop-zone.is-dragover {
+    border-color: #06603A;
+    background: #effaf4;
+}
+
+.counsel-file-drop-zone-title {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #29456f;
+}
+
+.counsel-file-drop-zone-help {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    color: #6a798f;
+}
+
 .counsel-file-list {
     display: flex;
     flex-direction: column;

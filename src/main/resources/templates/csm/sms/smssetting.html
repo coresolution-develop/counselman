@@ -102,15 +102,35 @@
     </div>
 </div>
 
-<div class="modal normal">
-    <div class="modal_body">
-        <div>
-            <div class="menu_msg">text</div>
-            <input type="text" style="margin-bottom: 10px;" class="modal-input" id="sms_title" name="sms_title" placeholder="상용구 이름을 입력하세요.">
-            <textarea style="height: 150px;" class="modal-input" id="sms_template" placeholder="추가할 상용구를 입력하세요."></textarea>
+<div class="modal normal sms-template-modal"
+     id="smsTemplateModal"
+     role="dialog"
+     aria-modal="true"
+     aria-hidden="true"
+     aria-labelledby="smsTemplateModalTitle">
+    <div class="modal_body sms-template-modal-body">
+        <div class="sms-template-modal-inner">
+            <div class="sms-template-modal-header">
+                <div class="menu_msg" id="smsTemplateModalTitle">상용구 추가</div>
+                <button type="button" class="sms-template-modal-close" id="templateModalCloseBtn" aria-label="모달 닫기">×</button>
+            </div>
+            <label class="sms-template-label" for="sms_title">상용구명</label>
+            <input type="text"
+                   class="modal-input"
+                   id="sms_title"
+                   name="sms_title"
+                   maxlength="100"
+                   autocomplete="off"
+                   placeholder="상용구 이름을 입력하세요.">
+            <label class="sms-template-label" for="sms_template">상용구 내용</label>
+            <textarea class="modal-input"
+                      id="sms_template"
+                      maxlength="2000"
+                      placeholder="추가할 상용구를 입력하세요."></textarea>
+            <div class="sms-template-length"><span id="sms_template_length">0</span>/2000자</div>
             <div class="modal_footer">
                 <div class="btn modal_btn" id="templateSaveBtn">확인</div>
-                <div class="btn pink_btn2 listBtn" onclick="closeModal()">취소</div>
+                <div class="btn pink_btn2 listBtn" id="templateCancelBtn">취소</div>
             </div>
         </div>
     </div>

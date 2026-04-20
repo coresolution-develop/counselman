@@ -21,12 +21,49 @@ $(document).ready(function() {
 	let observer;
 	let observerReady = false;
 	
-	const tableRows = document.querySelectorAll('.template-list .template-row');
 	const deleteButton = document.getElementById('templateDelete');
 	const modifyButton = document.getElementById('templateModify');
+	const modalElement = document.getElementById('smsTemplateModal');
+	const titleInput = document.getElementById('sms_title');
+	const templateInput = document.getElementById('sms_template');
+	const templateLength = document.getElementById('sms_template_length');
+	const saveButton = document.getElementById('templateSaveBtn');
+	const cancelButton = document.getElementById('templateCancelBtn');
+	const closeButton = document.getElementById('templateModalCloseBtn');
 	let selectedidx = null;
 	let selectedTitle = '';
 	let selectedTemplate = '';
+	let isSaving = false;
+
+	function updateTemplateLength() {
+		if (!templateInput || !templateLength) {
+			return;
+		}
+		templateLength.textContent = templateInput.value.length;
+	}
+
+	function setSaveButtonState(disabled) {
+		isSaving = disabled;
+		if (!saveButton) {
+			return;
+		}
+		saveButton.style.pointerEvents = disabled ? 'none' : 'auto';
+		saveButton.style.opacity = disabled ? '0.6' : '1';
+	}
+
+	function validateTemplateForm(title, text) {
+		if (!title) {
+			alert('상용구명을 입력하세요.');
+			titleInput?.focus();
+			return false;
+		}
+		if (!text) {
+			alert('상용구 내용을 입력하세요.');
+			templateInput?.focus();
+			return false;
+		}
+		return true;
+	}
 	function setupRowClickEvents() {
         const tableRows = document.querySelectorAll('.template-list .template-row');
         tableRows.forEach(row => {
@@ -60,6 +97,8 @@ $(document).ready(function() {
 	modifyButton.addEventListener('click', function() {
         if (selectedidx) {
             openModal("modify", selectedTitle, selectedTemplate);
+        } else {
+			alert('수정할 상용구를 선택하세요.');
         }
     });
 	deleteButton.addEventListener('click', function() {
@@ -104,16 +143,48 @@ $(document).ready(function() {
 		openModal("insert", "", "");
 	});
 	$('#templateSaveBtn').click(function() {
-        const action = $(this).data('action'); // 현재 모달의 동작 ("insert" or "modify")
-        const title = $('#sms_title').val();
-        const text = $('#sms_template').val();
+        if (isSaving) {
+			return;
+		}
 
+        const action = $(this).data('action');
+        const title = ($('#sms_title').val() || '').trim();
+        const text = ($('#sms_template').val() || '').trim();
+
+		if (!validateTemplateForm(title, text)) {
+			return;
+		}
+
+		if (action === "modify" && !selectedidx) {
+			alert('수정할 상용구를 다시 선택하세요.');
+			closeModal();
+			return;
+		}
+
+		setSaveButtonState(true);
         if (action === "insert") {
             insertTemplate(title, text);
         } else if (action === "modify") {
             updateTemplate(selectedidx, title, text);
-        }
+        } else {
+			setSaveButtonState(false);
+		}
     });
+
+	cancelButton?.addEventListener('click', closeModal);
+	closeButton?.addEventListener('click', closeModal);
+	templateInput?.addEventListener('input', updateTemplateLength);
+	modalElement?.addEventListener('click', function(event) {
+		if (event.target === modalElement) {
+			closeModal();
+		}
+	});
+	document.addEventListener('keydown', function(event) {
+		if (event.key === 'Escape' && modalElement?.classList.contains('show')) {
+			closeModal();
+		}
+	});
+	updateTemplateLength();
     
 	// ✅ 템플릿 추가 함수 (AJAX)
     function insertTemplate(title, text) {
@@ -133,11 +204,19 @@ $(document).ready(function() {
             }),
             success: function(response) {
                 console.log('Insert Success:', response);
+				if (String(response?.result) !== '1') {
+					alert(response?.message || '상용구 저장에 실패했습니다.');
+					return;
+				}
                 closeModal();
                 window.location.reload();
             },
             error: function(xhr, status, error) {
                 console.log('Error inserting template:', xhr.responseText);
+				alert('상용구 저장 중 오류가 발생했습니다.');
+			},
+			complete: function() {
+				setSaveButtonState(false);
             }
         });
     }
@@ -160,11 +239,19 @@ $(document).ready(function() {
             }),
             success: function(response) {
                 console.log('Update Success:', response);
+				if (String(response?.result) !== '1') {
+					alert(response?.message || '상용구 수정에 실패했습니다.');
+					return;
+				}
                 closeModal();
                 window.location.reload();
             },
             error: function(xhr, status, error) {
                 console.log('Error updating template:', xhr.responseText);
+				alert('상용구 수정 중 오류가 발생했습니다.');
+			},
+			complete: function() {
+				setSaveButtonState(false);
             }
         });
     }
@@ -282,17 +369,23 @@ $(document).ready(function() {
 });
 // 돔(DOM) 끝
 
+let lastFocusedElement = null;
+
 // ✅ 모달 창 열기 (통합: 추가 & 수정)
 function openModal(action, title, template) {
-    var modal = document.querySelector('.modal');
+    var modal = document.getElementById('smsTemplateModal');
     var body = document.querySelector('body');
-    var modal_msg = document.querySelector('.menu_msg');
+    var modal_msg = document.getElementById('smsTemplateModalTitle');
     var titleInput = document.getElementById('sms_title');
     var templateInput = document.getElementById('sms_template');
+    var templateLength = document.getElementById('sms_template_length');
     var saveButton = document.getElementById('templateSaveBtn');
 
     titleInput.value = title;
     templateInput.value = template;
+	if (templateLength) {
+		templateLength.textContent = templateInput.value.length;
+	}
 
     if (action === "insert") {
         modal_msg.textContent = '상용구를 추가합니다.';
@@ -303,20 +396,41 @@ function openModal(action, title, template) {
     }
 
     saveButton.setAttribute("data-action", action); // 동작 설정
-    modal.classList.toggle('show');
-
-    if (modal.classList.contains('show')) {
-        body.style.overflow = 'hidden';
-    }
+    lastFocusedElement = document.activeElement;
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    body.style.overflow = 'hidden';
+	setTimeout(function() {
+		titleInput.focus();
+	}, 0);
 }
 
 // ✅ 모달 창 닫기
 function closeModal() {
-    var modal = document.querySelector('.modal');
+    var modal = document.getElementById('smsTemplateModal');
     var body = document.querySelector('body');
+    var saveButton = document.getElementById('templateSaveBtn');
+    var titleInput = document.getElementById('sms_title');
+    var templateInput = document.getElementById('sms_template');
+    var templateLength = document.getElementById('sms_template_length');
 
     modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
     body.style.overflow = 'auto';
+    saveButton.style.pointerEvents = 'auto';
+    saveButton.style.opacity = '1';
+	if (titleInput) {
+		titleInput.value = '';
+	}
+	if (templateInput) {
+		templateInput.value = '';
+	}
+	if (templateLength) {
+		templateLength.textContent = '0';
+	}
+	if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+		lastFocusedElement.focus();
+	}
 }
 // spinner
 function spinner() {

@@ -131,7 +131,7 @@
                 <h2>상담 기본 항목</h2>
                 <div class="field">
                     <label for="cs_col_01">환자명</label>
-                    <input type="text" id="cs_col_01" name="cs_col_01" th:value="${csData.cs_col_01}">
+                    <input type="text" id="cs_col_01" name="cs_col_01" th:value="${csData.cs_col_01}" required>
                 </div>
                 <div class="field-grid">
                     <div class="field">
@@ -504,8 +504,11 @@
                     <div th:if="${moduleCounselAudioEnabled}" id="audioRecordList" class="audio-record-list"></div>
                     <div class="counsel-file-panel" th:if="${moduleCounselFileEnabled}">
                         <div class="counsel-file-actions">
-                            <button type="button" id="uploadCounselFileBtn" class="mini-btn">서류 업로드</button>
                             <span class="counsel-file-help">소견서/PDF/이미지/문서 첨부</span>
+                        </div>
+                        <div id="counselFileDropZone" class="counsel-file-drop-zone" role="button" tabindex="0" aria-label="서류 드래그 앤 드롭 업로드">
+                            <span class="counsel-file-drop-zone-title">서류 파일을 여기에 끌어놓거나 클릭해 업로드</span>
+                            <span class="counsel-file-drop-zone-help">지원 형식: PDF, 이미지, Word, Excel, 텍스트</span>
                         </div>
                         <div id="counselFileList" class="counsel-file-list"></div>
                         <p id="counselFileStatus" class="counsel-file-status"></p>
@@ -559,7 +562,6 @@
                     <button th:if="${moduleCounselAudioEnabled}" type="button" id="stopRecordingBtn" class="mini-btn" disabled>녹음 중지</button>
                     <button th:if="${moduleCounselAudioEnabled}" type="button" id="applyDiseaseMatchBtn" class="mini-btn">커스텀 매칭</button>
                     <button type="button" id="generateSummaryBtn" class="mini-btn summary-btn"
-                            th:disabled="${!openAiConfigured}"
                             th:title="${!openAiConfigured ? 'OpenAI API 키 설정 후 사용 가능합니다.' : ''}">상담 요약</button>
                 </div>
                 <p th:if="${moduleCounselAudioEnabled}" id="recordingStatus" class="recording-status">대기 중</p>
@@ -584,7 +586,7 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
 <script th:replace="~{csm/Include/layout :: scripts}"></script>
-<script th:src="@{/js/csm/counsel/newMobile.js(v='20260419a')}"></script>
-<script th:src="@{/js/csm/counsel/counselFile.js(v='20260419a')}"></script>
+<script th:src="@{/js/csm/counsel/newMobile.js(v='20260420b')}"></script>
+<script th:src="@{/js/csm/counsel/counselFile.js(v='20260420a')}"></script>
 </body>
 </html>

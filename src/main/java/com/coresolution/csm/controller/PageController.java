@@ -3110,6 +3110,9 @@ public class PageController {
                 cs.linkReservationToCounsel(inst, reservationId, csIdx, resolveReservationActor(inst, session));
             }
             return "redirect:/counsel/list";
+        } catch (IllegalArgumentException e) {
+            log.warn("[counsel] validation fail inst={}, err={}", inst, e.getMessage());
+            return "redirect:/counsel/new";
         } catch (Exception e) {
             log.error("[counsel] save fail inst={}", inst, e);
             return "";
@@ -3168,6 +3171,9 @@ public class PageController {
                 cs.linkReservationToCounsel(inst, reservationId, csIdx, resolveReservationActor(inst, session));
             }
             return "redirect:/counsel/list";
+        } catch (IllegalArgumentException e) {
+            log.warn("[counselupdate] validation fail inst={}, cs_idx={}, err={}", inst, csIdx, e.getMessage());
+            return "redirect:/counsel/new/" + csIdx;
         } catch (Exception e) {
             log.error("[counselupdate] update fail inst={}, cs_idx={}", inst, csIdx, e);
             return "";
@@ -3805,8 +3811,38 @@ public class PageController {
 
             String transcript = objectString(row.get("transcript")).trim();
             if (transcript.isBlank()) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("success", false, "message", "요약할 녹취 원문이 없습니다."));
+                String storedFilename = objectString(row.get("stored_filename")).trim();
+                String normalizedMimeType = normalizeMimeType(objectString(row.get("mime_type")));
+                if (!storedFilename.isBlank()) {
+                    Path baseDir = resolveCounselAudioDir(inst);
+                    Path file = baseDir.resolve(storedFilename).normalize();
+                    if (file.startsWith(baseDir) && Files.exists(file) && Files.isRegularFile(file)) {
+                        String regenerated = transcribeWithClova(file, normalizedMimeType);
+                        if (!regenerated.isBlank()) {
+                            transcript = regenerated;
+                            cs.updateCounselAudioTranscript(inst, audioId, regenerated);
+                            int rowCsIdx = (int) parseLongObject(row.get("cs_idx"), 0L);
+                            if (rowCsIdx > 0) {
+                                cs.appendCounselContentIfMissing(inst, rowCsIdx, regenerated);
+                            }
+                            Map<String, Object> refreshed = cs.getCounselAudioById(inst, audioId);
+                            if (refreshed != null) {
+                                row = refreshed;
+                            }
+                        } else if (normalizedMimeType.contains("webm")) {
+                            return ResponseEntity.badRequest().body(Map.of(
+                                    "success", false,
+                                    "code", "unsupported_format",
+                                    "message", "webm 포맷은 요약 전 텍스트 변환을 지원하지 않습니다. mp4/ogg/wav로 다시 업로드해 주세요."));
+                        }
+                    }
+                }
+            }
+            if (transcript.isBlank()) {
+                String msg = isClovaSpeechConfigured()
+                        ? "요약할 녹취 원문이 없습니다. 텍스트 재시도를 먼저 실행해 주세요."
+                        : "음성 전사 설정이 없어 요약할 녹취 원문을 만들 수 없습니다.";
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", msg));
             }
             if (openAiApiKey == null || openAiApiKey.isBlank()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
@@ -4866,9 +4902,12 @@ public class PageController {
         CounselData counselData = new CounselData();
         counselData.setInst(inst);
 
-        String csCol01Plain = request.getParameter("cs_col_01");
-        counselData.setCs_col_01(aes.encryptHexECB(safeString(csCol01Plain)));
-        counselData.setCs_col_01_hash(hashSHA256(safeString(csCol01Plain)));
+        String csCol01Plain = safeString(request.getParameter("cs_col_01")).trim();
+        if (csCol01Plain.isEmpty()) {
+            throw new IllegalArgumentException("환자명은 필수입니다.");
+        }
+        counselData.setCs_col_01(aes.encryptHexECB(csCol01Plain));
+        counselData.setCs_col_01_hash(hashSHA256(csCol01Plain));
 
         counselData.setCs_col_02(request.getParameter("cs_col_02"));
         counselData.setCs_col_03(request.getParameter("cs_col_03"));
@@ -5526,32 +5565,21 @@ public class PageController {
             if (isEdit && looksHex) {
                 try {
                     String dec = mysqlAesDecryptHexToUtf8(p, AES_KEY);
-                    if (dec != null && !dec.isBlank()) {
-                        data.setCs_col_01(dec);
+                    if (dec == null || dec.isBlank()) {
+                        log.warn("patient name decrypt blank; set empty. cs_idx={}", csIdx);
+                        data.setCs_col_01("");
                     } else {
-                        // 복호화 실패 or 빈값이면 원본 유지
-                        log.warn("patient name decrypt blank/failed; keep raw. cs_idx={}", csIdx);
+                        data.setCs_col_01(dec);
                     }
                 } catch (Exception e) {
-                    log.warn("patient name decrypt fail; keep raw. cs_idx={}, err={}", csIdx, e.toString());
-                    // 원본 유지
+                    log.warn("patient name decrypt fail; set empty. cs_idx={}, err={}", csIdx, e.toString());
+                    data.setCs_col_01("");
                 }
             }
 
             // 디버그
             log.debug("[CHECK] cs_idx={}, cs_col_01(raw)={}, isEdit={}, looksHex={}, cs_col_01(final)={}",
                     csIdx, p, isEdit, looksHex, data.getCs_col_01());
-
-            if (p != null && p.matches("(?i)^[0-9a-f]{32,}$")) {
-                try {
-                    String dec = mysqlAesDecryptHexToUtf8(p, AES_KEY);
-                    if (dec != null && !dec.isBlank()) {
-                        data.setCs_col_01(dec);
-                    }
-                } catch (Exception e) {
-                    log.warn("decrypt fail: {}", e.getMessage());
-                }
-            }
             log.debug("[AFTER  DEC] cs_col_01 = {}", data.getCs_col_01());
 
             // 2) 보호자: 각 값이 HEX처럼 보일 때만 복호화
