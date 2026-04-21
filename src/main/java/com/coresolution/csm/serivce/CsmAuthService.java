@@ -535,6 +535,20 @@ public class CsmAuthService {
             jdbcTemplate.execute(ddl);
         }
         ensureAdmissionPledgeTable(safe);
+        ensureCounselDataEntryColumns(safe);
+        ensureCounselGuardianColumns(safe);
+    }
+
+    private void ensureCounselDataEntryColumns(String safe) {
+        ensureTableColumn("csm", "counsel_data_" + safe + "_entries", "field_type",
+                "ALTER TABLE csm.counsel_data_" + safe + "_entries ADD COLUMN field_type varchar(30) default null");
+    }
+
+    private void ensureCounselGuardianColumns(String safe) {
+        ensureTableColumn("csm", "counsel_data_" + safe + "_guardians", "name_hash",
+                "ALTER TABLE csm.counsel_data_" + safe + "_guardians ADD COLUMN name_hash varbinary(32) default null");
+        ensureTableColumn("csm", "counsel_data_" + safe + "_guardians", "contact_number_hash",
+                "ALTER TABLE csm.counsel_data_" + safe + "_guardians ADD COLUMN contact_number_hash varbinary(32) default null");
     }
 
     public Map<String, Object> inspectCoreInstSchema(String inst) {
