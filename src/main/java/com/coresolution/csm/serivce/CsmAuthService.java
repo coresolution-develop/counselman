@@ -25,6 +25,7 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.coresolution.csm.mapper.CsmMapper;
 import com.coresolution.csm.vo.AjaxResponse;
@@ -767,6 +768,7 @@ public class CsmAuthService {
         return cs.coreTemplateMainUpdate(idx, name);
     }
 
+    @Transactional
     public int coreTemplateMainDeleteCascade(int idx) {
         List<Map<String, Object>> subs = cs.coreTemplateSubSelect(idx);
         for (Map<String, Object> s : subs) {
@@ -799,6 +801,7 @@ public class CsmAuthService {
         return cs.coreTemplateSubUpdateWithFlags(idx, name, chk, rad, txt, sel);
     }
 
+    @Transactional
     public int coreTemplateSubDeleteCascade(int idx) {
         cs.coreTemplateOptionDeleteBySubIdx(idx);
         return cs.coreTemplateSubDelete(idx);
@@ -1093,6 +1096,7 @@ public class CsmAuthService {
         return row;
     }
 
+    @Transactional
     public int deleteCategory(String inst, String type, int id) {
         String safe = sanitizeInst(inst);
         if (id <= 0) {
@@ -1712,6 +1716,7 @@ public class CsmAuthService {
         return notice;
     }
 
+    @Transactional
     public long coreNoticeSave(Map<String, Object> payload, List<String> targetInstCodes) {
         ensureCoreNoticeTables();
         String title = safeText(payload == null ? null : payload.get("title"), 200);

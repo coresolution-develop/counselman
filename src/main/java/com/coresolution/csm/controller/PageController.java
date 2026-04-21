@@ -206,7 +206,7 @@ public class PageController {
                 return response;
             }
 
-            String token = tokenService.generateToken(user.getUs_col_11());
+            String token = tokenService.generateToken(user.getUs_col_11(), usCol04, String.valueOf(user.getUs_col_01()));
             String resetLink = request.getScheme() + "://" + request.getServerName()
                     + ((request.getServerPort() == 80 || request.getServerPort() == 443) ? ""
                             : ":" + request.getServerPort())
@@ -242,7 +242,12 @@ public class PageController {
             @RequestParam(value = "inst", required = false) String inst,
             @RequestParam(value = "token", required = false) String token,
             Model model) {
-        if (token == null || token.isBlank() || tokenService.getEmailByToken(token) == null) {
+        CsmPasswordResetTokenService.ResetTokenContext tokenContext = tokenService.getTokenContext(token);
+        if (token == null
+                || token.isBlank()
+                || tokenContext == null
+                || !isSameValue(tokenContext.userId(), usCol01)
+                || !isSameInstValue(tokenContext.inst(), inst)) {
             model.addAttribute("Msg", "유효하지 않거나 만료된 링크입니다.");
             model.addAttribute("redirect", true);
             model.addAttribute("us_col_01", usCol01);
@@ -264,20 +269,27 @@ public class PageController {
         String inst = requestBody.get("inst");
         String token = requestBody.get("token");
 
-        String email = tokenService.getEmailByToken(token);
-        if (email == null) {
+        CsmPasswordResetTokenService.ResetTokenContext tokenContext = tokenService.getTokenContext(token);
+        if (tokenContext == null) {
             return ResponseEntity.badRequest().body("유효하지 않거나 만료된 링크입니다.");
         }
         if (usCol01 == null || usCol01.isBlank() || usCol03 == null || usCol03.isBlank() || inst == null
                 || inst.isBlank()) {
             return ResponseEntity.badRequest().body("비밀번호 변경에 실패했습니다.");
         }
+        if (!isSameValue(tokenContext.userId(), usCol01) || !isSameInstValue(tokenContext.inst(), inst)) {
+            log.warn("[ResetPwd] token scope mismatch tokenUser={}, reqUser={}, tokenInst={}, reqInst={}",
+                    tokenContext.userId(), usCol01, tokenContext.inst(), inst);
+            return ResponseEntity.badRequest().body("유효하지 않거나 만료된 링크입니다.");
+        }
 
         try {
             String cryptogram = aes.encrypt(usCol03);
-            int userIdx = Integer.parseInt(usCol01);
-            int updated = cs.updatePwd(inst, userIdx, cryptogram);
+            int userIdx = Integer.parseInt(tokenContext.userId());
+            String targetInst = tokenContext.inst();
+            int updated = cs.updatePwd(targetInst, userIdx, cryptogram);
             if (updated > 0) {
+                tokenService.invalidateToken(token);
                 return ResponseEntity.ok("비밀번호 변경에 성공했습니다.");
             }
             return ResponseEntity.badRequest().body("비밀번호 변경에 실패했습니다.");
@@ -308,6 +320,20 @@ public class PageController {
     private String resolveMediplatLoginRedirectUrl() {
         String baseUrl = resolveMediplatRedirectUrl();
         return baseUrl.endsWith("/login") ? baseUrl : baseUrl + "/login";
+    }
+
+    private boolean isSameValue(String left, String right) {
+        if (left == null || right == null) {
+            return false;
+        }
+        return left.trim().equals(right.trim());
+    }
+
+    private boolean isSameInstValue(String left, String right) {
+        if (left == null || right == null) {
+            return false;
+        }
+        return left.trim().equalsIgnoreCase(right.trim());
     }
 
     @GetMapping({ "admin", "/admin", "admin/", "/admin/" })

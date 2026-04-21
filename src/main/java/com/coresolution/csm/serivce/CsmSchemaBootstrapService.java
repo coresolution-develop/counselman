@@ -12,18 +12,27 @@ import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 
 @Service
-@RequiredArgsConstructor
 public class CsmSchemaBootstrapService {
 
     private static final Logger log = LoggerFactory.getLogger(CsmSchemaBootstrapService.class);
     private final JdbcTemplate jdbcTemplate;
     private final CsmAuthService csmAuthService;
+    private final TransactionTemplate transactionTemplate;
+
+    public CsmSchemaBootstrapService(JdbcTemplate jdbcTemplate,
+                                     CsmAuthService csmAuthService,
+                                     PlatformTransactionManager transactionManager) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.csmAuthService = csmAuthService;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
+    }
 
     @PostConstruct
     public void bootstrapOnStartup() {
@@ -50,9 +59,15 @@ public class CsmSchemaBootstrapService {
                 String instName = normalizeInstName(Objects.toString(row.get("inst_name"), instCode), instCode);
                 String useYn = toCounselmanYn(Objects.toString(row.get("use_yn"), "Y"));
 
-                upsertCoreInstitution(instCode, instName, useYn);
-                csmAuthService.createCoreInstSchemaTables(instCode);
-                syncUsersFromPlatform(instCode, instName);
+                try {
+                    csmAuthService.createCoreInstSchemaTables(instCode);
+                    transactionTemplate.executeWithoutResult(status -> {
+                        upsertCoreInstitution(instCode, instName, useYn);
+                        syncUsersFromPlatform(instCode, instName);
+                    });
+                } catch (Exception e) {
+                    log.warn("[schema-bootstrap] inst={} skipped: {}", instCode, e.toString());
+                }
             }
         } catch (Exception e) {
             log.warn("[schema-bootstrap] refresh skipped: {}", e.toString());

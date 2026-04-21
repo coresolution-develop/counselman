@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -41,9 +42,11 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @RequiredArgsConstructor
 public class RoomBoardService {
-    private static final String AES_KEY = "This is key!!!!!";
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private final JdbcTemplate jdbcTemplate;
+
+    @Value("${login.aes-key}")
+    private String aesKey;
 
     private String sanitizeInst(String inst) {
         if (inst == null) {
@@ -981,7 +984,7 @@ public class RoomBoardService {
         try {
             byte[] encrypted = hexToBytes(hex.trim());
             Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
-            SecretKeySpec secretKey = new SecretKeySpec(Arrays.copyOf(AES_KEY.getBytes(StandardCharsets.UTF_8), 16),
+            SecretKeySpec secretKey = new SecretKeySpec(Arrays.copyOf(aesKey.getBytes(StandardCharsets.UTF_8), 16),
                     "AES");
             cipher.init(Cipher.DECRYPT_MODE, secretKey);
             return new String(cipher.doFinal(encrypted), StandardCharsets.UTF_8).trim();
