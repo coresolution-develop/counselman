@@ -218,16 +218,13 @@ td, th {
     flex-direction: column;
     width: 100%;
     overflow: hidden;
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .sms-history-grid.sms-history-grid2 {
     display: flex;
     flex-direction: column;
     width: 100%;
-    height: 100%;
+	height: 100%;
 }
 
 .grid-body::-webkit-scrollbar {
@@ -263,33 +260,34 @@ td, th {
     display: grid;
     grid-template-columns: 250px 300px 1fr;
     text-align: center;
-    padding: 0;
+    padding: 10px;
 }
 
 .grid-header {
-    display: grid;
+	display: grid;
     grid-template-columns: 250px 300px 1fr;
     text-align: center;
     align-items: center;
-    height: 46px;
-    background-color: #e8edf5;
-    font-size: 13px;
-    font-weight: 700;
-    color: #374151;
-    margin: 0;
-    border-bottom: 2px solid #d4dbe8;
-    flex-shrink: 0;
+	height: 50px;
+    background-color: #EEE;
+    font-size: 12px;
+    font-weight: 600;
+    color: #545454;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    margin-right: 12px;
 }
 
 .grid-body {
-    border: none;
-    border-radius: 0;
+	border: 1px solid #eee;
+    border-radius: 5px;
     background-color: #fff;
-    margin: 0;
+    margin-right: 5px;
 }
 .scroll-container {
-    height: 100%;
+	height: 100%;
     overflow: auto;
+    border-radius: 5px;
 }
 .scroll-container::-webkit-scrollbar {
     width: 8px;
@@ -319,48 +317,33 @@ td, th {
 }
 
 .grid-row {
-    border-bottom: 1px solid #eef1f6;
-    transition: background-color 0.13s ease;
-}
-
-.grid-row:nth-child(even) {
-    background-color: #f5f8fb;
-}
-
-.grid-row:last-child {
-    border-bottom: none;
+    border-bottom: 1px solid #eee;
 }
 
 .grid-row:hover {
-    background-color: #edf7f1;
-    cursor: pointer;
-}
-
-.grid-row.selected-row {
-    background-color: #e0f2e9 !important;
+    background-color: #f1f1f1; /* Highlight effect */
 }
 
 .grid-header div, .grid-row div {
-    padding: 13px 12px;
+    padding: 10px;
 }
 
 .grid-row div {
-    border-right: 1px solid #eef1f6;
-    color: #374151;
-    font-size: 13px;
-    font-weight: 400;
+	border-right: 1px solid #eee;
+	color: #474747;
+	font-size: 12px;
+	font-weight: 400;
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
 .grid-row div:nth-child(3) {
-    border-right: none;
-    white-space: pre-line;
-    text-align: left;
-    justify-content: flex-start;
-    line-height: 1.6;
-}
+	border-right: none;
+	white-space: pre-line;
+	text-align: left;
+	justify-content: flex-start;
+} 
 
 
 .grid-row2 {
@@ -372,53 +355,40 @@ td, th {
 }
 
 .grid-header2 {
-    display: grid;
+	display: grid;
     grid-template-columns: 200px 200px 170px 170px 150px 1fr;
     text-align: center;
     align-items: center;
-    height: 46px;
-    background-color: #e8edf5;
-    font-size: 13px;
-    font-weight: 700;
-    color: #374151;
-    margin: 0;
-    border-bottom: 2px solid #d4dbe8;
-    flex-shrink: 0;
+	height: 50px;
+    background-color: #EEE;
+    font-size: 12px;
+    font-weight: 600;
+    color: #545454;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    margin-right: 12px;
 }
 
 .grid-body2 {
-    border: none;
-    border-radius: 0;
+	border: 1px solid #eee;
+    border-radius: 5px;
     background-color: #fff;
-    margin: 0;
+    margin-right: 5px;
 }
 
-.grid-row2 {
-    border-bottom: 1px solid #eef1f6;
-    transition: background-color 0.13s ease;
-}
-
-.grid-row2:nth-child(even) {
-    background-color: #f5f8fb;
-}
-
-.grid-row2:last-child {
-    border-bottom: none;
-}
 
 .grid-row2:hover {
-    background-color: #edf7f1;
-    cursor: pointer;
+    background-color: #f1f1f1; /* Highlight effect */
 }
 
 .grid-header2 div, .grid-row2 div {
-    padding: 13px 12px;
+    padding: 10px;
 }
 
 .grid-row2 div {
-    border-right: 1px solid #eef1f6;
-    color: #374151;
-    font-size: 13px;
+	border-right: 1px solid #eee;
+    color: #474747;
+    font-size: 12px;
     font-weight: 400;
     display: flex;
     justify-content: center;
@@ -426,12 +396,11 @@ td, th {
 }
 
 .grid-row2 div:nth-child(6) {
-    border-right: none;
+	border-right: none;
     white-space: pre-line;
-    text-align: left;
+	text-align: left;
     justify-content: flex-start;
-    line-height: 1.6;
-}
+} 
 
 .section-bot {
     padding: 0 5px;
