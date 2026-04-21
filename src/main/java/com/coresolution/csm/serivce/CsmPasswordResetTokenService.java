@@ -5,11 +5,16 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 @Service
 public class CsmPasswordResetTokenService {
+
+    private static final Logger log = LoggerFactory.getLogger(CsmPasswordResetTokenService.class);
 
     private final Map<String, ResetTokenContext> tokenStorage = new ConcurrentHashMap<>();
     private final Map<String, Long> expirationStorage = new ConcurrentHashMap<>();
@@ -55,6 +60,22 @@ public class CsmPasswordResetTokenService {
         String normalizedToken = token.trim();
         tokenStorage.remove(normalizedToken);
         expirationStorage.remove(normalizedToken);
+    }
+
+    @Scheduled(fixedRate = 30, timeUnit = TimeUnit.MINUTES)
+    public void purgeExpiredTokens() {
+        long now = System.currentTimeMillis();
+        int[] removed = {0};
+        expirationStorage.forEach((token, expiresAt) -> {
+            if (now > expiresAt) {
+                expirationStorage.remove(token);
+                tokenStorage.remove(token);
+                removed[0]++;
+            }
+        });
+        if (removed[0] > 0) {
+            log.debug("[token-purge] removed {} expired reset token(s)", removed[0]);
+        }
     }
 
     private String normalize(String value) {

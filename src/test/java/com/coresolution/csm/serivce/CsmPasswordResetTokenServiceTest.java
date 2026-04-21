@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import java.lang.reflect.Field;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -42,5 +44,24 @@ class CsmPasswordResetTokenServiceTest {
 
         assertNull(tokenService.getTokenContext(token));
         assertNull(tokenService.getEmailByToken(token));
+    }
+
+    @Test
+    void purgeExpiredTokens_removesOnlyExpiredEntries() throws Exception {
+        String liveToken = tokenService.generateToken("live@test.com", "FALH", "1");
+        String expiredToken = tokenService.generateToken("expired@test.com", "FALH", "2");
+
+        // 만료 시각을 과거로 강제 설정
+        Field expirationField = CsmPasswordResetTokenService.class.getDeclaredField("expirationStorage");
+        expirationField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Long> expirationStorage =
+                (java.util.Map<String, Long>) expirationField.get(tokenService);
+        expirationStorage.put(expiredToken, System.currentTimeMillis() - 1000);
+
+        tokenService.purgeExpiredTokens();
+
+        assertNotNull(tokenService.getTokenContext(liveToken));
+        assertNull(tokenService.getTokenContext(expiredToken));
     }
 }
