@@ -312,11 +312,12 @@ document.addEventListener("DOMContentLoaded", function () {
   // ========= 이벤트 위임(행 선택/더블클릭) =========
   if (tableBodyEl) {
     tableBodyEl.addEventListener('click', function (event) {
-  const clickedRow = event.target.closest('tr');
-  if (!clickedRow) return;
-  document.querySelectorAll('.selected-row').forEach(row => row.classList.remove('selected-row'));
-  clickedRow.classList.add('selected-row');
-  selectedCsIdx = clickedRow.getAttribute('data-cs-idx'); // 이미 위에서 getVal로 넣음
+      if (event.target.closest('.bulk-check-col')) return;
+      const clickedRow = event.target.closest('tr');
+      if (!clickedRow) return;
+      document.querySelectorAll('.selected-row').forEach(row => row.classList.remove('selected-row'));
+      clickedRow.classList.add('selected-row');
+      selectedCsIdx = clickedRow.getAttribute('data-cs-idx');
     });
 
     tableBodyEl.addEventListener('dblclick', function (event) {
@@ -722,7 +723,7 @@ if (clean.length !== data.length) {
       console.warn('orderItems가 비어있습니다.');
       return;
     }
-    let headerHtml = '';
+    let headerHtml = `<th class="bulk-check-col"><input type="checkbox" id="bulkSelectAllRow" title="전체 선택"></th>`;
     const itemCount = oItems.length;
 
     oItems.forEach((col, index) => {
@@ -732,15 +733,18 @@ if (clean.length !== data.length) {
         : col.column_name; // ★ 폴백
       if (!label) return;
 
-      const leftBorder = (index === 0) ? 'left-border' : '';
       const rightBorder = (index === itemCount - 1) ? 'right-border' : '';
       headerHtml += `
-        <th id="header-${index}" class="${leftBorder} ${rightBorder}">
+        <th id="header-${index}" class="${rightBorder}">
           ${escapeHTML(label)}<span id="arrow-${index}" class="arrow"></span>
         </th>`;
     });
 
     $('#table-header').html(headerHtml);
+
+    document.getElementById('bulkSelectAllRow')?.addEventListener('change', function () {
+      document.querySelectorAll('.row-bulk-check').forEach(chk => { chk.checked = this.checked; });
+    });
   }
 
   // ========= 데이터 렌더링 =========
@@ -764,7 +768,14 @@ if (clean.length !== data.length) {
     else if (['A', 'B', 'C'].includes(String(col09))) className += ' bg-abc';
 
     const csIdx = getVal(row, 'cs_idx');
+    const patientName = escapeHTML(getVal(row, 'cs_col_01'));
+    const phones = guardians.map(g => (g?.contact_number || '').replace(/-/g, '')).filter(Boolean);
+    const phonesAttr = escapeHTML(phones.join(','));
     bodyHtml += `<tr class="counselRow ${className}" data-cs-idx="${escapeHTML(csIdx)}">`;
+    bodyHtml += `<td class="bulk-check-col" onclick="event.stopPropagation()">
+      <input type="checkbox" class="row-bulk-check"
+        data-name="${patientName}" data-phones="${phonesAttr}">
+    </td>`;
 
     (orderItems || []).forEach(col => {
       const rawColumnName = (col?.column_name || col?.coulmn || '').trim();
@@ -911,6 +922,129 @@ function getVal(row, key) {
   if (upper in row) return row[upper] ?? '';
   return '';
 }
+  // ======== 일괄 문자 보내기 ========
+  const bulkSmsBtn    = document.getElementById('bulk-sms-btn');
+  const bulkSmsModal  = document.getElementById('bulkSmsModal');
+  const bulkSmsClose  = document.getElementById('bulkSmsClose');
+  const bulkSmsCancel = document.getElementById('bulkSmsCancel');
+  const bulkSmsSend   = document.getElementById('bulkSmsSend');
+  const bulkSmsMsg    = document.getElementById('bulkSmsMessage');
+  const bulkSmsByte   = document.getElementById('bulkSmsByteCount');
+  const bulkSmsSelectAll = document.getElementById('bulkSmsSelectAll');
+
+  function calcBytes(text) {
+    let b = 0;
+    for (let i = 0; i < text.length; i++) b += text.charCodeAt(i) > 127 ? 2 : 1;
+    return b;
+  }
+
+  function updateBulkByteCount() {
+    if (!bulkSmsMsg || !bulkSmsByte) return;
+    const bytes = calcBytes(bulkSmsMsg.value);
+    const max = bytes > 90 ? 2000 : 90;
+    const type = bytes > 90 ? 'LMS' : 'SMS';
+    bulkSmsByte.textContent = `${bytes} / ${max} byte (${type})`;
+    bulkSmsByte.style.color = bytes > max ? 'red' : '#5a6070';
+  }
+
+  function openBulkSmsModal() {
+    const checked = Array.from(document.querySelectorAll('.row-bulk-check:checked'));
+    if (checked.length === 0) { alert('문자를 보낼 대상을 선택해주세요.'); return; }
+
+    const recipientsEl = document.getElementById('bulkSmsRecipients');
+    if (!recipientsEl) return;
+
+    let html = '';
+    checked.forEach(chk => {
+      const name = chk.dataset.name || '';
+      const phones = (chk.dataset.phones || '').split(',').filter(Boolean);
+      if (phones.length === 0) return;
+      phones.forEach(phone => {
+        html += `<label class="bulk-recipient-row">
+          <input type="checkbox" class="bulk-recv-check" value="${escapeHTML(phone)}" checked>
+          <span class="bulk-recv-name">${escapeHTML(name)}</span>
+          <span class="bulk-recv-phone">${escapeHTML(phone)}</span>
+        </label>`;
+      });
+    });
+    recipientsEl.innerHTML = html || '<p class="bulk-no-phone">선택한 행에 보호자 연락처가 없습니다.</p>';
+
+    if (bulkSmsSelectAll) bulkSmsSelectAll.checked = true;
+    if (bulkSmsMsg) bulkSmsMsg.value = '';
+    updateBulkByteCount();
+    if (bulkSmsModal) bulkSmsModal.style.display = 'flex';
+  }
+
+  function closeBulkSmsModal() {
+    if (bulkSmsModal) bulkSmsModal.style.display = 'none';
+  }
+
+  if (bulkSmsBtn)    bulkSmsBtn.addEventListener('click', openBulkSmsModal);
+  if (bulkSmsClose)  bulkSmsClose.addEventListener('click', closeBulkSmsModal);
+  if (bulkSmsCancel) bulkSmsCancel.addEventListener('click', closeBulkSmsModal);
+  if (bulkSmsModal)  bulkSmsModal.addEventListener('click', e => { if (e.target === bulkSmsModal) closeBulkSmsModal(); });
+  if (bulkSmsMsg)    bulkSmsMsg.addEventListener('input', updateBulkByteCount);
+
+  if (bulkSmsSelectAll) {
+    bulkSmsSelectAll.addEventListener('change', function () {
+      document.querySelectorAll('.bulk-recv-check').forEach(chk => { chk.checked = this.checked; });
+    });
+  }
+
+  if (bulkSmsSend) {
+    bulkSmsSend.addEventListener('click', async function () {
+      const fromPhone = document.getElementById('bulkSmsFromPhone')?.value?.replace(/-/g, '');
+      if (!fromPhone) { alert('발신번호를 선택해주세요.'); return; }
+
+      const message = bulkSmsMsg?.value?.trim();
+      if (!message) { alert('메시지를 입력해주세요.'); return; }
+
+      const selected = Array.from(document.querySelectorAll('.bulk-recv-check:checked')).map(c => c.value);
+      if (selected.length === 0) { alert('수신자를 선택해주세요.'); return; }
+
+      const bytes = calcBytes(message);
+      const sendType = bytes > 90 ? 'lms' : 'sms';
+
+      bulkSmsSend.disabled = true;
+      bulkSmsSend.textContent = '전송중...';
+
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const refBase = now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate())
+                    + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds());
+
+      const results = await Promise.all(selected.map((to, i) => {
+        const payload = {
+          refkey: refBase + String(i).padStart(3, '0'),
+          type: sendType,
+          from: fromPhone,
+          to,
+          content: sendType === 'lms'
+            ? { lms: { subject: message.substring(0, 20), message } }
+            : { sms: { message } }
+        };
+        return fetch('/csm/api/external/sendSMS', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          credentials: 'same-origin'
+        }).then(r => r.json()).then(resp => ({ to, ok: resp?.description === 'success' }))
+          .catch(() => ({ to, ok: false }));
+      }));
+
+      const failed = results.filter(r => !r.ok).map(r => r.to);
+      bulkSmsSend.disabled = false;
+      bulkSmsSend.textContent = '전송';
+
+      if (failed.length === 0) {
+        alert(`${selected.length}건 전송 완료`);
+        closeBulkSmsModal();
+      } else {
+        alert(`전송 완료: ${results.length - failed.length}건\n실패: ${failed.join(', ')}`);
+      }
+    });
+  }
+
   // ======== 초기 첫 로드 강제 호출(중요!) ========
   if (activeQueryToken === 0) {
     activeQueryToken = 1;

@@ -524,6 +524,40 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   /* -------- 문자 모달 열고닫기 -------- */
+  let mmsAttachments = []; // [{ name, data (base64, no prefix), dataUrl }]
+
+  function renderMmsPreview() {
+    const previewArea = document.getElementById('mms-preview-area');
+    if (!previewArea) return;
+    if (mmsAttachments.length === 0) {
+      previewArea.innerHTML = '';
+      return;
+    }
+    previewArea.innerHTML = mmsAttachments.map((att, idx) => `
+      <div class="mms-thumb-item" data-idx="${idx}">
+        <img class="mms-thumb-img" src="${att.dataUrl}" alt="${att.name}">
+        <span class="mms-thumb-name">${att.name}</span>
+        <button type="button" class="mms-remove-btn" data-idx="${idx}">✕</button>
+      </div>`).join('');
+    previewArea.querySelectorAll('.mms-remove-btn').forEach(btn => {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const idx = parseInt(this.dataset.idx);
+        mmsAttachments.splice(idx, 1);
+        renderMmsPreview();
+        updateByteCountSMS();
+      });
+    });
+  }
+
+  function resetMmsAttachment() {
+    mmsAttachments = [];
+    const fileInput = document.getElementById('mms-file-input');
+    if (fileInput) fileInput.value = '';
+    renderMmsPreview();
+    updateByteCountSMS();
+  }
+
   function updateByteCountSMS() {
     const textarea = document.getElementById('message-textarea');
     const cardtextarea = document.getElementById('card-textarea');
@@ -532,12 +566,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const totalText = textarea.value + cardtextarea.value;
     const currentBytes = calculateBytes(totalText);
-    const isLong = currentBytes > MAX_BYTES_SMS;
-    const messageType = isLong ? '장문' : '단문';
-    const maxBytes = isLong ? MAX_BYTES_MMS : MAX_BYTES_SMS;
 
-    display.innerHTML = `${currentBytes} / ${maxBytes} byte <span class="type_${isLong ? 'mms' : 'sms'}">${messageType}</span>`;
-    display.style.color = currentBytes > maxBytes ? 'red' : 'black';
+    if (mmsAttachments.length > 0) {
+      display.innerHTML = `${currentBytes} byte <span class="type_mms">MMS (이미지 ${mmsAttachments.length}개 첨부)</span>`;
+      display.style.color = 'black';
+    } else {
+      const isLong = currentBytes > MAX_BYTES_SMS;
+      const messageType = isLong ? '장문(LMS)' : '단문(SMS)';
+      const maxBytes = isLong ? MAX_BYTES_MMS : MAX_BYTES_SMS;
+      display.innerHTML = `${currentBytes} / ${maxBytes} byte <span class="type_${isLong ? 'mms' : 'sms'}">${messageType}</span>`;
+      display.style.color = currentBytes > maxBytes ? 'red' : 'black';
+    }
   }
 
   function updateSMSTextareaContent() {
@@ -586,6 +625,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.template-radio').forEach(r => r.checked = false);
     document.querySelectorAll('.card-radio').forEach(r => r.checked = false);
 
+    resetMmsAttachment();
     updateByteCountSMS();
   }
 
@@ -630,6 +670,37 @@ document.addEventListener('DOMContentLoaded', function () {
 
   updateSMSTextareaContent();
   updateByteCountSMS();
+
+  /* -------- MMS 이미지 첨부 -------- */
+  const mmsAttachBtn = document.getElementById('mms-attach-btn');
+  const mmsFileInput = document.getElementById('mms-file-input');
+  if (mmsAttachBtn && mmsFileInput) {
+    mmsAttachBtn.addEventListener('click', () => mmsFileInput.click());
+    mmsFileInput.addEventListener('change', function () {
+      const files = Array.from(this.files);
+      if (!files.length) return;
+      const oversized = files.filter(f => f.size > 300 * 1024);
+      if (oversized.length) {
+        alert(`파일당 300KB 이하만 첨부 가능합니다.\n초과: ${oversized.map(f => f.name).join(', ')}`);
+        this.value = '';
+        return;
+      }
+      let loaded = 0;
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          mmsAttachments.push({ name: file.name, data: e.target.result.split(',')[1], dataUrl: e.target.result });
+          loaded++;
+          if (loaded === files.length) {
+            renderMmsPreview();
+            updateByteCountSMS();
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+      this.value = '';
+    });
+  }
 
   /* -------- SMS 로그 fetch -------- */
   function fetchSmsLog(phoneList) {
@@ -696,7 +767,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const currentBytes = calculateBytes(message);
-    const sendType = currentBytes > MAX_BYTES_SMS ? 'lms' : 'sms';
+    const sendType = mmsAttachments.length > 0 ? 'mms' : (currentBytes > MAX_BYTES_SMS ? 'lms' : 'sms');
 
     const common = {
       // account는 서버 설정(sms.bizppurio.account)에서 주입한다.
@@ -710,7 +781,13 @@ document.addEventListener('DOMContentLoaded', function () {
       common.sendtime = reservationUnix;
     }
 
-    if (sendType === 'lms') {
+    if (sendType === 'mms') {
+      common.content.mms = {
+        subject: message.substring(0, 20),
+        message,
+        file: mmsAttachments.map(a => ({ name: a.name, data: a.data }))
+      };
+    } else if (sendType === 'lms') {
       common.content.lms = {
         subject: message.substring(0, 20),
         message
@@ -780,6 +857,7 @@ document.addEventListener('DOMContentLoaded', function () {
           $('#reservation-date').val('');
           $('#reservation-hour').val('');
           $('#reservation-minute').val('');
+          resetMmsAttachment();
           updateByteCountSMS();
         })
         .fail(function (xhr) {
@@ -1924,7 +2002,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <label class="protector_phone_text" for="protector_phone">연락처</label>
         <div class="input-with-icon">
           <input class="protector_phone" type="text" name="cs_col_15[]" value=""
-                 oninput="oninputPhone(this)" onkeydown="handleBackspace(event)" maxlength="13">
+                 oninput="oninputPhone(this)" onkeydown="handleBackspace(event)" maxlength="13" autocomplete="off">
           <img class="sms_icon" src="${APP_CTX}/icon/ev/sender-icon.png">
         </div>
       </div>

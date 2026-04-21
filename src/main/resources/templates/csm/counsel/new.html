@@ -474,7 +474,7 @@
                                                                     <div class="input-with-icon">
                                                                         <input class="protector_phone" type="text" name="cs_col_15[]"
                                                                                value="" oninput="oninputPhone(this)" onkeydown="handleBackspace(event)"
-                                                                               pattern="^\\+?[0-9\\-]{7,15}$" maxlength="13" title="유효한 연락처를 입력해주세요.">
+                                                                               maxlength="13">
                                                                         <img class="sms_icon" th:src="@{/icon/ev/sender-icon.png}">
                                                                     </div>
                                                                 </div>
@@ -500,7 +500,7 @@
                                                                     <div class="input-with-icon">
                                                                         <input class="protector_phone" type="text" name="cs_col_15[]" th:value="${guardian.contact_number}"
                                                                                oninput="oninputPhone(this)" onkeydown="handleBackspace(event)"
-                                                                               pattern="^\\+?[0-9\\-]{7,15}$" maxlength="13" title="유효한 연락처를 입력해주세요.">
+                                                                               maxlength="13">
                                                                         <img class="sms_icon" th:src="@{/icon/ev/sender-icon.png}">
                                                                     </div>
                                                                 </div>
@@ -904,7 +904,13 @@
                                         <span class="reset_icon" id="template-reset"><img style="width: 15px;" th:src="@{/icon/ev/refresh.png}"></span>
                                     </div>
                                     <textarea id="message-textarea" placeholder="문자 내용을 입력해주세요." wrap="soft"></textarea>
-                                    <div style="display: flex; align-items: center; justify-content: right; margin-top: 30px; margin-bottom: 10px;">
+                                    <!-- MMS 이미지 첨부 -->
+                                    <div class="mms-attach-wrap">
+                                        <input type="file" id="mms-file-input" accept="image/jpeg,image/jpg,image/png,image/gif" multiple style="display:none;">
+                                        <button type="button" id="mms-attach-btn" class="mms-attach-btn">📎 이미지 첨부 (MMS)</button>
+                                        <div id="mms-preview-area" class="mms-preview-area"></div>
+                                    </div>
+                                    <div style="display: flex; align-items: center; justify-content: right; margin-top: 8px; margin-bottom: 10px;">
                                         <span class="reset_icon" id="card-reset"><img style="width: 15px;" th:src="@{/icon/ev/refresh.png}"></span>
                                     </div>
                                     <textarea id="card-textarea" placeholder="서명 및 인사말을 입력해주세요." wrap="soft"></textarea>
@@ -916,10 +922,7 @@
                         </div>
 
                         <div style="width: 350px;">
-                            <div>
-                                <div class="sms-title"><span>문자전송이력</span></div>
-                                <div id="history-wrapper"></div>
-                            </div>
+                            <div id="history-wrapper"></div>
                         </div>
                     </div>
 
@@ -952,6 +955,29 @@
                     <button id="cancel-template-button" class="btn btn-cancel">취소</button>
                     <button id="save-template-button" class="btn btn-save">저장</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 매칭 후보 모달 -->
+    <div id="matchCandidateModal" class="match-modal-overlay" style="display:none;">
+        <div class="match-modal">
+            <div class="match-modal-header">
+                <span class="match-modal-title">매칭 후보</span>
+                <button type="button" id="matchModalClose" class="match-modal-close">✕</button>
+            </div>
+            <div class="match-modal-toolbar">
+                <label class="match-modal-select-all-wrap">
+                    <input type="checkbox" id="matchModalSelectAll" checked> 전체 선택
+                </label>
+                <span id="matchModalCount" class="match-modal-count"></span>
+            </div>
+            <div class="match-modal-body">
+                <ul id="matchModalList" class="match-modal-list"></ul>
+            </div>
+            <div class="match-modal-footer">
+                <button type="button" id="matchModalCancel" class="match-modal-cancel-btn">취소</button>
+                <button type="button" id="matchModalApply" class="match-modal-apply-btn">선택 적용</button>
             </div>
         </div>
     </div>

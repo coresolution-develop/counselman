@@ -168,6 +168,7 @@
                             <div style="display:flex;justify-content:flex-end;">
                                 <div class="btn delBtn btnw100 listBtn2" id="del-counsel" style="flex:inherit;">환자정보삭제
                                 </div>
+                                <div class="btn listBtn2" id="bulk-sms-btn" style="flex:inherit;">일괄 문자 보내기</div>
                                 <div class="btn listBtn2" id="new-reservation" style="flex:inherit;">상담 접수</div>
                                 <div class="btn newBtn btnw100 listBtn2" id="new-counsel" style="flex:inherit;">신규상담
                                 </div>
@@ -179,6 +180,53 @@
 
         </div> <!-- /.section -->
     </div> <!-- /.main -->
+
+    <!-- 일괄 문자 보내기 모달 -->
+    <div id="bulkSmsModal" class="bulk-sms-overlay" style="display:none;">
+        <div class="bulk-sms-modal">
+            <div class="bulk-sms-header">
+                <span class="bulk-sms-title">일괄 문자 보내기</span>
+                <button type="button" id="bulkSmsClose" class="bulk-sms-close">✕</button>
+            </div>
+            <div class="bulk-sms-body">
+                <!-- 발신번호 -->
+                <div class="bulk-sms-section">
+                    <label class="bulk-sms-label">발신번호</label>
+                    <select id="bulkSmsFromPhone" class="bulk-sms-select">
+                        <option value="">발신번호 선택</option>
+                        <th:block th:if="${phOptions != null}">
+                            <option th:each="opt : ${phOptions}" th:value="${opt.value}" th:text="${opt.text}"></option>
+                        </th:block>
+                    </select>
+                </div>
+                <!-- 수신자 -->
+                <div class="bulk-sms-section">
+                    <div class="bulk-sms-label-row">
+                        <label class="bulk-sms-label">수신자</label>
+                        <label class="bulk-sms-select-all-wrap">
+                            <input type="checkbox" id="bulkSmsSelectAll" checked> 전체 선택
+                        </label>
+                    </div>
+                    <div id="bulkSmsRecipients" class="bulk-sms-recipients"></div>
+                </div>
+                <!-- 메시지 -->
+                <div class="bulk-sms-section">
+                    <label class="bulk-sms-label">메시지</label>
+                    <textarea id="bulkSmsMessage" class="bulk-sms-textarea" placeholder="문자 내용을 입력해주세요."></textarea>
+                    <div class="bulk-sms-bytecount">
+                        <span id="bulkSmsByteCount">0 / 90 byte</span>
+                        <label class="bulk-sms-ad-wrap">
+                            <input type="checkbox" id="bulkSmsAdCheck"> 광고문자(080 무료수신거부)
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="bulk-sms-footer">
+                <button type="button" id="bulkSmsCancel" class="bulk-sms-cancel-btn">취소</button>
+                <button type="button" id="bulkSmsSend" class="bulk-sms-send-btn">전송</button>
+            </div>
+        </div>
+    </div>
 
     <!-- 모달 -->
     <div class="popup-wrap" id="popup">

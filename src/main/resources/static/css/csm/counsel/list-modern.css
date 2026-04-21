@@ -794,17 +794,19 @@ body.counsel-list-modern #table-header {
 }
 
 body.counsel-list-modern #myTable th {
-    padding: 12px;
-    background: #f4f8f5;
-    color: #426055;
-    font-size: 12px;
+    padding: 12px 10px;
+    background: #f0f2f5;
+    color: #3d4452;
+    font-size: 13px;
     font-weight: 700;
+    border-bottom: 2px solid #d4dbe8;
 }
 
 body.counsel-list-modern #myTable td {
-    border: 1px solid #eef3ef;
-    color: #2a4137;
+    border: 1px solid #eff1f4;
+    color: #444;
     font-size: 13px;
+    vertical-align: middle;
 }
 
 body.counsel-list-modern .counselRow:hover td {

@@ -1497,6 +1497,26 @@ public class PageController {
         mv.addObject("cslist", cslist);
         mv.addObject("statusOptions", cs.getCounselStatusOptions(inst));
         mv.addObject("pathTypeOptions", cs.getCounselPathTypeOptions(inst));
+        // 발신번호 (일괄 문자 보내기용)
+        Counsel_phone cpList = new Counsel_phone();
+        cpList.setInst(inst);
+        List<Counsel_phone> phoneListForBulk = cs.selectPhone(cpList);
+        List<Map<String, String>> phOptList = phoneListForBulk == null ? Collections.emptyList()
+                : phoneListForBulk.stream()
+                        .filter(Objects::nonNull)
+                        .map(p -> {
+                            String num = Optional.ofNullable(p.getPhone_num()).map(String::trim).orElse("");
+                            String name = Optional.ofNullable(p.getPhone_name()).map(String::trim).orElse("");
+                            if (num.isEmpty() || "null".equalsIgnoreCase(num)) return null;
+                            if (name.isEmpty() || "null".equalsIgnoreCase(name)) name = "미지정";
+                            Map<String, String> m = new java.util.LinkedHashMap<>();
+                            m.put("value", num);
+                            m.put("text", "(" + name + ") " + num);
+                            return m;
+                        })
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList());
+        mv.addObject("phOptions", phOptList);
         mv.addObject("reservedCounselReservations",
                 reservedCounselReservations != null ? reservedCounselReservations : Collections.emptyList());
         boolean mobile = isMobile(req);
@@ -2982,6 +3002,7 @@ public class PageController {
         }
         return ResponseEntity.ok().build();
     }
+
 
     @GetMapping(value = { "rate", "/rate", "rate/", "/rate/" }, produces = "text/html")
     public String ratePage(Model model, HttpSession session) {
@@ -5025,12 +5046,12 @@ public class PageController {
             }
 
             Guardian guardian = new Guardian();
-            if (!isBlank(name)) {
+            if (!isBlank(name) && !isLikelyHex(name)) {
                 guardian.setName(aes.encryptHexECB(name));
                 guardian.setName_hash(hashSHA256(name));
             }
             guardian.setRelationship(relation);
-            if (!isBlank(phone)) {
+            if (!isBlank(phone) && !isLikelyHex(phone)) {
                 guardian.setContact_number(aes.encryptHexECB(phone));
                 guardian.setContact_number_hash(hashSHA256(phone));
             }
@@ -5648,6 +5669,7 @@ public class PageController {
                     try {
                         g.setName(mysqlAesDecryptHexToUtf8(n, aesKey));
                     } catch (Exception ignored) {
+                        g.setName("");
                     }
                 }
                 String c = g.getContact_number();
@@ -5655,6 +5677,7 @@ public class PageController {
                     try {
                         g.setContact_number(mysqlAesDecryptHexToUtf8(c, aesKey));
                     } catch (Exception ignored) {
+                        g.setContact_number("");
                     }
                 }
             }

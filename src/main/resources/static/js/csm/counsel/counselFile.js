@@ -354,55 +354,107 @@ document.addEventListener('DOMContentLoaded', function () {
   function renderMatchPreview(sourceText, fileId) {
     const clean = String(sourceText || '').trim();
     if (!clean) {
-      return `
-        <div class="counsel-match-preview counsel-match-preview-empty">
-          텍스트 추출 후 커스텀 매칭 후보를 확인할 수 있습니다.
-        </div>
-      `;
+      return `<div class="counsel-match-preview counsel-match-preview-empty">텍스트 추출 후 커스텀 매칭 후보를 확인할 수 있습니다.</div>`;
     }
-
     const matches = analyzeCustomMatchFromText(clean);
     if (matches.length === 0) {
-      return `
-        <div class="counsel-match-preview">
-          <div class="counsel-match-preview-empty">추출 완료: 매칭된 커스텀 항목이 없습니다.</div>
-          <div class="counsel-match-actions">
-            <button type="button" class="counsel-file-apply" data-file-id="${escapeHtml(fileId)}">적용</button>
-          </div>
-        </div>
-      `;
+      return `<div class="counsel-match-preview"><div class="counsel-match-preview-empty">추출 완료: 매칭된 커스텀 항목이 없습니다.</div></div>`;
     }
-
-    const visible = matches.slice(0, 8);
-    const moreCount = matches.length - visible.length;
     return `
       <div class="counsel-match-preview">
-        <div class="counsel-match-title">매칭 후보 ${matches.length}건</div>
-        <ul class="counsel-match-list">
-          ${visible.map((match) => `
-            <li class="counsel-match-item">
-              <input type="checkbox"
-                     class="counsel-match-check"
-                     checked
-                     data-match-base="${escapeHtml(match.base)}"
-                     data-match-label="${escapeHtml(match.label)}"
-                     data-match-type="${escapeHtml(match.type)}"
-                     data-match-select="${escapeHtml(match.selectValue || '')}"
-                     data-match-text="${escapeHtml(match.textValue || '')}"
-                     data-match-check="${match.check ? 'Y' : 'N'}">
-              <span class="counsel-match-label">${escapeHtml(match.label)}</span>
-              <span class="counsel-match-arrow">→</span>
-              <span class="counsel-match-value">${escapeHtml(match.previewValue)}</span>
-              <span class="counsel-match-type">${escapeHtml(match.type)}</span>
-            </li>
-          `).join('')}
-        </ul>
-        ${moreCount > 0 ? `<div class="counsel-match-more">외 ${moreCount}건</div>` : ''}
         <div class="counsel-match-actions">
-          <button type="button" class="counsel-file-apply" data-file-id="${escapeHtml(fileId)}">선택 적용</button>
+          <button type="button" class="counsel-match-open-modal" data-file-id="${escapeHtml(fileId)}">
+            매칭 후보 보기 (${matches.length}건)
+          </button>
         </div>
       </div>
     `;
+  }
+
+  /* -------- 매칭 모달 -------- */
+  let _modalFileId = null;
+  let _modalExtracted = null;
+
+  function openMatchModal(fileId, extractedText) {
+    const matches = analyzeCustomMatchFromText(String(extractedText || '').trim());
+    _modalFileId = fileId;
+    _modalExtracted = extractedText;
+
+    const list = document.getElementById('matchModalList');
+    const countEl = document.getElementById('matchModalCount');
+    const selectAll = document.getElementById('matchModalSelectAll');
+    const modal = document.getElementById('matchCandidateModal');
+    if (!list || !modal) return;
+
+    list.innerHTML = matches.map((match) => `
+      <li class="match-modal-item">
+        <label class="match-modal-row">
+          <input type="checkbox" class="match-modal-check" checked
+            data-match-base="${escapeHtml(match.base)}"
+            data-match-label="${escapeHtml(match.label)}"
+            data-match-type="${escapeHtml(match.type)}"
+            data-match-select="${escapeHtml(match.selectValue || '')}"
+            data-match-text="${escapeHtml(match.textValue || '')}"
+            data-match-check="${match.check ? 'Y' : 'N'}">
+          <span class="match-modal-label">${escapeHtml(match.label)}</span>
+          <span class="match-modal-arrow">→</span>
+          <span class="match-modal-value">${escapeHtml(match.previewValue)}</span>
+          <span class="match-modal-type">${escapeHtml(match.type)}</span>
+        </label>
+      </li>
+    `).join('');
+
+    if (countEl) countEl.textContent = `총 ${matches.length}건`;
+    if (selectAll) selectAll.checked = true;
+    modal.style.display = 'flex';
+  }
+
+  function closeMatchModal() {
+    const modal = document.getElementById('matchCandidateModal');
+    if (modal) modal.style.display = 'none';
+    _modalFileId = null;
+    _modalExtracted = null;
+  }
+
+  // 모달 이벤트 바인딩
+  const _matchModal = document.getElementById('matchCandidateModal');
+  const _matchModalClose = document.getElementById('matchModalClose');
+  const _matchModalCancel = document.getElementById('matchModalCancel');
+  const _matchModalApply = document.getElementById('matchModalApply');
+  const _matchModalSelectAll = document.getElementById('matchModalSelectAll');
+
+  if (_matchModalClose) _matchModalClose.addEventListener('click', closeMatchModal);
+  if (_matchModalCancel) _matchModalCancel.addEventListener('click', closeMatchModal);
+  if (_matchModal) _matchModal.addEventListener('click', (e) => { if (e.target === _matchModal) closeMatchModal(); });
+
+  if (_matchModalSelectAll) {
+    _matchModalSelectAll.addEventListener('change', function () {
+      document.querySelectorAll('.match-modal-check').forEach(chk => { chk.checked = this.checked; });
+    });
+  }
+
+  if (_matchModalApply) {
+    _matchModalApply.addEventListener('click', function () {
+      if (!_modalFileId || !_modalExtracted) return;
+      const selectedMatches = Array.from(document.querySelectorAll('.match-modal-check:checked')).map((node) => ({
+        base: String(node.getAttribute('data-match-base') || '').trim(),
+        label: String(node.getAttribute('data-match-label') || '').trim(),
+        type: String(node.getAttribute('data-match-type') || '').trim(),
+        selectValue: String(node.getAttribute('data-match-select') || '').trim(),
+        textValue: String(node.getAttribute('data-match-text') || '').trim(),
+        check: String(node.getAttribute('data-match-check') || '').trim().toUpperCase() === 'Y'
+      })).filter((m) => m.base);
+
+      const fileItem = document.querySelector(`.counsel-file-item [data-file-id="${_modalFileId}"]`)?.closest('.counsel-file-item');
+      const filename = String(fileItem?.querySelector('.counsel-file-link')?.textContent || '').trim();
+      const applied = applyExtractedTextToCounsel(_modalExtracted, filename, selectedMatches);
+      if (applied.matchedCount > 0) {
+        setFileStatus(`선택 매칭 적용 완료 (커스텀 ${applied.matchedCount}건)`);
+      } else {
+        setFileStatus('적용할 커스텀 매칭 후보가 없습니다.');
+      }
+      closeMatchModal();
+    });
   }
 
   function renderPreviewBody(item) {
@@ -865,6 +917,17 @@ document.addEventListener('DOMContentLoaded', function () {
       const fileId = applyBtn.getAttribute('data-file-id');
       if (!fileId) return;
       applyCounselFileText(fileId, applyBtn);
+      return;
+    }
+
+    const matchOpenBtn = e.target.closest('.counsel-match-open-modal');
+    if (matchOpenBtn) {
+      const fileId = matchOpenBtn.getAttribute('data-file-id');
+      if (!fileId) return;
+      const fileItem = matchOpenBtn.closest('.counsel-file-item');
+      const extracted = String(fileItem?.querySelector('.counsel-preview-source')?.textContent || '').trim();
+      if (!extracted) { setFileStatus('먼저 텍스트추출을 실행해 주세요.', true); return; }
+      openMatchModal(fileId, extracted);
       return;
     }
 

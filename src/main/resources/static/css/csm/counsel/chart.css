@@ -6,24 +6,14 @@
 body {
 	background: #fbfbfb;
 }
-select {
+.stat-filter-bar select {
     appearance: none;
     background-image: url(../../../icon/arrow-down-icon.png);
     background-repeat: no-repeat;
     background-position: right 10px center;
     background-size: 8px;
     cursor: pointer;
-    outline: none;
-    padding: 8px 12px !important;
-    border: 1px solid #6A6A6A;
-    border-radius: 4px;
-    background-color: #fff;
-    font-size: 12px;
-    color: #777;
-    transition: border-color 0.3s ease;
-    font-weight: 400;
-    text-align: left;
-    width: 140px;
+    transition: border-color 0.2s ease;
 }
 .main {
 	padding: 90px 20px 0 20px;
@@ -75,29 +65,23 @@ select {
 #monthlyStatsTable th, #monthlyMethodStatsTable th, #admissionStatsTable th,
 #admissionTypeStatsTable th, #admissionTypeTable th, #admissionSuccessTypeTable th,
 #currentLocationTable th, #currentLocationSuccessTable th, #nonAdmissionReasonTable th  {
-    background-color: #eee;
-    color: #545454;
-    font-size: 12px;
-    font-weight: 500;
+    background-color: #f0f2f5;
+    color: #3d4452;
+    font-size: 13px;
+    font-weight: 700;
     width: 120px;
-/*     min-width: 120px; */
-/*     max-width: 160px; */
     text-align: center;
-    padding: 10px 0;
-    text-align: center;
-    border: 1px solid #eee;
-    color: #474747;
-    font-size: 11px;
-    font-weight: 400;
+    padding: 11px 10px;
+    border: 1px solid #e4e7ec;
 }
 #monthlyStatsTable td, #monthlyMethodStatsTable td, #admissionStatsTable td,
 #admissionTypeStatsTable td, #admissionTypeTable td, #admissionSuccessTypeTable td,
 #currentLocationTable td, #currentLocationSuccessTable td, #nonAdmissionReasonTable td  {
-    padding: 10px 0;
+    padding: 11px 10px;
     text-align: center;
-    border: 1px solid #eee;
-    color: #474747;
-    font-size: 11px;
+    border: 1px solid #eff1f4;
+    color: #444;
+    font-size: 13px;
     font-weight: 400;
 }
 #monthlyStatsTable td:last-child,
@@ -134,7 +118,7 @@ select {
 #currentLocationTable tr:nth-child(even) td,
 #currentLocationSuccessTable tr:nth-child(even) td,
 #nonAdmissionReasonTable tr:nth-child(even) td {
-    background-color: #f9f9f9;
+    background-color: #fafbfc;
 }
 .total td{
     border-top: 2px solid #DBDBDB !important;
@@ -154,6 +138,129 @@ select {
     display: block;
     margin: 10px 0;
 }
-#yearSelect, #monthSelect, #counselorFilter {
-	
+
+/* ===== 섹션 카드 ===== */
+.stat-card {
+    background: #fff;
+    border: 1px solid #e4e7ec;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.stat-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.stat-card-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: #06603A;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.stat-card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e2535;
+}
+
+.stat-card-subtitle {
+    font-size: 13px;
+    font-weight: 600;
+    color: #3d4452;
+    margin: 0 0 10px 0;
+    padding-left: 4px;
+    border-left: 3px solid #06603A;
+    line-height: 1.4;
+}
+
+.stat-card-divider {
+    border: none;
+    border-top: 1px solid #f0f2f5;
+    margin: 20px 0;
+}
+
+.stat-chart-row {
+    display: flex;
+    min-height: 500px;
+    gap: 16px;
+}
+
+.stat-chart-main {
+    flex: 2;
+}
+
+.stat-chart-sub {
+    flex: 1;
+}
+.stat-filter-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    padding: 16px 20px;
+    margin-bottom: 8px;
+    background: #f8f9fb;
+    border: 1px solid #e4e7ec;
+    border-radius: 10px;
+}
+
+.stat-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.stat-filter-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #7a8499;
+    letter-spacing: 0.3px;
+}
+
+.stat-filter-bar select {
+    width: 120px;
+    padding: 7px 10px !important;
+    border: 1px solid #d4d9e4;
+    border-radius: 7px;
+    font-size: 13px;
+    color: #3d4452;
+    background-color: #fff;
+    font-weight: 500;
+}
+
+.stat-filter-bar select:hover,
+.stat-filter-bar select:focus {
+    border-color: #06603A;
+    outline: none;
+}
+
+.stat-export-btn {
+    margin-left: auto;
+    height: 36px;
+    padding: 0 18px;
+    border-radius: 7px;
+    border: 1px solid #06603A;
+    background: #fff;
+    color: #06603A;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.14s ease;
+    white-space: nowrap;
+}
+
+.stat-export-btn:hover {
+    background: #f2fbf6;
 }

@@ -54,61 +54,108 @@
 
             <div>
                 <div>
-                    <div class="mb10" style="border-bottom: 1px solid #6A6A6A; padding: 33px 0; display: flex; align-items: center;">
-                        <select class="mr5" id="yearSelect">
-                            <option th:each="y : ${#numbers.sequence(firstYear, lastYear)}"
-                                    th:value="${y}"
-                                    th:text="${y + '년'}"
-                                    th:selected="${y == lastYear}"></option>
-                        </select>
-
-                        <select class="mr5" id="monthSelect"></select>
-                        <select class="mr5" id="counselorFilter">
-                            <option value="">전체</option>
-                        </select>
-                        <span>검색할 년월과 상담자를 선택해주세요.</span>
-                        <button id="exportStatisticsBtn" type="button" class="btn listBtn2" style="margin-left:auto; width: 160px !important;">
+                    <div class="stat-filter-bar">
+                        <div class="stat-filter-group">
+                            <label class="stat-filter-label">년도</label>
+                            <select id="yearSelect">
+                                <option th:each="y : ${#numbers.sequence(firstYear, lastYear)}"
+                                        th:value="${y}"
+                                        th:text="${y + '년'}"
+                                        th:selected="${y == lastYear}"></option>
+                            </select>
+                        </div>
+                        <div class="stat-filter-group">
+                            <label class="stat-filter-label">월</label>
+                            <select id="monthSelect"></select>
+                        </div>
+                        <div class="stat-filter-group">
+                            <label class="stat-filter-label">상담자</label>
+                            <select id="counselorFilter">
+                                <option value="">전체</option>
+                            </select>
+                        </div>
+                        <button id="exportStatisticsBtn" type="button" class="stat-export-btn">
                             엑셀 내보내기
                         </button>
                     </div>
 
                     <div class="scrollDiv">
-                        <div class="mr5">
-                            <div><span class="header-line">1. 상담자별 상담건수 월별추이</span></div>
-                            <div class="tableDiv"><table id="monthlyStatsTable" border="1"></table></div>
+                        <!-- 카드 1: 상담건수 -->
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <span class="stat-card-badge">1</span>
+                                <span class="stat-card-title">상담자별 상담건수 월별추이</span>
+                            </div>
+                            <div class="tableDiv"><table id="monthlyStatsTable"></table></div>
 
-                            <div><span class="header-line">1-1. 상담형태별 월별추이</span></div>
-                            <div class="tableDiv"><table id="monthlyMethodStatsTable" class="table table-bordered" border="1"></table></div>
+                            <div class="stat-card-divider"></div>
 
-                            <div><span class="header-line">상담건수 월별추이</span></div>
+                            <div class="stat-card-subtitle">1-1. 상담형태별 월별추이</div>
+                            <div class="tableDiv"><table id="monthlyMethodStatsTable"></table></div>
+
+                            <div class="stat-card-divider"></div>
+
+                            <div class="stat-card-subtitle">상담건수 월별추이 (차트)</div>
                             <div id="counselTotalChart"></div>
+                        </div>
 
-                            <div><span class="header-line">2. 상담-입원 연계(성공)건수 월별추이</span></div>
-                            <div class="tableDiv"><table id="admissionStatsTable" border="1"></table></div>
+                        <!-- 카드 2: 상담-입원 연계 -->
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <span class="stat-card-badge">2</span>
+                                <span class="stat-card-title">상담-입원 연계(성공)건수 월별추이</span>
+                            </div>
+                            <div class="tableDiv"><table id="admissionStatsTable"></table></div>
 
-                            <div><span class="header-line">상담-입원 연계(성공)건수 월별추이</span></div>
+                            <div class="stat-card-divider"></div>
+
+                            <div class="stat-card-subtitle">상담-입원 연계 월별추이 (차트)</div>
                             <div id="admissionChartCanvas"></div>
                             <div id="compareChart"></div>
+                        </div>
 
-                            <div><span class="header-line">3. 상담유입경로별 건수 월별추이</span></div>
-                            <div class="tableDiv"><table id="admissionTypeTable" border="1"></table></div>
-
-                            <div><span class="header-line">3-1. 상담유입경로별 - 입원연계(성공) 건수 월별추이</span></div>
-                            <div class="tableDiv"><table id="admissionSuccessTypeTable" border="1"></table></div>
-
-                            <div style="display: flex; min-height: 500px;">
-                                <div id="admissionSuccessTypeChart" style="width: 100%;"></div>
-                                <div id="admissionSuccessTypePie" style="width: 50%;"></div>
+                        <!-- 카드 3: 상담유입경로 -->
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <span class="stat-card-badge">3</span>
+                                <span class="stat-card-title">상담유입경로별 건수 월별추이</span>
                             </div>
+                            <div class="tableDiv"><table id="admissionTypeTable"></table></div>
 
-                            <div><span class="header-line">4. 현재계신곳별 상담건수 월별추이</span></div>
-                            <div class="tableDiv"><table id="currentLocationTable" border="1"></table></div>
+                            <div class="stat-card-divider"></div>
 
-                            <div><span class="header-line">4-1. 현재계신곳별 입원연계(성공) 건수 월별추이</span></div>
-                            <div class="tableDiv"><table id="currentLocationSuccessTable" border="1"></table></div>
+                            <div class="stat-card-subtitle">3-1. 상담유입경로별 - 입원연계(성공) 건수 월별추이</div>
+                            <div class="tableDiv"><table id="admissionSuccessTypeTable"></table></div>
 
-                            <div><span class="header-line">5. 미입원 사유 유형별 월별 추이</span></div>
-                            <div class="tableDiv"><table id="nonAdmissionReasonTable" border="1"></table></div>
+                            <div class="stat-card-divider"></div>
+
+                            <div class="stat-chart-row">
+                                <div id="admissionSuccessTypeChart" class="stat-chart-main"></div>
+                                <div id="admissionSuccessTypePie" class="stat-chart-sub"></div>
+                            </div>
+                        </div>
+
+                        <!-- 카드 4: 현재계신곳 -->
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <span class="stat-card-badge">4</span>
+                                <span class="stat-card-title">현재계신곳별 상담건수 월별추이</span>
+                            </div>
+                            <div class="tableDiv"><table id="currentLocationTable"></table></div>
+
+                            <div class="stat-card-divider"></div>
+
+                            <div class="stat-card-subtitle">4-1. 현재계신곳별 입원연계(성공) 건수 월별추이</div>
+                            <div class="tableDiv"><table id="currentLocationSuccessTable"></table></div>
+                        </div>
+
+                        <!-- 카드 5: 미입원 사유 -->
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <span class="stat-card-badge">5</span>
+                                <span class="stat-card-title">미입원 사유 유형별 월별 추이</span>
+                            </div>
+                            <div class="tableDiv"><table id="nonAdmissionReasonTable"></table></div>
                         </div>
                     </div>
                 </div>
