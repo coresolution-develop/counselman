@@ -149,6 +149,15 @@ public interface CsmMapper {
 
   // --- 보호자 목록 (동적 테이블명 → Provider로 안전하게 전환 권장) ---
   @SelectProvider(type = GuardianSqlProvider.class, method = "getGuardiansById")
+  @Results({
+      @Result(column = "id",             property = "id"),
+      @Result(column = "cs_idx",         property = "cs_idx"),
+      @Result(column = "name",           property = "name"),
+      @Result(column = "relationship",   property = "relationship"),
+      @Result(column = "contact_number", property = "contact_number"),
+      @Result(column = "created_at",     property = "created_at"),
+      @Result(column = "updated_at",     property = "updated_at")
+  })
   List<Guardian> getGuardiansById(@Param("inst") String inst, @Param("cs_idx") Integer cs_idx);
 
   @Select("""

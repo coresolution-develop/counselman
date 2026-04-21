@@ -5055,6 +5055,8 @@ public class PageController {
                 guardian.setContact_number(aes.encryptHexECB(phone));
                 guardian.setContact_number_hash(hashSHA256(phone));
             }
+            log.warn("[DIAG] guardian[{}]: name_blank={}, phone_blank={}, phone_isHex={}, contact_set={}",
+                    i, isBlank(name), isBlank(phone), isLikelyHex(phone), guardian.getContact_number() != null);
             guardians.add(guardian);
         }
         counselData.setGuardians(guardians);
@@ -5356,15 +5358,7 @@ public class PageController {
                 if (value == null || value.isBlank()) {
                     continue;
                 }
-                String selected = value.trim();
-                String[] valueParts = selected.split("_", 2);
-                processedValues.add(valueParts[0]);
-                if (valueParts.length > 1) {
-                    try {
-                        subcategoryId = Long.parseLong(valueParts[1]);
-                    } catch (NumberFormatException ignore) {
-                    }
-                }
+                processedValues.add(value.trim());
             }
             if (processedValues.isEmpty()) {
                 continue;
@@ -5377,6 +5371,8 @@ public class PageController {
             entry.setFieldType(fieldTypeMapping.get(baseParam));
             entries.add(entry);
         }
+        long fieldParamCount = request.getParameterMap().keySet().stream().filter(k -> k.startsWith("field_")).count();
+        log.warn("[DIAG] parseDynamicEntries: field_* params={}, entries built={}", fieldParamCount, entries.size());
         return entries;
     }
 
@@ -5617,7 +5613,7 @@ public class PageController {
         // 2) 엔트리 로딩은 항상 (신규면 빈 리스트일 수도)
         List<CounselDataEntry> entries = cs.getEntriesByInstAndCsIdx(inst, csIdx);
         data.setEntries(entries);
-        log.debug("[SMOKE] entries size={}", entries == null ? null : entries.size());
+        log.warn("[SMOKE] entries size={}", entries == null ? null : entries.size());
         List<CounselLog> counselLogs = normalizeCounselLogs(
                 Optional.ofNullable(cs.getCounselLog(inst, csIdx)).orElse(Collections.emptyList()));
         model.addAttribute("cslog", counselLogs);
@@ -5675,10 +5671,15 @@ public class PageController {
                 String c = g.getContact_number();
                 if (c != null && isLikelyHex(c)) {
                     try {
-                        g.setContact_number(mysqlAesDecryptHexToUtf8(c, aesKey));
-                    } catch (Exception ignored) {
+                        String dec = mysqlAesDecryptHexToUtf8(c, aesKey);
+                        g.setContact_number(dec);
+                        log.warn("[DIAG] guardian contact decrypt: hex_len={}, result_blank={}", c.length(), isBlank(dec));
+                    } catch (Exception e) {
+                        log.warn("[DIAG] guardian contact decrypt FAILED: {}", e.toString());
                         g.setContact_number("");
                     }
+                } else {
+                    log.warn("[DIAG] guardian contact: value={}", c == null ? "null" : "(not hex, len=" + c.length() + ")");
                 }
             }
             model.addAttribute("guardians", guardians);
@@ -5699,15 +5700,14 @@ public class PageController {
         Map<String, List<Category3>> fieldOptionsMapping = (Map<String, List<Category3>>) m.get("fieldOptionsMapping");
 
         // 5) valueMap 빌드(이 타이밍에 entries가 셋팅돼 있어야 함)
-        log.debug("entries for valueMap = {}", data.getEntries() == null ? null : data.getEntries().size());
+        log.warn("[DIAG] entries for valueMap = {}", data.getEntries() == null ? null : data.getEntries().size());
         Map<String, String> valueMap = buildValueMap(data, categoryData, fieldTypeMapping, fieldOptionsMapping);
-        log.debug("DBG csData.cs_col_01 before view = {}", data.getCs_col_01());
         // 6) 모델 바인딩
         model.addAttribute("csData", data);
         model.addAttribute("csEntries", Optional.ofNullable(data.getEntries()).orElseGet(Collections::emptyList));
         model.addAttribute("isEdit", isEdit);
         model.addAttribute("valueMap", valueMap);
-        log.debug("valueMap keys sample = {}", valueMap.keySet().stream().limit(10).toList());
+        log.warn("[DIAG] valueMap size={}, keys={}", valueMap.size(), valueMap.keySet().stream().limit(5).toList());
 
         return
 

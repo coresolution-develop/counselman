@@ -2095,6 +2095,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const textInput = document.querySelector(`input[name='${base}_text'], input[name='${base}_details']`);
     const selectBox = document.querySelector(`select[name='${base}_select']`);
 
+    // checkbox_only 필드(text/select 없음)는 건드리지 않음 — 서버가 렌더링한 checked 상태를 유지
+    if (!textInput && !selectBox) return;
+
     const shouldCheck = hasValue(textInput) || hasValue(selectBox);
     checkbox.checked = shouldCheck;
   }
