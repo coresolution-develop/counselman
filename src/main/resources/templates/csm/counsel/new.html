@@ -309,21 +309,23 @@
       <!-- checkbox_only -->
       <div th:if="${type == 'checkbox_only'}" class="input-wrapper">
         <input type="checkbox"
+               th:id="|${fieldKey}_checkbox|"
                th:name="|${fieldKey}_checkbox|"
                th:value="${c2.cc_col_02}"
                th:checked="${valueMap[fieldKey + '_checkbox'] != null}">
-        <label th:text="${c2.cc_col_02}">라벨</label>
+        <label th:for="|${fieldKey}_checkbox|" th:text="${c2.cc_col_02}">라벨</label>
       </div>
 
       <!-- radio_only -->
       <div th:if="${type == 'radio_only'}" class="input-wrapper">
         <th:block th:with="rdGroup=${'field_' + c1.cc_col_01 + '_radio'}">
           <input type="radio"
+                 th:id="|${fieldKey}_radio|"
                  th:name="${rdGroup}"
                  th:value="${c2.cc_col_01}"
                  th:checked="${valueMap[fieldKey + '_radio'] != null}">
         </th:block>
-        <label th:text="${c2.cc_col_02}">라벨</label>
+        <label th:for="|${fieldKey}_radio|" th:text="${c2.cc_col_02}">라벨</label>
       </div>
 
       <!-- select_only -->
@@ -354,10 +356,11 @@
       <!-- checkbox_select -->
       <div th:if="${type == 'checkbox_select'}" class="input-wrapper">
         <input type="checkbox"
+               th:id="|${fieldKey}_checkbox|"
                th:name="|${fieldKey}_checkbox|"
                th:value="${c2.cc_col_02}"
                th:checked="${valueMap[fieldKey + '_checkbox'] != null}">
-        <label th:text="${c2.cc_col_02}">라벨</label>
+        <label th:for="|${fieldKey}_checkbox|" th:text="${c2.cc_col_02}">라벨</label>
       </div>
       <div th:if="${type == 'checkbox_select' and opts != null and !#lists.isEmpty(opts)}" class="input-wrapper">
         <span></span>
@@ -378,11 +381,12 @@
       <div th:if="${type == 'radio_select'}" class="input-wrapper">
         <th:block th:with="rdGroup=${'field_' + c1.cc_col_01 + '_radio'}">
           <input type="radio"
+                 th:id="|${fieldKey}_radio|"
                  th:name="${rdGroup}"
                  th:value="${c2.cc_col_01}"
                  th:checked="${valueMap[fieldKey + '_radio'] != null}">
         </th:block>
-        <label th:text="${c2.cc_col_02}">라벨</label>
+        <label th:for="|${fieldKey}_radio|" th:text="${c2.cc_col_02}">라벨</label>
       </div>
       <div th:if="${type == 'radio_select' and opts != null and !#lists.isEmpty(opts)}" class="input-wrapper">
         <span></span>
@@ -402,10 +406,11 @@
       <!-- checkbox_text -->
       <div th:if="${type == 'checkbox_text'}" class="input-wrapper">
         <input type="checkbox"
+               th:id="|${fieldKey}_checkbox|"
                th:name="|${fieldKey}_checkbox|"
                th:value="${c2.cc_col_02}"
                th:checked="${valueMap[fieldKey + '_checkbox'] != null}">
-        <label th:text="${c2.cc_col_02}">라벨</label>
+        <label th:for="|${fieldKey}_checkbox|" th:text="${c2.cc_col_02}">라벨</label>
       </div>
       <div th:if="${type == 'checkbox_text'}" class="input-wrapper">
         <span></span>
@@ -418,11 +423,12 @@
       <div th:if="${type == 'radio_text'}" class="input-wrapper">
         <th:block th:with="rdGroup=${'field_' + c1.cc_col_01 + '_radio'}">
           <input type="radio"
+                 th:id="|${fieldKey}_radio|"
                  th:name="${rdGroup}"
                  th:value="${c2.cc_col_01}"
                  th:checked="${valueMap[fieldKey + '_radio'] != null}">
         </th:block>
-        <label th:text="${c2.cc_col_02}">라벨</label>
+        <label th:for="|${fieldKey}_radio|" th:text="${c2.cc_col_02}">라벨</label>
       </div>
       <div th:if="${type == 'radio_text'}" class="input-wrapper">
         <span></span>
