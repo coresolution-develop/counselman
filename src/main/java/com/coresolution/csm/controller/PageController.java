@@ -123,9 +123,14 @@ import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.validation.annotation.Validated;
 
 @Slf4j
+@Validated
 @Controller
 @RequestMapping("/")
 public class PageController {
@@ -194,9 +199,9 @@ public class PageController {
     @PostMapping({ "findpwd/post", "/findpwd/post" })
     @ResponseBody
     public Map<String, Object> postFindpwd(
-            @RequestParam("us_col_04") String usCol04,
-            @RequestParam("us_col_02") String usCol02,
-            @RequestParam("us_col_12") String usCol12,
+            @RequestParam("us_col_04") @NotBlank @Email @Size(max = 100) String usCol04,
+            @RequestParam("us_col_02") @NotBlank @Size(max = 50) String usCol02,
+            @RequestParam("us_col_12") @NotBlank @Size(max = 100) String usCol12,
             HttpServletRequest request) {
         Map<String, Object> response = new HashMap<>();
         try {
@@ -718,7 +723,7 @@ public class PageController {
     @ResponseBody
     public Map<String, Object> coreInstSchemaStatus(
             HttpSession session,
-            @RequestParam("instCode") String instCode) {
+            @RequestParam("instCode") @NotBlank @jakarta.validation.constraints.Pattern(regexp = "^[A-Za-z0-9_]{2,20}$", message = "기관코드 형식이 올바르지 않습니다.") String instCode) {
         String inst = ensureInst(session);
         if (!isCoreInst(inst)) {
             return Map.of("result", "0", "msg", "권한 없음");
@@ -741,7 +746,7 @@ public class PageController {
     @ResponseBody
     public Map<String, Object> coreInstSchemaRepair(
             HttpSession session,
-            @RequestParam("instCode") String instCode) {
+            @RequestParam("instCode") @NotBlank @jakarta.validation.constraints.Pattern(regexp = "^[A-Za-z0-9_]{2,20}$", message = "기관코드 형식이 올바르지 않습니다.") String instCode) {
         String inst = ensureInst(session);
         if (!isCoreInst(inst)) {
             return Map.of("result", "0", "msg", "권한 없음");
