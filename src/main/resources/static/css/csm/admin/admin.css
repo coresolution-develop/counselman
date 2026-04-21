@@ -86,11 +86,12 @@ td, th {
 }
 
 .grid-body {
-	border: 1px solid #eee;
-	border-radius: 5px;
+	border: 1px solid #e8eaed;
+	border-radius: 7px;
 	background: #fff;
 	overflow-y: auto;
 	flex-direction: column;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 
 .grid-header {
@@ -99,12 +100,13 @@ td, th {
     padding: 10px 0;
     text-align: center;
 	height: 50px;
-    background-color: #EEE;
-    font-size: 12px;
-    font-weight: 600;
-    color: #545454;
+    background-color: #f0f2f5;
+    font-size: 13px;
+    font-weight: 700;
+    color: #3d4452;
     margin-bottom: 10px;
-    border-radius: 5px;
+    border-radius: 7px;
+    border: 1px solid #e4e7ec;
 }
 
 .grid-row {
@@ -113,13 +115,18 @@ td, th {
     padding: 15px 0;
     text-align: center;
 	height: 50px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #eff1f4;
+    transition: background-color 0.12s;
+}
+
+.grid-row:nth-child(even) {
+    background-color: #fafbfc;
 }
 
 .grid-row div {
-    border-right: 1px solid #eee;
-    color: #474747;
-    font-size: 12px;
+    border-right: 1px solid #eff1f4;
+    color: #444;
+    font-size: 13px;
     font-weight: 400;
 	display: flex;
     align-items: center;
@@ -141,7 +148,7 @@ td, th {
 }
 
 .grid-row:hover {
-    background-color: #f1f1f1; /* Highlight effect */
+    background-color: #f4f6f9;
 }
 
 .grid-header div {
@@ -164,38 +171,45 @@ td, th {
 }
 
 .grid-header2 {
-    height: 60px;
-    background-color: #EEE;
-    font-size: 17px;
-    font-weight: 600;
-    color: #545454;
+    height: 50px;
+    background-color: #f0f2f5;
+    font-size: 13px;
+    font-weight: 700;
+    color: #3d4452;
     margin-bottom: 10px;
-    border-radius: 5px;
+    border-radius: 7px;
+    border: 1px solid #e4e7ec;
 }
 
 .grid-body2 {
-	border: 1px solid #eee;
-	border-radius: 5px;
+	border: 1px solid #e8eaed;
+	border-radius: 7px;
 	background: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 
 .grid-row2 div {
-    border-right: 1px solid #eee;
-    color: #474747;
-    font-size: 15px;
+    border-right: 1px solid #eff1f4;
+    color: #444;
+    font-size: 13px;
     font-weight: 400;
 }
 
 .grid-row2 {
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #eff1f4;
+    transition: background-color 0.12s;
+}
+
+.grid-row2:nth-child(even) {
+    background-color: #fafbfc;
 }
 
 .grid-row2:hover {
-    background-color: #f1f1f1; 
+    background-color: #f4f6f9;
 }
 
 .grid-header2 div, .grid-row2 div {
-    padding: 10px;
+    padding: 11px 10px;
     word-break: break-word;
 	display: flex;
     align-items: center;
@@ -203,7 +217,7 @@ td, th {
 }
 
 .grid-row2 div {
-	border-right: 1px solid #eee;
+	border-right: 1px solid #eff1f4;
 }
 
 .grid-row2 div:nth-child(2) {

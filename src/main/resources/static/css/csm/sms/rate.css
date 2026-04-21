@@ -333,7 +333,7 @@ td, th {
     grid-template-columns: 250px 210px 210px 200px 1fr;
     text-align: center;
 	padding: 10px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #eff1f4;
 }
 
 .grid-header2 {
@@ -342,21 +342,23 @@ td, th {
     text-align: center;
     align-items: center;
 	height: 50px;
-    background-color: #EEE;
-    font-size: 12px;
-    font-weight: 600;
-    color: #545454;
+    background-color: #f0f2f5;
+    font-size: 13px;
+    font-weight: 700;
+    color: #3d4452;
     margin-bottom: 10px;
-    border-radius: 5px;
+    border-radius: 7px;
     margin-right: 12px;
     padding: 0 10px 0 10px;
+    border: 1px solid #e4e7ec;
 }
 
 .grid-body2 {
-	border: 1px solid #eee;
-    border-radius: 5px;
+	border: 1px solid #e8eaed;
+    border-radius: 7px;
     background-color: #fff;
     margin-right: 5px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 
 .grid-row2 {
@@ -366,18 +368,23 @@ td, th {
     padding: 10px;
 }
 
+.grid-row2:nth-child(even) {
+    background-color: #fafbfc;
+}
+
 .grid-row2:hover {
-    background-color: #f1f1f1; /* Highlight effect */
+    background-color: #f4f6f9;
+    transition: background-color 0.12s;
 }
 
 .grid-header2 div, .grid-row2 div {
-    padding: 10px;
+    padding: 11px 10px;
 }
 
 .grid-row2 div {
-	border-right: 1px solid #eee;
-    color: #474747;
-    font-size: 12px;
+	border-right: 1px solid #eff1f4;
+    color: #444;
+    font-size: 13px;
     font-weight: 400;
     display: flex;
     justify-content: center;
@@ -717,35 +724,37 @@ input[type=text], input[type=button] {
     grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
     text-align: center;
     align-items: center;
-    background-color: #EEE;
-    font-size: 12px;
-    font-weight: 600;
-    color: #545454;
-    border-radius: 5px;
+    background-color: #f0f2f5;
+    font-size: 13px;
+    font-weight: 700;
+    color: #3d4452;
+    border-radius: 7px;
+    border: 1px solid #e4e7ec;
     width: 100%;
     margin: 0 10px;
 }
 .bill-contents-body {
     width: 100%;
     margin: 0 10px;
-    border: 1px solid #eee;
-    border-radius: 5px;
+    border: 1px solid #e8eaed;
+    border-radius: 7px;
     margin-top: 5px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 .bill-contents-row {
     display: grid ;
     grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
     text-align: center;
     align-items: center;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 400;
-    color: #474747;
-    border-radius: 5px;
+    color: #444;
     width: 100%;
+    border-bottom: 1px solid #eff1f4;
 }
 .bill-contents-row div {
-	border-right: 1px solid #eee;
-    padding: 11px;
+	border-right: 1px solid #eff1f4;
+    padding: 11px 10px;
 }
 .bill-contents-row div:last-child {
 	border-right: none;

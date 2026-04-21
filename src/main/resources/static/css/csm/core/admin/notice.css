@@ -157,11 +157,11 @@
     position: sticky;
     top: 0;
     z-index: 2;
-    border-bottom: 1px solid #e5ede8;
-    color: #587063;
-    font-size: 12px;
+    border-bottom: 2px solid #d4dbe8;
+    color: #3d4452;
+    font-size: 13px;
     font-weight: 700;
-    background: linear-gradient(180deg, #fcfdfc 0%, #f5faf6 100%);
+    background: #f0f2f5;
 }
 
 .notice-table-body {
@@ -181,15 +181,19 @@
 }
 
 .notice-row {
-    border-bottom: 1px solid #ecf3ee;
-    color: #2f4137;
-    font-size: 12px;
+    border-bottom: 1px solid #eff1f4;
+    color: #444;
+    font-size: 13px;
     cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.2s ease;
+    transition: background-color 0.12s;
+}
+
+.notice-row:nth-child(even) {
+    background-color: #fafbfc;
 }
 
 .notice-row:hover {
-    background: #f1f8f3;
+    background: #f4f6f9;
 }
 
 .notice-row.active {
