@@ -55,9 +55,9 @@
 
 .stat-card {
     border: 1px solid var(--rv-border);
-    border-radius: 11px;
+    border-radius: 12px;
     background: var(--rv-card);
-    padding: 10px 12px;
+    padding: 14px 16px;
     position: relative;
     overflow: hidden;
     transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
@@ -93,16 +93,20 @@
 
 .stat-card span {
     color: var(--rv-sub);
-    font-size: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .stat-card strong {
     display: block;
-    margin-top: 5px;
+    margin-top: 6px;
     color: var(--rv-text);
-    font-size: 23px;
+    font-size: 30px;
     font-weight: 800;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
+    line-height: 1;
 }
 
 .reservation-alert {
@@ -126,20 +130,20 @@
 }
 
 .reservation-grid {
-    margin-top: 12px;
+    margin-top: 14px;
     display: grid;
-    grid-template-columns: 1.8fr 1fr;
-    gap: 12px;
+    grid-template-columns: 2fr 1fr;
+    gap: 14px;
     align-items: start;
 }
 
 .reservation-list-card,
 .reservation-form-card {
     border: 1px solid var(--rv-border);
-    border-radius: 12px;
+    border-radius: 14px;
     background: var(--rv-card);
-    padding: 12px;
-    box-shadow: 0 2px 9px rgba(20, 38, 27, 0.04);
+    padding: 16px;
+    box-shadow: 0 2px 12px rgba(20, 38, 27, 0.06);
 }
 
 .status-tabs {
@@ -204,31 +208,32 @@
     position: sticky;
     top: 0;
     z-index: 2;
-    background: #f2f6f3;
-    color: #4f5e57;
-    font-size: 12px;
+    background: #e8edf5;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 700;
     letter-spacing: 0.01em;
-    padding: 10px 8px;
-    border-bottom: 1px solid #dde7e1;
+    padding: 12px 10px;
+    border-bottom: 2px solid #d4dbe8;
     text-align: left;
 }
 
 .table-wrap td {
-    font-size: 12px;
-    color: #33403a;
-    padding: 9px 8px;
-    border-bottom: 1px solid #edf1ee;
-    vertical-align: top;
+    font-size: 13px;
+    color: #374151;
+    padding: 12px 10px;
+    border-bottom: 1px solid #eef1f6;
+    vertical-align: middle;
     background: #fff;
     transition: background-color 0.14s ease;
 }
 
 .table-wrap tbody tr:nth-child(even) td {
-    background: #fcfdfc;
+    background: #f5f8fb;
 }
 
 .table-wrap tr.selected td {
-    background: #eefdF2;
+    background: #e8f5ee;
 }
 
 .table-wrap tr[data-edit-url] {
@@ -236,7 +241,7 @@
 }
 
 .table-wrap tr[data-edit-url]:hover td {
-    background: #f3faf6;
+    background: #edf7f1;
 }
 
 .empty-row {
@@ -356,11 +361,14 @@
 }
 
 .reservation-form-card h2 {
-    margin: 0 0 11px;
-    font-size: 18px;
+    margin: 0 0 14px;
+    font-size: 16px;
+    font-weight: 700;
     line-height: 1.3;
     color: #1f2824;
     letter-spacing: -0.01em;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--rv-border);
 }
 
 .form-grid {
@@ -372,10 +380,11 @@
 .form-grid label {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    font-size: 12px;
-    color: #546159;
-    font-weight: 600;
+    gap: 5px;
+    font-size: 11.5px;
+    color: #4a5568;
+    font-weight: 700;
+    letter-spacing: 0.02em;
 }
 
 .form-grid label.full {
@@ -387,10 +396,10 @@
 .form-grid textarea {
     border: 1px solid #d3ddd7;
     border-radius: 8px;
-    background: #fff;
+    background: #fafbfa;
     color: #2a3530;
     font-size: 13px;
-    padding: 9px 10px;
+    padding: 10px 11px;
     outline: none;
     transition: border-color 0.14s ease, box-shadow 0.14s ease, background-color 0.14s ease;
 }
@@ -398,9 +407,9 @@
 .form-grid input:focus,
 .form-grid select:focus,
 .form-grid textarea:focus {
-    border-color: #7ead92;
-    box-shadow: 0 0 0 3px rgba(6, 96, 58, 0.12);
-    background: #fbfefd;
+    border-color: #6ba882;
+    box-shadow: 0 0 0 3px rgba(6, 96, 58, 0.10);
+    background: #fff;
 }
 
 .form-grid textarea {

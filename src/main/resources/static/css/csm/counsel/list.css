@@ -244,12 +244,10 @@ table tr td, table tr th {
 }
 
 thead {
-	color: #545454;
-    font-size: 17px;
-    background: #EEE;
-    height: 45px;
-    font-weight: 600;
-    border-radius: 0px 5px 5px 0px;
+    color: #374151;
+    font-size: 13px;
+    background: #e8edf5;
+    font-weight: 700;
 }
 
 .right-border {
@@ -261,10 +259,10 @@ thead {
 }
 
 .counselRow td {
-    font-size: 15px;
-    color: #474747;
-    height: 50px;
+    font-size: 13px;
+    color: #374151;
     font-weight: 400;
+    vertical-align: middle;
 }
 
 #myTable {
@@ -275,24 +273,26 @@ thead {
 }
 
 #myTable th {
-	white-space: nowrap; /* 텍스트 줄바꿈 방지 */
-    height: inherit;
-    padding: 15px;
-    background: #eee;
-	color: #545454;
-    font-size: 12px;
-    font-weight: 600;
+    white-space: nowrap;
+    padding: 12px 14px;
+    background: #e8edf5;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    border-bottom: 2px solid #d4dbe8;
 }
 
 #myTable td {
-	white-space: nowrap; /* 텍스트 줄바꿈 방지 */
-    height: 45px;
-    border: 1px solid #eee;
-    padding: 11px;
+    white-space: nowrap;
+    padding: 12px 14px;
+    border: none;
+    border-bottom: 1px solid #eef1f6;
     background: #fff;
-	color: #474747;
-    font-size: 12px;
+    color: #374151;
+    font-size: 13px;
     font-weight: 400;
+    vertical-align: middle;
 }
 
 .patient-cell-wrap {

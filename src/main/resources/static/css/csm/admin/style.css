@@ -78,30 +78,40 @@ table tr td, table tr th {
 	border: none;
 }
 thead {
-	color: var(--table-header-font-color);
-    font-size: 17px;
-    background: var(--table-header-color);
+    color: #374151;
+    font-size: 13px;
+    font-weight: 700;
+    background: #e8edf5;
 }
 tbody td {
     background-color: #fff;
-    font-size: 15px;
-    color: #696969;
-    height: 60px;
-    font-weight: normal;
+    font-size: 13px;
+    color: #374151;
+    font-weight: 400;
+    vertical-align: middle;
 }
-#myTable, #logTable{
-	background: #eaeaea;
-	width: 100%;
-    border: solid 1px #eaeaea;
+#myTable, #logTable {
+    background: #fff;
+    width: 100%;
     border-left: none;
     border-right: none;
 }
-#myTable th, #myTable td, #logTable th, #logTable td {
-	white-space: nowrap; /* 텍스트 줄바꿈 방지 */
-    height: 50px;
-    border-bottom: 1px solid #ddd;
-    padding: 15px;
-    
+#myTable th, #logTable th {
+    white-space: nowrap;
+    padding: 12px 14px;
+    background: #e8edf5;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 700;
+    border-bottom: 2px solid #d4dbe8;
+}
+#myTable td, #logTable td {
+    white-space: nowrap;
+    padding: 12px 14px;
+    border-bottom: 1px solid #eef1f6;
+    font-size: 13px;
+    color: #374151;
+    vertical-align: middle;
 }
 
 .log-area {
