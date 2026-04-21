@@ -57,6 +57,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -117,6 +119,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import jakarta.annotation.Nullable;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -143,6 +146,14 @@ public class PageController {
     private CounselListService counselListService;
     @Autowired
     private ModuleFeatureService moduleFeatureService;
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+    private TransactionTemplate transactionTemplate;
+
+    @PostConstruct
+    void initTransactionTemplate() {
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
+    }
     @Value("${app.counsel.audio.base-dir:${user.home}/csm-audio}")
     private String counselAudioBaseDir;
     @Value("${app.counsel.file.base-dir:${user.home}/csm-counsel-files}")
@@ -161,12 +172,14 @@ public class PageController {
     private String openAiModel;
     @Value("${app.counsel.list.hidden-columns:cs_idx,cs_col_01_hash}")
     private String counselListHiddenColumnsRaw;
-    private static final String AES_KEY = "This is key!!!!!";
     private static final String DEFAULT_ADMISSION_PLEDGE_TEXT = "본인은 입원 연계 및 상담을 위해 제공한 정보가 병원 입원 진행에 활용되는 것에 동의합니다. "
             + "또한 상담 과정에서 안내받은 내용을 확인하였으며, 안내된 절차에 따라 성실히 협조할 것을 서약합니다.";
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newBuilder().build();
-    private final AES128 aes = new AES128(AES_KEY);
+    @Autowired
+    private AES128 aes;
+    @Value("${login.aes-key}")
+    private String aesKey;
 
     @RequestMapping("login")
     public String login() {
@@ -3106,34 +3119,41 @@ public class PageController {
 
         try {
             CounselData counselData = buildCounselDataFromRequest(request, inst);
-            int csIdx = cs.insertCounselData(counselData);
-            if (csIdx <= 0) {
-                return "";
-            }
-            saveAdmissionPledgeFromRequest(inst, csIdx, request);
-
-            for (CounselDataEntry entry : parseDynamicEntries(request, inst)) {
-                entry.setCs_idx((long) csIdx);
-                cs.insertCounselDataEntry(inst, entry);
-            }
-            for (Guardian guardian : Optional.ofNullable(counselData.getGuardians()).orElse(Collections.emptyList())) {
-                guardian.setCs_idx((long) csIdx);
-                if (isBlank(guardian.getName()) && isBlank(guardian.getRelationship())
-                        && isBlank(guardian.getContact_number())) {
-                    continue;
+            Integer csIdx = transactionTemplate.execute(status -> {
+                int idx = cs.insertCounselData(counselData);
+                if (idx <= 0) {
+                    status.setRollbackOnly();
+                    return 0;
                 }
-                cs.insertGuardian(inst, guardian);
-            }
-            saveCounselLogSnapshot(inst, csIdx, request);
-            if (isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_AUDIO)) {
-                bindPendingCounselAudio(inst, csIdx, request);
-            }
-            if (isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_FILE)) {
-                bindPendingCounselFiles(inst, csIdx, request);
-            }
-            long reservationId = parseLongSafely(request.getParameter("reservation_id"), 0L);
-            if (reservationId > 0) {
-                cs.linkReservationToCounsel(inst, reservationId, csIdx, resolveReservationActor(inst, session));
+                saveAdmissionPledgeFromRequest(inst, idx, request);
+
+                for (CounselDataEntry entry : parseDynamicEntries(request, inst)) {
+                    entry.setCs_idx((long) idx);
+                    cs.insertCounselDataEntry(inst, entry);
+                }
+                for (Guardian guardian : Optional.ofNullable(counselData.getGuardians()).orElse(Collections.emptyList())) {
+                    guardian.setCs_idx((long) idx);
+                    if (isBlank(guardian.getName()) && isBlank(guardian.getRelationship())
+                            && isBlank(guardian.getContact_number())) {
+                        continue;
+                    }
+                    cs.insertGuardian(inst, guardian);
+                }
+                saveCounselLogSnapshot(inst, idx, request);
+                if (isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_AUDIO)) {
+                    bindPendingCounselAudio(inst, idx, request);
+                }
+                if (isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_FILE)) {
+                    bindPendingCounselFiles(inst, idx, request);
+                }
+                long reservationId = parseLongSafely(request.getParameter("reservation_id"), 0L);
+                if (reservationId > 0) {
+                    cs.linkReservationToCounsel(inst, reservationId, idx, resolveReservationActor(inst, session));
+                }
+                return idx;
+            });
+            if (csIdx == null || csIdx <= 0) {
+                return "";
             }
             return "redirect:/counsel/list";
         } catch (IllegalArgumentException e) {
@@ -3163,39 +3183,41 @@ public class PageController {
         try {
             CounselData counselData = buildCounselDataFromRequest(request, inst);
             counselData.setCs_idx(csIdx);
-            cs.updateCounselData(counselData);
-            saveAdmissionPledgeFromRequest(inst, csIdx, request);
+            transactionTemplate.executeWithoutResult(status -> {
+                cs.updateCounselData(counselData);
+                saveAdmissionPledgeFromRequest(inst, csIdx, request);
 
-            boolean hasDynamicFieldInput = request.getParameterMap().keySet().stream()
-                    .anyMatch(k -> k != null && k.startsWith("field_"));
-            if (hasDynamicFieldInput) {
-                cs.deleteCounselDataEntriesByCsIdx(inst, csIdx);
-                for (CounselDataEntry entry : parseDynamicEntries(request, inst)) {
-                    entry.setCs_idx((long) csIdx);
-                    cs.insertCounselDataEntry(inst, entry);
+                boolean hasDynamicFieldInput = request.getParameterMap().keySet().stream()
+                        .anyMatch(k -> k != null && k.startsWith("field_"));
+                if (hasDynamicFieldInput) {
+                    cs.deleteCounselDataEntriesByCsIdx(inst, csIdx);
+                    for (CounselDataEntry entry : parseDynamicEntries(request, inst)) {
+                        entry.setCs_idx((long) csIdx);
+                        cs.insertCounselDataEntry(inst, entry);
+                    }
                 }
-            }
 
-            cs.deleteGuardiansByCsIdx(inst, csIdx);
-            for (Guardian guardian : Optional.ofNullable(counselData.getGuardians()).orElse(Collections.emptyList())) {
-                guardian.setCs_idx((long) csIdx);
-                if (isBlank(guardian.getName()) && isBlank(guardian.getRelationship())
-                        && isBlank(guardian.getContact_number())) {
-                    continue;
+                cs.deleteGuardiansByCsIdx(inst, csIdx);
+                for (Guardian guardian : Optional.ofNullable(counselData.getGuardians()).orElse(Collections.emptyList())) {
+                    guardian.setCs_idx((long) csIdx);
+                    if (isBlank(guardian.getName()) && isBlank(guardian.getRelationship())
+                            && isBlank(guardian.getContact_number())) {
+                        continue;
+                    }
+                    cs.insertGuardian(inst, guardian);
                 }
-                cs.insertGuardian(inst, guardian);
-            }
-            saveCounselLogSnapshot(inst, csIdx, request);
-            if (isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_AUDIO)) {
-                bindPendingCounselAudio(inst, csIdx, request);
-            }
-            if (isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_FILE)) {
-                bindPendingCounselFiles(inst, csIdx, request);
-            }
-            long reservationId = parseLongSafely(request.getParameter("reservation_id"), 0L);
-            if (reservationId > 0) {
-                cs.linkReservationToCounsel(inst, reservationId, csIdx, resolveReservationActor(inst, session));
-            }
+                saveCounselLogSnapshot(inst, csIdx, request);
+                if (isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_AUDIO)) {
+                    bindPendingCounselAudio(inst, csIdx, request);
+                }
+                if (isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_FILE)) {
+                    bindPendingCounselFiles(inst, csIdx, request);
+                }
+                long reservationId = parseLongSafely(request.getParameter("reservation_id"), 0L);
+                if (reservationId > 0) {
+                    cs.linkReservationToCounsel(inst, reservationId, csIdx, resolveReservationActor(inst, session));
+                }
+            });
             return "redirect:/counsel/list";
         } catch (IllegalArgumentException e) {
             log.warn("[counselupdate] validation fail inst={}, cs_idx={}, err={}", inst, csIdx, e.getMessage());
@@ -5229,7 +5251,7 @@ public class PageController {
             return;
         }
         try {
-            String decrypted = mysqlAesDecryptHexToUtf8(rawName, AES_KEY);
+            String decrypted = mysqlAesDecryptHexToUtf8(rawName, aesKey);
             if (decrypted != null) {
                 row.setName(decrypted);
             }
@@ -5590,7 +5612,7 @@ public class PageController {
 
             if (isEdit && looksHex) {
                 try {
-                    String dec = mysqlAesDecryptHexToUtf8(p, AES_KEY);
+                    String dec = mysqlAesDecryptHexToUtf8(p, aesKey);
                     if (dec == null || dec.isBlank()) {
                         log.warn("patient name decrypt blank; set empty. cs_idx={}", csIdx);
                         data.setCs_col_01("");
@@ -5619,14 +5641,14 @@ public class PageController {
                 String n = g.getName();
                 if (n != null && isLikelyHex(n)) {
                     try {
-                        g.setName(mysqlAesDecryptHexToUtf8(n, AES_KEY));
+                        g.setName(mysqlAesDecryptHexToUtf8(n, aesKey));
                     } catch (Exception ignored) {
                     }
                 }
                 String c = g.getContact_number();
                 if (c != null && isLikelyHex(c)) {
                     try {
-                        g.setContact_number(mysqlAesDecryptHexToUtf8(c, AES_KEY));
+                        g.setContact_number(mysqlAesDecryptHexToUtf8(c, aesKey));
                     } catch (Exception ignored) {
                     }
                 }
@@ -6244,6 +6266,7 @@ public class PageController {
             String searchType, String keyword, String end) {
 
         cri.setInst(inst);
+        cri.setAesKey(aesKey);
         cri.setPage(page);
         cri.setPerPageNum(perPageNum);
         cri.setDateRange(nullToEmpty(dateRange));
@@ -6328,7 +6351,7 @@ public class PageController {
                     Method rawGetter = cd.getClass().getMethod("getCs_col_01_raw");
                     Object rawObj = rawGetter.invoke(cd);
                     if (rawObj instanceof byte[] raw && raw.length > 0) {
-                        String plain = decryptBytesAES(raw, AES_KEY);
+                        String plain = decryptBytesAES(raw, aesKey);
                         if (plain != null) {
                             cd.setCs_col_01(plain);
                             replaced = true;
@@ -6345,7 +6368,7 @@ public class PageController {
                 if (!replaced) {
                     String p = cd.getCs_col_01();
                     if (isLikelyHex(p)) {
-                        String dec = mysqlAesDecryptHexToUtf8(p, AES_KEY);
+                        String dec = mysqlAesDecryptHexToUtf8(p, aesKey);
                         if (dec != null) {
                             cd.setCs_col_01(dec);
                             replaced = true;
@@ -6367,7 +6390,7 @@ public class PageController {
                     String gn = g.getName();
                     if (isLikelyHex(gn)) {
                         try {
-                            String dec = mysqlAesDecryptHexToUtf8(gn, AES_KEY);
+                            String dec = mysqlAesDecryptHexToUtf8(gn, aesKey);
                             if (dec != null)
                                 g.setName(dec);
                         } catch (Exception e) {
@@ -6379,7 +6402,7 @@ public class PageController {
                     String gc = g.getContact_number();
                     if (isLikelyHex(gc)) {
                         try {
-                            String dec = mysqlAesDecryptHexToUtf8(gc, AES_KEY);
+                            String dec = mysqlAesDecryptHexToUtf8(gc, aesKey);
                             if (dec != null)
                                 g.setContact_number(dec);
                         } catch (Exception e) {
@@ -6747,7 +6770,7 @@ public class PageController {
                     String guardianPhone = nullToEmpty(g.getContact_number());
                     if (isLikelyHex(guardianName)) {
                         try {
-                            String dec = mysqlAesDecryptHexToUtf8(guardianName, AES_KEY);
+                            String dec = mysqlAesDecryptHexToUtf8(guardianName, aesKey);
                             if (dec != null)
                                 guardianName = dec;
                         } catch (Exception ignore) {
@@ -6755,7 +6778,7 @@ public class PageController {
                     }
                     if (isLikelyHex(guardianPhone)) {
                         try {
-                            String dec = mysqlAesDecryptHexToUtf8(guardianPhone, AES_KEY);
+                            String dec = mysqlAesDecryptHexToUtf8(guardianPhone, aesKey);
                             if (dec != null)
                                 guardianPhone = dec;
                         } catch (Exception ignore) {

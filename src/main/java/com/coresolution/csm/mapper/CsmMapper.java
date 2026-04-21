@@ -874,18 +874,18 @@ public interface CsmMapper {
       if (hasKeyword) {
         switch (String.valueOf(cri.getSearchType())) {
           case "patient" -> sb.append(
-              " AND AES_DECRYPT(UNHEX(c.cs_col_01), 'This is key!!!!!') LIKE CONCAT('%', #{keyword}, '%') ");
+              " AND AES_DECRYPT(UNHEX(c.cs_col_01), #{aesKey}) LIKE CONCAT('%', #{keyword}, '%') ");
           case "guardian" -> sb.append(
-              " AND AES_DECRYPT(UNHEX(g.name), 'This is key!!!!!') LIKE CONCAT('%', #{keyword}, '%') ");
+              " AND AES_DECRYPT(UNHEX(g.name), #{aesKey}) LIKE CONCAT('%', #{keyword}, '%') ");
           case "phone" -> {
             sb.append(" AND ( ");
             sb.append("  (#{keywordBytes} IS NOT NULL AND g.contact_number_hash = #{keywordBytes}) ");
             sb.append("  OR (#{keywordBytes} IS NULL AND ( ");
             sb.append(
-                "       AES_DECRYPT(UNHEX(g.contact_number), 'This is key!!!!!') LIKE CONCAT('%', #{keyword}, '%') ");
-            sb.append("    OR RIGHT(AES_DECRYPT(UNHEX(g.contact_number), 'This is key!!!!!'), 4) = #{keyword} ");
-            sb.append("    OR MID(AES_DECRYPT(UNHEX(g.contact_number), 'This is key!!!!!'), ");
-            sb.append("       LENGTH(AES_DECRYPT(UNHEX(g.contact_number), 'This is key!!!!!')) - 8, 4) = #{keyword} ");
+                "       AES_DECRYPT(UNHEX(g.contact_number), #{aesKey}) LIKE CONCAT('%', #{keyword}, '%') ");
+            sb.append("    OR RIGHT(AES_DECRYPT(UNHEX(g.contact_number), #{aesKey}), 4) = #{keyword} ");
+            sb.append("    OR MID(AES_DECRYPT(UNHEX(g.contact_number), #{aesKey}), ");
+            sb.append("       LENGTH(AES_DECRYPT(UNHEX(g.contact_number), #{aesKey})) - 8, 4) = #{keyword} ");
             sb.append("  )) ) ");
           }
           case "counselor" -> sb.append(" AND c.cs_col_17 LIKE CONCAT('%', #{keyword}, '%') ");
@@ -937,11 +937,11 @@ public interface CsmMapper {
             } else {
               sb.append(" AND ( ")
                   .append(
-                      " AES_DECRYPT(UNHEX(g.contact_number), 'This is key!!!!!') LIKE CONCAT('%', #{keyword}, '%') ")
-                  .append(" OR RIGHT(AES_DECRYPT(UNHEX(g.contact_number), 'This is key!!!!!'), 4) = #{keyword} ")
+                      " AES_DECRYPT(UNHEX(g.contact_number), #{aesKey}) LIKE CONCAT('%', #{keyword}, '%') ")
+                  .append(" OR RIGHT(AES_DECRYPT(UNHEX(g.contact_number), #{aesKey}), 4) = #{keyword} ")
                   .append(" OR MID( ")
-                  .append("     AES_DECRYPT(UNHEX(g.contact_number), 'This is key!!!!!'), ")
-                  .append("     LENGTH(AES_DECRYPT(UNHEX(g.contact_number), 'This is key!!!!!')) - 8, 4 ")
+                  .append("     AES_DECRYPT(UNHEX(g.contact_number), #{aesKey}), ")
+                  .append("     LENGTH(AES_DECRYPT(UNHEX(g.contact_number), #{aesKey})) - 8, 4 ")
                   .append(" ) = #{keyword} ) ");
             }
           }

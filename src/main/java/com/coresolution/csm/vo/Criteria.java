@@ -24,12 +24,22 @@ public class Criteria {
 
     private String fail;
 
+    private String aesKey;
+
     public String getFail() {
         return fail;
     }
 
     public void setFail(String fail) {
         this.fail = fail;
+    }
+
+    public String getAesKey() {
+        return aesKey;
+    }
+
+    public void setAesKey(String aesKey) {
+        this.aesKey = aesKey;
     }
 
     public String getSearchType() {
