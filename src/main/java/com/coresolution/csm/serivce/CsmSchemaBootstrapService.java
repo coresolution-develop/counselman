@@ -42,6 +42,7 @@ public class CsmSchemaBootstrapService {
     public synchronized void refreshFromPlatform() {
         try {
             ensureCoreRegistryTables();
+            migrateLocalInstitutions();
             if (!tableExists("mp_institution")) {
                 return;
             }
@@ -139,6 +140,28 @@ public class CsmSchemaBootstrapService {
                     UNIQUE (us_col_01, us_col_02)
                 )
                 """);
+    }
+
+    /** mp_institution 없는 로컬 환경에서도 inst_data_cs 기반으로 스키마 마이그레이션 실행 */
+    private void migrateLocalInstitutions() {
+        try {
+            if (!tableExists("inst_data_cs")) {
+                return;
+            }
+            List<String> instCodes = jdbcTemplate.queryForList(
+                    "SELECT id_col_03 FROM csm.inst_data_cs WHERE id_col_03 IS NOT NULL AND id_col_03 != ''",
+                    String.class);
+            for (String instCode : instCodes) {
+                if (instCode == null || instCode.isBlank()) continue;
+                try {
+                    csmAuthService.createCoreInstSchemaTables(instCode.trim());
+                } catch (Exception e) {
+                    log.warn("[schema-migrate-local] inst={} skipped: {}", instCode, e.toString());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[schema-migrate-local] skipped: {}", e.toString());
+        }
     }
 
     private void upsertCoreInstitution(String instCode, String instName, String useYn) {
