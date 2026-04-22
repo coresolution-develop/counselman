@@ -1,50 +1,112 @@
+/* ====================================================
+   상담일지양식관리 페이지 리디자인
+   — 입원상담 페이지 디자인 언어 적용
+   ==================================================== */
+
 .preview-layout,
 .preview-layout * {
   box-sizing: border-box;
 }
 
+/* ---- 1. 템플릿 목록 테이블 오버라이드 ---- */
+#myTable .sms-history-grid4 {
+  border-radius: 0;
+  overflow: visible;
+}
+
+#myTable .grid-header4 {
+  background: #f0f2f5;
+  border-bottom: 2px solid #06603A;
+  border-radius: 8px 8px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #3d4452;
+  margin-bottom: 0;
+  padding: 12px 16px;
+}
+
+#myTable .grid-body4 {
+  border: 1px solid #d9e2ea;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 2px 10px rgba(47, 66, 90, 0.05);
+  background: #fff;
+}
+
+#myTable .grid-row4 {
+  border-bottom: 1px solid #eff1f4;
+  padding: 11px 16px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+#myTable .grid-row4:last-child {
+  border-bottom: none;
+}
+
+#myTable .grid-row4:hover {
+  background: #f4f6f9;
+}
+
+#myTable .grid-row4 div {
+  font-size: 13px;
+  color: #3d4452;
+  border-right: none;
+}
+
+.grid-row4.selected-row {
+  background: #edf8f2 !important;
+  box-shadow: inset 3px 0 0 #06603A;
+}
+
+
+/* ---- 2. 프리뷰 레이아웃 ---- */
 .preview-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(420px, 520px);
-  gap: 12px;
-  margin-top: 12px;
+  gap: 16px;
+  margin-top: 16px;
   align-items: start;
 }
 
 .preview-left,
 .preview-right {
-  background: #f7f7f7;
-  border: 1px solid #e3e3e3;
-  border-radius: 4px;
-  padding: 10px;
+  background: #f0f4f8;
+  border: 1px solid #d9e2ea;
+  border-radius: 10px;
+  padding: 14px;
   min-width: 0;
+  box-shadow: 0 2px 8px rgba(47, 66, 90, 0.06);
 }
 
 .panel-title {
-  background: #ebebeb;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #444;
-  padding: 8px 10px;
-  margin-bottom: 8px;
-  text-align: center;
+  background: transparent;
+  border-radius: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #3d4452;
+  padding: 0 2px 10px;
+  margin-bottom: 10px;
+  text-align: left;
+  border-bottom: 2px solid #06603A;
 }
 
 .preview-card {
-  border: 1px solid #e5e5e5;
-  border-radius: 4px;
+  border: 1px solid #d9e2ea;
+  border-radius: 8px;
   background: #fff;
-  padding: 10px;
-  margin-bottom: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
   overflow: hidden;
+  box-shadow: 0 1px 4px rgba(47, 66, 90, 0.04);
 }
 
 .preview-section {
-  border: 1px solid #e5e5e5;
-  border-radius: 4px;
+  border: 1px solid #d9e2ea;
+  border-radius: 8px;
   background: #fff;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 4px rgba(47, 66, 90, 0.04);
 }
 
 .preview-section-body {
@@ -58,11 +120,12 @@
 }
 
 .preview-group-label {
-  border-right: 1px solid #e9e9e9;
+  border-right: 1px solid #e4ecf0;
   padding: 14px 10px;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 700;
-  color: #444;
+  color: #3d4452;
+  background: #f8fafc;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -72,7 +135,7 @@
   padding: 12px 14px;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 10px 14px;
+  gap: 8px 12px;
   align-items: center;
 }
 
@@ -92,7 +155,7 @@
 
 .preview-field-name {
   font-size: 13px;
-  color: #333;
+  color: #3d4452;
   white-space: nowrap;
 }
 
@@ -109,7 +172,7 @@
 
 .preview-empty {
   font-size: 12px;
-  color: #777;
+  color: #8a9aad;
 }
 
 .preview-row {
@@ -130,37 +193,40 @@
 
 .preview-row label {
   font-size: 11px;
-  color: #555;
+  color: #4a5568;
+  font-weight: 500;
 }
 
 .preview-row input,
 .preview-row select,
 .preview-row textarea {
   width: 100%;
-  border: 1px solid #d7d7d7;
-  border-radius: 3px;
+  border: 1px solid #d2dbe4;
+  border-radius: 5px;
   font-size: 11px;
-  padding: 6px 8px;
-  background: #f9f9f9;
-  color: #777;
+  padding: 5px 7px;
+  background: #f8fafc;
+  color: #666;
 }
 
 .preview-layout input,
 .preview-layout select,
 .preview-layout textarea {
-  border: 1px solid #d2d2d2;
-  border-radius: 4px;
-  background: #f7f7f7;
-  color: #666;
+  border: 1px solid #d2dbe4;
+  border-radius: 5px;
+  background: #f8fafc;
+  color: #555;
   font-size: 12px;
   line-height: 1.4;
 }
 
 .preview-layout input::placeholder,
 .preview-layout textarea::placeholder {
-  color: #9a9a9a;
+  color: #9aabb8;
 }
 
+
+/* ---- 3. 상담기록 우측 ---- */
 .record-card {
   padding: 14px;
 }
@@ -182,7 +248,8 @@
 
 .record-row label {
   font-size: 12px;
-  color: #555;
+  color: #4a5568;
+  font-weight: 500;
   white-space: nowrap;
 }
 
@@ -202,10 +269,10 @@
 .icon-btn {
   width: 24px;
   height: 24px;
-  border: 1px solid #d3d3d3;
-  border-radius: 4px;
+  border: 1px solid #d2dbe4;
+  border-radius: 5px;
   background: #fff;
-  color: #9a9a9a;
+  color: #8a9aad;
   font-size: 14px;
   line-height: 1;
   display: inline-flex;
@@ -216,8 +283,8 @@
 }
 
 .plus-btn {
-  background: #0a6f44;
-  border-color: #0a6f44;
+  background: #06603A;
+  border-color: #06603A;
   color: #fff;
   font-weight: 700;
 }
@@ -225,7 +292,8 @@
 .record-content label {
   display: block;
   font-size: 12px;
-  color: #555;
+  color: #4a5568;
+  font-weight: 500;
   margin-bottom: 6px;
 }
 
@@ -239,12 +307,12 @@
 .log-table {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+  border-radius: 7px 7px 0 0;
   border-top: 1px solid #e4e7ec;
   border-bottom: 2px solid #06603A;
-  margin-top: 8px;
+  margin-top: 10px;
   margin-bottom: 10px;
   background: #f0f2f5;
-  border-radius: 7px 7px 0 0;
 }
 
 .log-table > div {
@@ -261,20 +329,24 @@
   background: #06603A;
   color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 7px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s;
 }
 
-.grid-row4.selected-row {
-  background: #eef7f2;
+.template-select-btn:hover {
+  background: #054e2f;
 }
 
+
+/* ---- 4. 카테고리 에디터 오버레이 ---- */
 .category-editor-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.28);
+  background: rgba(18, 27, 38, 0.44);
+  backdrop-filter: blur(2px);
   z-index: 1200;
   display: none;
   padding: 28px 32px;
@@ -288,21 +360,22 @@
   width: 100%;
   height: 100%;
   max-height: calc(100vh - 56px);
-  background: #fff;
-  border-radius: 6px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+  background: #f0f4f8;
+  border-radius: 14px;
+  border: 1px solid #cfd9e2;
+  box-shadow: 0 22px 44px rgba(18, 27, 38, 0.24), 0 3px 10px rgba(18, 27, 38, 0.16);
   display: grid;
-  grid-template-rows: 60px 1fr 86px;
+  grid-template-rows: 58px 1fr 72px;
   overflow: hidden;
   position: relative;
 }
 
 .category-editor-head {
-  background: #06603A;
+  background: linear-gradient(135deg, #05401E 0%, #0b6b33 100%);
   color: #fff;
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 700;
-  letter-spacing: -0.4px;
+  letter-spacing: -0.2px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -311,37 +384,40 @@
 .category-editor-body {
   padding: 20px;
   overflow: auto;
+  background: #f0f4f8;
 }
 
 .editor-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
+  gap: 16px;
+  height: 100%;
 }
 
 .editor-col {
-  border: 1px solid #d9d9d9;
-  border-radius: 6px;
+  border: 1px solid #d9e2ea;
+  border-radius: 10px;
   background: #fff;
-  min-height: 520px;
+  min-height: 480px;
   display: grid;
-  grid-template-rows: 56px 1fr 74px;
+  grid-template-rows: 52px 1fr 68px;
+  box-shadow: 0 2px 8px rgba(47, 66, 90, 0.06);
 }
 
 .editor-col-title {
-  background: #efefef;
-  border-bottom: 1px solid #e1e1e1;
-  border-radius: 6px 6px 0 0;
+  background: #f0f2f5;
+  border-bottom: 2px solid #06603A;
+  border-radius: 10px 10px 0 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
-  color: #3a3a3a;
+  color: #3d4452;
 }
 
 .editor-list {
-  padding: 16px;
+  padding: 14px;
   overflow: auto;
 }
 
@@ -349,50 +425,61 @@
   width: 100%;
   text-align: left;
   border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
+  border-radius: 7px;
+  background: #f8fafc;
   padding: 10px 12px;
   margin-bottom: 6px;
-  font-size: 14px;
-  color: #333;
+  font-size: 13px;
+  color: #3d4452;
   cursor: move;
+  transition: background 0.12s, border-color 0.12s;
 }
 
 .editor-item:hover {
-  background: #f6fbf8;
+  background: #edf8f2;
+  border-color: #c7e6d5;
 }
 
 .editor-item.active {
-  border-color: #0b6f44;
-  background: #ecf7f1;
+  border-color: #06603A;
+  background: #edf8f2;
+  color: #06603A;
+  font-weight: 600;
 }
 
 .editor-empty {
   font-size: 13px;
-  color: #888;
-  padding: 8px 2px;
+  color: #8a9aad;
+  padding: 8px 4px;
 }
 
 .editor-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  padding: 12px 16px;
-  border-top: 1px solid #ededed;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid #e4ecf0;
+  background: #f8fafc;
+  border-radius: 0 0 10px 10px;
 }
 
 .editor-btn {
-  height: 46px;
-  border-radius: 6px;
-  font-size: 16px;
+  height: 40px;
+  border-radius: 7px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.14s;
 }
 
 .editor-btn.btn-outline {
   background: #fff;
-  color: #454545;
-  border: 1px solid #0b6f44;
+  color: #4a5568;
+  border: 1px solid #c8d5dc;
+}
+
+.editor-btn.btn-outline:hover {
+  background: #f4f6f9;
 }
 
 .editor-btn.btn-fill {
@@ -401,19 +488,57 @@
   border: 1px solid #06603A;
 }
 
+.editor-btn.btn-fill:hover {
+  background: #054e2f;
+}
+
 .category-editor-foot {
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 10px;
   padding: 0 22px;
-  border-top: 1px solid #ececec;
+  border-top: 1px solid #d9e1e8;
+  background: #f6f9fb;
 }
 
+.foot-btn {
+  min-width: 120px;
+  height: 42px;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.foot-btn.cancel {
+  background: #fff;
+  color: #5a6070;
+  border: 1px solid #d4d9e4;
+}
+
+.foot-btn.cancel:hover {
+  background: #f4f6f9;
+}
+
+.foot-btn.save {
+  background: #06603A;
+  color: #fff;
+}
+
+.foot-btn.save:hover {
+  background: #054e2f;
+}
+
+
+/* ---- 5. 에디터 폼 모달 (항목 추가/수정) ---- */
 .editor-form-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(18, 27, 38, 0.44);
+  backdrop-filter: blur(2px);
   display: none;
   align-items: center;
   justify-content: center;
@@ -425,39 +550,67 @@
 }
 
 .editor-form-modal {
-  width: min(520px, calc(100% - 24px));
+  width: min(480px, calc(100% - 24px));
   background: #fff;
-  border-radius: 10px;
-  border: 1px solid #dcdcdc;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-  padding: 18px;
+  border-radius: 14px;
+  border: 1px solid #cfd9e2;
+  box-shadow: 0 22px 44px rgba(18, 27, 38, 0.22), 0 3px 10px rgba(18, 27, 38, 0.12);
+  overflow: hidden;
+  padding: 0;
 }
 
 .editor-form-title {
-  font-size: 18px;
+  display: flex;
+  align-items: center;
+  height: 52px;
+  padding: 0 20px;
+  font-size: 15px;
   font-weight: 700;
-  margin-bottom: 14px;
-  color: #2f2f2f;
+  color: #fff;
+  background: linear-gradient(135deg, #05401E 0%, #0b6b33 100%);
+  margin-bottom: 0;
+}
+
+/* 폼 필드 영역 래퍼 */
+.editor-form-body {
+  padding: 22px 22px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f8 100%);
 }
 
 .editor-form-row {
-  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 0;
 }
 
 .editor-form-row label {
   display: block;
   font-size: 13px;
-  color: #555;
-  margin-bottom: 6px;
+  font-weight: 700;
+  color: #3f4f63;
+  margin-bottom: 0;
 }
 
 .editor-form-row input {
   width: 100%;
-  height: 40px;
-  border: 1px solid #d4d4d4;
-  border-radius: 6px;
-  padding: 8px 10px;
+  height: 42px;
+  border: 1px solid #d2dbe4;
+  border-radius: 8px;
+  padding: 0 12px;
   font-size: 14px;
+  color: #2c3e35;
+  background: #fbfdff;
+  transition: border-color 0.16s, box-shadow 0.16s;
+}
+
+.editor-form-row input:focus {
+  border-color: #0f7f51;
+  box-shadow: 0 0 0 3px rgba(6, 96, 58, 0.12);
+  outline: none;
 }
 
 .type-chip-group {
@@ -469,48 +622,45 @@
 .type-chip {
   height: 34px;
   border-radius: 999px;
-  border: 1px solid #b8c2bd;
+  border: 1px solid #ccd9d3;
   background: #fff;
-  color: #4c4c4c;
-  padding: 0 12px;
+  color: #4c5c6b;
+  padding: 0 14px;
   font-size: 13px;
   cursor: pointer;
+  transition: all 0.14s;
+}
+
+.type-chip:hover {
+  border-color: #06603A;
+  color: #06603A;
 }
 
 .type-chip.active {
   border-color: #06603A;
-  background: #ecf7f1;
+  background: #edf8f2;
   color: #06603A;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .editor-form-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  justify-content: flex-end;
   gap: 8px;
-  margin-top: 8px;
+  padding: 14px 22px 18px;
+  border-top: 1px solid #d9e1e8;
+  background: #f6f9fb;
+  margin-top: 0;
 }
 
-.foot-btn {
-  min-width: 140px;
-  height: 50px;
-  border-radius: 6px;
-  border: none;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
+.editor-form-actions .editor-btn {
+  height: 38px;
+  min-width: 90px;
+  padding: 0 20px;
 }
 
-.foot-btn.cancel {
-  background: #a0a0a0;
-  color: #fff;
-}
 
-.foot-btn.save {
-  background: #06603A;
-  color: #fff;
-}
-
+/* ---- 6. 반응형 ---- */
 @media (max-width: 1200px) {
   .preview-layout {
     grid-template-columns: 1fr;
@@ -521,11 +671,11 @@
   }
 
   .preview-group-label {
-    border-right: 0;
-    border-bottom: 1px solid #e9e9e9;
+    border-right: none;
+    border-bottom: 1px solid #e4ecf0;
     justify-content: flex-start;
     padding: 10px 12px;
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .preview-group-fields {
@@ -548,11 +698,8 @@
   }
 
   .category-editor-panel {
-    grid-template-rows: 44px 1fr 72px;
-  }
-
-  .category-editor-head {
-    font-size: 18px;
+    grid-template-rows: 52px 1fr 72px;
+    border-radius: 10px;
   }
 
   .editor-grid {
@@ -560,30 +707,18 @@
   }
 
   .editor-col {
-    min-height: 300px;
-    grid-template-rows: 44px 1fr 62px;
-  }
-
-  .editor-col-title {
-    font-size: 18px;
-  }
-
-  .editor-item {
-    font-size: 15px;
-  }
-
-  .editor-empty {
-    font-size: 14px;
+    min-height: 260px;
+    grid-template-rows: 44px 1fr 60px;
   }
 
   .editor-btn {
-    font-size: 16px;
-    height: 40px;
+    font-size: 14px;
+    height: 38px;
   }
 
   .foot-btn {
     min-width: 90px;
-    height: 40px;
-    font-size: 16px;
+    height: 38px;
+    font-size: 14px;
   }
 }
