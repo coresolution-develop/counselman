@@ -178,6 +178,9 @@ public interface CsmMapper {
   @UpdateProvider(type = UserSqlProvider.class, method = "userUpdate")
   int userUpdate(Userdata ud);
 
+  @UpdateProvider(type = UserSqlProvider.class, method = "userUpdatePassword")
+  int userUpdatePassword(Userdata ud);
+
   @DeleteProvider(type = UserSqlProvider.class, method = "userDelete")
   int userDelete(Userdata ud);
 
@@ -822,6 +825,15 @@ public interface CsmMapper {
                  us_col_12 = #{us_col_12},
                  us_col_13 = #{us_col_13},
                  us_col_14 = #{us_col_14}
+           WHERE us_col_01 = #{us_col_01}
+          """;
+    }
+
+    public static String userUpdatePassword(Userdata ud) {
+      String t = sanitizeInst(ud.getUs_col_04());
+      return """
+          UPDATE csm.user_data_""" + t + """
+             SET us_col_03 = #{us_col_03}
            WHERE us_col_01 = #{us_col_01}
           """;
     }

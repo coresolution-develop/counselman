@@ -34,39 +34,37 @@ $(document).ready(function() {
 		// 이메일 도메인 추천 리스트
 	    var commonDomains = ["gmail.com", "naver.com", "daum.net", "yahoo.com", "outlook.com", "icloud.com", "hanmail.net", "nate.com"];
 
-		
-		var us_col_02 = $('#us_col_02').val();
+		var us_col_02 = $('#us_col_02').val().trim();
 		var us_col_05 = $('#us_col_05').val();
-//		var us_col_08 = $('#us_col_08 option:selected');
-//		var us_col_07 = $('#us_col_07 option:selected');
-//		var us_col_11 = $('#us_col_11').val();
-//		var us_col_06 = $('#us_col_06').val();
-		
 		var us_col_08 = $('#us_col_08').val();
 		var us_col_07 = $('#us_col_07').val();
-		var us_col_11 = $('#us_col_11').val();
+		var us_col_11 = $('#us_col_11').val().trim();
 		var us_col_06 = $('#us_col_06').val();
-	    var us_col_12 = $('#us_col_12').val();
-	    var us_col_14 = $('#us_col_14').val();
-	    var us_col_13 = $('#us_col_13').val();
-	    
-		console.log('아이디 :'+ us_col_02);
-		console.log('사용권한 : ' + us_col_08);
-		console.log('사용상태 : ' + us_col_07);
-		console.log('Email : ' + us_col_11);
-		console.log('비고 : ' +  us_col_06);
-		console.log('이름 : ' + us_col_12);
-		console.log();
-		
-		if (us_col_08 == '' ||
-			us_col_07 == '' ||
+	    var us_col_12 = $('#us_col_12').val().trim();
+	    var us_col_14 = $('#us_col_14').val().trim();
+	    var us_col_13 = $('#us_col_13').val().trim();
+	    var us_col_03 = $('#us_col_03').val();
+	    var us_col_03_confirm = $('#us_col_03_confirm').val();
+
+		if (us_col_02 == '' ||
+			us_col_08 == '' ||
 			us_col_11 == '' ||
 			us_col_12 == '' ||
 			us_col_14 == '' ||
 			us_col_13 == ''
 		) {
-//			alert('항목을 작성해주세요.'); 
-			showFailModal('항목을 작성해주세요.')
+			showFailModal('필수 항목을 모두 입력해주세요.');
+			return;
+		}
+		// 비밀번호 필수 확인
+		if (us_col_03 == '') {
+			showFailModal('비밀번호를 입력해주세요.');
+			$('#us_col_03').focus();
+			return;
+		}
+		if (us_col_03 !== us_col_03_confirm) {
+			showFailModal('비밀번호가 일치하지 않습니다.');
+			$('#us_col_03_confirm').focus();
 			return;
 		}
 		// ✅ 이메일 정규식 (기본 유효성 검사)
@@ -79,9 +77,8 @@ $(document).ready(function() {
         // ✅ 이메일 도메인 오타 감지
         var emailParts = us_col_11.split('@');
         if (emailParts.length === 2) {
-            var userPart = emailParts[0]; // "user"
-            var domainPart = emailParts[1]; // "gamil.com"
-
+            var userPart = emailParts[0];
+            var domainPart = emailParts[1];
             var suggestedDomain = findClosestDomain(domainPart, commonDomains);
             if (suggestedDomain && suggestedDomain !== domainPart) {
                 showFailModal(`혹시 이메일이 '<b>${userPart}@${suggestedDomain}</b>' 인가요? <br> 정확한 이메일을 입력해주세요.`);
@@ -89,7 +86,7 @@ $(document).ready(function() {
                 return;
             }
         }
-        
+
 		spinner();
 		$.ajax({
 			url : '/csm/newuser/post',
@@ -97,9 +94,10 @@ $(document).ready(function() {
 			dataType: 'json',
 			data: {
 				'us_col_02': us_col_02,
+				'us_col_03': us_col_03,
 				'us_col_06': us_col_06,
 				'us_col_05': us_col_05,
-				'us_col_07': us_col_07,
+				'us_col_07': us_col_07 || 'y',
 				'us_col_08': us_col_08,
 				'us_col_11': us_col_11,
 				'us_col_12': us_col_12,
@@ -109,11 +107,16 @@ $(document).ready(function() {
 			success: function(response) {
 				hideSpinner();
 				console.log('Success: ', response);
-				showSuccessModal('이메일로 비밀번호 설정 링크를 전송하였습니다.');
+				if (response.result === '1') {
+					showSuccessModal('사용자가 등록되었습니다.');
+				} else {
+					showFailModal(response.msg || '등록에 실패했습니다. 다시 시도해주세요.');
+				}
 			},
 			error: function(error) {
+				hideSpinner();
 				console.log('Error: ', error);
-
+				showFailModal('오류가 발생했습니다. 다시 시도해주세요.');
 			}
 		});
 	});

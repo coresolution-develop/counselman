@@ -238,6 +238,10 @@ public class CsmAuthService {
         return cs.userUpdate(ud);
     }
 
+    public int userUpdatePassword(Userdata ud) {
+        return cs.userUpdatePassword(ud);
+    }
+
     public int userDelete(Userdata ud) {
         return cs.userDelete(ud);
     }

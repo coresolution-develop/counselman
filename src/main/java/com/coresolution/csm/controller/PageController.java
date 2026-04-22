@@ -415,6 +415,14 @@ public class PageController {
         if (inst == null) {
             return Map.of("result", "0", "msg", "세션 만료");
         }
+        if (ud.getUs_col_02() == null || ud.getUs_col_02().isBlank()) {
+            return Map.of("result", "0", "msg", "아이디를 입력해주세요.");
+        }
+        // 중복 아이디 체크
+        Userdata exists = cs.loadUserInfo(inst, ud.getUs_col_02());
+        if (exists != null) {
+            return Map.of("result", "0", "msg", "이미 사용 중인 아이디입니다.");
+        }
         ud.setUs_col_04(inst);
         if (ud.getUs_col_07() == null || ud.getUs_col_07().isBlank()) {
             ud.setUs_col_07("y");
@@ -422,19 +430,34 @@ public class PageController {
         if (ud.getUs_col_09() == 0) {
             ud.setUs_col_09(1);
         }
+        // 비밀번호 AES 암호화
+        if (ud.getUs_col_03() != null && !ud.getUs_col_03().isBlank()) {
+            ud.setUs_col_03(aes.encrypt(ud.getUs_col_03()));
+        } else {
+            ud.setUs_col_03(null);
+        }
         int result = cs.userInsert(ud);
         return Map.of("result", result > 0 ? "1" : "0");
     }
 
     @PostMapping("modifyuserPopup/post")
     @ResponseBody
-    public Map<String, Object> modifyUserPost(HttpSession session, Userdata ud) {
+    public Map<String, Object> modifyUserPost(HttpSession session, Userdata ud,
+            @RequestParam(value = "new_password", required = false) String newPassword) {
         String inst = ensureInst(session);
         if (inst == null) {
             return Map.of("result", "0", "msg", "세션 만료");
         }
         ud.setUs_col_04(inst);
         int result = cs.userUpdate(ud);
+        // 비밀번호 변경 요청이 있으면 별도 처리
+        if (result > 0 && newPassword != null && !newPassword.isBlank()) {
+            Userdata pwUd = new Userdata();
+            pwUd.setUs_col_01(ud.getUs_col_01());
+            pwUd.setUs_col_04(inst);
+            pwUd.setUs_col_03(aes.encrypt(newPassword));
+            cs.userUpdatePassword(pwUd);
+        }
         return Map.of("result", result > 0 ? "1" : "0");
     }
 

@@ -34,47 +34,51 @@ $(document).ready(function() {
 		var us_col_08 = $('#us_col_08').val();
 	    var us_col_01 = $('#us_col_01').val();
 	    var us_col_07 = $('#us_col_07').val();
-	    
-	    
-	    console.log("idx : " + us_col_01);
-		console.log('아이디 :'+ us_col_02);
-		console.log('이름 : ' + us_col_12);
-		console.log('부서 : ' + us_col_13);
-		console.log('직급 :'+ us_col_14);
-		console.log('Email : ' + us_col_11);
-		console.log('비고 : ' +  us_col_06);
-		console.log('사용권한 : ' + us_col_08);
-		console.log('사용상태 : ' + us_col_07);
-		console.log();
+	    var new_password = $('#new_password').val();
+	    var new_password_confirm = $('#new_password_confirm').val();
+
+	    // 비밀번호 변경 요청 시 확인
+	    if (new_password !== '') {
+	    	if (new_password !== new_password_confirm) {
+	    		showFailModal('새 비밀번호가 일치하지 않습니다.');
+	    		$('#new_password_confirm').focus();
+	    		return;
+	    	}
+	    }
+
 		spinner();
+		var data = {
+			'us_col_01': us_col_01,
+			'us_col_02': us_col_02,
+			'us_col_12': us_col_12,
+			'us_col_13': us_col_13,
+			'us_col_14': us_col_14,
+			'us_col_11': us_col_11,
+			'us_col_06': us_col_06,
+			'us_col_08': us_col_08,
+			'us_col_07': us_col_07
+		};
+		if (new_password !== '') {
+			data['new_password'] = new_password;
+		}
 		$.ajax({
 			url : '/csm/modifyuserPopup/post',
 			type: 'post',
 			dataType: 'json',
-			data: {
-				'us_col_01': us_col_01,
-				'us_col_02': us_col_02,
-				'us_col_12': us_col_12,
-				'us_col_13': us_col_13,
-				'us_col_14': us_col_14,
-				'us_col_11': us_col_11,
-				'us_col_06': us_col_06,
-				'us_col_08': us_col_08,
-				'us_col_07': us_col_07
-			},
+			data: data,
 			success: function(response) {
 				hideSpinner();
 				console.log('Success: ', response);
-				// 변경된 이메일이 있다면 해당 메시지를 표시
-		        if (response.msg) {
-		            showSuccessModal(response.msg);
-		        } else {
-		            showSuccessModal("변경이 완료되었습니다.");
-		        }
+				if (response.result === '1') {
+					showSuccessModal("변경이 완료되었습니다.");
+				} else {
+					showFailModal(response.msg || "수정에 실패했습니다. 다시 시도해주세요.");
+				}
 			},
 			error: function(error) {
+				hideSpinner();
 				console.log('Error: ', error);
-				showSuccessModal("오류가 발생했습니다. 다시 시도해주세요.");
+				showFailModal("오류가 발생했습니다. 다시 시도해주세요.");
 			}
 		});
 	});
@@ -94,6 +98,20 @@ function showSuccessModal(message) {
         modal.classList.remove('show');
         window.opener.location.reload();
         window.close();
+    };
+}
+
+function showFailModal(message) {
+    const modal = document.querySelector('.modal');
+    const body = document.querySelector('body');
+    const menuMsg = document.querySelector('.menu_msg');
+    menuMsg.innerText = message;
+    modal.classList.add('show');
+    body.style.overflow = 'hidden';
+
+    const confirmBtn = document.getElementById('confirmBtn2');
+    confirmBtn.onclick = function() {
+        modal.classList.remove('show');
     };
 }
 
