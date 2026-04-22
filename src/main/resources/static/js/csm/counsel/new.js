@@ -176,16 +176,20 @@ document.addEventListener('DOMContentLoaded', function () {
   function toggleResultFields(value) {
     const reservationFields = $('#reservationFields');
     const noAdmissionReason = $('#noAdmissionReason');
+    const roomBoardSection = document.getElementById('roomBoardSection');
 
     if (value === '입원예약') {
       reservationFields.css('display', 'flex');
       noAdmissionReason.css('display', 'none');
+      if (roomBoardSection) roomBoardSection.style.display = '';
     } else if (value === '입원안함') {
       reservationFields.css('display', 'none');
       noAdmissionReason.css('display', 'flex');
+      if (roomBoardSection) roomBoardSection.style.display = 'none';
     } else {
       reservationFields.css('display', 'none');
       noAdmissionReason.css('display', 'none');
+      if (roomBoardSection) roomBoardSection.style.display = '';
     }
   }
 
