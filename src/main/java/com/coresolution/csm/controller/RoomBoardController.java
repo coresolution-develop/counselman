@@ -1,6 +1,7 @@
 package com.coresolution.csm.controller;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+
+import com.coresolution.csm.vo.AdmissionReservationItem;
 
 import com.coresolution.csm.config.InstDetails;
 import com.coresolution.csm.serivce.CsmAuthService;
@@ -381,6 +384,29 @@ public class RoomBoardController {
         virtualUser.setUs_col_09(1);
         virtualUser.setUs_col_12(normalizedUserId);
         return virtualUser;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  입원 예약 관리 페이지
+    // ─────────────────────────────────────────────────────────────────────
+
+    @GetMapping({ "counsel/admission-reservation", "/counsel/admission-reservation" })
+    public String admissionReservationPage(Model model, HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return "redirect:/login";
+        }
+        Userdata userinfo = ensureUserInfo(session, inst);
+        List<AdmissionReservationItem> items = roomBoardService.listAdmissionReservations(inst);
+        List<Map<String, String>> rooms = roomBoardService.listAvailableRooms(inst);
+
+        model.addAttribute("info", userinfo);
+        model.addAttribute("items", items);
+        model.addAttribute("rooms", rooms);
+        model.addAttribute("endVar", "on");
+        model.addAttribute("st", "");
+        model.addAttribute("kw", "");
+        return "csm/counsel/admissionReservation";
     }
 
     private void populateCommon(Model model, String inst, Userdata userinfo) {

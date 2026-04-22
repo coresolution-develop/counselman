@@ -87,12 +87,14 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import com.coresolution.csm.config.InstDetails;
 import com.coresolution.csm.serivce.CounselListService;
 import com.coresolution.csm.serivce.CsmAuthService;
+import com.coresolution.csm.serivce.RoomBoardService;
 import com.coresolution.csm.serivce.CsmEmailService;
 import com.coresolution.csm.serivce.ModuleFeatureService;
 import com.coresolution.csm.serivce.CsmPasswordResetTokenService;
 import com.coresolution.csm.serivce.ExternalSmsGatewayService;
 import com.coresolution.csm.serivce.SmsService;
 import com.coresolution.csm.util.AES128;
+import com.coresolution.csm.vo.AdmissionReservationItem;
 import com.coresolution.csm.vo.Card;
 import com.coresolution.csm.vo.Category1;
 import com.coresolution.csm.vo.Category2;
@@ -151,6 +153,8 @@ public class PageController {
     private CounselListService counselListService;
     @Autowired
     private ModuleFeatureService moduleFeatureService;
+    @Autowired
+    private RoomBoardService roomBoardService;
     @Autowired
     private PlatformTransactionManager transactionManager;
     private TransactionTemplate transactionTemplate;
@@ -1708,6 +1712,7 @@ public class PageController {
             @RequestParam(value = "priority", required = false, defaultValue = "3") Integer priority,
             @RequestParam(value = "reservedAt", required = false) String reservedAt,
             @RequestParam(value = "status", required = false, defaultValue = "RESERVED") String status,
+            @RequestParam(value = "createdBy", required = false) String createdBy,
             HttpSession session,
             RedirectAttributes redirectAttributes) {
         String inst = ensureInst(session);
@@ -1729,7 +1734,11 @@ public class PageController {
             }
             reservation.setReserved_at(normalizedReservedAt);
             reservation.setStatus(normalizeReservationStatusParam(status, false));
-            reservation.setCreated_by(resolveReservationActor(inst, session));
+            // 폼에서 접수자 이름을 직접 입력한 경우 우선 사용, 없으면 세션 사용자
+            String actor = (createdBy != null && !createdBy.trim().isEmpty())
+                    ? createdBy.trim()
+                    : resolveReservationActor(inst, session);
+            reservation.setCreated_by(actor);
 
             long savedId = cs.saveCounselReservation(inst, reservation);
             redirectAttributes.addAttribute("status", normalizeReservationStatusParam(status, true));
@@ -5585,14 +5594,20 @@ public class PageController {
         CounselData prefill = new CounselData();
         List<Guardian> prefillGuardians = new ArrayList<>();
         Map<String, Object> reservationLink = Collections.emptyMap();
+        String prefillReservedTime = ""; // 예정시간 (HH:mm)
         if (reservationId != null && reservationId > 0) {
+            cs.touchOpenedAt(inst, reservationId);
             CounselReservation reservation = cs.getCounselReservationById(inst, reservationId);
             if (reservation != null) {
                 prefill.setCs_col_01(safeString(reservation.getPatient_name()));
                 prefill.setCs_col_06(safeString(reservation.getPatient_phone()));
                 prefill.setCs_col_18("전화");
                 prefill.setCs_col_19("입원예약");
-                prefill.setCs_col_21(safeString(reservation.getReserved_at()));
+                // reserved_at = "2026-04-22 13:44:00" → 날짜와 시간 분리
+                String reservedAt = safeString(reservation.getReserved_at());
+                String datePart = reservedAt.length() >= 10 ? reservedAt.substring(0, 10) : reservedAt;
+                prefillReservedTime = reservedAt.length() >= 16 ? reservedAt.substring(11, 16) : "";
+                prefill.setCs_col_21(datePart);
                 prefill.setCs_col_32(safeString(reservation.getCall_summary()));
                 if (!isBlank(reservation.getGuardian_name()) || !isBlank(reservation.getPatient_phone())) {
                     Guardian guardian = new Guardian();
@@ -5616,6 +5631,7 @@ public class PageController {
         model.addAttribute("admissionPledge", Collections.emptyMap());
         model.addAttribute("reservationId", reservationLink.get("id"));
         model.addAttribute("reservationLink", reservationLink);
+        model.addAttribute("prefillReservedTime", prefillReservedTime);
         model.addAttribute("isEdit", false);
 
         // nav fragment 파라미터 기본값
@@ -6142,6 +6158,11 @@ public class PageController {
     private String resolveReservationActor(String inst, HttpSession session) {
         Object userInfo = session != null ? session.getAttribute("userInfo") : null;
         if (userInfo instanceof Userdata user) {
+            // us_col_12 = 이름, us_col_02 = 로그인 ID (이름 우선)
+            String name = safeString(user.getUs_col_12()).trim();
+            if (!name.isEmpty()) {
+                return name;
+            }
             String userId = safeString(user.getUs_col_02()).trim();
             if (!userId.isEmpty()) {
                 return userId;

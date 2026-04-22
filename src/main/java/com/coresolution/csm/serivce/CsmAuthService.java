@@ -1375,7 +1375,8 @@ public class CsmAuthService {
                 .append("status, linked_cs_idx, created_by, completed_by, ")
                 .append("DATE_FORMAT(completed_at, '%Y-%m-%d %H:%i:%s') AS completed_at, ")
                 .append("DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at, ")
-                .append("DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at ")
+                .append("DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at, ")
+                .append("DATE_FORMAT(opened_at, '%Y-%m-%d %H:%i:%s') AS opened_at ")
                 .append("FROM csm.counsel_reservation_").append(safe).append(" ");
         List<Object> params = new ArrayList<>();
         if (!"ALL".equals(normalizedStatus)) {
@@ -1480,7 +1481,8 @@ public class CsmAuthService {
 
         jdbcTemplate.update(
                 "UPDATE csm.counsel_reservation_" + safe + " "
-                        + "SET patient_name = ?, patient_phone = ?, guardian_name = ?, call_summary = ?, priority = ?, reserved_at = ?, status = ? "
+                        + "SET patient_name = ?, patient_phone = ?, guardian_name = ?, call_summary = ?, priority = ?, reserved_at = ?, status = ?, "
+                        + "created_by = COALESCE(NULLIF(?, ''), created_by) "
                         + "WHERE id = ?",
                 patientName,
                 patientPhone,
@@ -1489,6 +1491,7 @@ public class CsmAuthService {
                 priority,
                 reservedAt,
                 status,
+                createdBy,
                 id);
         return id;
     }
@@ -1573,6 +1576,23 @@ public class CsmAuthService {
                 "ALTER TABLE csm." + tableName + " ADD COLUMN completed_by varchar(100) default null");
         ensureTableColumn("csm", tableName, "completed_at",
                 "ALTER TABLE csm." + tableName + " ADD COLUMN completed_at datetime default null");
+        ensureTableColumn("csm", tableName, "opened_at",
+                "ALTER TABLE csm." + tableName + " ADD COLUMN opened_at datetime default null");
+    }
+
+    public void touchOpenedAt(String inst, long reservationId) {
+        if (reservationId <= 0) {
+            return;
+        }
+        String safe = sanitizeInst(inst);
+        ensureCounselReservationTable(safe);
+        try {
+            jdbcTemplate.update(
+                    "UPDATE csm.counsel_reservation_" + safe + " SET opened_at = NOW() WHERE id = ?",
+                    reservationId);
+        } catch (Exception e) {
+            log.warn("[reservation] touchOpenedAt fail inst={}, id={}, err={}", safe, reservationId, e.toString());
+        }
     }
 
     private CounselReservation mapCounselReservationRow(Map<String, Object> row) {
@@ -1591,6 +1611,18 @@ public class CsmAuthService {
         reservation.setCompleted_at(safeText(row.get("completed_at"), 19));
         reservation.setCreated_at(safeText(row.get("created_at"), 19));
         reservation.setUpdated_at(safeText(row.get("updated_at"), 19));
+        String openedAt = safeText(row.get("opened_at"), 19);
+        reservation.setOpened_at(openedAt);
+        if (!openedAt.isBlank()) {
+            try {
+                LocalDateTime openedTime = LocalDateTime.parse(openedAt,
+                        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                reservation.setBeingWorkedOn(
+                        openedTime.isAfter(LocalDateTime.now().minusMinutes(60)));
+            } catch (Exception ignored) {
+                reservation.setBeingWorkedOn(false);
+            }
+        }
         return reservation;
     }
 

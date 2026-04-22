@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>입원 예약 관리 : SOSYGE EASY-CRM</title>
+    <link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+    <link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+    <link rel="stylesheet" th:href="@{/css/reset.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/style.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
+    <link rel="stylesheet" th:href="@{/css/csm/counsel/admissionReservation.css}">
+</head>
+<body>
+<div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
+<div th:replace="~{csm/Include/layout :: nav_section2('admission-reservation', ${endVar}, ${st}, ${kw})}"></div>
+
+<div class="ar-main">
+    <div class="ar-wrap orb-deco">
+
+        <!-- 헤더 -->
+        <div class="ar-head">
+            <h1>입원 예약 관리</h1>
+            <p>입원 예약 상태인 환자를 관리합니다. 병실 배정, 입원 예정일 수정 및 입원 확정을 진행할 수 있습니다.</p>
+        </div>
+
+        <!-- 통계 카드 -->
+        <div class="ar-stats">
+            <div class="ar-stat-card">
+                <span>입원 예약</span>
+                <strong th:text="${items != null ? items.size() : 0}">0</strong>
+            </div>
+            <div class="ar-stat-card">
+                <span>병실 미배정</span>
+                <strong th:text="${items != null ? #lists.size(items.?[roomName == null or roomName == '']) : 0}">0</strong>
+            </div>
+            <div class="ar-stat-card">
+                <span>입원 예정일 미정</span>
+                <strong th:text="${items != null ? #lists.size(items.?[plannedDate == null or plannedDate == '']) : 0}">0</strong>
+            </div>
+        </div>
+
+        <!-- 알림 메시지 -->
+        <div id="arAlert" class="ar-alert"></div>
+
+        <!-- 테이블 -->
+        <div class="ar-table-wrap">
+            <table class="ar-table">
+                <thead>
+                    <tr>
+                        <th>환자명</th>
+                        <th>보호자 / 연락처</th>
+                        <th>상담일</th>
+                        <th>담당상담사</th>
+                        <th>입원 예정일</th>
+                        <th>배정 병실</th>
+                        <th>상태</th>
+                        <th>작업</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- 빈 목록 -->
+                    <tr th:if="${items == null or #lists.isEmpty(items)}">
+                        <td colspan="8">
+                            <div class="ar-empty">
+                                <div class="ar-empty-icon">🛏️</div>
+                                <div>입원 예약 환자가 없습니다.</div>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- 데이터 행 -->
+                    <tr th:each="item : ${items}"
+                        th:attr="data-cs-idx=${item.csIdx}">
+
+                        <!-- 환자명 -->
+                        <td>
+                            <div class="ar-patient-name"
+                                 th:text="${#strings.isEmpty(item.patientName) ? '(이름 미등록)' : item.patientName}">홍길동</div>
+                            <div class="ar-patient-meta"
+                                 th:text="${#strings.isEmpty(item.gender) ? '' : item.gender}"></div>
+                        </td>
+
+                        <!-- 보호자 / 연락처 -->
+                        <td>
+                            <div th:text="${#strings.isEmpty(item.guardianName) ? '-' : item.guardianName}">보호자명</div>
+                            <div class="ar-patient-meta"
+                                 th:text="${#strings.isEmpty(item.guardianPhone) ? '' : item.guardianPhone}"></div>
+                        </td>
+
+                        <!-- 상담일 -->
+                        <td th:text="${#strings.isEmpty(item.counselDate) ? '-' : item.counselDate}">2026-01-01</td>
+
+                        <!-- 담당상담사 -->
+                        <td th:text="${#strings.isEmpty(item.counselor) ? '-' : item.counselor}">홍상담</td>
+
+                        <!-- 입원 예정일 (편집 가능) -->
+                        <td>
+                            <input type="date" class="ar-date-input ar-planned-date"
+                                   th:value="${item.plannedDate}"
+                                   placeholder="날짜 선택">
+                        </td>
+
+                        <!-- 배정 병실 (드롭다운) -->
+                        <td>
+                            <select class="ar-room-select ar-room-name"
+                                    th:attr="data-current-room=${item.roomName}">
+                                <option value="">-- 병실 선택 --</option>
+                                <th:block th:each="room : ${rooms}">
+                                    <option th:value="${room['roomName']}"
+                                            th:text="${room['wardName'] + ' ' + room['roomName']}"
+                                            th:selected="${room['roomName'] != null and room['roomName'] == item.roomName}"></option>
+                                </th:block>
+                            </select>
+                        </td>
+
+                        <!-- 상태 -->
+                        <td>
+                            <span class="ar-status-badge">입원예약</span>
+                        </td>
+
+                        <!-- 작업 버튼 -->
+                        <td>
+                            <div class="ar-actions">
+                                <!-- 저장 -->
+                                <button type="button" class="ar-btn ar-btn-save ar-save-btn"
+                                        th:attr="data-cs-idx=${item.csIdx}">저장</button>
+                                <!-- 입원완료 -->
+                                <button type="button" class="ar-btn ar-btn-confirm ar-confirm-btn"
+                                        th:attr="data-cs-idx=${item.csIdx}">입원완료</button>
+                                <!-- 예약취소 -->
+                                <button type="button" class="ar-btn ar-btn-cancel ar-cancel-btn"
+                                        th:attr="data-cs-idx=${item.csIdx}">예약취소</button>
+                                <!-- 상담 기록 보기 -->
+                                <a class="ar-btn ar-btn-link"
+                                   th:href="@{/counsel/new/{csIdx}(csIdx=${item.csIdx})}">상담기록</a>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+<script th:replace="~{csm/Include/layout :: scripts}"></script>
+<script th:inline="javascript">
+/*<![CDATA[*/
+(function () {
+    const CSRF_TOKEN  = document.querySelector('meta[name="_csrf"]')?.content || '';
+    const CSRF_HEADER = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+
+    /* Thymeleaf가 context-path(/csm)를 포함한 URL을 렌더링 */
+    const URL_UPDATE  = /*[[@{/api/admission-reservation/update}]]*/ '/api/admission-reservation/update';
+    const URL_CONFIRM = /*[[@{/api/admission-reservation/confirm}]]*/ '/api/admission-reservation/confirm';
+    const URL_CANCEL  = /*[[@{/api/admission-reservation/cancel}]]*/ '/api/admission-reservation/cancel';
+
+    // 기존 병실이 드롭다운 목록에 없으면 선택 항목으로 추가
+    document.querySelectorAll('.ar-room-select').forEach(sel => {
+        const current = sel.dataset.currentRoom || '';
+        if (!current) return;
+        const exists = Array.from(sel.options).some(o => o.value === current);
+        if (!exists) {
+            const opt = document.createElement('option');
+            opt.value = current;
+            opt.textContent = current + ' (현재)';
+            opt.selected = true;
+            sel.appendChild(opt);
+        }
+    });
+
+    function showAlert(msg, type) {
+        const el = document.getElementById('arAlert');
+        if (!el) return;
+        el.textContent = msg;
+        el.className = 'ar-alert show ' + (type || 'success');
+        clearTimeout(el._timer);
+        el._timer = setTimeout(() => el.classList.remove('show'), 4000);
+    }
+
+    function postJson(url, params) {
+        const body = new URLSearchParams(params);
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                [CSRF_HEADER]: CSRF_TOKEN
+            },
+            body: body.toString()
+        }).then(r => r.json());
+    }
+
+    function setRowBusy(row, busy) {
+        row.querySelectorAll('.ar-btn').forEach(b => b.disabled = busy);
+    }
+
+    function removeRow(row) {
+        row.style.transition = 'opacity 0.3s';
+        row.style.opacity = '0';
+        setTimeout(() => row.remove(), 320);
+    }
+
+    // ── 저장 버튼 ──
+    document.querySelectorAll('.ar-save-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const csIdx = this.dataset.csIdx;
+            const row = this.closest('tr');
+            const plannedDate = row.querySelector('.ar-planned-date')?.value || '';
+            const roomName    = row.querySelector('.ar-room-name')?.value || '';
+
+            setRowBusy(row, true);
+            postJson(URL_UPDATE, { csIdx, plannedDate, roomName })
+                .then(res => {
+                    if (res.success) {
+                        showAlert('저장되었습니다.', 'success');
+                    } else {
+                        showAlert(res.message || '저장 중 오류가 발생했습니다.', 'error');
+                    }
+                })
+                .catch(() => showAlert('서버 오류가 발생했습니다.', 'error'))
+                .finally(() => setRowBusy(row, false));
+        });
+    });
+
+    // ── 입원완료 버튼 ──
+    document.querySelectorAll('.ar-confirm-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            if (!confirm('입원완료 처리하시겠습니까?\n상태가 "입원완료"로 변경되고 이 목록에서 제거됩니다.')) return;
+            const csIdx = this.dataset.csIdx;
+            const row = this.closest('tr');
+
+            setRowBusy(row, true);
+            postJson(URL_CONFIRM, { csIdx })
+                .then(res => {
+                    if (res.success) {
+                        showAlert('입원완료 처리되었습니다.', 'success');
+                        removeRow(row);
+                    } else {
+                        showAlert(res.message || '처리 중 오류가 발생했습니다.', 'error');
+                        setRowBusy(row, false);
+                    }
+                })
+                .catch(() => {
+                    showAlert('서버 오류가 발생했습니다.', 'error');
+                    setRowBusy(row, false);
+                });
+        });
+    });
+
+    // ── 예약취소 버튼 ──
+    document.querySelectorAll('.ar-cancel-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            if (!confirm('예약을 취소하시겠습니까?\n상태가 "상담중"으로 변경됩니다.')) return;
+            const csIdx = this.dataset.csIdx;
+            const row = this.closest('tr');
+
+            setRowBusy(row, true);
+            postJson(URL_CANCEL, { csIdx, revertStatus: '상담중' })
+                .then(res => {
+                    if (res.success) {
+                        showAlert('예약이 취소되었습니다.', 'success');
+                        removeRow(row);
+                    } else {
+                        showAlert(res.message || '처리 중 오류가 발생했습니다.', 'error');
+                        setRowBusy(row, false);
+                    }
+                })
+                .catch(() => {
+                    showAlert('서버 오류가 발생했습니다.', 'error');
+                    setRowBusy(row, false);
+                });
+        });
+    });
+})();
+/*]]>*/
+</script>
+</body>
+</html>

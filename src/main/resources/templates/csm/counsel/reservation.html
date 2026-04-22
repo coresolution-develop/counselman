@@ -70,6 +70,7 @@
                         <tr>
                             <th>환자명</th>
                             <th>접수 시간</th>
+                            <th>접수자</th>
                             <th>우선순위</th>
                             <th>상태</th>
                             <th>연계</th>
@@ -78,7 +79,7 @@
                         </thead>
                         <tbody>
                         <tr th:if="${#lists.isEmpty(reservations)}">
-                            <td colspan="6" class="empty-row">등록된 상담 접수가 없습니다.</td>
+                            <td colspan="7" class="empty-row">등록된 상담 접수가 없습니다.</td>
                         </tr>
                         <tr th:each="item : ${reservations}"
                             th:classappend="${reservationForm.id != null and reservationForm.id == item.id ? 'selected' : ''}"
@@ -88,6 +89,10 @@
                                 <div class="patient-phone" th:text="${item.patient_phone}">010-0000-0000</div>
                             </td>
                             <td th:text="${item.reserved_at}">2026-04-14 10:00:00</td>
+                            <td>
+                                <span class="creator-name"
+                                      th:text="${#strings.isEmpty(item.created_by) ? '-' : item.created_by}">홍상담</span>
+                            </td>
                             <td><span class="priority-badge" th:text="${item.priority}">3</span></td>
                             <td>
                                 <span class="status-pill"
@@ -162,6 +167,12 @@
                         <label class="full">
                             접수 시간
                             <input type="datetime-local" name="reservedAt" th:value="${reservationFormReservedAtInput}">
+                        </label>
+                        <label>
+                            접수한 사람
+                            <input type="text" name="createdBy"
+                                   th:value="${reservationForm.created_by}"
+                                   placeholder="접수자 이름">
                         </label>
                         <label class="full">
                             통화내용

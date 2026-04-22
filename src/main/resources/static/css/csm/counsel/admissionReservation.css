@@ -1,0 +1,327 @@
+@charset "UTF-8";
+
+:root {
+    --ar-green-900: #0f5132;
+    --ar-green-800: #06603a;
+    --ar-green-100: #ebf7ef;
+    --ar-blue-100: #edf3ff;
+    --ar-blue-800: #2855b0;
+    --ar-bg: #f6f8f7;
+    --ar-card: #ffffff;
+    --ar-border: #dfe7e2;
+    --ar-border-strong: #c8d6ce;
+    --ar-text: #1f2723;
+    --ar-sub: #66736c;
+    --ar-danger-bg: #fff2f2;
+    --ar-danger-text: #b42318;
+}
+
+/* ── 레이아웃 ── */
+.ar-main {
+    padding: 80px 15px 40px;
+    margin-left: 230px;
+    min-height: 100vh;
+    background: #f6f8f7;
+}
+
+.ar-wrap {
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 4px 24px rgba(10, 50, 30, 0.07);
+    border: 1px solid #e4ede7;
+    padding: 22px 20px;
+    position: relative;
+    /* ::before orb가 박스 밖으로 넘치지 않도록 hidden */
+    overflow: hidden;
+}
+
+/* ── 헤더 ── */
+.ar-head {
+    margin-bottom: 14px;
+}
+
+.ar-head h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--ar-text);
+    letter-spacing: -0.02em;
+}
+
+.ar-head p {
+    margin: 5px 0 0;
+    color: var(--ar-sub);
+    font-size: 13px;
+}
+
+/* ── 통계 카드 ── */
+.ar-stats {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.ar-stat-card {
+    background: var(--ar-card);
+    border: 1px solid var(--ar-border);
+    border-radius: 10px;
+    padding: 12px 20px;
+    display: flex;
+    flex-direction: column;
+    min-width: 110px;
+    position: relative;
+    overflow: hidden;
+}
+
+.ar-stat-card::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0;
+    width: 4px; height: 100%;
+    background: #06603a;
+    border-radius: 4px 0 0 4px;
+}
+
+.ar-stat-card:nth-child(2)::before { background: #4d8aff; }
+.ar-stat-card:nth-child(3)::before { background: #e4a760; }
+
+.ar-stat-card span {
+    font-size: 11px;
+    color: var(--ar-sub);
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.ar-stat-card strong {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--ar-text);
+    line-height: 1;
+}
+
+/* ── 알림 ── */
+.ar-alert {
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    margin-bottom: 12px;
+    display: none;
+}
+
+.ar-alert.show { display: block; }
+.ar-alert.success { background: #edfcf2; color: #0c6e34; border: 1px solid #b2e4c6; }
+.ar-alert.error   { background: var(--ar-danger-bg); color: var(--ar-danger-text); border: 1px solid #f5c0c0; }
+
+/* ── 테이블 래퍼 ── */
+.ar-table-wrap {
+    overflow-x: auto;
+    border-radius: 10px;
+    border: 1px solid #dfe7e2;
+    background: #fff;
+    -webkit-overflow-scrolling: touch;
+    /* ar-wrap의 overflow:hidden 안에서도 독립적으로 가로 스크롤 가능 */
+    position: relative;
+}
+
+.ar-table-wrap::-webkit-scrollbar {
+    height: 6px;
+}
+.ar-table-wrap::-webkit-scrollbar-thumb {
+    background: #c8d6ce;
+    border-radius: 3px;
+}
+
+/* ── 테이블 ── */
+.ar-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    min-width: 900px;
+    table-layout: auto;
+}
+
+.ar-table thead th {
+    background: #f0f2f5;
+    color: #3d4452;
+    font-weight: 700;
+    padding: 11px 12px;
+    text-align: left;
+    white-space: nowrap;
+    border-bottom: 2px solid #d4dbe8;
+    font-size: 12px;
+    letter-spacing: 0.01em;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.ar-table thead th:first-child { border-radius: 10px 0 0 0; }
+.ar-table thead th:last-child  { border-radius: 0 10px 0 0; }
+
+.ar-table tbody tr {
+    border-bottom: 1px solid #eff1f4;
+    transition: background 0.1s;
+}
+
+.ar-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.ar-table tbody tr:hover {
+    background: #f6fbf8;
+}
+
+.ar-table tbody td {
+    padding: 10px 12px;
+    color: #444;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+/* ── 환자명 셀 ── */
+.ar-patient-name {
+    font-weight: 600;
+    color: #1f2723;
+    font-size: 13px;
+}
+
+.ar-patient-meta {
+    font-size: 11px;
+    color: var(--ar-sub);
+    margin-top: 2px;
+}
+
+/* ── 인라인 입력 ── */
+.ar-date-input,
+.ar-room-select {
+    height: 32px;
+    border: 1px solid #d4d9e4;
+    border-radius: 6px;
+    padding: 0 8px;
+    font-size: 12px;
+    color: #3d4452;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ar-date-input {
+    min-width: 130px;
+}
+
+.ar-date-input:focus,
+.ar-room-select:focus {
+    border-color: #06603a;
+    box-shadow: 0 0 0 2px rgba(6, 96, 58, 0.1);
+}
+
+.ar-room-select {
+    min-width: 150px;
+    cursor: pointer;
+    padding-right: 28px;
+    appearance: none;
+    background-image: url("../../../icon/ev/arrow-icon.png");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 9px;
+}
+
+/* ── 행 액션 버튼 ── */
+.ar-actions {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+
+.ar-btn {
+    height: 30px;
+    border-radius: 6px;
+    border: none;
+    padding: 0 11px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.13s, opacity 0.13s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    line-height: 1;
+}
+
+.ar-btn-save {
+    background: #06603a;
+    color: #fff;
+}
+.ar-btn-save:hover { background: #054e2f; }
+
+.ar-btn-confirm {
+    background: #2855b0;
+    color: #fff;
+}
+.ar-btn-confirm:hover { background: #1e409a; }
+
+.ar-btn-cancel {
+    background: #fff;
+    color: #b42318;
+    border: 1px solid #f5c0c0;
+}
+.ar-btn-cancel:hover { background: var(--ar-danger-bg); }
+
+.ar-btn-link {
+    background: #fff;
+    color: #3d4452;
+    border: 1px solid #d4d9e4;
+}
+.ar-btn-link:hover { background: #f4f6f9; color: #1f2723; }
+
+.ar-btn:disabled,
+.ar-btn[disabled] {
+    opacity: 0.5;
+    cursor: default;
+    pointer-events: none;
+}
+
+/* ── 빈 목록 ── */
+.ar-empty {
+    text-align: center;
+    padding: 60px 0;
+    color: var(--ar-sub);
+    font-size: 14px;
+}
+
+.ar-empty-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+    opacity: 0.35;
+    display: block;
+}
+
+/* ── 상태 뱃지 ── */
+.ar-status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--ar-blue-100);
+    color: var(--ar-blue-800);
+}
+
+/* ── 반응형 ── */
+@media (max-width: 720px) {
+    .ar-main {
+        margin-left: 0;
+        padding: 70px 10px 30px;
+    }
+    .ar-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .ar-wrap {
+        padding: 14px 12px;
+    }
+}

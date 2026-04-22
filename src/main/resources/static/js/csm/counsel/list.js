@@ -13,6 +13,154 @@ document.addEventListener("DOMContentLoaded", function () {
   let observer;
   let activeQueryToken = 0;
 
+  // ──────────────────────────────────────────
+  // ── 열 고정 (Column Freeze) 관리 ──
+  // ──────────────────────────────────────────
+  const FREEZE_KEY = 'csm-frozen-cols';
+
+  function getFrozenCols() {
+    try { return JSON.parse(localStorage.getItem(FREEZE_KEY) || '[]'); }
+    catch { return []; }
+  }
+
+  function setFrozenCols(cols) {
+    try { localStorage.setItem(FREEZE_KEY, JSON.stringify([...new Set(cols)])); }
+    catch {}
+  }
+
+  /** #order 안의 .sortable-item 에 핀 버튼을 추가하고, 저장된 고정 상태를 복원한다. */
+  function initPinButtons() {
+    const frozen = getFrozenCols();
+    document.querySelectorAll('#order .sortable-item').forEach(li => {
+      if (li.querySelector('.col-pin-btn')) return; // 이미 있으면 스킵
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'col-pin-btn';
+      btn.title = '이 열 고정';
+      btn.innerHTML = '📌';
+      btn.addEventListener('click', e => {
+        e.stopPropagation(); // 리스트 이동 이벤트 차단
+        li.classList.toggle('is-pinned');
+        li.setAttribute('data-freeze', li.classList.contains('is-pinned') ? 'true' : 'false');
+        // 핀 클릭 즉시 테이블에 프리뷰 적용 (저장 전에도 확인 가능)
+        previewFrozenCols();
+      });
+      li.appendChild(btn);
+      // localStorage 상태 복원
+      const colName = li.getAttribute('data-column');
+      if (colName && frozen.includes(colName)) {
+        li.classList.add('is-pinned');
+        li.setAttribute('data-freeze', 'true');
+      }
+    });
+  }
+
+  /**
+   * 고정 열에 position:sticky + left 오프셋을 CSS nth-child 규칙으로 주입한다.
+   * CSS 규칙은 현재·미래 행 모두에 적용되므로 헤더 렌더링 후 1회만 호출하면 된다.
+   */
+  function applyFrozenPositions(overrideCols) {
+    const frozenCols = overrideCols || getFrozenCols();
+    const table = document.getElementById('myTable');
+    if (!table) return;
+
+    const headers = Array.from(table.querySelectorAll('thead tr th'));
+    if (headers.length === 0) return;
+
+    // ── 1. 모든 <th>를 개별 sticky(top:0)로 — <thead> sticky 대신 사용 ──
+    // <thead>에 position:sticky 를 걸면 내부 <th>의 left sticky 와 충돌하므로
+    // 각 <th>가 직접 top:0 + (frozen이면 left:Xpx) 를 담당한다.
+    let css = `
+      #myTable thead tr th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: #f8fcf9;
+      }
+
+      /* ── 고정 열 td 배경 ──
+         .counselRow td:not(.col-sticky) { background: inherit !important } 에서
+         .col-sticky 는 제외됐으므로, 여기서 행 색상별로 명시적으로 지정한다. */
+      #myTable tbody tr        td.col-sticky { background: #ffffff; }
+      #myTable tbody tr.bg-admitted  td.col-sticky { background: #F2FCEF; }
+      #myTable tbody tr.bg-color     td.col-sticky { background: #FFF4EF; }
+      #myTable tbody tr.bg-abc       td.col-sticky { background: #F5F2FF; }
+      /* selected-row 는 .counselRow.selected-row * { !important } 로 자동 처리됨 */
+    `;
+
+    // ── 2. 고정 열: left 오프셋 계산 후 주입 ──
+    let cumulativeLeft = 0;
+    let lastFrozenNth  = -1;
+
+    headers.forEach((th, idx) => {
+      const isCheckbox = th.classList.contains('bulk-check-col');
+      const colName    = th.getAttribute('data-col-name') || '';
+      if (!isCheckbox && !frozenCols.includes(colName)) {
+        // 고정 열이 아니어도 width 는 0 으로 두고 다음 고정 열 계산에 영향 안 줌
+        return;
+      }
+
+      const left = cumulativeLeft;
+      const nth  = idx + 1;
+      lastFrozenNth = nth;
+
+      css += `
+        #myTable thead tr th:nth-child(${nth}) {
+          left: ${left}px;
+          z-index: 3;
+          background: #f8fcf9 !important;
+        }
+        #myTable tbody tr td:nth-child(${nth}) {
+          position: sticky; left: ${left}px; z-index: 1;
+        }
+      `;
+
+      // offsetWidth 가 0 이면 getBoundingClientRect 로 폴백
+      const w = th.offsetWidth || th.getBoundingClientRect().width || 120;
+      cumulativeLeft += w;
+    });
+
+    // ── 3. 마지막 고정 열 오른쪽 구분 그림자 ──
+    if (lastFrozenNth > 0) {
+      css += `
+        #myTable thead tr th:nth-child(${lastFrozenNth}) { box-shadow: 3px 0 8px -2px rgba(5,64,30,0.16); }
+        #myTable tbody tr td:nth-child(${lastFrozenNth}) { box-shadow: 3px 0 8px -2px rgba(5,64,30,0.08); }
+      `;
+    }
+
+    let styleEl = document.getElementById('frozen-cols-style');
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = 'frozen-cols-style';
+      document.head.appendChild(styleEl);
+    }
+    styleEl.textContent = css;
+  }
+
+  /**
+   * 설정 모달에서 핀 버튼 클릭 시 즉시 호출.
+   * 현재 모달 상태(#order .is-pinned)를 기준으로 테이블에 즉시 프리뷰 적용.
+   * localStorage 에는 저장하지 않으며 "저장" 버튼 클릭 시 정식 반영된다.
+   */
+  function previewFrozenCols() {
+    const preview = [];
+    document.querySelectorAll('#order .sortable-item.is-pinned').forEach(li => {
+      const col = li.getAttribute('data-column');
+      if (col) preview.push(col);
+    });
+    // th 의 col-frozen 마킹 즉시 갱신
+    const table = document.getElementById('myTable');
+    if (table) {
+      table.querySelectorAll('thead tr th').forEach(th => {
+        const colName = th.getAttribute('data-col-name') || '';
+        if (colName === '__checkbox__') return;
+        th.classList.toggle('col-frozen', preview.includes(colName));
+      });
+    }
+    // localStorage 를 건드리지 않고 preview 목록을 직접 전달
+    requestAnimationFrame(() => applyFrozenPositions(preview));
+  }
+
   // DOM 캐시
   const tableBodyEl = document.querySelector('#table-body');
   const deleteButton = document.getElementById('del-counsel');
@@ -379,6 +527,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // ========= 리스트 설정 팝업 =========
   function openSetting() {
+    initPinButtons(); // 핀 버튼 추가 + 저장된 고정 상태 복원
     $("#popup").css('display', 'flex').hide().fadeIn();
   }
   if (set) set.addEventListener('click', openSetting);
@@ -415,6 +564,23 @@ document.addEventListener("DOMContentLoaded", function () {
 });
   }
 
+  // ── MutationObserver: 항목 이동 시 핀 버튼 자동 관리 ──
+  if (orderList) {
+    // #order에 항목 추가될 때 → 핀 버튼 자동 추가
+    new MutationObserver(() => initPinButtons())
+      .observe(orderList, { childList: true });
+  }
+  if (innerContentList) {
+    // #inner-content에 항목 추가될 때 → 핀 상태 초기화 (숨긴 열은 고정 불가)
+    new MutationObserver(mutations => {
+      mutations.forEach(m => m.addedNodes.forEach(node => {
+        if (node.nodeType !== Node.ELEMENT_NODE) return;
+        node.classList.remove('is-pinned');
+        node.removeAttribute('data-freeze');
+      }));
+    }).observe(innerContentList, { childList: true });
+  }
+
   // 리스트 설정 저장
   if (confirmed) {
     confirmed.addEventListener('click', function () {
@@ -440,6 +606,14 @@ document.addEventListener("DOMContentLoaded", function () {
           viewYn: item.getAttribute('data-view')
         });
       });
+// ── 고정 열 목록 localStorage에 저장 ──
+      const frozenCols = [];
+      document.querySelectorAll('#order .sortable-item.is-pinned').forEach(li => {
+        const col = li.getAttribute('data-column');
+        if (col) frozenCols.push(col);
+      });
+      setFrozenCols(frozenCols);
+
 // ★ CSRF 토큰/헤더명 읽기
     const csrfToken  = document.querySelector('meta[name="_csrf"]')?.getAttribute('content') || '';
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
@@ -723,33 +897,46 @@ if (clean.length !== data.length) {
       console.warn('orderItems가 비어있습니다.');
       return;
     }
-    let headerHtml = `<th class="bulk-check-col"><input type="checkbox" id="bulkSelectAllRow" title="전체 선택"></th>`;
+
+    const frozenCols = getFrozenCols();
+    // <tr> 래퍼 필수: nth-child 셀렉터가 thead tr th 를 타겟으로 하기 때문
+    let headerHtml = `<tr><th class="bulk-check-col" data-col-name="__checkbox__"><input type="checkbox" id="bulkSelectAllRow" title="전체 선택"></th>`;
     const itemCount = oItems.length;
 
     oItems.forEach((col, index) => {
       if (!col) return;
+      const colName = (col.column_name || col.coulmn || '').trim();
       const label = (col.column_comment && String(col.column_comment).trim().length > 0)
         ? col.column_comment
-        : col.column_name; // ★ 폴백
+        : colName;
       if (!label) return;
 
+      const isFrozen = frozenCols.includes(colName);
       const rightBorder = (index === itemCount - 1) ? 'right-border' : '';
+      const frozenClass = isFrozen ? ' col-frozen' : '';
       headerHtml += `
-        <th id="header-${index}" class="${rightBorder}">
+        <th id="header-${index}" class="${rightBorder}${frozenClass}" data-col-name="${escapeHTML(colName)}">
           ${escapeHTML(label)}<span id="arrow-${index}" class="arrow"></span>
         </th>`;
     });
+    headerHtml += `</tr>`;
 
     $('#table-header').html(headerHtml);
 
     document.getElementById('bulkSelectAllRow')?.addEventListener('change', function () {
       document.querySelectorAll('.row-bulk-check').forEach(chk => { chk.checked = this.checked; });
     });
+
+    // 고정 열 sticky 포지션 CSS 주입 (rAF: 레이아웃 계산 후 width 읽기)
+    requestAnimationFrame(() => applyFrozenPositions());
   }
 
   // ========= 데이터 렌더링 =========
   function appendCounselData(cslist, orderItems) {
   if (!Array.isArray(cslist) || cslist.length === 0) return;
+
+  // 고정 열 Set — col-sticky 클래스 부여 대상 결정
+  const frozenColsSet = new Set(getFrozenCols());
 
   let bodyHtml = '';
 
@@ -772,7 +959,8 @@ if (clean.length !== data.length) {
     const phones = guardians.map(g => (g?.contact_number || '').replace(/-/g, '')).filter(Boolean);
     const phonesAttr = escapeHTML(phones.join(','));
     bodyHtml += `<tr class="counselRow ${className}" data-cs-idx="${escapeHTML(csIdx)}">`;
-    bodyHtml += `<td class="bulk-check-col" onclick="event.stopPropagation()">
+    // 체크박스 열은 항상 첫 번째 고정 열 → col-sticky 적용
+    bodyHtml += `<td class="bulk-check-col col-sticky" onclick="event.stopPropagation()">
       <input type="checkbox" class="row-bulk-check"
         data-name="${patientName}" data-phones="${phonesAttr}">
     </td>`;
@@ -780,6 +968,8 @@ if (clean.length !== data.length) {
     (orderItems || []).forEach(col => {
       const rawColumnName = (col?.column_name || col?.coulmn || '').trim();
       const columnName = rawColumnName.replace(/\[\]$/, '');
+      // 이 열이 고정 열이면 col-sticky 클래스를 추가
+      const stickyClass = frozenColsSet.has(columnName) ? ' col-sticky' : '';
       if (!columnName) { bodyHtml += '<td></td>'; return; }
 
       // 기본 값
@@ -788,13 +978,13 @@ if (clean.length !== data.length) {
 
       if (columnName === 'cs_col_07' || columnName === 'cs_col_11') {
         bodyHtml += `
-          <td class="limited-text" title="${escapeHTML(value)}">
+          <td class="limited-text${stickyClass}" title="${escapeHTML(value)}">
             <div class="text-container">${escapeHTML(value)}</div>
           </td>`;
       } else if (columnName === 'cs_col_01') {
         const potentialBadge = renderPotentialBadge(col09);
         bodyHtml += `
-          <td>
+          <td class="${stickyClass.trim()}">
             <div class="patient-cell-wrap">
               <span class="patient-cell-name">${escapeHTML(value)}</span>
               ${potentialBadge}
@@ -802,24 +992,24 @@ if (clean.length !== data.length) {
           </td>`;
       } else if (columnName === 'cs_col_09') {
         const potentialBadge = renderPotentialBadge(value);
-        bodyHtml += `<td>${potentialBadge || escapeHTML(value)}</td>`;
+        bodyHtml += `<td class="${stickyClass.trim()}">${potentialBadge || escapeHTML(value)}</td>`;
       } else if (columnName === 'cs_col_13') {
         // 보호자명
-        bodyHtml += '<td>';
+        bodyHtml += `<td class="${stickyClass.trim()}">`;
         guardians.forEach(g => { bodyHtml += `<p>${escapeHTML(g?.name)}</p>`; });
         bodyHtml += '</td>';
       } else if (columnName === 'cs_col_14') {
         // 관계
-        bodyHtml += '<td>';
+        bodyHtml += `<td class="${stickyClass.trim()}">`;
         guardians.forEach(g => { bodyHtml += `<p>${escapeHTML(g?.relationship)}</p>`; });
         bodyHtml += '</td>';
       } else if (columnName === 'cs_col_15') {
         // 보호자 연락처
-        bodyHtml += '<td>';
+        bodyHtml += `<td class="${stickyClass.trim()}">`;
         guardians.forEach(g => { bodyHtml += `<p>${escapeHTML(g?.contact_number)}</p>`; });
         bodyHtml += '</td>';
       } else {
-        bodyHtml += `<td>${escapeHTML(value)}</td>`;
+        bodyHtml += `<td class="${stickyClass.trim()}">${escapeHTML(value)}</td>`;
       }
     });
 

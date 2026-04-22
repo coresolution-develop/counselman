@@ -26,6 +26,7 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.coresolution.csm.vo.AdmissionReservationItem;
 import com.coresolution.csm.vo.RoomBoardImportResult;
 import com.coresolution.csm.vo.RoomBoardImportRow;
 import com.coresolution.csm.vo.RoomBoardRoomConfig;
@@ -377,6 +378,10 @@ public class RoomBoardService {
             room.setOccupancyRate(licensedBeds <= 0 ? 0d : round1(occupiedCount * 100d / licensedBeds));
             room.setCareType(safeText(config.getCareType(), 100));
             room.setStatusLabel(config.getStatusLabel());
+            room.setStatusWalk("Y".equalsIgnoreCase(config.getStatusWalk()));
+            room.setStatusDiaper("Y".equalsIgnoreCase(config.getStatusDiaper()));
+            room.setStatusOxygen("Y".equalsIgnoreCase(config.getStatusOxygen()));
+            room.setStatusSuction("Y".equalsIgnoreCase(config.getStatusSuction()));
             room.setNote(safeText(config.getNote(), 500));
             room.setGenderSummary(buildGenderSummary(roomPatients));
             room.setReservationNames(String.join(", ", reservationNames));
@@ -1145,5 +1150,121 @@ public class RoomBoardService {
     private record ParsedSlot(
             String wardName,
             String roomName) {
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  입원 예약 관리 (admission-reservation management)
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * cs_col_19 = '입원예약' 인 상담 기록 목록을 반환합니다.
+     * 환자명(cs_col_01)은 AES ECB 복호화하여 채웁니다.
+     */
+    public List<AdmissionReservationItem> listAdmissionReservations(String inst) {
+        String safe = sanitizeInst(inst);
+        String sql = """
+                SELECT cs_idx,
+                       cs_col_01 AS patient_name_hex,
+                       cs_col_02 AS gender,
+                       cs_col_03 AS birth_date,
+                       cs_col_13 AS guardian_name,
+                       cs_col_15 AS guardian_phone,
+                       cs_col_16 AS counsel_date,
+                       cs_col_17 AS counselor,
+                       cs_col_19 AS status,
+                       cs_col_21 AS planned_date,
+                       cs_col_38 AS room_name
+                  FROM csm.counsel_data_%s
+                 WHERE cs_col_19 = '입원예약'
+                 ORDER BY cs_col_21 ASC, cs_idx ASC
+                """.formatted(safe);
+
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
+        List<AdmissionReservationItem> result = new ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            AdmissionReservationItem item = new AdmissionReservationItem();
+            item.setCsIdx(toLong(row.get("cs_idx")));
+            item.setPatientName(decryptHexString(safeText(row.get("patient_name_hex"), 500)));
+            item.setGender(safeText(row.get("gender"), 20));
+            item.setBirthDate(safeText(row.get("birth_date"), 20));
+            item.setGuardianName(safeText(row.get("guardian_name"), 100));
+            item.setGuardianPhone(safeText(row.get("guardian_phone"), 100));
+            item.setCounselDate(safeText(row.get("counsel_date"), 20));
+            item.setCounselor(safeText(row.get("counselor"), 100));
+            item.setStatus(safeText(row.get("status"), 50));
+            item.setPlannedDate(safeText(row.get("planned_date"), 20));
+            item.setRoomName(safeText(row.get("room_name"), 100));
+            result.add(item);
+        }
+        return result;
+    }
+
+    /**
+     * 현재 활성 병실 목록을 반환합니다 (병동명 + 병실명 조합).
+     */
+    public List<Map<String, String>> listAvailableRooms(String inst) {
+        String safe = sanitizeInst(inst);
+        try {
+            String sql = """
+                    SELECT DISTINCT ward_name, room_name
+                      FROM csm.room_board_room_master_%s
+                     WHERE use_yn != 'n'
+                     ORDER BY ward_name ASC, room_name ASC
+                    """.formatted(safe);
+            return jdbcTemplate.query(sql, (rs, rowNum) -> {
+                Map<String, String> map = new java.util.LinkedHashMap<>();
+                map.put("wardName", rs.getString("ward_name"));
+                map.put("roomName", rs.getString("room_name"));
+                return map;
+            });
+        } catch (Exception e) {
+            log.debug("[admission-res] room list fail inst={}: {}", inst, e.toString());
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 입원예정일 및 배정병실을 업데이트합니다.
+     */
+    @Transactional
+    public void updateAdmissionDetails(String inst, long csIdx, String plannedDate, String roomName) {
+        String safe = sanitizeInst(inst);
+        String safePlannedDate = plannedDate == null ? "" : plannedDate.trim();
+        String safeRoomName = roomName == null ? "" : roomName.trim();
+        jdbcTemplate.update(
+                "UPDATE csm.counsel_data_" + safe + " SET cs_col_21 = ?, cs_col_38 = ?, updated_at = NOW() WHERE cs_idx = ?",
+                safePlannedDate.isEmpty() ? null : safePlannedDate,
+                safeRoomName.isEmpty() ? null : safeRoomName,
+                csIdx);
+    }
+
+    /**
+     * 상담결과를 '입원완료'로 변경합니다.
+     */
+    @Transactional
+    public void confirmAdmission(String inst, long csIdx) {
+        String safe = sanitizeInst(inst);
+        jdbcTemplate.update(
+                "UPDATE csm.counsel_data_" + safe + " SET cs_col_19 = '입원완료', updated_at = NOW() WHERE cs_idx = ?",
+                csIdx);
+    }
+
+    /**
+     * 입원예약을 취소하고 지정된 상태로 되돌립니다.
+     */
+    @Transactional
+    public void cancelAdmissionReservation(String inst, long csIdx, String revertStatus) {
+        String safe = sanitizeInst(inst);
+        String status = (revertStatus == null || revertStatus.isBlank()) ? "상담중" : revertStatus.trim();
+        jdbcTemplate.update(
+                "UPDATE csm.counsel_data_" + safe
+                + " SET cs_col_19 = ?, cs_col_38 = NULL, cs_col_21 = NULL, updated_at = NOW() WHERE cs_idx = ?",
+                status, csIdx);
+    }
+
+    private long toLong(Object o) {
+        if (o == null) return 0L;
+        if (o instanceof Number n) return n.longValue();
+        try { return Long.parseLong(o.toString().trim()); } catch (Exception e) { return 0L; }
     }
 }

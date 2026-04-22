@@ -332,6 +332,15 @@
       <span>병실현황판</span>
     </li>
 
+    <!-- 입원 예약 관리 -->
+    <li class="nav_link menu9"
+        data-menu="admission-reservation" data-content="all"
+        th:classappend="${activeMenu == 'admission-reservation' ? ' on active' : ''}"
+        th:attr="data-base-url=@{/counsel/admission-reservation}"
+        role="link" tabindex="0" aria-label="입원 예약 관리 페이지로 이동">
+      <span>입원예약관리</span>
+    </li>
+
     <!-- 관리자 -->
     <li class="nav_link menu6"
         data-menu="admin" data-content="all"
@@ -344,7 +353,8 @@
   </th:block>
   <div class="nav-bottom-area">
     <div class="nav-bottom-logo" aria-label="브랜드 로고">
-      <img th:src="@{/icon/ev/sosyge_logo_w.png}" alt="SOSYGE 로고">
+      <!-- <img th:src="@{/icon/ev/sosyge_logo_w.png}" alt="SOSYGE 로고"> -->
+       MediPlat
     </div>
     <a th:href="@{/logout}" class="nav-bottom-logout" aria-label="로그아웃">
       <span class="nav-bottom-logout-icon" aria-hidden="true"></span>

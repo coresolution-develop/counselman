@@ -167,9 +167,8 @@
     color: #595959;
 }
 
+/* position:sticky 는 <th> 단위로 주입 (applyFrozenPositions) */
 #table-header {
-	position: sticky;
-	top: 0;
 }
 
 .btn.delBtn.btnw100.listBtn {
@@ -489,8 +488,8 @@ thead {
     background: #F5F2FF !important;
 }
 
-.counselRow td {
-    background: inherit !important; /* 하위 요소 상속 */
+.counselRow td:not(.col-sticky) {
+    background: inherit !important; /* 하위 요소 상속 (고정 열 제외) */
 }
 .counselRow.selected-row {
    background-color: #f0f8ff !important;  /* 원하는 배경색으로 변경 */
