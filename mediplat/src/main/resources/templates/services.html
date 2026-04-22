@@ -22,7 +22,7 @@
             <span th:text="${user.instCode + ' · ' + user.roleCode}">core · PLATFORM_ADMIN</span>
         </div>
         <a class="ghost-btn" th:if="${roomBoardViewerEnabled}" th:href="@{/room-board-viewer}">통합 병실현황판</a>
-        <a class="ghost-btn" th:if="${user.platformAdmin}" th:href="@{/admin}">관리</a>
+        <a class="ghost-btn" th:if="${user.platformAdmin or user.institutionAdmin}" th:href="@{/admin}">관리</a>
         <a class="ghost-btn" th:href="@{/logout}">로그아웃</a>
     </div>
 </header>
@@ -30,13 +30,15 @@
 <main class="page-shell">
     <section class="mediplat-services-shell">
         <div class="mediplat-service-grid">
-            <th:block th:if="${!#lists.isEmpty(services)}" th:each="service : ${services}">
+            <!-- 활성화된 서비스 먼저 -->
+            <th:block th:each="service : ${availableServices}">
                 <a class="mediplat-service-card"
-                   th:if="${service.accessible}"
                    th:href="@{/launch/{serviceCode}(serviceCode=${service.serviceCode})}"
                    th:text="${service.serviceName}">CounselMan</a>
+            </th:block>
+            <!-- 비활성화 서비스 뒤에 -->
+            <th:block th:each="service : ${unavailableServices}">
                 <div class="mediplat-service-card is-disabled"
-                     th:if="${!service.accessible}"
                      th:text="${service.serviceName}">추가 시스템</div>
             </th:block>
             <div class="empty-card" th:if="${#lists.isEmpty(services)}">
