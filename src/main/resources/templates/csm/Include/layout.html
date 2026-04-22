@@ -332,21 +332,13 @@
       <span>병실현황판</span>
     </li>
 
-    <!-- 관리자 (info.us_col_08 == 1 또는 coreadmin) -->
+    <!-- 관리자 -->
     <li class="nav_link menu6"
         data-menu="admin" data-content="all"
-        th:classappend="${activeMenu == 'admin' ? ' on active' : ''}">
-      <!-- 접근 가능 -->
-      <div th:if="${info != null and (info.us_col_08 == 1 or info.us_col_02 == 'coreadmin')}"
-           th:attr="data-base-url=@{/admin}"
-           role="link" tabindex="0" aria-label="관리자 페이지로 이동">
-        <span>관리자</span>
-      </div>
-      <!-- 접근 불가 -->
-      <div th:unless="${info != null and (info.us_col_08 == 1 or info.us_col_02 == 'coreadmin')}"
-           class="disabled-link" aria-disabled="true">
-        <span>관리자</span>
-      </div>
+        th:classappend="${activeMenu == 'admin' ? ' on active' : ''}"
+        th:attr="data-base-url=@{/admin}"
+        role="link" tabindex="0" aria-label="관리자 페이지로 이동">
+      <span>관리자</span>
     </li>
   </ul>
   </th:block>

@@ -361,6 +361,18 @@ public class PageController {
             return "redirect:/login";
         }
         Userdata userinfo = ensureUserInfo(session, inst);
+        // 관리자(us_col_08 == 1) 권한 체크
+        if (userinfo == null || userinfo.getUs_col_08() != 1) {
+            model.addAttribute("info", userinfo);
+            model.addAttribute("user", Collections.emptyList());
+            model.addAttribute("count", 0);
+            model.addAttribute("endVar", "on");
+            model.addAttribute("st", "");
+            model.addAttribute("kw", "");
+            model.addAttribute("noAdminAccess", true);
+            populateModuleFeatureModel(model, inst);
+            return "csm/admin/admin";
+        }
 
         Userdata query = new Userdata();
         query.setUs_col_04(inst);
@@ -372,6 +384,7 @@ public class PageController {
         model.addAttribute("endVar", "on");
         model.addAttribute("st", "");
         model.addAttribute("kw", "");
+        model.addAttribute("noAdminAccess", false);
         populateModuleFeatureModel(model, inst);
         return "csm/admin/admin";
     }
@@ -383,8 +396,11 @@ public class PageController {
             return "redirect:/login";
         }
         Userdata userinfo = ensureUserInfo(session, inst);
+        if (userinfo == null || userinfo.getUs_col_08() != 1) {
+            return "redirect:/admin";
+        }
         model.addAttribute("info", userinfo);
-        model.addAttribute("instName", userinfo != null ? userinfo.getUs_col_05() : "");
+        model.addAttribute("instName", userinfo.getUs_col_05() != null ? userinfo.getUs_col_05() : "");
         return "csm/admin/newUserPopup";
     }
 
@@ -414,6 +430,10 @@ public class PageController {
         String inst = ensureInst(session);
         if (inst == null) {
             return Map.of("result", "0", "msg", "세션 만료");
+        }
+        Userdata caller = ensureUserInfo(session, inst);
+        if (caller == null || caller.getUs_col_08() != 1) {
+            return Map.of("result", "0", "msg", "관리자 권한이 필요합니다.");
         }
         if (ud.getUs_col_02() == null || ud.getUs_col_02().isBlank()) {
             return Map.of("result", "0", "msg", "아이디를 입력해주세요.");
@@ -448,6 +468,10 @@ public class PageController {
         if (inst == null) {
             return Map.of("result", "0", "msg", "세션 만료");
         }
+        Userdata caller = ensureUserInfo(session, inst);
+        if (caller == null || caller.getUs_col_08() != 1) {
+            return Map.of("result", "0", "msg", "관리자 권한이 필요합니다.");
+        }
         ud.setUs_col_04(inst);
         int result = cs.userUpdate(ud);
         // 비밀번호 변경 요청이 있으면 별도 처리
@@ -467,6 +491,10 @@ public class PageController {
         String inst = ensureInst(session);
         if (inst == null) {
             return Map.of("result", "0", "msg", "세션 만료");
+        }
+        Userdata caller = ensureUserInfo(session, inst);
+        if (caller == null || caller.getUs_col_08() != 1) {
+            return Map.of("result", "0", "msg", "관리자 권한이 필요합니다.");
         }
         if (ud.getUs_col_04() == null || ud.getUs_col_04().isBlank()) {
             ud.setUs_col_04(inst);
