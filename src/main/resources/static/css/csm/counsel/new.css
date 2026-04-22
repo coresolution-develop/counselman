@@ -117,13 +117,14 @@
 
 .record-tools {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 6px;
     margin-bottom: 6px;
 }
 
 .pc-record-tools .counsel-file-btn {
-    min-width: 98px;
+    flex: 1;
+    min-width: 0;
     height: 34px;
     font-size: 12px;
 }
@@ -2102,6 +2103,14 @@ strong {
     background: #fef4f4;
 }
 
+
+/* 미입원사유 좌측 정렬 — newpopup.css의 justify-content:center / width:66px 덮어쓰기 */
+#noAdmissionReason {
+    justify-content: flex-start;
+}
+#noAdmissionReason > .form-group label {
+    width: 100px;
+}
 
 @media print {
 	#closeModal, .print-footer {
