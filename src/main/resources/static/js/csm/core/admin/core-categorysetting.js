@@ -75,46 +75,64 @@
     return select;
   }
 
-  function renderSubControl(sub, options) {
-    const line = el('div', 'preview-field-item');
-    const controls = el('div', 'preview-field-main');
+  /**
+   * 소분류 하나를 렌더링. 그리드 셀 배열을 반환한다.
+   * - checkbox/radio + select/text 조합이면 셀 2개(분리)
+   * - select_only / text_only: 항목명 == 대분류명(sameName)이면 이름 숨김
+   */
+  function renderSubControl(sub, options, mainName) {
     const chk = Number(sub.sub_col_02) === 1;
     const rad = Number(sub.sub_col_03) === 1;
     const txt = Number(sub.sub_col_04) === 1;
     const sel = Number(sub.sub_col_05) === 1;
+    const name = (sub.sub_col_01 || '').trim();
+    const sameName = name !== '' && name === (mainName || '').trim();
+    const cells = [];
 
-    if (chk) {
-      const c = document.createElement('input');
-      c.type = 'checkbox';
-      c.disabled = true;
-      controls.appendChild(c);
-    }
-    if (rad) {
-      const r = document.createElement('input');
-      r.type = 'radio';
-      r.disabled = true;
-      controls.appendChild(r);
-    }
-    controls.appendChild(el('span', 'preview-field-name', sub.sub_col_01 || '-'));
+    if (!chk && !rad) {
+      // select_only / text_only / 기타
+      const cell = el('div', 'preview-field-item');
+      if (!sameName) {
+        cell.appendChild(el('span', 'preview-field-name', name || '-'));
+      }
+      if (sel) {
+        cell.appendChild(disabledSelect((options || []).map((o) => o.option_col_01)));
+      } else if (txt) {
+        cell.appendChild(disabledTextInput('입력하세요'));
+      } else {
+        cell.appendChild(disabledTextInput('입력하세요'));
+      }
+      cells.push(cell);
+    } else {
+      // checkbox / radio (단독 또는 select·text 병행)
+      const cell1 = el('div', 'preview-field-item');
+      const mainEl = el('div', 'preview-field-main');
+      if (chk) {
+        const c = document.createElement('input');
+        c.type = 'checkbox'; c.disabled = true;
+        mainEl.appendChild(c);
+      } else {
+        const r = document.createElement('input');
+        r.type = 'radio'; r.disabled = true;
+        mainEl.appendChild(r);
+      }
+      mainEl.appendChild(el('span', 'preview-field-name', name || '-'));
+      cell1.appendChild(mainEl);
+      cells.push(cell1);
 
-    line.appendChild(controls);
+      // select 또는 text는 별도 그리드 셀로 분리
+      if (sel) {
+        const cell2 = el('div', 'preview-field-item preview-field-extra-cell');
+        cell2.appendChild(disabledSelect((options || []).map((o) => o.option_col_01)));
+        cells.push(cell2);
+      } else if (txt) {
+        const cell2 = el('div', 'preview-field-item preview-field-extra-cell');
+        cell2.appendChild(disabledTextInput('입력하세요'));
+        cells.push(cell2);
+      }
+    }
 
-    if (sel) {
-      const selectWrap = el('div', 'preview-field-extra');
-      selectWrap.appendChild(disabledSelect((options || []).map((o) => o.option_col_01)));
-      line.appendChild(selectWrap);
-    }
-    if (txt) {
-      const textWrap = el('div', 'preview-field-extra');
-      textWrap.appendChild(disabledTextInput('입력하세요'));
-      line.appendChild(textWrap);
-    }
-    if (!chk && !rad && !sel && !txt) {
-      const textWrap = el('div', 'preview-field-extra');
-      textWrap.appendChild(disabledTextInput('입력하세요'));
-      line.appendChild(textWrap);
-    }
-    return line;
+    return cells;
   }
 
   async function renderTemplatePreview(templateIdx) {
@@ -134,7 +152,8 @@
       const subs = await api(`/csm/core/setting/subcategory/${main.idx}`);
       for (const sub of (subs || [])) {
         const opts = await api(`/csm/core/setting/options/${sub.idx}`);
-        groupFields.appendChild(renderSubControl(sub, opts));
+        const cells = renderSubControl(sub, opts, main.main_col_01);
+        cells.forEach((cell) => groupFields.appendChild(cell));
       }
 
       if (!subs || subs.length === 0) {

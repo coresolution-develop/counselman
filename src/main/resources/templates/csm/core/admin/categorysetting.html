@@ -93,12 +93,16 @@
               <label>상담유입경로</label><select disabled><option>선택하세요</option></select>
               <label>잠재고객</label><select disabled><option>선택하세요</option></select>
             </div>
+            <div class="preview-check-row">
+              <label class="preview-check-item"><input type="checkbox" disabled> 실손보험</label>
+              <label class="preview-check-item"><input type="checkbox" disabled> BC</label>
+            </div>
           </div>
           <div id="template-preview-left"></div>
           <div class="preview-card">
-            <div class="preview-row full">
+            <div class="preview-row-stack">
               <label>현상태</label>
-              <textarea rows="4" disabled></textarea>
+              <textarea rows="3" disabled></textarea>
             </div>
           </div>
         </div>
@@ -113,6 +117,20 @@
               <button type="button" class="icon-btn clear-btn" disabled>&times;</button>
               <button type="button" class="icon-btn plus-btn" disabled>+</button>
             </div>
+          </div>
+          <div class="preview-card preview-audio-card">
+            <div class="preview-sub-title">음성 녹음</div>
+            <div class="preview-drop-zone">녹음 파일을 여기에 끌어놓거나 클릭해 업로드</div>
+            <div class="preview-audio-btns">
+              <button type="button" class="preview-audio-btn" disabled>녹음 시작</button>
+              <button type="button" class="preview-audio-btn" disabled>녹음 중지</button>
+              <button type="button" class="preview-audio-btn" disabled>커스텀 매칭</button>
+              <button type="button" class="preview-audio-btn" disabled>상담 요약</button>
+            </div>
+          </div>
+          <div class="preview-card preview-file-card">
+            <div class="preview-sub-title">소견서 / 문서 첨부</div>
+            <div class="preview-drop-zone preview-file-drop">소견서·PDF·이미지·문서 파일을 여기에 끌어놓거나 클릭해 업로드</div>
           </div>
           <div class="preview-card record-card">
             <div class="record-row two-col">
