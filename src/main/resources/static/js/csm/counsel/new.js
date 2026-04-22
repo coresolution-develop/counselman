@@ -335,6 +335,27 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   setAdmissionPledgeStatus();
 
+  /* -------- #form-reset : 방법·결과·상담내용 초기화 -------- */
+  const formResetBtn = document.getElementById('form-reset');
+  if (formResetBtn) {
+    formResetBtn.addEventListener('click', function () {
+      // 방법 초기화
+      const methodSel = document.getElementById('cs_col_18');
+      if (methodSel) methodSel.value = '';
+
+      // 결과 초기화 + 연동 UI 리셋
+      if (resultSelect) {
+        resultSelect.value = '';
+        toggleResultFields('');
+        toggleAdmissionPledgeLauncher('');
+      }
+
+      // 상담내용 초기화
+      const contentTA = document.getElementById('cs_col_32');
+      if (contentTA) contentTA.value = '';
+    });
+  }
+
   const pendingPledge = sessionStorage.getItem('csm-admission-pledge-return');
   if (pendingPledge) {
     try {
