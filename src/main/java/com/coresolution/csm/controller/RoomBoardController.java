@@ -308,11 +308,14 @@ public class RoomBoardController {
         if (userinfo == null) {
             return false;
         }
-        if ("coreadmin".equalsIgnoreCase(safeString(userinfo.getUs_col_02()))) {
-            return true;
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getAuthorities() != null) {
+            return auth.getAuthorities().stream()
+                    .anyMatch(a -> "ROOM_BOARD:SNAPSHOT_MANAGE".equals(a.getAuthority())
+                            || "ROLE_PLATFORM_ADMIN".equals(a.getAuthority())
+                            || "ROLE_INST_ADMIN".equals(a.getAuthority()));
         }
-        Integer grade = userinfo.getUs_col_08();
-        return grade != null && (grade == 1 || grade == 2);
+        return false;
     }
 
     private boolean isRoomBoardEnabled(String inst) {

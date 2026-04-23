@@ -541,6 +541,136 @@ public class CsmAuthService {
         ensureAdmissionPledgeTable(safe);
         ensureCounselDataEntryColumns(safe);
         ensureCounselGuardianColumns(safe);
+        ensureRoleTables(safe);
+    }
+
+    private void ensureRoleTables(String safe) {
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS csm.role_" + safe + " ("
+                + "role_id    bigint AUTO_INCREMENT PRIMARY KEY,"
+                + "role_code  varchar(64) NOT NULL,"
+                + "role_name  varchar(100),"
+                + "description varchar(255),"
+                + "is_system  tinyint(1) DEFAULT 0,"
+                + "created_at datetime DEFAULT CURRENT_TIMESTAMP,"
+                + "updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,"
+                + "UNIQUE KEY uq_role_code (role_code)"
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS csm.role_permission_" + safe + " ("
+                + "role_id         bigint NOT NULL,"
+                + "permission_code varchar(64) NOT NULL,"
+                + "PRIMARY KEY (role_id, permission_code)"
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS csm.user_role_" + safe + " ("
+                + "user_id     bigint NOT NULL,"
+                + "role_id     bigint NOT NULL,"
+                + "assigned_at datetime DEFAULT CURRENT_TIMESTAMP,"
+                + "assigned_by varchar(100),"
+                + "PRIMARY KEY (user_id, role_id)"
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS csm.user_permission_" + safe + " ("
+                + "user_id         bigint NOT NULL,"
+                + "permission_code varchar(64) NOT NULL,"
+                + "granted         tinyint(1) NOT NULL DEFAULT 1,"
+                + "PRIMARY KEY (user_id, permission_code)"
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        seedRoles(safe);
+    }
+
+    private void seedRoles(String safe) {
+        String upsertRole = "INSERT INTO csm.role_" + safe
+                + " (role_code, role_name, description, is_system)"
+                + " VALUES (?, ?, ?, ?)"
+                + " ON DUPLICATE KEY UPDATE role_name = VALUES(role_name), description = VALUES(description)";
+
+        Object[][] roles = {
+            {"SYSTEM_INST_ADMIN",          "기관 관리자",   "기관 내 전체 권한 (시스템 역할, 편집 불가)", 1},
+            {"TEMPLATE_COUNSELOR",         "상담사",        "기본 상담사 권한 세트",                      0},
+            {"TEMPLATE_RECEPTION",         "접수 담당",     "상담 접수 전담 권한",                        0},
+            {"TEMPLATE_ROOM_BOARD_MANAGER","병실 관리자",   "병실현황판·입원예약 관리 권한",               0},
+            {"TEMPLATE_VIEWER",            "뷰어",          "읽기 전용 권한",                             0},
+            {"TEMPLATE_SMS_OPERATOR",      "문자 담당",     "문자 발송 전담 권한",                        0},
+        };
+        for (Object[] row : roles) {
+            jdbcTemplate.update(upsertRole, row);
+        }
+
+        seedRolePermissions(safe);
+    }
+
+    private void seedRolePermissions(String safe) {
+        String insertPerm = "INSERT IGNORE INTO csm.role_permission_" + safe
+                + " (role_id, permission_code)"
+                + " SELECT r.role_id, ? FROM csm.role_" + safe + " r WHERE r.role_code = ?";
+
+        // SYSTEM_INST_ADMIN — all permissions from permission_master (if it exists)
+        try {
+            Integer pmCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='csm' AND table_name='permission_master'",
+                Integer.class);
+            if (pmCount != null && pmCount > 0) {
+                List<String> allCodes = jdbcTemplate.queryForList(
+                    "SELECT code FROM csm.permission_master", String.class);
+                for (String code : allCodes) {
+                    jdbcTemplate.update(insertPerm, code, "SYSTEM_INST_ADMIN");
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[seed-roles] SYSTEM_INST_ADMIN perms skipped: {}", e.toString());
+        }
+
+        // TEMPLATE_COUNSELOR
+        String[] counselorPerms = {
+            "COUNSEL_RESERVATION:READ", "COUNSEL_RESERVATION:CREATE", "COUNSEL_RESERVATION:EDIT",
+            "COUNSEL_RESERVATION:CANCEL",
+            "COUNSEL:READ", "COUNSEL:CREATE", "COUNSEL:EDIT",
+            "COUNSEL_LIST:READ",
+            "NOTICE:READ",
+            "SMS:SEND", "SMS:HISTORY_READ",
+        };
+        for (String code : counselorPerms) {
+            jdbcTemplate.update(insertPerm, code, "TEMPLATE_COUNSELOR");
+        }
+
+        // TEMPLATE_RECEPTION
+        String[] receptionPerms = {
+            "COUNSEL_RESERVATION:READ", "COUNSEL_RESERVATION:CREATE", "COUNSEL_RESERVATION:EDIT",
+            "COUNSEL_RESERVATION:CANCEL",
+            "COUNSEL_LIST:READ",
+        };
+        for (String code : receptionPerms) {
+            jdbcTemplate.update(insertPerm, code, "TEMPLATE_RECEPTION");
+        }
+
+        // TEMPLATE_ROOM_BOARD_MANAGER
+        String[] roomBoardPerms = {
+            "ROOM_BOARD:READ", "ROOM_BOARD:WRITE", "ROOM_BOARD:SNAPSHOT_MANAGE",
+            "ADMISSION:READ", "ADMISSION:UPDATE_DETAILS", "ADMISSION:CONFIRM", "ADMISSION:CANCEL",
+        };
+        for (String code : roomBoardPerms) {
+            jdbcTemplate.update(insertPerm, code, "TEMPLATE_ROOM_BOARD_MANAGER");
+        }
+
+        // TEMPLATE_VIEWER
+        String[] viewerPerms = {
+            "ROOM_BOARD:READ",
+            "COUNSEL_LIST:READ",
+        };
+        for (String code : viewerPerms) {
+            jdbcTemplate.update(insertPerm, code, "TEMPLATE_VIEWER");
+        }
+
+        // TEMPLATE_SMS_OPERATOR
+        String[] smsPerms = {
+            "SMS:SEND", "SMS:BULK_SEND", "SMS:HISTORY_READ", "SMS:TEMPLATE_EDIT",
+            "COUNSEL_LIST:READ",
+        };
+        for (String code : smsPerms) {
+            jdbcTemplate.update(insertPerm, code, "TEMPLATE_SMS_OPERATOR");
+        }
     }
 
     private void ensureCounselDataEntryColumns(String safe) {
