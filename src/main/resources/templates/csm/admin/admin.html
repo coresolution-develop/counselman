@@ -16,6 +16,7 @@
 <link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
 <link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
 
+<meta name="ctx-path" th:content="@{/}" content="/">
 <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
 <script th:src="@{/js/csm/admin/admin.js}"></script>
 
@@ -29,6 +30,8 @@
 <link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
 <link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
 
+<link rel="stylesheet" th:href="@{/css/csm/admin/roles.css}">
+<script th:src="@{/js/csm/admin/roles.js}" defer></script>
 <style>
 .arrow { display: inline-block; width: 0; height: 0; margin-left: 5px; }
 .up { border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 5px solid black; }
@@ -38,29 +41,24 @@
 
 /* 권한 없음 안내 박스 */
 .no-access-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  padding: 60px 24px;
-  text-align: center;
-  color: #5a6b5e;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 60px 24px; text-align: center; color: #5a6b5e;
 }
-.no-access-icon {
-  font-size: 48px;
-  line-height: 1;
+.no-access-icon { font-size: 48px; line-height: 1; }
+.no-access-title { font-size: 18px; font-weight: 700; color: #2d3e33; }
+.no-access-desc { font-size: 13px; color: #7a8b80; line-height: 1.6; }
+
+/* 관리자 탭 */
+.admin-tabs { display: flex; gap: 0; border-bottom: 2px solid #d0dfd6; margin-bottom: 18px; }
+.admin-tab-btn {
+  padding: 10px 24px; font-size: 14px; font-weight: 600; color: #7a8b80;
+  background: none; border: none; border-bottom: 3px solid transparent;
+  margin-bottom: -2px; cursor: pointer; transition: color .15s, border-color .15s;
 }
-.no-access-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #2d3e33;
-}
-.no-access-desc {
-  font-size: 13px;
-  color: #7a8b80;
-  line-height: 1.6;
-}
+.admin-tab-btn.active { color: #2d6a4f; border-bottom-color: #2d6a4f; }
+.admin-tab-btn:hover:not(.active) { color: #3d7a5f; }
+.admin-tab-panel { display: none; }
+.admin-tab-panel.active { display: block; }
 </style>
 </head>
 <body>
@@ -82,56 +80,113 @@
 
     <!-- ② 관리자 화면 -->
     <div th:unless="${noAdminAccess}">
-      <div class="content-mid content-mid-admin">
-        <div class="section-mid">
-          <div class="user-list">
-            <div class="grid-header">
-              <div onclick="sortGrid(0)">사번 <span id='arrow0' class="arrow"></span></div>
-              <div onclick="sortGrid(1)">성명 <span id='arrow1' class="arrow"></span></div>
-              <div onclick="sortGrid(2)">부서 <span id='arrow2' class="arrow"></span></div>
-              <div onclick="sortGrid(3)">직급 <span id='arrow3' class="arrow"></span></div>
-              <div onclick="sortGrid(4)">권한 <span id='arrow4' class="arrow"></span></div>
-              <div onclick="sortGrid(5)">Email <span id='arrow5' class="arrow"></span></div>
-              <div onclick="sortGrid(6)">상태 <span id='arrow6' class="arrow"></span></div>
-            </div>
-            <div class="grid-body" id="userGrid">
-              <div class="grid-row" th:if="${#lists.isEmpty(user)}">
-                <div style="grid-column: 1 / -1;">사용자 데이터가 없습니다.</div>
+
+      <!-- 탭 바 -->
+      <div class="admin-tabs">
+        <button class="admin-tab-btn active" onclick="switchAdminTab('users', this)">사용자 관리</button>
+        <button class="admin-tab-btn" onclick="switchAdminTab('roles', this)">역할 관리</button>
+      </div>
+
+      <!-- ── 탭 1: 사용자 관리 ── -->
+      <div id="admin-tab-users" class="admin-tab-panel active">
+        <div class="content-mid content-mid-admin">
+          <div class="section-mid">
+            <div class="user-list">
+              <div class="grid-header">
+                <div onclick="sortGrid(0)">사번 <span id='arrow0' class="arrow"></span></div>
+                <div onclick="sortGrid(1)">성명 <span id='arrow1' class="arrow"></span></div>
+                <div onclick="sortGrid(2)">부서 <span id='arrow2' class="arrow"></span></div>
+                <div onclick="sortGrid(3)">직급 <span id='arrow3' class="arrow"></span></div>
+                <div onclick="sortGrid(4)">권한 <span id='arrow4' class="arrow"></span></div>
+                <div onclick="sortGrid(5)">Email <span id='arrow5' class="arrow"></span></div>
+                <div onclick="sortGrid(6)">상태 <span id='arrow6' class="arrow"></span></div>
               </div>
-              <div class="grid-row" th:each="u : ${user}">
-                <div th:text="${u != null ? (u.us_col_02 ?: '') : ''}"></div>
-                <div th:text="${u != null ? (u.us_col_12 ?: '') : ''}"></div>
-                <div th:text="${u != null ? (u.us_col_13 ?: '') : ''}"></div>
-                <div th:text="${u != null ? (u.us_col_14 ?: '') : ''}"></div>
-                <div th:text="${u != null ? (u.us_col_08 == 1 ? 'admin' : (u.us_col_08 == 2 ? 'supervisor' : (u.us_col_08 == 3 ? 'manager' : (u.us_col_08 == 4 ? 'viewer' : '')))) : ''}"></div>
-                <div th:text="${u != null ? (u.us_col_11 ?: '') : ''}"></div>
-                <div>
-                  <span th:text="${u != null && u.us_col_07 == 'y' ? '사용중' : '사용중지'}"></span>
-                  <input type="hidden" name="us_col_01" th:value="${u != null ? u.us_col_01 : ''}">
-                  <input type="hidden" name="us_col_02" th:value="${u != null ? u.us_col_02 : ''}">
-                  <input type="hidden" name="us_col_04" th:value="${u != null ? u.us_col_04 : ''}">
+              <div class="grid-body" id="userGrid">
+                <div class="grid-row" th:if="${#lists.isEmpty(user)}">
+                  <div style="grid-column: 1 / -1;">사용자 데이터가 없습니다.</div>
+                </div>
+                <div class="grid-row" th:each="u : ${user}">
+                  <div th:text="${u != null ? (u.us_col_02 ?: '') : ''}"></div>
+                  <div th:text="${u != null ? (u.us_col_12 ?: '') : ''}"></div>
+                  <div th:text="${u != null ? (u.us_col_13 ?: '') : ''}"></div>
+                  <div th:text="${u != null ? (u.us_col_14 ?: '') : ''}"></div>
+                  <div th:text="${u != null ? (u.us_col_08 == 1 ? 'admin' : (u.us_col_08 == 2 ? 'supervisor' : (u.us_col_08 == 3 ? 'manager' : (u.us_col_08 == 4 ? 'viewer' : '')))) : ''}"></div>
+                  <div th:text="${u != null ? (u.us_col_11 ?: '') : ''}"></div>
+                  <div>
+                    <span th:text="${u != null && u.us_col_07 == 'y' ? '사용중' : '사용중지'}"></span>
+                    <input type="hidden" name="us_col_01" th:value="${u != null ? u.us_col_01 : ''}">
+                    <input type="hidden" name="us_col_02" th:value="${u != null ? u.us_col_02 : ''}">
+                    <input type="hidden" name="us_col_04" th:value="${u != null ? u.us_col_04 : ''}">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div></div>
+        </div>
+
+        <div class="section-bot">
+          <div>
+            <div class="search-status-area">
+              <div><span>검색수 : <span class="count" th:text="|${count}건|"></span></span></div>
+              <div class="status-area">
+                <div class="section-btn">
+                  <div class="btn counsel-btn" id="user-del">사용자삭제</div>
+                  <div class="btn counsel-btn delBtn" id="user-modi">수정</div>
+                  <div class="btn newBtn pop-btn counsel-btn" id="user-new" onclick="openUserPopup()">새사용자</div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <div></div>
       </div>
 
-      <div class="section-bot">
-        <div>
-          <div class="search-status-area">
-            <div><span>검색수 : <span class="count" th:text="|${count}건|"></span></span></div>
-            <div class="status-area">
-              <div class="section-btn">
-                <div class="btn counsel-btn" id="user-del">사용자삭제</div>
-                <div class="btn counsel-btn delBtn" id="user-modi">수정</div>
-                <div class="btn newBtn pop-btn counsel-btn" id="user-new" onclick="openUserPopup()">새사용자</div>
+      <!-- ── 탭 2: 역할 관리 ── -->
+      <div id="admin-tab-roles" class="admin-tab-panel">
+        <div class="roles-layout">
+
+          <!-- 역할 목록 -->
+          <div class="roles-list-pane">
+            <div class="roles-list-header">
+              <span class="roles-list-title">역할 목록</span>
+              <div class="roles-list-actions">
+                <button class="roles-btn-sm" onclick="rolesOpenCreate()">+ 새 역할</button>
               </div>
             </div>
+            <div id="roles-list-body" class="roles-list-body">
+              <div class="roles-empty">불러오는 중...</div>
+            </div>
           </div>
+
+          <!-- 역할 편집 패널 -->
+          <div class="roles-edit-pane" id="roles-edit-pane">
+            <div class="roles-edit-placeholder">
+              <div class="roles-edit-placeholder-icon">&#x1F6E1;</div>
+              <div>역할을 선택하면 권한 매트릭스가 표시됩니다.</div>
+            </div>
+            <!-- 편집 폼 (JS로 채워짐) -->
+            <div id="roles-edit-form" style="display:none;">
+              <div class="roles-edit-header">
+                <div class="roles-edit-meta">
+                  <input id="re-role-name" class="roles-name-input" placeholder="역할 이름" maxlength="100" />
+                  <textarea id="re-role-desc" class="roles-desc-input" placeholder="설명 (선택)" rows="2"></textarea>
+                </div>
+                <div class="roles-edit-header-btns">
+                  <button class="roles-btn-copy" id="re-copy-btn" onclick="rolesCopyRole()">복사해서 새 역할</button>
+                  <button class="roles-btn-save" id="re-save-btn" onclick="rolesSavePermissions()">저장</button>
+                  <button class="roles-btn-del" id="re-del-btn" onclick="rolesDeleteRole()">삭제</button>
+                </div>
+              </div>
+              <div class="roles-system-badge" id="re-system-badge" style="display:none;">
+                &#x1F512; 시스템 역할 — 편집 불가
+              </div>
+              <div id="re-perm-matrix" class="roles-perm-matrix"></div>
+            </div>
+          </div>
+
         </div>
       </div>
+
     </div>
 
   </div>

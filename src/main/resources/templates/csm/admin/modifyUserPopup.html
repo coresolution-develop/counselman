@@ -2,6 +2,7 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
 <meta charset="UTF-8">
+<meta name="ctx-path" th:content="@{/}" content="/">
 <link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
 <title>사용자수정 : SOSYGE EASY-CRM</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,9 +14,55 @@
 <link rel="stylesheet" th:href="@{/css/csm/Include/modal.css}">
 <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
 <script th:src="@{/js/csm/admin/modifyUserPopup.js}"></script>
+<style>
+.popup-tabs { display: flex; border-bottom: 2px solid #d0dfd6; margin-bottom: 14px; }
+.popup-tab-btn {
+  padding: 8px 20px; font-size: 13px; font-weight: 600; color: #7a8b80;
+  background: none; border: none; border-bottom: 3px solid transparent;
+  margin-bottom: -2px; cursor: pointer;
+}
+.popup-tab-btn.active { color: #2d6a4f; border-bottom-color: #2d6a4f; }
+.popup-tab-panel { display: none; }
+.popup-tab-panel.active { display: block; }
+
+/* 역할 할당 탭 */
+.user-roles-list { margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px; min-height: 48px; }
+.user-role-chip {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 12px; border: 1px solid #d0dfd6; border-radius: 6px;
+  font-size: 13px; background: #f4f8f5; color: #1e3a28;
+}
+.user-role-chip-lock { font-size: 12px; margin-right: 6px; }
+.user-role-remove {
+  font-size: 16px; line-height: 1; color: #c0392b; cursor: pointer;
+  border: none; background: none; padding: 0 2px;
+}
+.user-role-remove:hover { color: #922b21; }
+.user-roles-empty { color: #7a8b80; font-size: 13px; padding: 8px 0; }
+
+.user-roles-add-row { display: flex; gap: 8px; align-items: center; }
+.user-roles-add-select {
+  flex: 1; padding: 7px 10px; border: 1px solid #d0dfd6; border-radius: 6px;
+  font-size: 13px; outline: none;
+}
+.user-roles-add-select:focus { border-color: #2d6a4f; }
+.user-roles-add-btn {
+  padding: 7px 14px; background: #2d6a4f; color: #fff;
+  border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.user-roles-add-btn:hover { background: #1b4332; }
+</style>
 </head>
 <body>
-<form th:action="@{/modifyuserPopup/post}" method="post">
+<!-- 팝업 탭 -->
+<div class="popup-tabs">
+  <button class="popup-tab-btn active" onclick="switchPopupTab('info', this)">기본 정보</button>
+  <button class="popup-tab-btn" onclick="switchPopupTab('roles', this)">역할 할당</button>
+</div>
+
+<!-- 탭 1: 기본 정보 -->
+<div id="popup-tab-info" class="popup-tab-panel active">
+<form th:action="@{/modifyuserPopup/post}" method="post" id="modify-user-form">
   <div class="user-header"><h3>수정할 사용자 정보를 입력해 주세요.</h3></div>
   <label>아이디 <font color="red">*</font></label>
   <input type="text" class="user-area" id="us_col_02" name="us_col_02" th:value="${user != null ? user.us_col_02 : ''}" required />
@@ -66,6 +113,116 @@
   <input type="hidden" name="us_col_05" id="us_col_05" th:value="${instName}">
   <input type="hidden" name="us_col_01" id="us_col_01" th:value="${user != null ? user.us_col_01 : ''}">
 </form>
+</div>
+
+<!-- 탭 2: 역할 할당 -->
+<div id="popup-tab-roles" class="popup-tab-panel">
+  <div style="padding: 4px 0 12px; font-size: 13px; color: #3d5240; font-weight: 600;">
+    할당된 역할
+  </div>
+  <div id="user-roles-list" class="user-roles-list">
+    <div class="user-roles-empty">불러오는 중...</div>
+  </div>
+
+  <div style="padding: 10px 0 6px; font-size: 12px; color: #7a8b80; font-weight: 600;">역할 추가</div>
+  <div class="user-roles-add-row">
+    <select id="roles-add-select" class="user-roles-add-select">
+      <option value="">역할 선택...</option>
+    </select>
+    <button class="user-roles-add-btn" onclick="userRolesAssign()">추가</button>
+  </div>
+  <input type="hidden" id="popup-user-id" th:value="${user != null ? user.us_col_01 : ''}">
+</div>
+
+<script>
+const _popupUserId = document.getElementById('popup-user-id')?.value;
+
+function switchPopupTab(tabId, btn) {
+  document.querySelectorAll('.popup-tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.popup-tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('popup-tab-' + tabId).classList.add('active');
+  btn.classList.add('active');
+  if (tabId === 'roles') userRolesInit();
+}
+
+function ctxPath(p) {
+  return (document.querySelector('meta[name="ctx-path"]')?.content || '') + p;
+}
+function escHtml(s) {
+  return s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let _allRoles = [];
+let _userRoles = [];
+
+async function userRolesInit() {
+  if (!_popupUserId) return;
+  await Promise.all([userRolesLoadAll(), userRolesLoadUser()]);
+  userRolesRender();
+}
+
+async function userRolesLoadAll() {
+  try {
+    const r = await fetch(ctxPath('/api/roles'));
+    _allRoles = r.ok ? await r.json() : [];
+  } catch(e) { _allRoles = []; }
+}
+
+async function userRolesLoadUser() {
+  try {
+    const r = await fetch(ctxPath('/api/roles/user/' + _popupUserId));
+    _userRoles = r.ok ? await r.json() : [];
+  } catch(e) { _userRoles = []; }
+}
+
+function userRolesRender() {
+  const list = document.getElementById('user-roles-list');
+  const sel = document.getElementById('roles-add-select');
+
+  // 할당된 역할 목록
+  if (!_userRoles.length) {
+    list.innerHTML = '<div class="user-roles-empty">할당된 역할이 없습니다.</div>';
+  } else {
+    list.innerHTML = _userRoles.map(r => `
+      <div class="user-role-chip">
+        <span><span class="user-role-chip-lock">${r.is_system ? '🔒' : ''}</span>${escHtml(r.role_name)}</span>
+        <button class="user-role-remove" onclick="userRolesRemove(${r.role_id})" title="역할 해제">×</button>
+      </div>`).join('');
+  }
+
+  // 추가 셀렉트 — 이미 할당된 역할 제외
+  const assignedIds = new Set(_userRoles.map(r => r.role_id));
+  const available = _allRoles.filter(r => !assignedIds.has(r.role_id));
+  sel.innerHTML = '<option value="">역할 선택...</option>'
+    + available.map(r => `<option value="${r.role_id}">${escHtml(r.role_name)}</option>`).join('');
+}
+
+async function userRolesAssign() {
+  const roleId = document.getElementById('roles-add-select').value;
+  if (!roleId) { alert('역할을 선택하세요.'); return; }
+  try {
+    const r = await fetch(ctxPath('/api/roles/user/' + _popupUserId), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role_id: Number(roleId) }),
+    });
+    if (!r.ok) { const e = await r.json(); alert(e.error || '추가 실패'); return; }
+    await userRolesLoadUser();
+    userRolesRender();
+  } catch(e) { alert('오류: ' + e); }
+}
+
+async function userRolesRemove(roleId) {
+  const role = _userRoles.find(r => r.role_id == roleId);
+  if (!confirm(`"${role ? role.role_name : roleId}" 역할을 해제하시겠습니까?`)) return;
+  try {
+    const r = await fetch(ctxPath('/api/roles/user/' + _popupUserId + '/' + roleId), { method: 'DELETE' });
+    if (!r.ok) { const e = await r.json(); alert(e.error || '해제 실패'); return; }
+    await userRolesLoadUser();
+    userRolesRender();
+  } catch(e) { alert('오류: ' + e); }
+}
+</script>
 
 <div id="spinner-overlay" style="display: none;">
   <div class="spinner-container">

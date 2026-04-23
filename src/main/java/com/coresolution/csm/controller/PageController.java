@@ -53,6 +53,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
@@ -394,6 +395,7 @@ public class PageController {
     }
 
     @GetMapping({ "newuserPopup", "/newuserPopup" })
+    @PreAuthorize("hasAuthority('USER:CREATE') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public String newUserPopup(Model model, HttpSession session) {
         String inst = ensureInst(session);
         if (inst == null) {
@@ -430,6 +432,7 @@ public class PageController {
 
     @PostMapping("newuser/post")
     @ResponseBody
+    @PreAuthorize("hasAuthority('USER:CREATE') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public Map<String, Object> newUserPost(HttpSession session, Userdata ud) {
         String inst = ensureInst(session);
         if (inst == null) {
@@ -466,6 +469,7 @@ public class PageController {
 
     @PostMapping("modifyuserPopup/post")
     @ResponseBody
+    @PreAuthorize("hasAuthority('USER:EDIT') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public Map<String, Object> modifyUserPost(HttpSession session, Userdata ud,
             @RequestParam(value = "new_password", required = false) String newPassword) {
         String inst = ensureInst(session);
@@ -491,6 +495,7 @@ public class PageController {
 
     @PostMapping("user/delete")
     @ResponseBody
+    @PreAuthorize("hasAuthority('USER:DELETE') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public Map<String, Object> userDelete(HttpSession session, Userdata ud) {
         String inst = ensureInst(session);
         if (inst == null) {
@@ -2117,6 +2122,7 @@ public class PageController {
     }
 
     @GetMapping({ "statistics", "/statistics", "statistics/", "/statistics/" })
+    @PreAuthorize("hasAuthority('STATS:READ') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public String statisticsPage(Model model, HttpSession session) {
         String inst = ensureInst(session);
         if (inst == null) {

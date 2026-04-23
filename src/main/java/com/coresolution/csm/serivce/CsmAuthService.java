@@ -812,6 +812,10 @@ public class CsmAuthService {
     }
 
     private String sanitizeInst(String inst) {
+        return sanitizeInstPublic(inst);
+    }
+
+    public String sanitizeInstPublic(String inst) {
         if (inst == null) {
             throw new IllegalArgumentException("inst is null");
         }
