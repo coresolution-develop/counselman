@@ -61,7 +61,9 @@ public class SecurityConfig {
                                                 .contentSecurityPolicy(csp -> csp.policyDirectives(buildFrameAncestorsPolicy())))
                                 .csrf(csrf -> csrf.ignoringRequestMatchers(
                                                 new AntPathRequestMatcher("/api/external/SMSRequest", "POST"),
-                                                new AntPathRequestMatcher("/csm/api/external/SMSRequest", "POST")))
+                                                new AntPathRequestMatcher("/csm/api/external/SMSRequest", "POST"),
+                                                new AntPathRequestMatcher("/api/roles/**"),
+                                                new AntPathRequestMatcher("/csm/api/roles/**")))
                                 .exceptionHandling(ex -> ex
                                                 .defaultAuthenticationEntryPointFor(
                                                                 new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),

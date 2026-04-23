@@ -238,6 +238,38 @@
                   </div>
                 </template>
               </div>
+
+              <!-- 이 역할의 사용자 -->
+              <div class="roles-users-section">
+                <div class="roles-users-header">
+                  <span class="roles-users-title">이 역할의 사용자</span>
+                  <span class="roles-users-count" x-text="`${roleUsers.length}명`"></span>
+                </div>
+                <div class="roles-users-list">
+                  <div x-show="!roleUsers.length" class="roles-users-empty">할당된 사용자가 없습니다.</div>
+                  <template x-for="u in roleUsers" :key="u.user_id">
+                    <div class="role-user-row">
+                      <span class="role-user-avatar" x-text="(u.user_name || '?').charAt(0)"></span>
+                      <div class="role-user-info">
+                        <span class="role-user-name" x-text="u.user_name || '-'"></span>
+                        <span class="role-user-meta" x-text="`${u.user_login} · ${u.dept || ''} ${u.position || ''}`.trim()"></span>
+                      </div>
+                      <button class="role-user-remove" @click="removeUserFromRole(u.user_id)" title="역할 해제">×</button>
+                    </div>
+                  </template>
+                </div>
+                <div class="roles-users-add-row">
+                  <select x-model="addUserId" class="roles-users-select">
+                    <option value="">사용자 선택...</option>
+                    <template x-for="u in availableUsers" :key="u.user_id">
+                      <option :value="u.user_id"
+                              x-text="`${u.user_name || '-'} (${u.user_login})`">
+                      </option>
+                    </template>
+                  </select>
+                  <button class="roles-users-add-btn" @click="addUserToRole()" :disabled="!addUserId">추가</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

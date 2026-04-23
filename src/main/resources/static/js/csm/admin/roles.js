@@ -24,10 +24,17 @@ document.addEventListener('alpine:init', () => {
     showModal:     false,
     newName:       '',
     newDesc:       '',
+    roleUsers:     [],
+    allUsers:      [],
+    addUserId:     '',
 
     /* ── 계산 속성 ── */
     get selectedRole() {
       return this.roles.find(r => r.role_id == this.selectedId) ?? null;
+    },
+    get availableUsers() {
+      const assignedIds = new Set(this.roleUsers.map(u => u.user_id));
+      return this.allUsers.filter(u => !assignedIds.has(u.user_id));
     },
     get permMenus() {
       const map = new Map();
@@ -40,7 +47,9 @@ document.addEventListener('alpine:init', () => {
     },
 
     /* ── 초기화 ── */
-    async init() { await this.loadList(); },
+    async init() {
+      await Promise.all([this.loadList(), this.loadAllUsers()]);
+    },
 
     /* ── URL 유틸 ── */
     _api(path) {
@@ -58,9 +67,18 @@ document.addEventListener('alpine:init', () => {
       finally { this.listLoading = false; }
     },
 
+    /* ── 전체 사용자 로드 ── */
+    async loadAllUsers() {
+      try {
+        const r = await fetch(this._api('/api/roles/users'));
+        this.allUsers = r.ok ? await r.json() : [];
+      } catch { this.allUsers = []; }
+    },
+
     /* ── 역할 선택 ── */
     async selectRole(roleId) {
       this.selectedId = roleId;
+      this.addUserId = '';
 
       if (!this.permMaster.length) {
         try {
@@ -69,10 +87,14 @@ document.addEventListener('alpine:init', () => {
         } catch { this.permMaster = []; }
       }
 
-      try {
-        const r = await fetch(this._api(`/api/roles/${roleId}/permissions`));
-        this.selectedPerms = r.ok ? await r.json() : [];
-      } catch { this.selectedPerms = []; }
+      const [permsRes, usersRes] = await Promise.allSettled([
+        fetch(this._api(`/api/roles/${roleId}/permissions`)),
+        fetch(this._api(`/api/roles/${roleId}/users`)),
+      ]);
+      this.selectedPerms = permsRes.status === 'fulfilled' && permsRes.value.ok
+        ? await permsRes.value.json() : [];
+      this.roleUsers = usersRes.status === 'fulfilled' && usersRes.value.ok
+        ? await usersRes.value.json() : [];
 
       const role = this.selectedRole;
       this.isSystem = !!(role?.is_system);
@@ -141,6 +163,35 @@ document.addEventListener('alpine:init', () => {
         const data = await r.json();
         await this.loadList();
         this.selectRole(data.role_id);
+      } catch (e) { alert('오류: ' + e); }
+    },
+
+    /* ── 역할 사용자 추가/제거 ── */
+    async addUserToRole() {
+      if (!this.addUserId || !this.selectedId) return;
+      try {
+        const r = await fetch(this._api(`/api/roles/user/${this.addUserId}`), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role_id: Number(this.selectedId) }),
+        });
+        if (!r.ok) { alert((await r.json()).error ?? '추가 실패'); return; }
+        this.addUserId = '';
+        const res = await fetch(this._api(`/api/roles/${this.selectedId}/users`));
+        this.roleUsers = res.ok ? await res.json() : [];
+        await this.loadList();
+      } catch (e) { alert('오류: ' + e); }
+    },
+    async removeUserFromRole(userId) {
+      if (!this.selectedId) return;
+      const u = this.roleUsers.find(u => u.user_id == userId);
+      if (!confirm(`"${u?.user_name ?? userId}" 사용자의 역할을 해제하시겠습니까?`)) return;
+      try {
+        const r = await fetch(this._api(`/api/roles/user/${userId}/${this.selectedId}`), { method: 'DELETE' });
+        if (!r.ok) { alert((await r.json()).error ?? '해제 실패'); return; }
+        const res = await fetch(this._api(`/api/roles/${this.selectedId}/users`));
+        this.roleUsers = res.ok ? await res.json() : [];
+        await this.loadList();
       } catch (e) { alert('오류: ' + e); }
     },
 

@@ -241,6 +241,43 @@ public class RolesApiController {
     }
 
     // ─────────────────────────────────────────────────
+    // 역할에 속한 사용자 목록
+    // ─────────────────────────────────────────────────
+    @GetMapping("/{roleId}/users")
+    @PreAuthorize("hasAuthority('ROLE:READ') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
+    public ResponseEntity<?> getRoleUsers(@PathVariable long roleId, HttpSession session) {
+        String inst = resolveInst(session);
+        if (inst == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        String safe = cs.sanitizeInstPublic(inst);
+
+        List<Map<String, Object>> users = jdbcTemplate.queryForList(
+                "SELECT u.us_col_01 AS user_id, u.us_col_02 AS user_login,"
+                + " u.us_col_12 AS user_name, u.us_col_13 AS dept, u.us_col_14 AS position"
+                + " FROM csm.user_role_" + safe + " ur"
+                + " JOIN csm.user_data_" + safe + " u ON u.us_col_01 = ur.user_id"
+                + " WHERE ur.role_id = ? ORDER BY u.us_col_12", roleId);
+        return ResponseEntity.ok(users);
+    }
+
+    // ─────────────────────────────────────────────────
+    // 기관 전체 사용자 목록 (역할 추가용)
+    // ─────────────────────────────────────────────────
+    @GetMapping("/users")
+    @PreAuthorize("hasAuthority('ROLE:READ') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
+    public ResponseEntity<?> getAllUsers(HttpSession session) {
+        String inst = resolveInst(session);
+        if (inst == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        String safe = cs.sanitizeInstPublic(inst);
+
+        List<Map<String, Object>> users = jdbcTemplate.queryForList(
+                "SELECT us_col_01 AS user_id, us_col_02 AS user_login,"
+                + " us_col_12 AS user_name, us_col_13 AS dept, us_col_14 AS position"
+                + " FROM csm.user_data_" + safe
+                + " WHERE us_col_09 = 1 ORDER BY us_col_12");
+        return ResponseEntity.ok(users);
+    }
+
+    // ─────────────────────────────────────────────────
     // 역할 복사
     // ─────────────────────────────────────────────────
     @PostMapping("/{roleId}/copy")
