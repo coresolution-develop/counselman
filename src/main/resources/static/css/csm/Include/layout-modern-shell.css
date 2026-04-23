@@ -355,3 +355,198 @@ body:not(.counsel-list-modern) .copyright {
         width: 100%;
     }
 }
+
+/* ══════════════════════════════════════════
+   NEW: Nav sections + icons (MediPlat design)
+   ══════════════════════════════════════════ */
+
+/* Old ul padding no longer needed — nav-section provides its own */
+.nav_section ul { padding: 0; }
+
+/* Section group */
+.nav-section {
+    padding: 0 8px;
+    margin-top: 6px;
+}
+.nav-section:first-child { margin-top: 0; }
+
+/* Section label */
+.nav-section__label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: rgba(232, 245, 239, 0.38);
+    padding: 10px 4px 4px;
+    transition: opacity 150ms ease;
+}
+
+/* Nav item: flex row with icon + label */
+.nav_link.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 0 12px;
+    border-radius: 10px;
+    color: rgba(232, 245, 239, 0.78);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    position: relative;
+    margin-bottom: 2px;
+    transition: background 150ms ease, color 150ms ease;
+    text-decoration: none;
+}
+
+/* Reset child span/a styles that old rule applied via .nav_section .nav_link > span */
+.nav_link.nav-item > .nav-item__icon,
+.nav_link.nav-item > .nav-item__label {
+    min-height: auto;
+    padding: 0;
+    font-size: inherit;
+    font-weight: inherit;
+    color: inherit;
+}
+
+/* Icon */
+.nav-item__icon {
+    width: 20px;
+    height: 20px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    color: rgba(232, 245, 239, 0.52);
+    transition: color 150ms ease;
+}
+.nav-item__icon svg { display: block; }
+
+/* Label */
+.nav-item__label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: opacity 150ms ease;
+}
+
+/* Hover */
+.nav_link.nav-item:hover {
+    background: rgba(109, 179, 143, 0.18);
+    color: #fff;
+}
+.nav_link.nav-item:hover .nav-item__icon { color: rgba(232, 245, 239, 0.85); }
+
+/* Active: gradient pill + left indicator bar */
+.nav_link.nav-item.active,
+.nav_link.nav-item.on {
+    background: linear-gradient(90deg, rgba(16, 185, 129, 0.22) 0%, rgba(16, 185, 129, 0.06) 100%);
+    color: #fff;
+    box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.18);
+}
+.nav_link.nav-item.active::before,
+.nav_link.nav-item.on::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 20px;
+    background: #34d399;
+    border-radius: 0 3px 3px 0;
+    box-shadow: 0 0 10px rgba(52, 211, 153, 0.55);
+}
+.nav_link.nav-item.active .nav-item__icon,
+.nav_link.nav-item.on .nav-item__icon { color: #6ee7b7; }
+
+/* Disabled */
+.nav_link.nav-item.disabled-link {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Nav bottom: text logo */
+.nav-bottom-logo {
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(213, 234, 222, 0.5);
+    letter-spacing: -0.01em;
+}
+.nav-bottom-logo > img { display: none; }
+
+/* ══════════════════════════════════════════
+   NEW: Header — bell button + user avatar
+   ══════════════════════════════════════════ */
+
+.header-right {
+    display: flex;
+    align-items: center;
+}
+
+.header__icon-btn {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    color: #5b7066;
+    background: none;
+    border: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 150ms ease, color 150ms ease;
+}
+.header__icon-btn:hover {
+    background: #eef4f1;
+    color: #1f4836;
+}
+.header__icon-btn svg { display: block; }
+
+.header__user-pill {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header__avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #34d399, #059669);
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(5, 150, 105, 0.3);
+    letter-spacing: 0;
+}
+
+/* ══════════════════════════════════════════
+   NEW: Collapsed sidebar
+   ══════════════════════════════════════════ */
+
+.nav_section { transition: width 250ms ease; }
+
+body.nav-collapsed .nav_section { width: 68px; }
+body.nav-collapsed .nav-section__label,
+body.nav-collapsed .nav-item__label {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+}
+body.nav-collapsed .nav_link.nav-item {
+    padding: 0;
+    justify-content: center;
+}
+body.nav-collapsed .nav-item__icon { margin: 0 auto; }
+body.nav-collapsed:not(.counsel-list-modern) .nav_section ~ .main {
+    margin-left: 68px !important;
+    width: calc(100% - 68px) !important;
+}
+body.nav-collapsed.room-board-page:not(.popup-mode) .rb-wrap {
+    margin-left: 68px !important;
+    width: calc(100% - 68px) !important;
+}
