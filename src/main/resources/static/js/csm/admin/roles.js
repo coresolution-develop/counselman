@@ -39,17 +39,61 @@ document.addEventListener('alpine:init', () => {
       const assignedIds = new Set(this.roleUsers.map(u => u.user_id));
       return this.allUsers.filter(u => !assignedIds.has(u.user_id));
     },
-    get permMenus() {
+
+    /* 메뉴 단위 가상 아이템 맵 (admin은 resource별 분리) */
+    get _menuItems() {
+      const MENU_META = {
+        counsel_reservation: { desc: '신규 상담 접수 및 배정',   icon: 'clipboard' },
+        counsel_write:       { desc: '입원 관련 상담 관리',      icon: 'bed'       },
+        counsel_list:        { desc: '전체 상담 이력 조회',      icon: 'list'      },
+        counsel_log:         { desc: '상담 일지 작성·수정',      icon: 'edit'      },
+        stats:               { desc: '상담 KPI 및 리포트',       icon: 'chart'     },
+        notice:              { desc: '내부 공지 작성·조회',      icon: 'bell'      },
+        sms:                 { desc: '문자 발송·템플릿',         icon: 'message'   },
+        room_board:          { desc: '병실 현황 조회·관리',      icon: 'building'  },
+        admission:           { desc: '방문/입원 예약 생성·조회', icon: 'calendar'  },
+      };
+      const ADMIN_ITEMS = {
+        '__admin_USER': { label: '사용자 관리', desc: '계정 생성·삭제·역할 배정', icon: 'users'   },
+        '__admin_ROLE': { label: '역할 관리',   desc: '권한 역할 생성·수정',      icon: 'key'     },
+        '__admin_SYS':  { label: '시스템 설정', desc: '설정 및 카테고리 관리',    icon: 'sliders' },
+      };
       const map = new Map();
       for (const p of this.permMaster) {
-        if (!map.has(p.menu_key))
-          map.set(p.menu_key, { menu_key: p.menu_key, label: p.menu_label, perms: [] });
-        map.get(p.menu_key).perms.push(p);
+        if (p.menu_key === 'admin') {
+          const vkey = p.resource === 'USER' ? '__admin_USER'
+                     : p.resource === 'ROLE' ? '__admin_ROLE'
+                     : '__admin_SYS';
+          if (!map.has(vkey)) map.set(vkey, { menu_key: vkey, ...ADMIN_ITEMS[vkey], perms: [] });
+          map.get(vkey).perms.push(p);
+        } else {
+          if (!map.has(p.menu_key)) {
+            const meta = MENU_META[p.menu_key] || {};
+            map.set(p.menu_key, { menu_key: p.menu_key, label: p.menu_label, desc: meta.desc || '', icon: meta.icon || 'sliders', perms: [] });
+          }
+          map.get(p.menu_key).perms.push(p);
+        }
       }
-      return Array.from(map.values());
+      return map;
     },
-    get totalPerms() {
-      return this.permMaster.length;
+
+    /* 3개 카테고리 × 메뉴 아이템 */
+    get permGroups() {
+      const items = this._menuItems;
+      return [
+        { id: 'consult', label: '상담 업무',    keys: ['counsel_reservation','counsel_write','counsel_list','counsel_log','stats'] },
+        { id: 'comms',   label: '커뮤니케이션', keys: ['notice','sms','room_board','admission'] },
+        { id: 'admin',   label: '시스템 관리',  keys: ['__admin_USER','__admin_ROLE','__admin_SYS'] },
+      ].map(cat => ({ ...cat, items: cat.keys.map(k => items.get(k)).filter(Boolean) }));
+    },
+
+    get totalMenus() { return this._menuItems.size; },
+    get selectedMenuCount() {
+      let n = 0;
+      for (const m of this._menuItems.values()) {
+        if (m.perms.length > 0 && m.perms.every(p => this.selectedPerms.includes(p.code))) n++;
+      }
+      return n;
     },
 
     /* ── 초기화 ── */
@@ -75,16 +119,6 @@ document.addEventListener('alpine:init', () => {
       if (code.includes('message') || code.includes('sms') || code.includes('문자')) return 'message';
       if (code.includes('admin') || code.includes('manage') || code.includes('관리')) return 'building';
       return 'key';
-    },
-    _permIcon(perm) {
-      const action = (perm.action || '').toUpperCase();
-      if (action.includes('READ') || action.includes('VIEW') || action.includes('LIST')) return 'eye';
-      if (action.includes('CREATE') || action.includes('ADD') || action.includes('WRITE')) return 'plus';
-      if (action.includes('EDIT') || action.includes('UPDATE') || action.includes('MODIFY')) return 'edit';
-      if (action.includes('DELETE') || action.includes('REMOVE')) return 'trash';
-      if (action.includes('ASSIGN') || action.includes('ROLE')) return 'users';
-      if (action.includes('SEND') || action.includes('MESSAGE')) return 'message';
-      return 'sliders';
     },
     _userColor(userId) {
       const palette = ['#059669','#10b981','#0ea5e9','#8b5cf6','#ec4899','#f59e0b','#14b8a6','#475569'];
@@ -138,7 +172,7 @@ document.addEventListener('alpine:init', () => {
       this.editDesc = role?.description ?? '';
     },
 
-    /* ── 권한 토글 ── */
+    /* ── 권한 체크 (개별, 저장/로드용) ── */
     hasPerm(code) { return this.selectedPerms.includes(code); },
     togglePerm(code) {
       if (this.isSystem) return;
@@ -147,36 +181,69 @@ document.addEventListener('alpine:init', () => {
       this.dirty = true;
     },
 
-    /* ── 그룹 전체 선택/해제 ── */
-    filteredPerms(group) {
-      const q = this.search.trim().toLowerCase();
-      if (!q) return group.perms;
-      return group.perms.filter(p =>
-        (p.label_ko || p.action || '').toLowerCase().includes(q) ||
-        (p.resource || '').toLowerCase().includes(q) ||
-        (p.menu_label || '').toLowerCase().includes(q)
-      );
+    /* ── 메뉴 단위 토글 ── */
+    hasMenu(menuKey) {
+      const m = this._menuItems.get(menuKey);
+      return m ? m.perms.length > 0 && m.perms.every(p => this.selectedPerms.includes(p.code)) : false;
     },
-    groupCount(menuKey) {
-      const g = this.permMenus.find(x => x.menu_key === menuKey);
-      if (!g) return 0;
-      return g.perms.filter(p => this.hasPerm(p.code)).length;
+    menuPartial(menuKey) {
+      const m = this._menuItems.get(menuKey);
+      if (!m || m.perms.length === 0) return false;
+      const some = m.perms.some(p => this.selectedPerms.includes(p.code));
+      const all  = m.perms.every(p => this.selectedPerms.includes(p.code));
+      return some && !all;
     },
-    toggleGroup(menuKey) {
+    toggleMenu(menuKey) {
       if (this.isSystem) return;
-      const g = this.permMenus.find(x => x.menu_key === menuKey);
-      if (!g) return;
-      const allOn = g.perms.every(p => this.hasPerm(p.code));
+      const m = this._menuItems.get(menuKey);
+      if (!m) return;
+      const allOn = m.perms.every(p => this.selectedPerms.includes(p.code));
       if (allOn) {
-        g.perms.forEach(p => {
+        m.perms.forEach(p => {
           const i = this.selectedPerms.indexOf(p.code);
           if (i >= 0) this.selectedPerms.splice(i, 1);
         });
       } else {
-        g.perms.forEach(p => {
+        m.perms.forEach(p => {
           if (!this.selectedPerms.includes(p.code)) this.selectedPerms.push(p.code);
         });
       }
+      this.dirty = true;
+    },
+
+    /* ── 카테고리 필터/전체 토글 ── */
+    filteredMenus(cat) {
+      const q = this.search.trim().toLowerCase();
+      if (!q) return cat.items;
+      return cat.items.filter(item =>
+        item.label.toLowerCase().includes(q) ||
+        item.desc.toLowerCase().includes(q)
+      );
+    },
+    categoryCount(catId) {
+      const cat = this.permGroups.find(g => g.id === catId);
+      if (!cat) return 0;
+      return cat.items.filter(m => this.hasMenu(m.menu_key)).length;
+    },
+    toggleCategory(catId) {
+      if (this.isSystem) return;
+      const cat = this.permGroups.find(g => g.id === catId);
+      if (!cat) return;
+      const allOn = cat.items.every(m => this.hasMenu(m.menu_key));
+      cat.items.forEach(m => {
+        const item = this._menuItems.get(m.menu_key);
+        if (!item) return;
+        if (allOn) {
+          item.perms.forEach(p => {
+            const i = this.selectedPerms.indexOf(p.code);
+            if (i >= 0) this.selectedPerms.splice(i, 1);
+          });
+        } else {
+          item.perms.forEach(p => {
+            if (!this.selectedPerms.includes(p.code)) this.selectedPerms.push(p.code);
+          });
+        }
+      });
       this.dirty = true;
     },
 

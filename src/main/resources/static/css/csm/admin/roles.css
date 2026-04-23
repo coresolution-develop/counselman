@@ -526,8 +526,21 @@
   }
   .rp-perm-card__desc {
     font-size: 11px; color: var(--rp-text-tertiary);
-    margin-top: 2px; line-height: 1.3;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    margin-top: 2px; line-height: 1.4;
+  }
+
+  /* Partial state (일부만 선택) */
+  .rp-perm-card.is-partial {
+    background: linear-gradient(135deg, rgba(236,253,245,.4) 0%, #fff 100%);
+    border-color: var(--rp-brand-300);
+  }
+  .rp-perm-card.is-partial .rp-perm-card__check {
+    background: var(--rp-brand-100);
+    border-color: var(--rp-brand-400);
+  }
+  .rp-perm-card.is-partial .rp-perm-card__icon {
+    background: var(--rp-brand-50);
+    color: var(--rp-brand-600);
   }
 
   /* Checked state */
