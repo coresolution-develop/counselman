@@ -2111,7 +2111,7 @@ document.addEventListener('DOMContentLoaded', function () {
     return String(el.value ?? '').trim() !== '';
   }
 
-  function syncCheckboxByBase(base) {
+  function syncCheckboxByBase(base, checkOnly = false) {
     if (!base) return;
 
     const checkbox = document.querySelector(`input[type='checkbox'][name='${base}_checkbox']`);
@@ -2120,19 +2120,24 @@ document.addEventListener('DOMContentLoaded', function () {
     const textInput = document.querySelector(`input[name='${base}_text'], input[name='${base}_details']`);
     const selectBox = document.querySelector(`select[name='${base}_select']`);
 
-    // checkbox_only 필드(text/select 없음)는 건드리지 않음 — 서버가 렌더링한 checked 상태를 유지
+    // checkbox_only 타입: 연동할 text/select 없으므로 건드리지 않음
     if (!textInput && !selectBox) return;
 
-    const shouldCheck = hasValue(textInput) || hasValue(selectBox);
-    checkbox.checked = shouldCheck;
+    const hasAnyValue = hasValue(textInput) || hasValue(selectBox);
+    if (hasAnyValue) {
+      checkbox.checked = true;
+    } else if (!checkOnly) {
+      checkbox.checked = false;
+    }
   }
 
   // 초기값 반영 (수정 화면 진입 시에도 적용)
+  // checkOnly=true: 초기 로드 시 서버 렌더 상태(th:checked)를 신뢰하여 해제하지 않음
   document
     .querySelectorAll("input[name^='field_'], select[name^='field_']")
     .forEach(el => {
       const base = getFieldBase(el.name);
-      syncCheckboxByBase(base);
+      syncCheckboxByBase(base, true);
     });
 
   // 입력/선택 변경 시 즉시 반영

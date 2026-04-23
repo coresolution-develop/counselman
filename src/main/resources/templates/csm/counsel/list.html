@@ -26,7 +26,7 @@
     <link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
     <link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
     <link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
-    <link rel="stylesheet" th:href="@{/css/csm/counsel/list-modern.css(v='20260422d')}">
+    <link rel="stylesheet" th:href="@{/css/csm/counsel/list-modern.css(v='20260424a')}">
 
     <style>
         #scrollDetector {
@@ -104,64 +104,57 @@
     <div class="main">
         <!-- 중앙 콘텐츠 -->
         <div class="section orb-deco">
+
+            <!-- Page header -->
+            <div class="cl-page-header">
+                <div>
+                    <h1 class="cl-page-title">상담리스트</h1>
+                    <p class="cl-page-subtitle">우선순위 대기 상담과 전체 상담 기록을 관리합니다</p>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button type="button" class="cl-btn--outline">엑셀 내보내기</button>
+                    <a class="cl-btn--primary" th:href="@{/counsel/new}">신규 상담</a>
+                </div>
+            </div>
+
             <section class="integrated-reservation-box">
-                <div class="integrated-reservation-head">
-                    <h3>상담 접수 대기 (우선순위순)</h3>
-                    <div class="integrated-reservation-head-actions">
-                        <button type="button"
-                                class="reservation-toggle-btn"
-                                id="reservationToggleBtn"
-                                aria-expanded="true"
-                                aria-controls="integratedReservationBody">
-                            접기
-                        </button>
-                        <a class="integrated-reservation-manage"
-                           th:href="@{/counsel/reservation(status='RESERVED')}">접수 관리</a>
-                    </div>
+                <div class="integrated-reservation-head cl-section-head">
+                    <span class="cl-section-head__title">상담 접수 대기</span>
+                    <span class="cl-badge cl-badge--warn">우선순위순</span>
+                    <span class="cl-section-head__hint"
+                          th:text="${reservedCounselReservations != null ? #lists.size(reservedCounselReservations) + '건 대기' : '0건 대기'}"></span>
+                    <span class="cl-section-head__spacer"></span>
+                    <button type="button"
+                            class="cl-btn-xs reservation-toggle-btn"
+                            id="reservationToggleBtn"
+                            aria-expanded="true"
+                            aria-controls="integratedReservationBody">접기</button>
+                    <a class="cl-btn-xs cl-btn-xs--brand integrated-reservation-manage"
+                       th:href="@{/counsel/reservation(status='RESERVED')}">접수 관리</a>
                 </div>
                 <div class="integrated-reservation-body" id="integratedReservationBody">
                     <div class="integrated-reservation-empty"
                          th:if="${reservedCounselReservations == null or #lists.isEmpty(reservedCounselReservations)}">
                         현재 대기 중인 상담 접수가 없습니다.
                     </div>
-                    <div class="integrated-reservation-list"
+                    <div class="integrated-reservation-list cl-queue"
                          th:if="${reservedCounselReservations != null and !#lists.isEmpty(reservedCounselReservations)}">
-                        <article class="integrated-reservation-item"
-                                 th:classappend="${item.beingWorkedOn ? ' is-working' : ''}"
-                                 th:each="item : ${reservedCounselReservations}">
-                            <!-- 카드 전체 클릭 → 상담 작성 -->
-                            <a class="res-card-link"
-                               th:href="@{/counsel/new(reservationId=${item.id})}"
-                               aria-label="상담 작성"></a>
-
-                            <!-- 상담중 인디케이터 -->
-                            <div class="res-card-working" th:if="${item.beingWorkedOn}">
-                                <span class="res-working-dot"></span>상담 진행중
-                            </div>
-
-                            <!-- 상단: 우선순위 뱃지 + 환자명 -->
-                            <div class="res-card-top">
-                                <span class="reservation-priority-badge"
-                                      th:classappend="${item.priority != null and item.priority <= 2 ? ' high' : ''}"
+                        <article class="integrated-reservation-item cl-queue-card" th:each="item : ${reservedCounselReservations}">
+                            <div class="cl-queue-card__head">
+                                <span class="cl-prio reservation-priority-badge"
+                                      th:classappend="${'cl-prio--' + (item.priority != null ? item.priority : 3) + (item.priority != null and item.priority <= 2 ? ' high' : '')}"
                                       th:text="${'P' + (item.priority != null ? item.priority : 3)}">P3</span>
-                                <strong class="res-card-name"
-                                        th:text="${item.patient_name}">홍길동</strong>
+                                <span class="cl-queue-card__name" th:text="${item.patient_name}">홍길동</span>
                             </div>
-
-                            <!-- 중단: 연락처 / 상담자 / 접수시간 -->
-                            <div class="res-card-meta">
-                                <span class="res-card-phone"
-                                      th:text="${#strings.isEmpty(item.patient_phone) ? '-' : item.patient_phone}">010-0000-0000</span>
-                                <span class="res-card-counselor"
-                                      th:text="${#strings.isEmpty(item.created_by) ? '상담자 미지정' : item.created_by}">상담자</span>
-                                <span class="res-card-time"
-                                      th:text="${#strings.isEmpty(item.reserved_at) ? '접수시간 미정' : item.reserved_at}">2026-04-14 10:00</span>
-                            </div>
-
-                            <!-- 하단: 상세보기 버튼 -->
-                            <div class="res-card-actions">
-                                <a class="res-detail-btn"
-                                   th:href="@{/counsel/reservation(status='ALL', reservationId=${item.id})}">상세보기</a>
+                            <div class="cl-queue-card__phone"
+                                 th:text="${#strings.isEmpty(item.patient_phone) ? '-' : item.patient_phone}">010-0000-0000</div>
+                            <div class="cl-queue-card__time"
+                                 th:text="${#strings.isEmpty(item.reserved_at) ? '접수시간 미정' : item.reserved_at}">2026-04-14 10:00:00</div>
+                            <div class="cl-queue-card__actions reservation-actions">
+                                <a class="cl-btn-xs cl-btn-xs--brand reservation-link-btn"
+                                   th:href="@{/counsel/new(reservationId=${item.id})}">상담 작성</a>
+                                <a class="cl-btn-xs reservation-link-btn ghost"
+                                   th:href="@{/counsel/reservation(status='ALL', reservationId=${item.id})}">상세 보기</a>
                             </div>
                         </article>
                     </div>
@@ -169,8 +162,9 @@
             </section>
             
             <section class="list-table-shell" aria-label="상담리스트">
-                <div class="list-table-head">
-                    <h3>상담 기록 목록</h3>
+                <div class="list-table-head cl-section-head">
+                    <span class="cl-section-head__title">상담 기록 목록</span>
+                    <span class="cl-section-head__hint" id="record-count"></span>
                 </div>
 
                 <div class="content-mid">
@@ -211,20 +205,11 @@
             </section>
 
             <div class="section-bot">
-                <div>
-                    <div class="search-status-area">
-                        <div></div>
-                        <div class="status-area">
-                            <div style="display:flex;justify-content:flex-end;">
-                                <div class="btn delBtn btnw100 listBtn2" id="del-counsel" style="flex:inherit;">환자정보삭제
-                                </div>
-                                <div class="btn listBtn2" id="bulk-sms-btn" style="flex:inherit;">일괄 문자 보내기</div>
-                                <div class="btn listBtn2" id="new-reservation" style="flex:inherit;">상담 접수</div>
-                                <div class="btn newBtn btnw100 listBtn2" id="new-counsel" style="flex:inherit;">신규상담
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="cl-footer-bar">
+                    <button type="button" class="cl-btn--ghost" id="del-counsel">환자정보삭제</button>
+                    <button type="button" class="cl-btn--outline" id="bulk-sms-btn">일괄 문자 보내기</button>
+                    <button type="button" class="cl-btn--outline" id="new-reservation">상담 접수</button>
+                    <button type="button" class="cl-btn--primary" id="new-counsel">신규상담</button>
                 </div>
             </div>
 

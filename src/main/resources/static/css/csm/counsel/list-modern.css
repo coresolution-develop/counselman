@@ -1675,3 +1675,262 @@ body.counsel-list-modern .integrated-reservation-item.is-working:hover {
         max-height: 340px;
     }
 }
+
+/* ===== MediPlat Design Components (2026-04-24) ===== */
+
+/* Page header */
+body.counsel-list-modern .cl-page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 4px 2px 0;
+    flex-shrink: 0;
+}
+body.counsel-list-modern .cl-page-title {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: #0f3a24;
+    margin: 0 0 3px;
+    line-height: 1.2;
+}
+body.counsel-list-modern .cl-page-subtitle {
+    font-size: 13px;
+    color: #5a7467;
+    margin: 0;
+}
+
+/* Section head */
+body.counsel-list-modern .cl-section-head {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 0 2px !important;
+    margin: 0 0 8px !important;
+    border-bottom: none !important;
+}
+body.counsel-list-modern .cl-section-head h3 { display: none; }
+body.counsel-list-modern .cl-section-head__title {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #173b2d;
+}
+body.counsel-list-modern .cl-section-head__hint {
+    font-size: 12px;
+    color: #7b8f85;
+}
+body.counsel-list-modern .cl-section-head__spacer { flex: 1; }
+
+/* Badge */
+body.counsel-list-modern .cl-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 999px;
+    letter-spacing: -0.01em;
+}
+body.counsel-list-modern .cl-badge--warn { background: #fffbeb; color: #92400e; }
+body.counsel-list-modern .cl-badge--brand { background: #ecfdf5; color: #047857; }
+
+/* Priority badges */
+body.counsel-list-modern .cl-prio {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+}
+body.counsel-list-modern .cl-prio--1,
+body.counsel-list-modern .cl-prio.high { background: linear-gradient(135deg, #ef4444, #dc2626); }
+body.counsel-list-modern .cl-prio--2   { background: linear-gradient(135deg, #f59e0b, #d97706); }
+body.counsel-list-modern .cl-prio--3   { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+body.counsel-list-modern .cl-prio--4   { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+
+/* Queue cards grid */
+body.counsel-list-modern .cl-queue {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 10px;
+    max-height: none !important;
+    padding: 2px 2px 4px;
+}
+body.counsel-list-modern .cl-queue-card {
+    padding: 12px 14px;
+    background: #fff;
+    border: 1px solid #dce7e1;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(2,40,22,0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+body.counsel-list-modern .cl-queue-card:hover {
+    box-shadow: 0 4px 14px rgba(2,40,22,0.12);
+    transform: translateY(-2px);
+    border-color: #9ecfb8;
+}
+body.counsel-list-modern .cl-queue-card__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+body.counsel-list-modern .cl-queue-card__name {
+    font-weight: 700;
+    font-size: 14px;
+    color: #173b2d;
+    letter-spacing: -0.02em;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+body.counsel-list-modern .cl-queue-card__phone {
+    font-size: 12px;
+    color: #7b8f85;
+    font-variant-numeric: tabular-nums;
+}
+body.counsel-list-modern .cl-queue-card__time {
+    font-size: 11px;
+    color: #9aada6;
+}
+body.counsel-list-modern .cl-queue-card__actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+/* Btn-xs variants */
+body.counsel-list-modern .cl-btn-xs {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid #caded2;
+    background: #fff;
+    color: #1b553d;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all 0.12s ease;
+    line-height: 1;
+    flex: 1;
+    justify-content: center;
+}
+body.counsel-list-modern .cl-btn-xs:hover {
+    border-color: #0d6b44;
+    background: #f0faf5;
+    color: #0a4f32;
+}
+body.counsel-list-modern .cl-btn-xs--brand {
+    background: linear-gradient(135deg, #0f613f, #138657);
+    border-color: transparent;
+    color: #fff;
+}
+body.counsel-list-modern .cl-btn-xs--brand:hover {
+    background: linear-gradient(135deg, #0a4f32, #0f7048);
+    border-color: transparent;
+    color: #fff;
+}
+
+/* Status chips */
+body.counsel-list-modern .cl-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 999px;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+}
+body.counsel-list-modern .cl-status::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+}
+body.counsel-list-modern .cl-status--receive  { background: #ecfdf5; color: #047857; }
+body.counsel-list-modern .cl-status--progress { background: #eff6ff; color: #1d4ed8; }
+body.counsel-list-modern .cl-status--done     { background: #f3f4f6; color: #374151; }
+body.counsel-list-modern .cl-status--cancel   { background: #fef2f2; color: #b91c1c; }
+body.counsel-list-modern .cl-status--pending  { background: #fffbeb; color: #92400e; }
+body.counsel-list-modern .cl-status--admitted { background: #ecfdf5; color: #065f46; }
+body.counsel-list-modern .cl-status--reserved { background: #eff6ff; color: #1e40af; }
+
+/* Footer action bar */
+body.counsel-list-modern .cl-footer-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+    padding: 10px 2px 2px;
+    border-top: 1px solid #edf4ef;
+    flex-shrink: 0;
+}
+body.counsel-list-modern .section-bot {
+    margin-top: 0;
+    padding: 0;
+}
+
+/* Primary / outline / ghost button variants */
+body.counsel-list-modern .cl-btn--primary,
+body.counsel-list-modern .cl-btn--outline,
+body.counsel-list-modern .cl-btn--ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    letter-spacing: -0.01em;
+}
+body.counsel-list-modern .cl-btn--primary {
+    background: linear-gradient(135deg, #0d5f3f, #128553);
+    color: #fff;
+}
+body.counsel-list-modern .cl-btn--primary:hover {
+    background: linear-gradient(135deg, #0a4f32, #0f7048);
+    color: #fff;
+}
+body.counsel-list-modern .cl-btn--outline {
+    background: #fff;
+    color: #1b553d;
+    border-color: #caded2;
+}
+body.counsel-list-modern .cl-btn--outline:hover {
+    border-color: #0d6b44;
+    background: #f0faf5;
+    color: #0a4f32;
+}
+body.counsel-list-modern .cl-btn--ghost {
+    background: #fff3f3;
+    color: #8f2020;
+    border-color: #f2d4d4;
+}
+body.counsel-list-modern .cl-btn--ghost:hover {
+    background: #fde8e8;
+    border-color: #e2a8a8;
+    color: #7a1a1a;
+}

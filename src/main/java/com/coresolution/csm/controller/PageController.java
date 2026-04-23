@@ -5915,8 +5915,15 @@ public class PageController {
                 out.put(base + "_checkbox", "on");
             if (type.contains("radio"))
                 out.put(base + "_radio", "on");
-            if (type.contains("select"))
-                out.put(base + "_select", (val == null ? "" : val));
+            if (type.contains("select")) {
+                // checkbox 엔트리의 값(subcategory 라벨)이 _select에 오염되는 것 방지
+                // select 옵션에서 subcategory 라벨은 제외되므로, 해당 값은 checkbox에서 온 것
+                String subLbl = subLabels.get(base);
+                boolean isCheckboxValue = subLbl != null && subLbl.trim().equals(val == null ? "" : val.trim());
+                if (!isCheckboxValue) {
+                    out.put(base + "_select", (val == null ? "" : val));
+                }
+            }
 
             if (type.contains("text") && val != null && !val.isBlank()) {
                 var labels = optionLabels.getOrDefault(base, java.util.Collections.emptySet());
