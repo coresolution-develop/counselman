@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MediPlat · 문자관리</title>
+  <link rel="stylesheet" href="assets/css/tokens.css" />
+  <link rel="stylesheet" href="assets/css/base.css" />
+  <link rel="stylesheet" href="assets/css/layout.css" />
+  <link rel="stylesheet" href="assets/css/components.css" />
+  <link rel="stylesheet" href="assets/css/role-management.css" />
+  <link rel="stylesheet" href="assets/css/tweaks.css" />
+</head>
+<body>
+<script src="assets/js/sprite.js"></script>
+
+<div class="app"
+     data-screen-label="Message Management"
+     :data-sidebar="$store.app.sidebarCollapsed ? 'collapsed' : 'expanded'"
+     :data-variation="$store.app.variation"
+     x-data>
+
+  <div id="slot-sidebar"></div>
+  <div id="slot-header"></div>
+
+  <main class="main">
+    <div class="page">
+
+      <div class="page__header">
+        <div>
+          <h1 class="page__title">상용구 관리</h1>
+          <p class="page__subtitle">자주 사용하는 문자 템플릿을 등록하고 관리합니다</p>
+        </div>
+      </div>
+
+      <!-- Sub-breadcrumb tabs -->
+      <div class="tabs">
+        <button class="tab">
+          <svg><use href="#i-send"/></svg>
+          발송내역
+        </button>
+        <button class="tab">
+          <svg><use href="#i-clock"/></svg>
+          예약내역
+        </button>
+        <button class="tab is-active">
+          <svg><use href="#i-chat"/></svg>
+          상용구 관리
+        </button>
+      </div>
+
+      <!-- Stats -->
+      <div class="stat-row">
+        <div class="stat-card stat-card--brand">
+          <div class="stat-card__label"><span class="dot"></span>등록된 상용구</div>
+          <div class="stat-card__value">1</div>
+          <div class="stat-card__trend">마지막 수정 4월 3일</div>
+        </div>
+        <div class="stat-card stat-card--info">
+          <div class="stat-card__label"><span class="dot"></span>이번 달 사용</div>
+          <div class="stat-card__value">24</div>
+          <div class="stat-card__trend">발송 시 템플릿 삽입</div>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="header__search" style="height:34px; min-width:280px;">
+          <svg><use href="#i-search"/></svg>
+          <input type="text" placeholder="상용구명 · 내용 검색" />
+        </div>
+        <div class="toolbar__spacer"></div>
+        <button class="btn btn--outline"><svg><use href="#i-download"/></svg>엑셀 내보내기</button>
+      </div>
+
+      <!-- Template list -->
+      <div class="msg-card">
+        <div class="msg-card__header">
+          <div>생성일자</div>
+          <div>상용구명</div>
+          <div>상용구 내용</div>
+        </div>
+
+        <div class="msg-row">
+          <div class="msg-row__date">
+            <span class="dot"></span>
+            <div>
+              2026-04-03<br/>
+              <span style="color: var(--text-tertiary); font-size:11px;">17:11:34</span>
+            </div>
+          </div>
+          <div>
+            <div class="msg-row__name">
+              사예인사
+              <span class="subtitle">대기 · admin 생성</span>
+            </div>
+          </div>
+          <div class="msg-row__body">소사항가족요양병원입니다.
+
+2025년 새해 복많이 받으세요.
+올한해도 명이하게 보내시고 소사항가족요양병원 사랑해주세요.
+
+테스트 중입니다.</div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer-bar">
+        <button class="btn btn--ghost" disabled style="opacity:.5;"><svg><use href="#i-trash"/></svg>삭제</button>
+        <button class="btn btn--outline"><svg><use href="#i-edit"/></svg>수정</button>
+        <button class="btn btn--primary"><svg><use href="#i-plus"/></svg>추가</button>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/js/app.js"></script>
+<script src="assets/js/chrome.js" data-page="message"></script>
+<script>
+  document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '커뮤니케이션', current: '문자관리 · 상용구' }); });
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</body>
+</html>

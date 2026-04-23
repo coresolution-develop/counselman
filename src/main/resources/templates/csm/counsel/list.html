@@ -27,6 +27,10 @@
     <link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
     <link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
     <link rel="stylesheet" th:href="@{/css/csm/counsel/list-modern.css(v='20260424a')}">
+    <!-- MediPlat design system -->
+    <link rel="stylesheet" th:href="@{/assets/css/tokens.css(v='20260424a')}">
+    <link rel="stylesheet" th:href="@{/assets/css/layout.css(v='20260424a')}">
+    <link rel="stylesheet" th:href="@{/assets/css/shell.css(v='20260424a')}">
 
     <style>
         #scrollDetector {
@@ -99,11 +103,95 @@
 
 <body class="counsel-list-modern">
 
-    <div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
-    <div th:replace="~{csm/Include/layout :: nav_section2('list', ${endVar}, ${st}, ${kw})}"></div>
+    <th:block th:replace="~{csm/Include/layout :: csm_header(info=${info})}"></th:block>
+    <th:block th:replace="~{csm/Include/layout :: csm_sidebar('list', ${endVar}, ${st}, ${kw})}"></th:block>
     <div class="main">
         <!-- 중앙 콘텐츠 -->
         <div class="section orb-deco">
+
+            <!-- ── 검색/필터 바 (헤더에서 이동) ── -->
+            <form id="searchForm" class="csm-search-bar" th:action="@{/counsel/list}" method="get">
+                <input type="hidden" name="searchType" id="searchType"
+                       th:value="${cri == null or #strings.isEmpty(cri.searchType) ? 'patient' : cri.searchType}">
+
+                <!-- 기간 선택 -->
+                <select name="dateRange" id="dateRange" style="min-width:96px;">
+                    <option th:value="all"    th:selected="${cri != null and cri.dateRange == 'all'}">전체기간</option>
+                    <option th:value="10"     th:selected="${cri != null and cri.dateRange == '10'}">최근 10일</option>
+                    <option th:value="30"     th:selected="${cri != null and cri.dateRange == '30'}">최근 30일</option>
+                    <option th:value="90"     th:selected="${cri != null and cri.dateRange == '90'}">최근 90일</option>
+                    <option th:value="custom" th:selected="${cri != null and cri.dateRange == 'custom'}">직접 선택</option>
+                </select>
+
+                <!-- 날짜 직접 선택 -->
+                <div class="modern-date-range-inputs filter-item date-item" id="dateField">
+                    <div class="sh-date-input-wrap">
+                        <label class="visually-hidden" for="startDate">조회 시작일</label>
+                        <input type="text" id="startDate" name="startDate" readonly style="cursor:pointer;"
+                               th:value="${cri != null ? cri.startDate : ''}">
+                        <button type="button" class="filter-cal-btn date-input-toggle" data-target="startDate" aria-label="시작일 선택">
+                            <svg width="14" height="14" aria-hidden="true"><use href="#i-calendar"/></svg>
+                        </button>
+                    </div>
+                    <span class="csm-search-bar__sep">~</span>
+                    <div class="sh-date-input-wrap">
+                        <label class="visually-hidden" for="endDate">조회 종료일</label>
+                        <input type="text" id="endDate" name="endDate" readonly style="cursor:pointer;"
+                               th:value="${cri != null ? cri.endDate : ''}">
+                        <button type="button" class="filter-cal-btn date-input-toggle" data-target="endDate" aria-label="종료일 선택">
+                            <svg width="14" height="14" aria-hidden="true"><use href="#i-calendar"/></svg>
+                        </button>
+                    </div>
+                    <div class="sh-calendar" id="statusCalendar">
+                        <div class="sh-cal-week">
+                            <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+                        </div>
+                        <div class="sh-cal-head">
+                            <button type="button" class="sh-cal-nav" id="calPrev" aria-label="이전달">
+                                <svg width="14" height="14" aria-hidden="true"><use href="#i-chevron-left"/></svg>
+                            </button>
+                            <div class="sh-cal-title" id="calTitle"></div>
+                            <button type="button" class="sh-cal-nav" id="calNext" aria-label="다음달">
+                                <svg width="14" height="14" aria-hidden="true"><use href="#i-chevron-right"/></svg>
+                            </button>
+                        </div>
+                        <div class="sh-cal-grid" id="calGrid"></div>
+                    </div>
+                </div>
+
+                <!-- 상태 -->
+                <select id="statusFilter" name="status" style="min-width:100px;">
+                    <option value="all" th:selected="${cri == null or #strings.isEmpty(cri.status) or cri.status == 'all'}">전체 상태</option>
+                    <option th:each="status : ${statusOptions}"
+                            th:value="${status}" th:text="${status}"
+                            th:selected="${cri != null and cri.status == status}">상태</option>
+                </select>
+
+                <!-- 경로 -->
+                <select id="pathTypeFilter" name="pathType" style="min-width:100px;">
+                    <option value="all" th:selected="${cri == null or #strings.isEmpty(cri.pathType) or cri.pathType == 'all'}">전체 경로</option>
+                    <option th:each="path : ${pathTypeOptions}"
+                            th:value="${path}" th:text="${path}"
+                            th:selected="${cri != null and cri.pathType == path}">경로</option>
+                </select>
+
+                <!-- 키워드 -->
+                <input id="keywordInput" name="keyword" type="text" class="csm-kw-input"
+                       th:value="${cri != null ? cri.keyword : ''}"
+                       placeholder="환자명, 보호자명, 전화번호, 상담내용 검색">
+
+                <!-- 완료 항목 포함 -->
+                <label class="csm-search-bar__check">
+                    <input type="checkbox" name="end" id="end" th:checked="${cri != null and cri.end == 'on'}">
+                    완료 항목 포함
+                </label>
+
+                <!-- 아이콘 버튼 + 검색 버튼 -->
+                <button type="button" id="setting" class="csm-btn-icon toolbar-icon-btn list-setting-btn" aria-label="리스트 항목 설정 열기">
+                    <svg width="14" height="14" aria-hidden="true"><use href="#i-settings"/></svg>
+                </button>
+                <button type="button" class="csm-btn-search listBtn" id="searchBtn">검색</button>
+            </form>
 
             <!-- Page header -->
             <div class="cl-page-header">

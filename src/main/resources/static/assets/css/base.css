@@ -1,0 +1,108 @@
+/* ============================================
+   Base / Reset / Typography
+   ============================================ */
+
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css');
+
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--page-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'ss02', 'cv11';
+  letter-spacing: -0.005em;
+}
+
+img, svg, video { display: block; max-width: 100%; }
+
+/* Safety net: any <svg> inside a button/link/nav item gets a sane default size
+   so a missing sprite symbol can't cause the SVG to explode to fill flex space. */
+button svg, a svg, .nav-item svg, .tab svg, .pill svg, .footer-bar svg,
+.header__icon-btn svg, .header__user svg, .header__toggle svg,
+.sidebar__logout svg, .sidebar__logo svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+}
+input, textarea, select { background: transparent; border: 0; outline: 0; }
+
+a { color: inherit; text-decoration: none; }
+
+::selection { background: var(--brand-200); color: var(--brand-900); }
+
+/* Scrollbars – minimal & cool */
+* { scrollbar-width: thin; scrollbar-color: var(--gray-300) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--gray-400); background-clip: padding-box; border: 2px solid transparent; }
+
+/* View Transitions – subtle cross-fade */
+@supports (view-transition-name: root) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 300ms;
+    animation-timing-function: var(--ease-smooth);
+  }
+}
+
+/* Utility animations */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pop {
+  0%   { transform: scale(0.96); opacity: 0; }
+  60%  { transform: scale(1.02); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
+  70%  { box-shadow: 0 0 0 10px rgba(16,185,129,0); }
+  100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}

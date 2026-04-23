@@ -1,0 +1,317 @@
+/* ============================================================
+   CounselMan Shell — bridges MediPlat design tokens into the
+   Thymeleaf fragment structure for body.counsel-list-modern.
+   Depends on tokens.css being loaded first.
+   ============================================================ */
+
+/* ── Grid: body becomes the app container ── */
+body.counsel-list-modern {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-rows: var(--header-height) 1fr;
+  grid-template-areas:
+    "sidebar header"
+    "sidebar main";
+  min-height: 100vh;
+  background: var(--page-bg);
+  transition: grid-template-columns var(--dur-base) var(--ease-smooth);
+}
+
+/* ── Grid areas ── */
+body.counsel-list-modern #csm-sidebar {
+  grid-area: sidebar;
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+}
+
+body.counsel-list-modern #csm-header {
+  grid-area: header;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+body.counsel-list-modern .main {
+  grid-area: main;
+  padding: 24px 32px 48px;
+  overflow-y: auto;
+  min-width: 0;
+  margin-left: 0 !important;
+  width: 100% !important;
+  background: var(--page-bg);
+}
+
+/* ── Sidebar collapsed ── */
+body.counsel-list-modern.nav-collapsed {
+  grid-template-columns: var(--sidebar-collapsed) 1fr;
+}
+body.counsel-list-modern.nav-collapsed .sidebar__title,
+body.counsel-list-modern.nav-collapsed .nav-section__label,
+body.counsel-list-modern.nav-collapsed .nav-item__label,
+body.counsel-list-modern.nav-collapsed .sidebar__footer-meta,
+body.counsel-list-modern.nav-collapsed .sidebar__logout-text {
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  overflow: hidden;
+}
+body.counsel-list-modern.nav-collapsed .nav-item {
+  padding: 10px;
+  justify-content: center;
+  gap: 0;
+}
+body.counsel-list-modern.nav-collapsed .nav-item.is-active::before {
+  left: 0;
+}
+body.counsel-list-modern.nav-collapsed .sidebar__logout { gap: 0; }
+
+/* ── Main content area ── */
+/* Reset old fixed-height layout from list-modern.css */
+body.counsel-list-modern .main {
+  height: auto !important;
+  padding: 24px 32px 48px !important;
+}
+
+body.counsel-list-modern .main .section {
+  max-width: 1400px;
+  margin: 0 auto;
+  /* Override old list-modern.css fixed height */
+  height: auto !important;
+  min-height: 0;
+}
+
+/* ── Filter / Search bar (moved from header into main content) ── */
+.csm-search-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 16px;
+}
+
+.csm-search-bar select,
+.csm-search-bar input[type="text"] {
+  height: 34px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 0 10px;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--surface);
+  outline: none;
+  transition: border-color var(--dur-fast) var(--ease-smooth),
+              box-shadow var(--dur-fast) var(--ease-smooth);
+}
+.csm-search-bar select:hover,
+.csm-search-bar input[type="text"]:hover {
+  border-color: var(--border-strong);
+}
+.csm-search-bar select:focus,
+.csm-search-bar input[type="text"]:focus {
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-focus);
+}
+
+.csm-search-bar__sep {
+  color: var(--gray-400);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.csm-search-bar__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.csm-search-bar__check input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--brand-500);
+}
+
+/* Date range section inside filter */
+.csm-search-bar .modern-date-range-inputs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.csm-search-bar .sh-date-input-wrap {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+}
+.csm-search-bar .sh-date-input-wrap input[type="text"] {
+  padding-right: 30px;
+  min-width: 108px;
+}
+.csm-search-bar .filter-cal-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+.csm-search-bar .filter-cal-btn:hover { color: var(--brand-500); }
+
+/* Calendar widget */
+.csm-search-bar .sh-calendar {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 200;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 12px;
+  min-width: 234px;
+  display: none;
+}
+.csm-search-bar .sh-calendar.is-open { display: block; }
+.csm-search-bar .sh-cal-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 6px;
+}
+.csm-search-bar .sh-cal-week span {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  padding: 4px 0;
+}
+.csm-search-bar .sh-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.csm-search-bar .sh-cal-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.csm-search-bar .sh-cal-nav {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.csm-search-bar .sh-cal-nav:hover {
+  border-color: var(--brand-300);
+  background: var(--brand-50);
+  color: var(--brand-700);
+}
+.csm-search-bar .sh-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+/* Keyword input — stretch to fill */
+.csm-search-bar .csm-kw-input {
+  flex: 1;
+  min-width: 180px;
+}
+
+/* Search button */
+.csm-search-bar .csm-btn-search {
+  height: 34px;
+  padding: 0 18px;
+  background: var(--brand-500);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--dur-fast) var(--ease-smooth);
+  white-space: nowrap;
+}
+.csm-search-bar .csm-btn-search:hover { background: var(--brand-600); }
+
+/* Icon button (settings) */
+.csm-search-bar .csm-btn-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--dur-fast) var(--ease-smooth);
+}
+.csm-search-bar .csm-btn-icon:hover {
+  border-color: var(--brand-300);
+  background: var(--brand-50);
+  color: var(--brand-700);
+}
+
+/* Header help button (override base style) */
+.header__icon-btn.is-help { opacity: 0.75; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  body.counsel-list-modern {
+    grid-template-columns: 0 1fr;
+  }
+
+  body.counsel-list-modern #csm-sidebar {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: var(--sidebar-width);
+    height: 100dvh;
+    transform: translateX(-100%);
+    transition: transform var(--dur-base) var(--ease-smooth);
+    z-index: 30;
+  }
+  body.counsel-list-modern.mobile-menu-open #csm-sidebar {
+    transform: translateX(0);
+  }
+
+  body.counsel-list-modern .main {
+    padding: 16px 16px 48px;
+  }
+
+  .csm-search-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* Mobile overlay backdrop */
+  body.counsel-list-modern.mobile-menu-open::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 29;
+  }
+}

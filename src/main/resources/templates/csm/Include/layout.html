@@ -32,6 +32,8 @@
 		    <symbol id="i-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></symbol>
 		    <symbol id="i-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></symbol>
 		    <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+		    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+		    <symbol id="i-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
 		  </defs>
 		</svg>
 		<div class="logo">
@@ -409,6 +411,238 @@
 </div>
 
 
+<!-- ══════════════════════════════════════════════════════
+     NEW DESIGN FRAGMENTS: csm_header + csm_sidebar
+     Used by counsel/list.html for the MediPlat shell redesign.
+     ══════════════════════════════════════════════════════ -->
+
+<!-- ① New Header -->
+<header id="csm-header" class="header"
+        th:fragment="csm_header(info)"
+        th:with="u=${info != null ? info : session.userInfo}">
+
+  <!-- Sidebar toggle -->
+  <button type="button" class="header__toggle" id="csm-sidebar-toggle" aria-label="사이드바 토글">
+    <svg width="20" height="20" aria-hidden="true"><use href="#i-menu"/></svg>
+  </button>
+
+  <!-- Breadcrumb -->
+  <div class="header__breadcrumb">
+    <span th:text="${headerParent != null ? headerParent : '상담 업무'}">상담 업무</span>
+    <svg width="14" height="14" aria-hidden="true"><use href="#i-chevron-right"/></svg>
+    <strong th:text="${headerCurrent != null ? headerCurrent : '상담리스트'}">상담리스트</strong>
+  </div>
+
+  <div class="header__spacer"></div>
+
+  <!-- Global search -->
+  <div class="header__search">
+    <svg width="16" height="16" aria-hidden="true"><use href="#i-search"/></svg>
+    <input type="text" placeholder="검색" aria-label="전체 검색">
+    <kbd>⌘K</kbd>
+  </div>
+
+  <!-- Bell -->
+  <button type="button" class="header__icon-btn" aria-label="알림">
+    <svg width="18" height="18" aria-hidden="true"><use href="#i-bell"/></svg>
+    <span class="dot"></span>
+  </button>
+
+  <!-- Help -->
+  <button type="button" class="header__icon-btn is-help" aria-label="도움말">
+    <svg width="18" height="18" aria-hidden="true"><use href="#i-help"/></svg>
+  </button>
+
+  <!-- User pill -->
+  <button type="button" class="header__user">
+    <div class="header__avatar"
+         th:text="${u != null ? #strings.toUpperCase(#strings.substring(u.us_col_02, 0, 1)) : 'U'}">A</div>
+    <div class="header__user-meta">
+      <span class="header__user-name" th:text="${u != null ? u.us_col_02 : ''}">아이디</span>
+      <span class="header__user-org"
+            th:text="${u != null ? (u.us_col_05 + ' · ' + (u.us_col_08 == 0 or u.us_col_08 == 1 ? 'admin' : (u.us_col_08 == 2 ? 'supervisor' : (u.us_col_08 == 3 ? 'manager' : 'viewer')))) : ''}">기관명</span>
+    </div>
+  </button>
+
+  <!-- Notice popup overlay (shared) -->
+  <div class="global-notice-popup-overlay" id="global-notice-popup-overlay" hidden>
+    <div class="global-notice-popup-card" role="dialog" aria-modal="true" aria-labelledby="global-notice-popup-title">
+      <div class="global-notice-popup-head">
+        <strong>공지사항</strong>
+        <button type="button" id="global-notice-popup-close" aria-label="팝업 닫기">×</button>
+      </div>
+      <div class="global-notice-popup-meta">
+        <span id="global-notice-popup-pin" hidden>고정</span>
+        <span id="global-notice-popup-date"></span>
+      </div>
+      <h3 id="global-notice-popup-title"></h3>
+      <div id="global-notice-popup-body" class="global-notice-popup-body"></div>
+      <div class="global-notice-popup-foot">
+        <label class="global-notice-popup-hide-today">
+          <input type="checkbox" id="global-notice-popup-hide-today">
+          오늘 하루 보지 않기
+        </label>
+        <div class="global-notice-popup-actions">
+          <button type="button" id="global-notice-popup-read">읽음 처리</button>
+          <button type="button" id="global-notice-popup-move">공지사항 이동</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <link rel="stylesheet" th:href="@{/css/csm/notice/popup.css(v='20260414e')}">
+  <script th:src="@{/js/csm/notice/popup.js(v='20260414e')}" defer></script>
+</header>
+
+<!-- ② New Sidebar -->
+<aside id="csm-sidebar" class="sidebar" aria-label="메인 내비게이션"
+       th:fragment="csm_sidebar(activeMenu, end, searchType, keyword)"
+       th:with="info=${session.userInfo}, isCore=${info != null and info.us_col_04 != null and #strings.equalsIgnoreCase(info.us_col_04, 'core')}">
+
+  <!-- Brand -->
+  <div class="sidebar__brand">
+    <div class="sidebar__logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 4v16M4 12h16"/>
+      </svg>
+    </div>
+    <span class="sidebar__title">CounselMan</span>
+  </div>
+
+  <!-- Nav -->
+  <nav class="sidebar__nav">
+
+    <!-- CORE admin nav -->
+    <th:block th:if="${isCore}">
+      <div class="nav-section">
+        <div class="nav-section__label">운영</div>
+        <a class="nav-item" th:classappend="${activeMenu == 'admin' ? ' is-active' : ''}" th:href="@{/core/admin}">
+          <span class="nav-item__icon"><svg aria-hidden="true"><use href="#i-building"/></svg></span>
+          <span class="nav-item__label">기관 등록</span>
+        </a>
+        <a class="nav-item" th:classappend="${activeMenu == 'setting' ? ' is-active' : ''}" th:href="@{/core/setting}">
+          <span class="nav-item__icon"><svg aria-hidden="true"><use href="#i-notebook"/></svg></span>
+          <span class="nav-item__label">상담일지관리</span>
+        </a>
+        <a class="nav-item" th:classappend="${activeMenu == 'smssetting' ? ' is-active' : ''}" th:href="@{/core/smssetting}">
+          <span class="nav-item__icon"><svg aria-hidden="true"><use href="#i-chat"/></svg></span>
+          <span class="nav-item__label">문자관리</span>
+        </a>
+        <a class="nav-item" th:classappend="${activeMenu == 'notice' ? ' is-active' : ''}" th:href="@{/core/notice}">
+          <span class="nav-item__icon"><svg aria-hidden="true"><use href="#i-megaphone"/></svg></span>
+          <span class="nav-item__label">공지관리</span>
+        </a>
+      </div>
+    </th:block>
+
+    <!-- Regular user nav -->
+    <th:block th:unless="${isCore}">
+
+      <!-- 상담 업무 -->
+      <div class="nav-section">
+        <div class="nav-section__label">상담 업무</div>
+
+        <a class="nav-item"
+           th:classappend="${activeMenu == 'reservation' ? ' is-active' : ''}"
+           th:href="@{/counsel/reservation(status='RESERVED')}">
+          <span class="nav-item__icon"><svg aria-hidden="true"><use href="#i-inbox"/></svg></span>
+          <span class="nav-item__label">상담 접수</span>
+        </a>
+
+        <a class="nav-item"
+           th:classappend="${activeMenu == 'new' ? ' is-active' : ''}"
+           th:href="@{/counsel/new}">
+          <span class="nav-item__icon"><svg aria-hidden="true"><use href="#i-bed"/></svg></span>
+          <span class="nav-item__label">입원상담</span>
+        </a>
+
+        <a class="nav-item"
+           th:classappend="${activeMenu == 'list' ? ' is-active' : ''}"
+           th:href="@{/counsel/list(page=1, perPageNum=10, end=${end}, searchType=${searchType}, keyword=${keyword})}">
+          <span class="nav-item__icon"><svg aria-hidden="true"><use href="#i-list"/></svg></span>
+          <span class="nav-item__label">상담리스트</span>
+        </a>
+
+        <a class="nav-item"
+           th:classappend="${activeMenu == 'notice' ? ' is-active' : ''}"
+           th:href="@{/notice}">
+          <span class="nav-item__icon"><svg aria-hidden="true"><use href="#i-megaphone"/></svg></span>
+          <span class="nav-item__label">공지사항</span>
+        </a>
+
+        <!-- 상담통계: 권한 있음 -->
+        <a class="nav-item"
+           th:if="${info != null and (info.us_col_08 == 2 or info.us_col_02 == 'coreadmin')}"
+           th:classappend="${activeMenu == 'statistics' ? ' is-active' : ''}"
+           th:href="@{/statistics}">
+          <span class="nav-item__icon"><svg aria-hidden="true"><use href="#i-chart"/></svg></span>
+          <span class="nav-item__label">상담통계</span>
+        </a>
+        <!-- 상담통계: 권한 없음 (비활성) -->
+        <span class="nav-item"
+              th:unless="${info != null and (info.us_col_08 == 2 or info.us_col_02 == 'coreadmin')}"
+              style="opacity:0.35;cursor:not-allowed;" aria-disabled="true">
+          <span class="nav-item__icon"><svg aria-hidden="true"><use href="#i-chart"/></svg></span>
+          <span class="nav-item__label">상담통계</span>
+        </span>
+
+        <a class="nav-item"
+           th:classappend="${activeMenu == 'setting' ? ' is-active' : ''}"
+           th:href="@{/setting}">
+          <span class="nav-item__icon"><svg aria-hidden="true"><use href="#i-notebook"/></svg></span>
+          <span class="nav-item__label">상담일지관리</span>
+        </a>
+      </div>
+
+      <!-- 커뮤니케이션 -->
+      <div class="nav-section">
+        <div class="nav-section__label">커뮤니케이션</div>
+
+        <a class="nav-item"
+           th:classappend="${activeMenu == 'sms' ? ' is-active' : ''}"
+           th:href="@{/smsSetting(page=1, perPageNum=10, comment='')}">
+          <span class="nav-item__icon"><svg aria-hidden="true"><use href="#i-chat"/></svg></span>
+          <span class="nav-item__label">문자관리</span>
+        </a>
+
+        <a class="nav-item"
+           th:if="${session.inst != null and @moduleFeatureService.isEnabled(session.inst, 'ROOM_BOARD')}"
+           th:classappend="${activeMenu == 'roomboard' ? ' is-active' : ''}"
+           th:href="@{/room-board}">
+          <span class="nav-item__icon"><svg aria-hidden="true"><use href="#i-building"/></svg></span>
+          <span class="nav-item__label">병실현황판</span>
+        </a>
+      </div>
+
+      <!-- 시스템 -->
+      <div class="nav-section">
+        <div class="nav-section__label">시스템</div>
+
+        <a class="nav-item"
+           th:if="${info != null and (info.us_col_08 == 1 or info.us_col_02 == 'coreadmin')}"
+           th:classappend="${activeMenu == 'admin' ? ' is-active' : ''}"
+           th:href="@{/admin}">
+          <span class="nav-item__icon"><svg aria-hidden="true"><use href="#i-shield"/></svg></span>
+          <span class="nav-item__label">관리자</span>
+        </a>
+      </div>
+
+    </th:block>
+  </nav>
+
+  <!-- Footer -->
+  <div class="sidebar__footer">
+    <div class="sidebar__footer-meta">
+      <span class="sidebar__footer-name">CounselMan</span>
+      <span class="sidebar__footer-copy">© Coresolution</span>
+    </div>
+    <a th:href="@{/logout}" class="sidebar__logout">
+      <svg width="16" height="16" aria-hidden="true"><use href="#i-logout"/></svg>
+      <span class="sidebar__logout-text">로그아웃</span>
+    </a>
+  </div>
+</aside>
+
 </body>
 
 <script th:fragment="scripts">
@@ -461,7 +695,7 @@ function updateMenuLinksAdmin(year) {
       if (!el.hasAttribute('role')) el.setAttribute('role', 'link');
     });
 
-    const menuToggleBtn = document.getElementById('global-menu-toggle');
+    const menuToggleBtn = document.getElementById('global-menu-toggle') || document.getElementById('csm-sidebar-toggle');
     const mobileMenuOverlay = document.getElementById('global-mobile-menu-overlay');
     const mobileMenuCloseBtn = document.getElementById('global-mobile-menu-close');
     const mobileMenuLinks = mobileMenuOverlay

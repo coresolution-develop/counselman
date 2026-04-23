@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MediPlat · 상담 접수</title>
+  <link rel="stylesheet" href="assets/css/tokens.css" />
+  <link rel="stylesheet" href="assets/css/base.css" />
+  <link rel="stylesheet" href="assets/css/layout.css" />
+  <link rel="stylesheet" href="assets/css/components.css" />
+  <link rel="stylesheet" href="assets/css/role-management.css" />
+  <link rel="stylesheet" href="assets/css/tweaks.css" />
+</head>
+<body>
+<script src="assets/js/sprite.js"></script>
+
+<div class="app"
+     data-screen-label="Consultation Intake"
+     :data-sidebar="$store.app.sidebarCollapsed ? 'collapsed' : 'expanded'"
+     :data-variation="$store.app.variation"
+     x-data>
+
+  <div id="slot-sidebar"></div>
+  <div id="slot-header"></div>
+
+  <main class="main">
+    <div class="page" x-data="intakePage()">
+      <div class="page__header">
+        <div>
+          <h1 class="page__title">상담 접수</h1>
+          <p class="page__subtitle">신규 상담 접수를 우선순위대로 관리하고 입원상담으로 바로 연계합니다</p>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stat-row">
+        <div class="stat-card stat-card--brand">
+          <div class="stat-card__label"><span class="dot"></span>전체</div>
+          <div class="stat-card__value">12</div>
+          <div class="stat-card__trend">지난 주 대비 +3건</div>
+        </div>
+        <div class="stat-card stat-card--warn">
+          <div class="stat-card__label"><span class="dot"></span>접수 대기</div>
+          <div class="stat-card__value">4</div>
+          <div class="stat-card__trend">우선순위 P1 2건 포함</div>
+        </div>
+        <div class="stat-card stat-card--info">
+          <div class="stat-card__label"><span class="dot"></span>입원상담 변환</div>
+          <div class="stat-card__value">8</div>
+          <div class="stat-card__trend">전환율 67%</div>
+        </div>
+        <div class="stat-card stat-card--danger">
+          <div class="stat-card__label"><span class="dot"></span>취소</div>
+          <div class="stat-card__value">0</div>
+          <div class="stat-card__trend">이번 주</div>
+        </div>
+      </div>
+
+      <!-- Split layout: queue + form -->
+      <div style="display:grid; grid-template-columns: 1fr 360px; gap: 20px; align-items: start;">
+
+        <!-- Queue -->
+        <div>
+          <div class="toolbar">
+            <div class="filter-pills">
+              <button class="pill">전체</button>
+              <button class="pill is-active">접수 <span class="pill__count">4</span></button>
+              <button class="pill">입원상담 연계 <span class="pill__count">8</span></button>
+              <button class="pill">취소</button>
+            </div>
+            <div class="toolbar__spacer"></div>
+            <button class="btn-xs"><svg><use href="#i-refresh"/></svg>새로고침</button>
+          </div>
+
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>환자명</th><th>접수 시간</th><th>접수자</th>
+                  <th class="col-center">우선순위</th><th>상태</th><th class="col-center">연계</th>
+                  <th class="col-right">작업</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="r in rows" :key="r.id">
+                  <tr>
+                    <td>
+                      <div style="font-weight:600;" x-text="r.name"></div>
+                      <div style="font-size:11px; color: var(--text-tertiary); font-variant-numeric: tabular-nums;" x-text="r.phone"></div>
+                    </td>
+                    <td class="col-num" x-text="r.time"></td>
+                    <td x-text="r.by"></td>
+                    <td class="col-center"><span class="prio" :class="'prio--' + r.prio" x-text="r.prio"></span></td>
+                    <td><span class="status" :class="'status--' + r.statusType" x-text="r.status"></span></td>
+                    <td class="col-center" x-text="r.link || '—'" style="color: var(--text-tertiary);"></td>
+                    <td class="col-right">
+                      <div class="row-actions" style="justify-content:flex-end;">
+                        <button class="btn-xs">수정</button>
+                        <button class="btn-xs btn-xs--brand"><svg><use href="#i-bed"/></svg>입원상담 이관</button>
+                        <button class="btn-xs btn-xs--danger">취소</button>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Registration form -->
+        <div class="side-form">
+          <div class="side-form__title">상담 접수 등록</div>
+          <div class="side-form__grid">
+            <div class="field full">
+              <label class="field__label">환자명 <span class="req">*</span></label>
+              <input type="text" class="input" placeholder="홍길동" />
+            </div>
+            <div class="field">
+              <label class="field__label">연락처</label>
+              <input type="text" class="input" placeholder="010-0000-0000" />
+            </div>
+            <div class="field">
+              <label class="field__label">보호자명</label>
+              <input type="text" class="input" placeholder="보호자 이름" />
+            </div>
+            <div class="field">
+              <label class="field__label">우선순위</label>
+              <select class="select"><option>1</option><option selected>3</option><option>5</option></select>
+            </div>
+            <div class="field">
+              <label class="field__label">상태</label>
+              <select class="select"><option>접수</option><option>진행</option><option>완료</option><option>취소</option></select>
+            </div>
+            <div class="field full">
+              <label class="field__label">접수 시간</label>
+              <input type="datetime-local" class="input" value="2026-04-23T11:47" />
+            </div>
+            <div class="field full">
+              <label class="field__label">접수자 사유</label>
+              <input type="text" class="input" placeholder="접수자 메모" />
+            </div>
+            <div class="field full">
+              <label class="field__label">문의내용</label>
+              <textarea class="textarea" placeholder="문의 내용 또는 상담 메모를 입력하세요"></textarea>
+            </div>
+          </div>
+          <div class="side-form__footer">
+            <button class="btn btn--ghost">신규입력</button>
+            <button class="btn btn--primary"><svg><use href="#i-check"/></svg>접수 저장</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+function intakePage() { return {
+  rows: [
+    { id:1, name:'홍길동', phone:'010-1234-5678', time:'2026.04.22 18:45:03', by:'coreadmin', prio:1, status:'접수', statusType:'receive' },
+    { id:2, name:'김수민', phone:'010-9876-5432', time:'2026.04.22 17:36:00', by:'이수인',    prio:1, status:'접수', statusType:'receive' },
+    { id:3, name:'이수인', phone:'010-1357-2468', time:'2026.04.22 13:44:00', by:'coreadmin', prio:2, status:'접수', statusType:'receive' },
+    { id:4, name:'박나래', phone:'010-2468-1357', time:'2026.04.22 17:35:00', by:'coreadmin', prio:3, status:'접수', statusType:'receive' },
+  ]
+}; }
+</script>
+
+<script src="assets/js/app.js"></script>
+<script src="assets/js/chrome.js" data-page="reception"></script>
+<script>
+  document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '상담 업무', current: '상담 접수' }); });
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</body>
+</html>
