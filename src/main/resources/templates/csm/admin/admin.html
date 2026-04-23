@@ -262,15 +262,15 @@
                   </template>
                 </div>
                 <div class="roles-users-add-row">
-                  <select x-model="addUserId" class="roles-users-select">
-                    <option value="">사용자 선택...</option>
+                  <select x-model="addUserId" class="roles-users-select"
+                          @change="if(addUserId) addUserToRole()">
+                    <option value="">＋ 사용자를 선택하면 바로 추가됩니다</option>
                     <template x-for="u in availableUsers" :key="u.user_id">
                       <option :value="u.user_id"
                               x-text="`${u.user_name || '-'} (${u.user_login})`">
                       </option>
                     </template>
                   </select>
-                  <button class="roles-users-add-btn" @click="addUserToRole()" :disabled="!addUserId">이 역할에 추가</button>
                 </div>
               </div>
             </div>

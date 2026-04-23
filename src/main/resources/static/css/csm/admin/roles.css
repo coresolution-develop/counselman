@@ -526,28 +526,22 @@
 
   /* 사용자 추가 행 */
   .roles-users-add-row {
-    display: flex !important;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 14px;
-    background: var(--r-surface);
-    border: 1px solid var(--r-border);
-    border-radius: var(--r-radius-sm);
+    margin-top: 4px;
   }
 
   .roles-users-select {
-    flex: 1 1 0;
-    min-width: 0;
-    width: auto !important;
-    max-width: 100%;
-    border: 1.5px solid var(--r-border);
-    border-radius: 6px;
-    padding: 8px 10px;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    border: 1.5px solid var(--r-primary-light);
+    border-radius: var(--r-radius-sm);
+    padding: 11px 14px;
     font-size: 13px;
     font-family: inherit;
-    color: var(--r-text);
-    background: var(--r-bg);
+    color: var(--r-text-2);
+    background: var(--r-primary-xl);
     outline: none;
+    cursor: pointer;
     transition: border-color var(--r-dur) var(--r-ease),
                 box-shadow var(--r-dur) var(--r-ease);
   }
@@ -555,23 +549,6 @@
     border-color: var(--r-primary);
     box-shadow: 0 0 0 3px var(--r-primary-glow);
   }
-
-  .roles-users-add-btn {
-    flex-shrink: 0;
-    padding: 9px 18px;
-    background: var(--r-primary);
-    color: #fff;
-    border: none;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background var(--r-dur) var(--r-ease),
-                opacity var(--r-dur) var(--r-ease);
-  }
-  .roles-users-add-btn:hover:not(:disabled) { background: var(--r-primary-hover); }
-  .roles-users-add-btn:disabled { background: #c0d8c8; cursor: not-allowed; }
 }
 
 /* ── 생성 모달 ── */
