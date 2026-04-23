@@ -221,22 +221,25 @@
                 🔒 시스템 역할 — 편집 불가
               </div>
 
-              <div class="roles-perm-matrix">
-                <template x-for="menu in permMenus" :key="menu.label">
-                  <div class="perm-menu-card">
-                    <div class="perm-menu-title" x-text="menu.label"></div>
-                    <div class="perm-actions">
-                      <template x-for="perm in menu.perms" :key="perm.code">
-                        <button type="button" class="perm-chip"
-                                :class="{ active: hasPerm(perm.code), 'is-system': isSystem }"
-                                :disabled="isSystem"
-                                @click="togglePerm(perm.code)"
-                                x-text="perm.action">
-                        </button>
-                      </template>
+              <div class="roles-perms-wrapper">
+                <div class="roles-section-label">권한 설정</div>
+                <div class="roles-perm-matrix">
+                  <template x-for="menu in permMenus" :key="menu.label">
+                    <div class="perm-menu-card">
+                      <div class="perm-menu-title" x-text="menu.label"></div>
+                      <div class="perm-actions">
+                        <template x-for="perm in menu.perms" :key="perm.code">
+                          <button type="button" class="perm-chip"
+                                  :class="{ active: hasPerm(perm.code), 'is-system': isSystem }"
+                                  :disabled="isSystem"
+                                  @click="togglePerm(perm.code)"
+                                  x-text="perm.label_ko || perm.action">
+                          </button>
+                        </template>
+                      </div>
                     </div>
-                  </div>
-                </template>
+                  </template>
+                </div>
               </div>
 
               <!-- 이 역할의 사용자 -->
@@ -267,7 +270,7 @@
                       </option>
                     </template>
                   </select>
-                  <button class="roles-users-add-btn" @click="addUserToRole()" :disabled="!addUserId">추가</button>
+                  <button class="roles-users-add-btn" @click="addUserToRole()" :disabled="!addUserId">이 역할에 추가</button>
                 </div>
               </div>
             </div>
