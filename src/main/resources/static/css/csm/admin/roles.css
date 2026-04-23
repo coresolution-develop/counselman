@@ -6,27 +6,27 @@
     --r-primary:       #2d6a4f;
     --r-primary-hover: #245c44;
     --r-primary-dark:  #1b4332;
-    --r-primary-xl:    #eaf4ee;
+    --r-primary-xl:    #f0f7f3;
     --r-primary-light: #c8e6d4;
-    --r-primary-glow:  rgba(45, 106, 79, .22);
-    --r-border:        #d0dfd6;
-    --r-border-light:  #eef2ef;
+    --r-primary-glow:  rgba(45, 106, 79, .18);
+    --r-border:        #e2e8e4;
+    --r-border-light:  #f0f4f1;
     --r-bg:            #fff;
-    --r-surface:       #f8faf8;
-    --r-text:          #1e3a28;
-    --r-text-2:        #3d5240;
-    --r-text-muted:    #7a8b80;
+    --r-surface:       #fafbfa;
+    --r-text:          #111b15;
+    --r-text-2:        #2c3e30;
+    --r-text-muted:    #8a9e92;
     --r-danger:        #c0392b;
     --r-danger-hover:  #a93226;
-    --r-shadow-xs: 0 1px 3px rgba(0,0,0,.06);
-    --r-shadow-sm: 0 2px 10px rgba(45,106,79,.09), 0 1px 3px rgba(0,0,0,.04);
-    --r-shadow-md: 0 6px 24px rgba(45,106,79,.13), 0 2px 6px rgba(0,0,0,.05);
-    --r-shadow-lg: 0 20px 60px rgba(0,0,0,.18), 0 4px 16px rgba(45,106,79,.12);
-    --r-radius:    14px;
-    --r-radius-sm: 8px;
+    --r-shadow-xs: 0 1px 2px rgba(0,0,0,.05);
+    --r-shadow-sm: 0 1px 4px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.04);
+    --r-shadow-md: 0 4px 16px rgba(0,0,0,.08), 0 1px 4px rgba(0,0,0,.04);
+    --r-shadow-lg: 0 16px 48px rgba(0,0,0,.16), 0 4px 12px rgba(0,0,0,.08);
+    --r-radius:    8px;
+    --r-radius-sm: 6px;
     --r-ease:      cubic-bezier(.4, 0, .2, 1);
     --r-spring:    cubic-bezier(.34, 1.56, .64, 1);
-    --r-dur:       160ms;
+    --r-dur:       150ms;
   }
 }
 
@@ -34,8 +34,8 @@
 @layer roles-layout {
   .roles-layout {
     display: flex;
-    gap: 18px;
-    min-height: 560px;
+    gap: 20px;
+    min-height: 640px;
     align-items: flex-start;
   }
 
@@ -48,7 +48,7 @@
 /* ── 역할 목록 패널 ── */
 @layer roles-list {
   .roles-list-pane {
-    width: 250px;
+    width: 260px;
     flex-shrink: 0;
     background: var(--r-bg);
     border: 1px solid var(--r-border);
@@ -63,14 +63,14 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 13px 16px;
-    background: linear-gradient(135deg, var(--r-surface) 0%, #f0f7f3 100%);
+    padding: 16px 18px;
+    background: var(--r-surface);
     border-bottom: 1px solid var(--r-border);
   }
 
   .roles-list-title {
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--r-text);
     letter-spacing: .01em;
   }
@@ -78,24 +78,22 @@
   .roles-btn-sm {
     font-size: 12px;
     font-weight: 600;
-    padding: 5px 11px;
-    border: 1.5px solid var(--r-primary);
-    border-radius: 20px;
-    color: var(--r-primary);
+    padding: 6px 12px;
+    border: 1px solid var(--r-border);
+    border-radius: var(--r-radius-sm);
+    color: var(--r-text-2);
     background: var(--r-bg);
     cursor: pointer;
     transition: background var(--r-dur) var(--r-ease),
-                color var(--r-dur) var(--r-ease),
-                box-shadow var(--r-dur) var(--r-ease),
-                transform var(--r-dur) var(--r-spring);
+                border-color var(--r-dur) var(--r-ease),
+                color var(--r-dur) var(--r-ease);
   }
   .roles-btn-sm:hover {
     background: var(--r-primary);
+    border-color: var(--r-primary);
     color: #fff;
-    box-shadow: 0 3px 12px var(--r-primary-glow);
-    transform: translateY(-1px);
   }
-  .roles-btn-sm:active { transform: scale(.96); }
+  .roles-btn-sm:active { opacity: .85; }
 
   .roles-list-body { flex: 1; overflow-y: auto; }
 
@@ -108,7 +106,7 @@
 
   /* 스켈레톤 */
   .role-skeleton-item {
-    height: 54px;
+    height: 62px;
     border-bottom: 1px solid var(--r-border-light);
     position: relative;
     overflow: hidden;
@@ -129,8 +127,8 @@
   .role-item {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 16px;
+    gap: 12px;
+    padding: 14px 18px;
     cursor: pointer;
     border-bottom: 1px solid var(--r-border-light);
     border-left: 3px solid transparent;
@@ -142,17 +140,17 @@
   .role-item:last-child { border-bottom: none; }
   .role-item:hover:not(.selected) { background: var(--r-surface); }
   .role-item.selected {
-    background: linear-gradient(100deg, var(--r-primary-xl) 0%, var(--r-bg) 80%);
+    background: var(--r-primary-xl);
     border-left-color: var(--r-primary);
   }
   .role-item.selected .role-item-name { color: var(--r-primary); }
   .role-item.selected .role-item-users { color: var(--r-primary-hover); }
 
-  .role-item-icon { font-size: 14px; flex-shrink: 0; line-height: 1; }
+  .role-item-icon { font-size: 15px; flex-shrink: 0; line-height: 1; }
 
   .role-item-info { flex: 1; min-width: 0; }
   .role-item-name {
-    font-size: 13px;
+    font-size: 13.5px;
     font-weight: 600;
     color: var(--r-text);
     white-space: nowrap;
@@ -161,18 +159,18 @@
     transition: color var(--r-dur) var(--r-ease);
   }
   .role-item-users {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--r-text-muted);
-    margin-top: 2px;
+    margin-top: 3px;
     transition: color var(--r-dur) var(--r-ease);
   }
 
   .role-item-arrow {
-    font-size: 16px;
+    font-size: 18px;
     color: var(--r-primary);
-    font-weight: 700;
+    font-weight: 400;
     flex-shrink: 0;
-    opacity: .8;
+    opacity: .6;
   }
 }
 
@@ -183,7 +181,7 @@
     background: var(--r-bg);
     border: 1px solid var(--r-border);
     border-radius: var(--r-radius);
-    padding: 22px;
+    padding: 28px;
     overflow-y: auto;
     box-shadow: var(--r-shadow-sm);
     min-height: 400px;
@@ -195,30 +193,30 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 320px;
-    gap: 14px;
+    min-height: 360px;
+    gap: 16px;
     color: var(--r-text-muted);
   }
-  .roles-edit-placeholder-icon { font-size: 40px; line-height: 1; opacity: .6; }
-  .roles-edit-placeholder-text { font-size: 13px; }
+  .roles-edit-placeholder-icon { font-size: 36px; line-height: 1; opacity: .4; }
+  .roles-edit-placeholder-text { font-size: 14px; }
 
   /* 편집 헤더 */
   .roles-edit-header {
     display: flex;
-    gap: 16px;
+    gap: 20px;
     align-items: flex-start;
-    margin-bottom: 18px;
-    padding-bottom: 18px;
-    border-bottom: 1px solid var(--r-border-light);
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--r-border);
   }
-  .roles-edit-meta { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  .roles-edit-meta { flex: 1; display: flex; flex-direction: column; gap: 12px; }
 
   .roles-name-input {
-    font-size: 17px;
+    font-size: 18px;
     font-weight: 700;
-    border: 1.5px solid var(--r-border);
+    border: 1px solid var(--r-border);
     border-radius: var(--r-radius-sm);
-    padding: 9px 13px;
+    padding: 11px 14px;
     width: 100%;
     box-sizing: border-box;
     color: var(--r-text);
@@ -233,19 +231,19 @@
   .roles-name-input:read-only {
     background: var(--r-surface);
     color: var(--r-text-muted);
-    border-color: var(--r-border-light);
   }
 
   .roles-desc-input {
-    font-size: 13px;
-    border: 1.5px solid var(--r-border);
+    font-size: 14px;
+    border: 1px solid var(--r-border);
     border-radius: var(--r-radius-sm);
-    padding: 8px 13px;
+    padding: 10px 14px;
     width: 100%;
     box-sizing: border-box;
     resize: vertical;
     color: var(--r-text-2);
     outline: none;
+    line-height: 1.6;
     transition: border-color var(--r-dur) var(--r-ease),
                 box-shadow var(--r-dur) var(--r-ease);
     font-family: inherit;
@@ -259,131 +257,119 @@
   .roles-edit-header-btns {
     display: flex;
     flex-direction: column;
-    gap: 7px;
+    gap: 8px;
     flex-shrink: 0;
+    padding-top: 2px;
   }
 
-  /* 저장 버튼 */
   .roles-btn-save {
-    padding: 9px 20px;
-    background: linear-gradient(135deg, var(--r-primary) 0%, var(--r-primary-hover) 100%);
+    padding: 10px 22px;
+    background: var(--r-primary);
     color: #fff;
     border: none;
     border-radius: var(--r-radius-sm);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    box-shadow: 0 3px 10px var(--r-primary-glow);
-    transition: opacity var(--r-dur) var(--r-ease),
-                transform var(--r-dur) var(--r-spring),
-                box-shadow var(--r-dur) var(--r-ease);
+    transition: background var(--r-dur) var(--r-ease),
+                opacity var(--r-dur) var(--r-ease);
   }
-  .roles-btn-save:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 5px 18px var(--r-primary-glow);
-  }
-  .roles-btn-save:active:not(:disabled) { transform: scale(.96); }
+  .roles-btn-save:hover:not(:disabled) { background: var(--r-primary-hover); }
+  .roles-btn-save:active:not(:disabled) { opacity: .85; }
   .roles-btn-save:disabled {
-    background: #b0c4b8;
-    box-shadow: none;
+    background: #c8d8cf;
     cursor: not-allowed;
-    opacity: .7;
   }
 
   .roles-btn-copy {
-    padding: 8px 14px;
+    padding: 10px 16px;
     background: var(--r-bg);
-    color: var(--r-primary);
-    border: 1.5px solid var(--r-primary);
+    color: var(--r-text-2);
+    border: 1px solid var(--r-border);
     border-radius: var(--r-radius-sm);
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
     transition: background var(--r-dur) var(--r-ease),
-                color var(--r-dur) var(--r-ease),
-                transform var(--r-dur) var(--r-spring);
+                border-color var(--r-dur) var(--r-ease);
   }
   .roles-btn-copy:hover:not(:disabled) {
-    background: var(--r-primary);
-    color: #fff;
-    transform: translateY(-1px);
+    background: var(--r-surface);
+    border-color: var(--r-text-muted);
   }
-  .roles-btn-copy:active { transform: scale(.96); }
+  .roles-btn-copy:active { opacity: .8; }
 
   .roles-btn-del {
-    padding: 8px 14px;
+    padding: 10px 16px;
     background: var(--r-bg);
     color: var(--r-danger);
-    border: 1.5px solid var(--r-danger);
+    border: 1px solid var(--r-border);
     border-radius: var(--r-radius-sm);
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
     transition: background var(--r-dur) var(--r-ease),
-                color var(--r-dur) var(--r-ease),
-                transform var(--r-dur) var(--r-spring);
+                border-color var(--r-dur) var(--r-ease),
+                color var(--r-dur) var(--r-ease);
   }
   .roles-btn-del:hover:not(:disabled) {
-    background: var(--r-danger);
-    color: #fff;
-    transform: translateY(-1px);
+    background: #fdf3f2;
+    border-color: var(--r-danger);
   }
-  .roles-btn-del:active { transform: scale(.96); }
-  .roles-btn-del:disabled { color: #b0bab5; border-color: #b0bab5; cursor: not-allowed; }
+  .roles-btn-del:active { opacity: .8; }
+  .roles-btn-del:disabled { color: #c8d4d0; border-color: var(--r-border-light); cursor: not-allowed; }
 
   .roles-system-badge {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
     font-size: 12px;
-    font-weight: 600;
-    color: #6b7c74;
-    background: linear-gradient(135deg, #f0f4f1, #e8eeea);
+    font-weight: 500;
+    color: var(--r-text-muted);
+    background: var(--r-surface);
     border: 1px solid var(--r-border);
-    border-radius: 20px;
-    padding: 6px 14px;
-    margin-bottom: 16px;
+    border-radius: var(--r-radius-sm);
+    padding: 8px 14px;
+    margin-bottom: 20px;
   }
 }
 
 /* ── 권한 매트릭스 ── */
 @layer roles-perms {
-  .roles-perm-matrix { display: flex; flex-direction: column; gap: 14px; }
+  .roles-perm-matrix { display: flex; flex-direction: column; gap: 12px; }
 
   .perm-menu-card {
     border: 1px solid var(--r-border);
     border-radius: var(--r-radius-sm);
     overflow: hidden;
-    transition: box-shadow var(--r-dur) var(--r-ease);
   }
-  .perm-menu-card:hover { box-shadow: var(--r-shadow-xs); }
 
   .perm-menu-title {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--r-text-2);
-    background: linear-gradient(135deg, var(--r-surface), #f0f7f3);
-    padding: 9px 14px;
-    border-bottom: 1px solid var(--r-border-light);
-    letter-spacing: .03em;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--r-text-muted);
+    background: var(--r-surface);
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--r-border);
+    letter-spacing: .06em;
     text-transform: uppercase;
   }
 
   .perm-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 7px;
-    padding: 13px 14px;
+    gap: 6px;
+    padding: 14px 16px;
   }
 
-  /* 권한 칩 — 핵심 디자인 */
+  /* 권한 칩 */
   .perm-chip {
     display: inline-flex;
     align-items: center;
-    padding: 5px 13px;
-    border-radius: 20px;
-    border: 1.5px solid var(--r-border);
-    font-size: 11.5px;
+    padding: 6px 14px;
+    border-radius: var(--r-radius-sm);
+    border: 1px solid var(--r-border);
+    font-size: 12px;
     font-weight: 500;
     color: var(--r-text-muted);
     background: var(--r-bg);
@@ -393,29 +379,26 @@
     transition:
       background var(--r-dur) var(--r-ease),
       color var(--r-dur) var(--r-ease),
-      border-color var(--r-dur) var(--r-ease),
-      box-shadow var(--r-dur) var(--r-ease),
-      transform 100ms var(--r-spring);
+      border-color var(--r-dur) var(--r-ease);
   }
   .perm-chip:hover:not(:disabled):not(.is-system) {
-    border-color: var(--r-primary-light);
+    border-color: var(--r-primary);
     color: var(--r-primary);
     background: var(--r-primary-xl);
   }
   .perm-chip.active {
-    background: linear-gradient(135deg, var(--r-primary) 0%, var(--r-primary-hover) 100%);
+    background: var(--r-primary);
     border-color: var(--r-primary);
     color: #fff;
     font-weight: 600;
-    box-shadow: 0 2px 10px var(--r-primary-glow);
   }
   .perm-chip.active:hover:not(:disabled) {
-    background: linear-gradient(135deg, var(--r-primary-hover) 0%, var(--r-primary-dark) 100%);
-    box-shadow: 0 3px 14px var(--r-primary-glow);
+    background: var(--r-primary-hover);
+    border-color: var(--r-primary-hover);
   }
-  .perm-chip:active:not(:disabled):not(.is-system) { transform: scale(.93); }
+  .perm-chip:active:not(:disabled):not(.is-system) { opacity: .8; }
   .perm-chip.is-system,
-  .perm-chip:disabled { opacity: .45; cursor: not-allowed; }
+  .perm-chip:disabled { opacity: .4; cursor: not-allowed; }
 }
 
 /* ── 생성 모달 ── */
@@ -433,17 +416,17 @@
   }
 
   .roles-create-modal {
-    background: rgba(255, 255, 255, .98);
-    border-radius: 18px;
-    padding: 30px 28px 22px;
-    width: min(400px, 92vw);
+    background: var(--r-bg);
+    border-radius: 10px;
+    padding: 32px 30px 24px;
+    width: min(420px, 92vw);
     box-shadow: var(--r-shadow-lg);
-    border: 1px solid rgba(255,255,255,.7);
-    animation: modalIn 260ms var(--r-spring) both;
+    border: 1px solid var(--r-border);
+    animation: modalIn 240ms var(--r-spring) both;
   }
   .roles-create-modal h3 {
-    margin: 0 0 20px;
-    font-size: 17px;
+    margin: 0 0 22px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--r-text);
   }
@@ -459,15 +442,16 @@
   .roles-create-modal textarea {
     width: 100%;
     box-sizing: border-box;
-    border: 1.5px solid var(--r-border);
+    border: 1px solid var(--r-border);
     border-radius: var(--r-radius-sm);
-    padding: 9px 12px;
-    font-size: 13px;
+    padding: 10px 13px;
+    font-size: 14px;
     font-family: inherit;
     outline: none;
-    margin-bottom: 16px;
+    margin-bottom: 18px;
     transition: border-color var(--r-dur) var(--r-ease),
                 box-shadow var(--r-dur) var(--r-ease);
+    color: var(--r-text);
   }
   .roles-create-modal input:focus,
   .roles-create-modal textarea:focus {
@@ -482,37 +466,32 @@
     margin-top: 4px;
   }
   .roles-modal-confirm {
-    padding: 9px 22px;
-    background: linear-gradient(135deg, var(--r-primary), var(--r-primary-hover));
+    padding: 10px 24px;
+    background: var(--r-primary);
     color: #fff;
     border: none;
     border-radius: var(--r-radius-sm);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    box-shadow: 0 3px 12px var(--r-primary-glow);
-    transition: transform var(--r-dur) var(--r-spring),
-                box-shadow var(--r-dur) var(--r-ease);
+    transition: background var(--r-dur) var(--r-ease),
+                opacity var(--r-dur) var(--r-ease);
   }
-  .roles-modal-confirm:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 5px 18px var(--r-primary-glow);
-  }
-  .roles-modal-confirm:active { transform: scale(.96); }
+  .roles-modal-confirm:hover { background: var(--r-primary-hover); }
+  .roles-modal-confirm:active { opacity: .85; }
   .roles-modal-cancel {
-    padding: 9px 18px;
+    padding: 10px 20px;
     background: var(--r-bg);
     color: var(--r-text-2);
-    border: 1.5px solid var(--r-border);
+    border: 1px solid var(--r-border);
     border-radius: var(--r-radius-sm);
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
-    transition: background var(--r-dur) var(--r-ease),
-                transform var(--r-dur) var(--r-spring);
+    transition: background var(--r-dur) var(--r-ease);
   }
-  .roles-modal-cancel:hover { background: var(--r-surface); transform: translateY(-1px); }
-  .roles-modal-cancel:active { transform: scale(.96); }
+  .roles-modal-cancel:hover { background: var(--r-surface); }
+  .roles-modal-cancel:active { opacity: .8; }
 }
 
 /* ── 애니메이션 ── */
