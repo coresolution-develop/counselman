@@ -65,6 +65,23 @@ document.addEventListener("DOMContentLoaded", function () {
     return `<span class="potential-rank-badge potential-rank-${rank}" title="잠재고객 ${rank}" aria-label="잠재고객 ${rank}">${rank}</span>`;
   }
 
+  function renderStatusBadge(v) {
+    const s = String(v || '').trim();
+    if (!s) return '';
+    const map = {
+      '입원완료': 'admitted',
+      '입원예약': 'reserved',
+      '접수': 'receive',
+      '진행중': 'progress',
+      '완료': 'done',
+      '취소': 'cancel',
+      '상담중': 'progress',
+      '미완료': 'pending',
+    };
+    const type = map[s] || 'pending';
+    return `<span class="cl-status cl-status--${type}">${escapeHTML(s)}</span>`;
+  }
+
   function getCurrentFilters() {
     return {
       dateRange: $('#dateRange').val(),
@@ -818,6 +835,9 @@ if (clean.length !== data.length) {
         bodyHtml += '<td>';
         guardians.forEach(g => { bodyHtml += `<p>${escapeHTML(g?.contact_number)}</p>`; });
         bodyHtml += '</td>';
+      } else if (columnName === 'cs_col_19') {
+        // 상담결과 / 상태 배지
+        bodyHtml += `<td>${renderStatusBadge(value)}</td>`;
       } else {
         bodyHtml += `<td>${escapeHTML(value)}</td>`;
       }
@@ -831,6 +851,10 @@ if (clean.length !== data.length) {
   const newRows = Array.from(document.querySelectorAll('#table-body .counselRow'))
     .slice(originalRows.length);
   originalRows = originalRows.concat(newRows);
+
+  const countEl = document.getElementById('record-count');
+  if (countEl) countEl.textContent = document.querySelectorAll('#table-body .counselRow').length + '건';
+
   applySort();
 }
 function snakeToCamel(s) {
