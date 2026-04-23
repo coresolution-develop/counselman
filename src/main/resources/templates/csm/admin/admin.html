@@ -32,6 +32,7 @@
 
 <link rel="stylesheet" th:href="@{/css/csm/admin/roles.css}">
 <script th:src="@{/js/csm/admin/roles.js}" defer></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <style>
 .arrow { display: inline-block; width: 0; height: 0; margin-left: 5px; }
 .up { border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 5px solid black; }
@@ -141,49 +142,131 @@
         </div>
       </div>
 
-      <!-- ── 탭 2: 역할 관리 ── -->
-      <div id="admin-tab-roles" class="admin-tab-panel">
+      <!-- ── 탭 2: 역할 관리 (Alpine.js) ── -->
+      <div id="admin-tab-roles" class="admin-tab-panel"
+           x-data="rolesManager()" x-init="init()">
         <div class="roles-layout">
 
-          <!-- 역할 목록 -->
+          <!-- 역할 목록 패널 -->
           <div class="roles-list-pane">
             <div class="roles-list-header">
               <span class="roles-list-title">역할 목록</span>
-              <div class="roles-list-actions">
-                <button class="roles-btn-sm" onclick="rolesOpenCreate()">+ 새 역할</button>
-              </div>
+              <button class="roles-btn-sm" @click="openModal()">+ 새 역할</button>
             </div>
-            <div id="roles-list-body" class="roles-list-body">
-              <div class="roles-empty">불러오는 중...</div>
+            <div class="roles-list-body">
+              <!-- 로딩 스켈레톤 -->
+              <template x-if="listLoading">
+                <div>
+                  <template x-for="i in 5"><div class="role-skeleton-item"></div></template>
+                </div>
+              </template>
+              <!-- 빈 상태 -->
+              <div x-show="!listLoading && !roles.length" class="roles-empty">역할이 없습니다.</div>
+              <!-- 역할 목록 -->
+              <template x-if="!listLoading">
+                <div>
+                  <template x-for="(role, i) in roles" :key="role.role_id">
+                    <div class="role-item"
+                         :class="{ selected: role.role_id == selectedId }"
+                         :style="{ animationDelay: i * 35 + 'ms' }"
+                         @click="selectRole(role.role_id)">
+                      <span class="role-item-icon" x-text="role.is_system ? '🔒' : '👤'"></span>
+                      <div class="role-item-info">
+                        <div class="role-item-name" x-text="role.role_name"></div>
+                        <div class="role-item-users" x-text="`사용자 ${role.user_count}명`"></div>
+                      </div>
+                      <span class="role-item-arrow" x-show="role.role_id == selectedId">›</span>
+                    </div>
+                  </template>
+                </div>
+              </template>
             </div>
           </div>
 
           <!-- 역할 편집 패널 -->
-          <div class="roles-edit-pane" id="roles-edit-pane">
-            <div class="roles-edit-placeholder">
-              <div class="roles-edit-placeholder-icon">&#x1F6E1;</div>
-              <div>역할을 선택하면 권한 매트릭스가 표시됩니다.</div>
+          <div class="roles-edit-pane">
+
+            <!-- 미선택 placeholder -->
+            <div class="roles-edit-placeholder"
+                 x-show="!selectedId"
+                 x-transition:enter="fade-enter"
+                 x-transition:enter-start="fade-start"
+                 x-transition:enter-end="fade-end">
+              <div class="roles-edit-placeholder-icon">🛡️</div>
+              <div class="roles-edit-placeholder-text">역할을 선택하면 권한 매트릭스가 표시됩니다.</div>
             </div>
-            <!-- 편집 폼 (JS로 채워짐) -->
-            <div id="roles-edit-form" style="display:none;">
+
+            <!-- 편집 폼 -->
+            <div x-show="selectedId"
+                 x-transition:enter="slide-enter"
+                 x-transition:enter-start="slide-start"
+                 x-transition:enter-end="slide-end">
+
               <div class="roles-edit-header">
                 <div class="roles-edit-meta">
-                  <input id="re-role-name" class="roles-name-input" placeholder="역할 이름" maxlength="100" />
-                  <textarea id="re-role-desc" class="roles-desc-input" placeholder="설명 (선택)" rows="2"></textarea>
+                  <input x-model="editName" class="roles-name-input"
+                         placeholder="역할 이름" maxlength="100" :readonly="isSystem" />
+                  <textarea x-model="editDesc" class="roles-desc-input"
+                            placeholder="설명 (선택)" rows="2" :readonly="isSystem"></textarea>
                 </div>
                 <div class="roles-edit-header-btns">
-                  <button class="roles-btn-copy" id="re-copy-btn" onclick="rolesCopyRole()">복사해서 새 역할</button>
-                  <button class="roles-btn-save" id="re-save-btn" onclick="rolesSavePermissions()">저장</button>
-                  <button class="roles-btn-del" id="re-del-btn" onclick="rolesDeleteRole()">삭제</button>
+                  <button class="roles-btn-copy" @click="copyRole()" :disabled="!selectedId">복사해서 새 역할</button>
+                  <button class="roles-btn-save" @click="savePermissions()" :disabled="isSystem || saving"
+                          x-text="saving ? '저장 중…' : '저장'"></button>
+                  <button class="roles-btn-del" @click="deleteRole()" :disabled="isSystem">삭제</button>
                 </div>
               </div>
-              <div class="roles-system-badge" id="re-system-badge" style="display:none;">
-                &#x1F512; 시스템 역할 — 편집 불가
+
+              <div class="roles-system-badge" x-show="isSystem" x-transition.duration.150ms>
+                🔒 시스템 역할 — 편집 불가
               </div>
-              <div id="re-perm-matrix" class="roles-perm-matrix"></div>
+
+              <div class="roles-perm-matrix">
+                <template x-for="menu in permMenus" :key="menu.label">
+                  <div class="perm-menu-card">
+                    <div class="perm-menu-title" x-text="menu.label"></div>
+                    <div class="perm-actions">
+                      <template x-for="perm in menu.perms" :key="perm.code">
+                        <button type="button" class="perm-chip"
+                                :class="{ active: hasPerm(perm.code), 'is-system': isSystem }"
+                                :disabled="isSystem"
+                                @click="togglePerm(perm.code)"
+                                x-text="perm.action">
+                        </button>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+              </div>
             </div>
           </div>
+        </div>
 
+        <!-- 새 역할 생성 모달 -->
+        <div class="roles-create-modal-overlay"
+             x-show="showModal"
+             @click.self="showModal = false"
+             @keydown.escape.window="showModal = false"
+             x-transition:enter="overlay-enter"
+             x-transition:enter-start="overlay-start"
+             x-transition:enter-end="overlay-end"
+             x-transition:leave="overlay-enter"
+             x-transition:leave-start="overlay-end"
+             x-transition:leave-end="overlay-start"
+             style="display:none;">
+          <div class="roles-create-modal" @click.stop>
+            <h3>새 역할 만들기</h3>
+            <label>역할 이름 <span class="required">*</span></label>
+            <input x-ref="newNameInput" x-model="newName" type="text"
+                   placeholder="예: 야간 상담사" maxlength="100"
+                   @keydown.enter="submitCreate()" />
+            <label>설명</label>
+            <textarea x-model="newDesc" rows="2" placeholder="이 역할에 대한 간단한 설명"></textarea>
+            <div class="roles-create-modal-btns">
+              <button class="roles-modal-cancel" @click="showModal = false">취소</button>
+              <button class="roles-modal-confirm" @click="submitCreate()">만들기</button>
+            </div>
+          </div>
         </div>
       </div>
 
