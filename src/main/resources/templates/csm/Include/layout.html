@@ -29,6 +29,9 @@
 		    <symbol id="i-building" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1"/><line x1="9" y1="7" x2="9.01" y2="7"/><line x1="15" y1="7" x2="15.01" y2="7"/><line x1="9" y1="11" x2="9.01" y2="11"/><line x1="15" y1="11" x2="15.01" y2="11"/><path d="M10 21v-4h4v4"/></symbol>
 		    <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></symbol>
 		    <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
+		    <symbol id="i-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></symbol>
+		    <symbol id="i-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></symbol>
+		    <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
 		  </defs>
 		</svg>
 		<div class="logo">
@@ -66,7 +69,7 @@
 									       style="cursor:pointer;"
 									       th:value="${cri != null ? cri.startDate : ''}">
 									<button type="button" class="filter-cal-btn date-input-toggle" data-target="startDate" aria-label="조회 시작일 선택">
-										<img th:src="@{/icon/calendar.png}" class="filter-icon" alt="">
+										<svg width="16" height="16" aria-hidden="true"><use href="#i-calendar"/></svg>
 									</button>
 								</div>
 								<span aria-hidden="true">~</span>
@@ -79,7 +82,7 @@
 									       style="cursor:pointer;"
 									       th:value="${cri != null ? cri.endDate : ''}">
 									<button type="button" class="filter-cal-btn date-input-toggle" data-target="endDate" aria-label="조회 종료일 선택">
-										<img th:src="@{/icon/calendar.png}" class="filter-icon" alt="">
+										<svg width="16" height="16" aria-hidden="true"><use href="#i-calendar"/></svg>
 									</button>
 								</div>
 								<div class="sh-calendar" id="statusCalendar">
@@ -88,11 +91,11 @@
 									</div>
 									<div class="sh-cal-head">
 										<button type="button" class="sh-cal-nav" id="calPrev" aria-label="이전달">
-											<img th:src="@{/icon/arrow(L).png}" alt="">
+											<svg width="16" height="16" aria-hidden="true"><use href="#i-chevron-left"/></svg>
 										</button>
 										<div class="sh-cal-title" id="calTitle"></div>
 										<button type="button" class="sh-cal-nav" id="calNext" aria-label="다음달">
-											<img th:src="@{/icon/arrow.png}" alt="">
+											<svg width="16" height="16" aria-hidden="true"><use href="#i-chevron-right"/></svg>
 										</button>
 									</div>
 									<div class="sh-cal-grid" id="calGrid"></div>
@@ -137,7 +140,7 @@
 						</div>
 						<div class="modern-filter-action">
 							<button type="button" id="setting" class="toolbar-icon-btn list-setting-btn" aria-label="리스트 항목 설정 열기">
-								<img th:src="@{/icon/ev/fix-icon.png}" alt="">
+								<svg width="16" height="16" aria-hidden="true"><use href="#i-settings"/></svg>
 							</button>
 							<button type="button" class="btn search-box listBtn btnw100" id="searchBtn">검색</button>
 						</div>
@@ -167,8 +170,8 @@
                     </div>
                 </div>
                 <div class="logout-img">
-                    <a th:href="@{/logout}" class="logout-button">
-                        <img th:src="@{/icon/ev/logout_new.png}">
+                    <a th:href="@{/logout}" class="logout-button" aria-label="로그아웃">
+                        <svg width="16" height="16" aria-hidden="true"><use href="#i-logout"/></svg>
                     </a>
                 </div>
             </div>
