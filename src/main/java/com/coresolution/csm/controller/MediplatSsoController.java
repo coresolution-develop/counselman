@@ -20,7 +20,11 @@ import com.coresolution.csm.config.InstDetails;
 import com.coresolution.csm.serivce.CsmAuthService;
 import com.coresolution.csm.serivce.CsmSchemaBootstrapService;
 import com.coresolution.csm.serivce.MediplatSsoService;
+import com.coresolution.csm.serivce.PermissionResolver;
 import com.coresolution.csm.vo.Userdata;
+
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -34,6 +38,7 @@ public class MediplatSsoController {
     private final MediplatSsoService mediplatSsoService;
     private final CsmAuthService cs;
     private final CsmSchemaBootstrapService schemaBootstrapService;
+    private final PermissionResolver permissionResolver;
 
     @GetMapping({ "mediplat/sso/entry", "/mediplat/sso/entry" })
     public String mediplatSsoEntry(
@@ -93,7 +98,7 @@ public class MediplatSsoController {
         var auth = new UsernamePasswordAuthenticationToken(
                 userId,
                 null,
-                List.of(() -> "ROLE_USER"));
+                buildAuthorities(info, normalizedInst));
         auth.setDetails(new InstDetails(normalizedInst));
 
         var context = SecurityContextHolder.createEmptyContext();
@@ -109,6 +114,29 @@ public class MediplatSsoController {
         session.setAttribute("instname", info.getUs_col_05());
 
         return "redirect:" + request.getContextPath() + redirectTarget;
+    }
+
+    private List<GrantedAuthority> buildAuthorities(Userdata info, String inst) {
+        List<GrantedAuthority> authorities = new java.util.ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+        if (info == null) return authorities;
+        int col08 = info.getUs_col_08();
+        if (col08 == 0) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_PLATFORM_ADMIN"));
+            for (String code : permissionResolver.allPermissions()) {
+                authorities.add(new SimpleGrantedAuthority(code));
+            }
+            return authorities;
+        }
+        if (col08 == 1) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_INST_ADMIN"));
+        }
+        try {
+            for (String code : permissionResolver.resolveUserPermissions(info.getUs_col_01(), inst)) {
+                authorities.add(new SimpleGrantedAuthority(code));
+            }
+        } catch (Exception ignored) {}
+        return authorities;
     }
 
     private boolean isRoomBoardViewerTarget(String redirectTarget) {

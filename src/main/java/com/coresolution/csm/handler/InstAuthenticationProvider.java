@@ -21,10 +21,14 @@ import com.coresolution.csm.util.AES128;
 import com.coresolution.csm.vo.Userdata;
 
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 @RequiredArgsConstructor
 public class InstAuthenticationProvider implements AuthenticationProvider {
+
+    private static final Logger log = LoggerFactory.getLogger(InstAuthenticationProvider.class);
 
     private final CsmAuthService cs;
     private final AES128 aes128;
@@ -34,6 +38,7 @@ public class InstAuthenticationProvider implements AuthenticationProvider {
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
         String username = authentication.getName();
         String rawPassword = (String) authentication.getCredentials();
+        log.warn("[AUTH-ENTRY] InstAuthenticationProvider.authenticate() called for user={}", username);
 
         // 1) 클라이언트가 보낸 inst는 '입력값'일 뿐 → DB로 정규화/검증
         Object details = authentication.getDetails();
@@ -95,6 +100,7 @@ public class InstAuthenticationProvider implements AuthenticationProvider {
             // 권한 테이블이 없는 경우(초기 설치 등) 기존 동작 유지
         }
 
+        log.warn("[AUTH] user={} inst={} us_col_08={} authorities={}", info.getUs_col_02(), inst, info.getUs_col_08(), authorities);
         return authorities;
     }
 
