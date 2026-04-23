@@ -327,7 +327,8 @@ h5{font-size:40px;line-height:140%;font-weight:700;}
 /* Reusable decorative orb for page containers */
 .orb-deco {
     position: relative;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .orb-deco::before {
