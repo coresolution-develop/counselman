@@ -31,6 +31,7 @@
 <link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
 
 <link rel="stylesheet" th:href="@{/css/csm/admin/roles.css}">
+<link rel="stylesheet" th:href="@{/css/csm/admin/users.css}">
 <script th:src="@{/js/csm/admin/roles.js}" defer></script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <style>
@@ -89,55 +90,148 @@
       </div>
 
       <!-- ── 탭 1: 사용자 관리 ── -->
-      <div id="admin-tab-users" class="admin-tab-panel active">
-        <div class="content-mid content-mid-admin">
-          <div class="section-mid">
-            <div class="user-list">
-              <div class="grid-header">
-                <div onclick="sortGrid(0)">사번 <span id='arrow0' class="arrow"></span></div>
-                <div onclick="sortGrid(1)">성명 <span id='arrow1' class="arrow"></span></div>
-                <div onclick="sortGrid(2)">부서 <span id='arrow2' class="arrow"></span></div>
-                <div onclick="sortGrid(3)">직급 <span id='arrow3' class="arrow"></span></div>
-                <div onclick="sortGrid(4)">권한 <span id='arrow4' class="arrow"></span></div>
-                <div onclick="sortGrid(5)">Email <span id='arrow5' class="arrow"></span></div>
-                <div onclick="sortGrid(6)">상태 <span id='arrow6' class="arrow"></span></div>
+      <div id="admin-tab-users" class="admin-tab-panel active um-root"
+           x-data="userManager()" x-init="init()">
+
+        <div class="um-panel">
+
+          <!-- 헤더 -->
+          <div class="um-panel-head">
+            <div class="um-head-row">
+              <div>
+                <div class="um-head-eyebrow">관리자 설정</div>
+                <h2 class="um-head-h">사용자 관리</h2>
+                <p class="um-head-desc">기관의 사용자 계정을 관리합니다</p>
               </div>
-              <div class="grid-body" id="userGrid">
-                <div class="grid-row" th:if="${#lists.isEmpty(user)}">
-                  <div style="grid-column: 1 / -1;">사용자 데이터가 없습니다.</div>
+              <div class="um-head-stats">
+                <div class="um-stat">
+                  <div class="um-stat__val" x-text="totalCount">0</div>
+                  <div class="um-stat__lbl">전체</div>
                 </div>
-                <div class="grid-row" th:each="u : ${user}">
-                  <div th:text="${u != null ? (u.us_col_02 ?: '') : ''}"></div>
-                  <div th:text="${u != null ? (u.us_col_12 ?: '') : ''}"></div>
-                  <div th:text="${u != null ? (u.us_col_13 ?: '') : ''}"></div>
-                  <div th:text="${u != null ? (u.us_col_14 ?: '') : ''}"></div>
-                  <div th:text="${u != null ? (u.us_col_08 == 1 ? 'admin' : (u.us_col_08 == 2 ? 'supervisor' : (u.us_col_08 == 3 ? 'manager' : (u.us_col_08 == 4 ? 'viewer' : '')))) : ''}"></div>
-                  <div th:text="${u != null ? (u.us_col_11 ?: '') : ''}"></div>
-                  <div>
-                    <span th:text="${u != null && u.us_col_07 == 'y' ? '사용중' : '사용중지'}"></span>
-                    <input type="hidden" name="us_col_01" th:value="${u != null ? u.us_col_01 : ''}">
-                    <input type="hidden" name="us_col_02" th:value="${u != null ? u.us_col_02 : ''}">
-                    <input type="hidden" name="us_col_04" th:value="${u != null ? u.us_col_04 : ''}">
-                  </div>
+                <div class="um-stat um-stat--on">
+                  <div class="um-stat__val" x-text="activeCount">0</div>
+                  <div class="um-stat__lbl">사용중</div>
+                </div>
+                <div class="um-stat um-stat--off">
+                  <div class="um-stat__val" x-text="inactiveCount">0</div>
+                  <div class="um-stat__lbl">사용중지</div>
                 </div>
               </div>
+              <button class="um-btn-new" onclick="openUserPopup()">
+                <svg width="14" height="14"><use href="#rp-i-plus"/></svg>
+                새 사용자
+              </button>
+            </div>
+
+            <!-- 검색/필터 -->
+            <div class="um-toolbar">
+              <div class="um-search-box">
+                <svg width="14" height="14"><use href="#rp-i-search"/></svg>
+                <input type="text" x-model="search" placeholder="이름, 사번, 이메일로 검색" />
+                <button class="um-search-clear" x-show="search" @click="search=''" style="display:none">
+                  <svg width="12" height="12"><use href="#rp-i-x"/></svg>
+                </button>
+              </div>
+              <select class="um-status-filter" x-model="statusFilter">
+                <option value="">전체 상태</option>
+                <option value="y">사용중</option>
+                <option value="n">사용중지</option>
+              </select>
             </div>
           </div>
-          <div></div>
-        </div>
 
-        <div class="section-bot">
-          <div>
-            <div class="search-status-area">
-              <div><span>검색수 : <span class="count" th:text="|${count}건|"></span></span></div>
-              <div class="status-area">
-                <div class="section-btn">
-                  <div class="btn counsel-btn" id="user-del">사용자삭제</div>
-                  <div class="btn counsel-btn delBtn" id="user-modi">수정</div>
-                  <div class="btn newBtn pop-btn counsel-btn" id="user-new" onclick="openUserPopup()">새사용자</div>
+          <!-- 테이블 헤더 -->
+          <div class="um-table-head">
+            <div class="um-table-cols">
+              <div>사용자</div>
+              <div>부서 · 직급</div>
+              <div>역할</div>
+              <div>이메일</div>
+              <div>상태</div>
+              <div></div>
+            </div>
+          </div>
+
+          <!-- 테이블 바디 -->
+          <div class="um-table-body">
+
+            <div th:if="${#lists.isEmpty(user)}" class="um-empty">
+              <div>등록된 사용자가 없습니다</div>
+            </div>
+
+            <div th:each="u : ${user}"
+                 class="um-row"
+                 th:data-name="${u.us_col_12 ?: ''}"
+                 th:data-empid="${u.us_col_02 ?: ''}"
+                 th:data-email="${u.us_col_11 ?: ''}"
+                 th:data-status="${u.us_col_07 ?: 'n'}"
+                 x-show="matchesRow($el.dataset.name, $el.dataset.empid, $el.dataset.email, $el.dataset.status)">
+              <div class="um-table-cols">
+
+                <!-- 아바타 + 이름/사번 -->
+                <div class="um-cell um-cell--user">
+                  <div class="um-avatar" th:data-name="${u.us_col_12 ?: '?'}">
+                    <span th:text="${u.us_col_12 != null && !#strings.isEmpty(u.us_col_12) ? #strings.substring(u.us_col_12, 0, 1) : '?'}"></span>
+                  </div>
+                  <div>
+                    <span class="um-user-name" th:text="${u.us_col_12 ?: '-'}"></span>
+                    <span class="um-user-id" th:text="${u.us_col_02 ?: ''}"></span>
+                  </div>
                 </div>
+
+                <!-- 부서 · 직급 -->
+                <div class="um-cell um-cell--dept">
+                  <span th:text="${u.us_col_13 ?: '-'}"></span>
+                  <span class="um-divider" th:if="${u.us_col_14 != null && !#strings.isEmpty(u.us_col_14)}">·</span>
+                  <span th:text="${u.us_col_14 ?: ''}"></span>
+                </div>
+
+                <!-- 역할 뱃지 -->
+                <div class="um-cell">
+                  <span class="um-role-badge"
+                        th:data-role="${u.us_col_08 == 1 ? 'admin' : (u.us_col_08 == 2 ? 'supervisor' : (u.us_col_08 == 3 ? 'manager' : 'viewer'))}"
+                        th:text="${u.us_col_08 == 1 ? '관리자' : (u.us_col_08 == 2 ? '슈퍼바이저' : (u.us_col_08 == 3 ? '매니저' : '뷰어'))}"></span>
+                </div>
+
+                <!-- 이메일 -->
+                <div class="um-cell um-cell--email" th:text="${u.us_col_11 ?: '-'}"></div>
+
+                <!-- 상태 뱃지 -->
+                <div class="um-cell">
+                  <span class="um-status-badge"
+                        th:classappend="${u.us_col_07 == 'y' ? ' um-status-badge--on' : ' um-status-badge--off'}"
+                        th:text="${u.us_col_07 == 'y' ? '사용중' : '사용중지'}"></span>
+                </div>
+
+                <!-- 액션 버튼 -->
+                <div class="um-cell um-cell--actions">
+                  <button class="um-action-btn"
+                          th:data-id="${u.us_col_01}" th:data-inst="${u.us_col_04}"
+                          onclick="handleEditUser(this)">
+                    <svg width="13" height="13"><use href="#rp-i-edit"/></svg>
+                    수정
+                  </button>
+                  <button class="um-action-btn um-action-btn--del"
+                          th:data-id="${u.us_col_01}" th:data-inst="${u.us_col_04}"
+                          onclick="handleDeleteUser(this)">
+                    <svg width="13" height="13"><use href="#rp-i-trash"/></svg>
+                  </button>
+                  <input type="hidden" name="us_col_01" th:value="${u.us_col_01}">
+                  <input type="hidden" name="us_col_02" th:value="${u.us_col_02}">
+                  <input type="hidden" name="us_col_04" th:value="${u.us_col_04}">
+                </div>
+
               </div>
             </div>
+
+            <!-- 검색 결과 없음 -->
+            <div class="um-empty um-empty--filter"
+                 x-show="(search || statusFilter) && visibleCount === 0"
+                 style="display:none">
+              <div>검색 결과가 없습니다</div>
+              <button @click="search=''; statusFilter=''">필터 초기화</button>
+            </div>
+
           </div>
         </div>
       </div>
