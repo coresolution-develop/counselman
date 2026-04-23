@@ -4,6 +4,12 @@
 
 ---
 
+## 📐 진행 중인 설계/기획 문서
+
+- **[권한 관리 재설계 (v3)](docs/permission-redesign.md)** — 완전 자유 RBAC 모델. 설계 확정, 구현 미착수. Step 1 (permission_master 시드)부터 진행 예정.
+
+---
+
 ## ✅ 완료된 작업
 
 ### 1. 입원예약관리 페이지 신규 추가
@@ -159,6 +165,27 @@
 
 현재 접수 건 삭제(완전 제거) 기능 없음.  
 취소 상태로만 관리 중 → 완전 삭제 또는 보관 처리 기능 필요.
+
+---
+
+### 7. 상담 진행중 표시 — 중단 시 해제 로직
+**파일:** `CsmAuthService.java`, `PageController.java`
+**우선순위:** 중
+
+현재 `/counsel/new?reservationId=...` 진입 시 `opened_at = NOW()` 기록 → 60분 내 "상담 진행중" 표시. 상담을 중단(취소/뒤로가기/다른 페이지 이동)해도 표시가 풀리지 않음.
+
+- 방안 1: 상태 변경(CANCELLED/COMPLETED) 시 `opened_at = NULL` 초기화
+- 방안 2: 페이지 이탈 감지 (`beforeunload` + sendBeacon → `/counsel/release`)
+- 방안 3: "중단" 명시적 버튼 추가
+
+---
+
+### 8. 권한 관리 재설계 구현
+**설계안:** [docs/permission-redesign.md](docs/permission-redesign.md)
+**우선순위:** 상
+
+3-Tier RBAC (Mediplat 서비스 계약 → CSM 기능 설정 → 역할/사용자) 모델로 전환.
+Step 1 (permission_master 시드)부터 순차 진행.
 
 ---
 
