@@ -173,24 +173,24 @@
 						<span>공지사항</span>
 					</a>
 					<a class="global-mobile-menu-item"
-					   th:if="${#authorization.expression('hasAuthority(''STATS:READ'')')}"
+					   th:if="${#authorization.expression('hasAuthority(''STATS:READ'') or hasRole(''INST_ADMIN'') or hasRole(''PLATFORM_ADMIN'')')}"
 					   th:href="@{/statistics}">
 						<span class="global-mobile-menu-item-icon icon-stat" aria-hidden="true"></span>
 						<span>상담통계</span>
 					</a>
 					<span class="global-mobile-menu-item is-disabled"
-						  th:unless="${#authorization.expression('hasAuthority(''STATS:READ'')')}">
+						  th:unless="${#authorization.expression('hasAuthority(''STATS:READ'') or hasRole(''INST_ADMIN'') or hasRole(''PLATFORM_ADMIN'')')}">
 						<span class="global-mobile-menu-item-icon icon-stat" aria-hidden="true"></span>
 						<span>상담통계</span>
 					</span>
 					<a class="global-mobile-menu-item"
-					   th:if="${#authorization.expression('hasAuthority(''ROOM_BOARD:READ'')')}"
+					   th:if="${#authorization.expression('hasAuthority(''ROOM_BOARD:READ'') or hasRole(''INST_ADMIN'') or hasRole(''PLATFORM_ADMIN'')')}"
 					   th:href="@{/room-board}">
 						<span class="global-mobile-menu-item-icon icon-roomboard" aria-hidden="true"></span>
 						<span>병실현황판</span>
 					</a>
 					<span class="global-mobile-menu-item is-disabled"
-						  th:unless="${#authorization.expression('hasAuthority(''ROOM_BOARD:READ'')')}">
+						  th:unless="${#authorization.expression('hasAuthority(''ROOM_BOARD:READ'') or hasRole(''INST_ADMIN'') or hasRole(''PLATFORM_ADMIN'')')}">
 						<span class="global-mobile-menu-item-icon icon-roomboard" aria-hidden="true"></span>
 						<span>병실현황판</span>
 					</span>
@@ -292,13 +292,13 @@
         data-menu="statistics" data-content="all"
         th:classappend="${activeMenu == 'statistics' ? ' on active' : ''}">
       <!-- 접근 가능 -->
-      <div th:if="${#authorization.expression('hasAuthority(''STATS:READ'')')}"
+      <div th:if="${#authorization.expression('hasAuthority(''STATS:READ'') or hasRole(''INST_ADMIN'') or hasRole(''PLATFORM_ADMIN'')')}"
            th:attr="data-base-url=@{/statistics}"
            role="link" tabindex="0" aria-label="상담통계 페이지로 이동">
         <span>상담통계</span>
       </div>
       <!-- 접근 불가 -->
-      <div th:unless="${#authorization.expression('hasAuthority(''STATS:READ'')')}"
+      <div th:unless="${#authorization.expression('hasAuthority(''STATS:READ'') or hasRole(''INST_ADMIN'') or hasRole(''PLATFORM_ADMIN'')')}"
            class="disabled-link" aria-disabled="true">
         <span>상담통계</span>
       </div>
@@ -325,7 +325,7 @@
     <!-- 병실현황판 -->
     <li class="nav_link menu8"
         data-menu="roomboard" data-content="all"
-        th:if="${#authorization.expression('hasAuthority(''ROOM_BOARD:READ'')')}"
+        th:if="${#authorization.expression('hasAuthority(''ROOM_BOARD:READ'') or hasRole(''INST_ADMIN'') or hasRole(''PLATFORM_ADMIN'')')}"
         th:classappend="${activeMenu == 'roomboard' ? ' on active' : ''}"
         th:attr="data-base-url=@{/room-board}"
         role="link" tabindex="0" aria-label="병실현황판 페이지로 이동">
@@ -344,7 +344,7 @@
     <!-- 관리자 -->
     <li class="nav_link menu6"
         data-menu="admin" data-content="all"
-        th:if="${#authorization.expression('hasAuthority(''USER:READ'') or hasAuthority(''ROLE:READ'') or hasAuthority(''SETTINGS:READ'')')}"
+        th:if="${#authorization.expression('hasAuthority(''USER:READ'') or hasAuthority(''ROLE:READ'') or hasAuthority(''SETTINGS:READ'') or hasRole(''INST_ADMIN'') or hasRole(''PLATFORM_ADMIN'')')}"
         th:classappend="${activeMenu == 'admin' ? ' on active' : ''}"
         th:attr="data-base-url=@{/admin}"
         role="link" tabindex="0" aria-label="관리자 페이지로 이동">
