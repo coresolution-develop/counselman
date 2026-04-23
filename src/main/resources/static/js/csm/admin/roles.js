@@ -1,6 +1,5 @@
-/* ── 역할 관리 — Alpine.js v3 컴포넌트 ── */
+/* ── 역할 관리 — Alpine.js v3 ── */
 
-// 관리자 탭 전환 (사용자 관리 탭과 공유)
 function switchAdminTab(tabId, btn) {
   document.querySelectorAll('.admin-tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
@@ -27,6 +26,10 @@ document.addEventListener('alpine:init', () => {
     roleUsers:     [],
     allUsers:      [],
     addUserId:     '',
+    dirty:         false,
+    search:        '',
+    editingMeta:   false,
+    _origPerms:    [],
 
     /* ── 계산 속성 ── */
     get selectedRole() {
@@ -40,10 +43,13 @@ document.addEventListener('alpine:init', () => {
       const map = new Map();
       for (const p of this.permMaster) {
         if (!map.has(p.menu_key))
-          map.set(p.menu_key, { label: p.menu_label, perms: [] });
+          map.set(p.menu_key, { menu_key: p.menu_key, label: p.menu_label, perms: [] });
         map.get(p.menu_key).perms.push(p);
       }
       return Array.from(map.values());
+    },
+    get totalPerms() {
+      return this.permMaster.length;
     },
 
     /* ── 초기화 ── */
@@ -57,7 +63,35 @@ document.addEventListener('alpine:init', () => {
       return base + path;
     },
 
-    /* ── 역할 목록 로드 ── */
+    /* ── 아이콘 헬퍼 ── */
+    _roleIcon(role) {
+      if (!role) return 'key';
+      if (role.is_system) return 'shield';
+      const code = (role.role_code || '').toLowerCase();
+      if (code.includes('counsel') || code.includes('상담')) return 'headset';
+      if (code.includes('intake') || code.includes('접수') || code.includes('reception')) return 'clipboard';
+      if (code.includes('ward') || code.includes('bed') || code.includes('병실')) return 'bed';
+      if (code.includes('review') || code.includes('viewer')) return 'eye';
+      if (code.includes('message') || code.includes('sms') || code.includes('문자')) return 'message';
+      if (code.includes('admin') || code.includes('manage') || code.includes('관리')) return 'building';
+      return 'key';
+    },
+    _permIcon(perm) {
+      const action = (perm.action || '').toUpperCase();
+      if (action.includes('READ') || action.includes('VIEW') || action.includes('LIST')) return 'eye';
+      if (action.includes('CREATE') || action.includes('ADD') || action.includes('WRITE')) return 'plus';
+      if (action.includes('EDIT') || action.includes('UPDATE') || action.includes('MODIFY')) return 'edit';
+      if (action.includes('DELETE') || action.includes('REMOVE')) return 'trash';
+      if (action.includes('ASSIGN') || action.includes('ROLE')) return 'users';
+      if (action.includes('SEND') || action.includes('MESSAGE')) return 'message';
+      return 'sliders';
+    },
+    _userColor(userId) {
+      const palette = ['#059669','#10b981','#0ea5e9','#8b5cf6','#ec4899','#f59e0b','#14b8a6','#475569'];
+      return palette[Math.abs(Number(userId) || 0) % palette.length];
+    },
+
+    /* ── 목록 로드 ── */
     async loadList() {
       this.listLoading = true;
       try {
@@ -67,7 +101,6 @@ document.addEventListener('alpine:init', () => {
       finally { this.listLoading = false; }
     },
 
-    /* ── 전체 사용자 로드 ── */
     async loadAllUsers() {
       try {
         const r = await fetch(this._api('/api/roles/users'));
@@ -79,6 +112,8 @@ document.addEventListener('alpine:init', () => {
     async selectRole(roleId) {
       this.selectedId = roleId;
       this.addUserId = '';
+      this.dirty = false;
+      this.editingMeta = false;
 
       if (!this.permMaster.length) {
         try {
@@ -95,11 +130,12 @@ document.addEventListener('alpine:init', () => {
         ? await permsRes.value.json() : [];
       this.roleUsers = usersRes.status === 'fulfilled' && usersRes.value.ok
         ? await usersRes.value.json() : [];
+      this._origPerms = [...this.selectedPerms];
 
       const role = this.selectedRole;
       this.isSystem = !!(role?.is_system);
-      this.editName  = role?.role_name ?? '';
-      this.editDesc  = role?.description ?? '';
+      this.editName = role?.role_name ?? '';
+      this.editDesc = role?.description ?? '';
     },
 
     /* ── 권한 토글 ── */
@@ -108,6 +144,50 @@ document.addEventListener('alpine:init', () => {
       if (this.isSystem) return;
       const i = this.selectedPerms.indexOf(code);
       i >= 0 ? this.selectedPerms.splice(i, 1) : this.selectedPerms.push(code);
+      this.dirty = true;
+    },
+
+    /* ── 그룹 전체 선택/해제 ── */
+    filteredPerms(group) {
+      const q = this.search.trim().toLowerCase();
+      if (!q) return group.perms;
+      return group.perms.filter(p =>
+        (p.label_ko || p.action || '').toLowerCase().includes(q) ||
+        (p.resource || '').toLowerCase().includes(q) ||
+        (p.menu_label || '').toLowerCase().includes(q)
+      );
+    },
+    groupCount(menuKey) {
+      const g = this.permMenus.find(x => x.menu_key === menuKey);
+      if (!g) return 0;
+      return g.perms.filter(p => this.hasPerm(p.code)).length;
+    },
+    toggleGroup(menuKey) {
+      if (this.isSystem) return;
+      const g = this.permMenus.find(x => x.menu_key === menuKey);
+      if (!g) return;
+      const allOn = g.perms.every(p => this.hasPerm(p.code));
+      if (allOn) {
+        g.perms.forEach(p => {
+          const i = this.selectedPerms.indexOf(p.code);
+          if (i >= 0) this.selectedPerms.splice(i, 1);
+        });
+      } else {
+        g.perms.forEach(p => {
+          if (!this.selectedPerms.includes(p.code)) this.selectedPerms.push(p.code);
+        });
+      }
+      this.dirty = true;
+    },
+
+    /* ── 되돌리기 ── */
+    async revertChanges() {
+      this.selectedPerms = [...this._origPerms];
+      const role = this.selectedRole;
+      this.editName = role?.role_name ?? '';
+      this.editDesc = role?.description ?? '';
+      this.editingMeta = false;
+      this.dirty = false;
     },
 
     /* ── 저장 ── */
@@ -130,8 +210,10 @@ document.addEventListener('alpine:init', () => {
         });
         if (!r.ok) { alert((await r.json()).error ?? '권한 저장 실패'); return; }
 
+        this._origPerms = [...this.selectedPerms];
+        this.dirty = false;
+        this.editingMeta = false;
         await this.loadList();
-        alert('저장되었습니다.');
       } catch (e) { alert('오류: ' + e); }
       finally { this.saving = false; }
     },
@@ -144,6 +226,7 @@ document.addEventListener('alpine:init', () => {
         const r = await fetch(this._api(`/api/roles/${this.selectedId}`), { method: 'DELETE' });
         if (!r.ok) { alert((await r.json()).error ?? '삭제 실패'); return; }
         this.selectedId = null;
+        this.dirty = false;
         await this.loadList();
       } catch (e) { alert('오류: ' + e); }
     },
