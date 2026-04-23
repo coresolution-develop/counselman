@@ -146,7 +146,7 @@ function switchPopupTab(tabId, btn) {
 }
 
 function ctxPath(p) {
-  return (document.querySelector('meta[name="ctx-path"]')?.content || '') + p;
+  return (document.querySelector('meta[name="ctx-path"]')?.content || '').replace(/\/$/, '') + p;
 }
 function escHtml(s) {
   return s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');

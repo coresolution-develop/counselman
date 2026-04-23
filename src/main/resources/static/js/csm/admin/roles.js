@@ -260,7 +260,7 @@ async function rolesCreateSubmit(btn) {
 
 // ── 유틸 ──
 function ctxPath(path) {
-  const base = document.querySelector('meta[name="ctx-path"]')?.content || '';
+  const base = (document.querySelector('meta[name="ctx-path"]')?.content || '').replace(/\/$/, '');
   return base + path;
 }
 
