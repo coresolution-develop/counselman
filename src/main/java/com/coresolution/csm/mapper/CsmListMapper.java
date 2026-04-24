@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.DeleteProvider;
 import org.apache.ibatis.annotations.InsertProvider;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.SelectProvider;
 import org.apache.ibatis.builder.annotation.ProviderContext;
 import org.springframework.lang.NonNull;
 
@@ -25,6 +26,18 @@ public interface CsmListMapper {
     /** 배치 insert (권장) */
     @InsertProvider(type = Sql.class, method = "insertBatch")
     int insertBatch(@Param("inst") String inst, @Param("items") List<OrderedItem> items);
+
+    /** 상담일지관리 설정 JSON 조회 */
+    @SelectProvider(type = Sql.class, method = "selectLogSettings")
+    String selectLogSettings(@Param("inst") String inst);
+
+    /** 상담일지관리 설정 JSON 삭제 */
+    @DeleteProvider(type = Sql.class, method = "deleteLogSettings")
+    int deleteLogSettings(@Param("inst") String inst);
+
+    /** 상담일지관리 설정 JSON 저장 */
+    @InsertProvider(type = Sql.class, method = "insertLogSettings")
+    int insertLogSettings(@Param("inst") String inst, @Param("json") String json);
 
     // -------- SQL 빌더 --------
     class Sql {
@@ -47,6 +60,24 @@ public interface CsmListMapper {
             return "INSERT INTO csm.counsel_list_" + s(inst) +
                     " (coulmn, comment, turn, view_yn) " +
                     "VALUES (#{item.column}, #{item.comment}, #{item.turn}, #{item.viewYn})";
+        }
+
+        public static String selectLogSettings(Map<String, Object> params, ProviderContext ctx) {
+            String inst = (String) params.get("inst");
+            return "SELECT comment FROM csm.counsel_list_" + s(inst) +
+                    " WHERE coulmn = '__LOG_SETTINGS__' LIMIT 1";
+        }
+
+        public static String deleteLogSettings(Map<String, Object> params, ProviderContext ctx) {
+            String inst = (String) params.get("inst");
+            return "DELETE FROM csm.counsel_list_" + s(inst) +
+                    " WHERE coulmn = '__LOG_SETTINGS__'";
+        }
+
+        public static String insertLogSettings(Map<String, Object> params, ProviderContext ctx) {
+            String inst = (String) params.get("inst");
+            return "INSERT INTO csm.counsel_list_" + s(inst) +
+                    " (coulmn, comment, turn, view_yn) VALUES ('__LOG_SETTINGS__', #{json}, 0, 'y')";
         }
 
         public static String insertBatch(Map<String, Object> params, ProviderContext ctx) {

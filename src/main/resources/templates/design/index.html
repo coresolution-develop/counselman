@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <title>MediPlat 디자인 프리뷰</title>
+  <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
+  <style>
+    body { padding: 40px; background: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif; }
+    h1 { margin-bottom: 8px; }
+    .hint { color: #6b7280; margin-bottom: 24px; font-size: 14px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; max-width: 900px; }
+    .card { display: block; padding: 20px 24px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; text-decoration: none; color: #111827; transition: all .15s; }
+    .card:hover { border-color: #0ea37a; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .card small { color: #9ca3af; font-family: ui-monospace, monospace; font-size: 12px; display: block; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <h1>MediPlat 디자인 프리뷰</h1>
+  <p class="hint">Claude Design 핸드오프 번들 — 점진 이식 작업용 미리보기입니다.</p>
+  <div class="grid">
+    <a class="card" href="/design/counsel/list">상담리스트<small>/design/counsel/list</small></a>
+    <a class="card" href="/design/counsel/intake">상담 접수<small>/design/counsel/intake</small></a>
+    <a class="card" href="/design/notices">공지사항<small>/design/notices</small></a>
+    <a class="card" href="/design/message">문자관리<small>/design/message</small></a>
+    <a class="card" href="/design/role-management">역할 관리<small>/design/role-management</small></a>
+  </div>
+</body>
+</html>

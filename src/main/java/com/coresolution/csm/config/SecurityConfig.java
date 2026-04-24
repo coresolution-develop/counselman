@@ -42,6 +42,8 @@ public class SecurityConfig {
                         "/resources/**", "/csm/resources/**",
                         "/error", "/error/**", "/csm/error", "/csm/error/**",
                         "/css/**", "/js/**", "/img/**", "/webjars/**", "/icon/**", "/fonts/**", "/public/**",
+                        "/assets/**", "/csm/assets/**",
+                        "/design/**", "/csm/design/**",
                         "/csm/css/**", "/csm/js/**", "/csm/img/**", "/csm/webjars/**", "/csm/icon/**",
                         "/csm/fonts/**", "/csm/public/**",
                         "/favicon.ico", "/favicon/**", "/csm/favicon.ico", "/csm/favicon/**"

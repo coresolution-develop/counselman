@@ -6099,6 +6099,20 @@ public class PageController {
         return "DRAFT";
     }
 
+    private boolean isBeingWorkedOn(String openedAt) {
+        if (openedAt == null || openedAt.isBlank()) return false;
+        for (DateTimeFormatter f : List.of(
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"))) {
+            try {
+                return LocalDateTime.parse(openedAt.trim(), f).isAfter(LocalDateTime.now().minusMinutes(5));
+            } catch (DateTimeParseException ignored) {}
+        }
+        return false;
+    }
+
     private String normalizeReservationStatusParam(String status, boolean allowAll) {
         String raw = safeString(status).trim();
         if (raw.isEmpty()) {
@@ -7284,6 +7298,546 @@ public class PageController {
         }
         matcher.appendTail(sb);
         return sb.toString();
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // MediPlat 디자인 프리뷰 (점진 이식용)
+    // templates/design/*.html 을 Thymeleaf 뷰로 렌더링.
+    // CSS/JS 는 /assets/** 로 서빙되며 각 HTML 에서 th:href/th:src 로 참조.
+    // ──────────────────────────────────────────────────────────────
+    @GetMapping({ "design", "/design" })
+    public String designIndex() {
+        return "design/index";
+    }
+
+    @GetMapping(value = { "design/counsel/list", "/design/counsel/list" })
+    public ModelAndView designCounselList(
+            HttpSession session, HttpServletRequest req, Criteria cri,
+            @RequestParam(value = "dateRange", defaultValue = "") String dateRange,
+            @RequestParam(value = "startDate", defaultValue = "") String startDate,
+            @RequestParam(value = "endDate", defaultValue = "") String endDate,
+            @RequestParam(value = "status", defaultValue = "all") String status,
+            @RequestParam(value = "pathType", defaultValue = "all") String pathType,
+            @RequestParam(value = "searchType", defaultValue = "") String searchType,
+            @RequestParam(value = "keyword", defaultValue = "") String keyword,
+            @RequestParam(value = "end", defaultValue = "on") String end,
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "perPageNum", defaultValue = "30") int perPageNum) {
+
+        ModelAndView mv = new ModelAndView();
+        String inst = ensureInst(session);
+        if (inst == null)
+            return new ModelAndView("redirect:/login");
+
+        bindCriteria(cri, inst, page, perPageNum, dateRange, startDate, endDate, status, pathType, searchType, keyword, end);
+
+        List<CounselData> cslist = cs.searchCounselData(cri);
+        if (cslist == null) cslist = Collections.emptyList();
+        int totalCnt = cs.CounselListCnt(cri);
+        postProcessDecryptAndMask(cslist, inst, cri.getSearchType(), cri.getKeyword());
+
+        List<CounselReservation> reservations = cs.listCounselReservations(inst, "RESERVED", 200);
+        if (reservations != null) {
+            reservations.sort(Comparator
+                    .comparing((CounselReservation r) -> r == null || r.getPriority() == null ? 99 : r.getPriority())
+                    .thenComparing(r -> r == null ? "" : safeString(r.getReserved_at()))
+                    .thenComparing(r -> r == null || r.getId() == null ? Long.MAX_VALUE : r.getId()));
+        }
+
+        List<Map<String, Object>> queueItems = (reservations == null
+                ? Collections.<CounselReservation>emptyList() : reservations).stream()
+                .filter(Objects::nonNull)
+                .map(r -> {
+                    Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("id", r.getId());
+                    m.put("prio", r.getPriority() != null ? r.getPriority() : 9);
+                    m.put("name", safeString(r.getPatient_name()));
+                    m.put("phone", safeString(r.getPatient_phone()));
+                    m.put("time", safeString(r.getReserved_at()));
+                    m.put("beingWorkedOn", isBeingWorkedOn(r.getOpened_at()));
+                    return m;
+                })
+                .collect(Collectors.toList());
+
+        final List<CounselData> finalCslist = cslist;
+        List<Map<String, Object>> recordItems = finalCslist.stream()
+                .filter(Objects::nonNull)
+                .map(r -> {
+                    Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("id", r.getCs_idx());
+                    m.put("date", safeString(r.getCs_col_16()));
+                    m.put("patient", safeString(r.getCs_col_01()));
+                    m.put("phone", safeString(r.getCs_col_15()));
+                    m.put("route", safeString(r.getCs_col_08_text()));
+                    m.put("contact", safeString(r.getCs_col_34()));
+                    m.put("guardian", safeString(r.getCs_col_13()));
+                    m.put("rel", safeString(r.getCs_col_14()));
+                    m.put("status", safeString(r.getCs_col_19()));
+                    m.put("statusType", designStatusType(r.getCs_col_19()));
+                    m.put("counselor", safeString(r.getCs_col_17()));
+                    m.put("lead", safeString(r.getCs_col_09()));
+                    List<String> tags = r.getEntries() == null ? Collections.emptyList()
+                            : r.getEntries().stream()
+                                    .filter(Objects::nonNull)
+                                    .map(CounselDataEntry::getValue)
+                                    .filter(v -> v != null && !v.isBlank())
+                                    .collect(Collectors.toList());
+                    m.put("tags", tags);
+                    return m;
+                })
+                .collect(Collectors.toList());
+
+        mv.addObject("queueItems", queueItems);
+        mv.addObject("recordItems", recordItems);
+        mv.addObject("cnt", totalCnt);
+        mv.addObject("cri", cri);
+        mv.addObject("statusOptions", cs.getCounselStatusOptions(inst));
+        mv.addObject("pathTypeOptions", cs.getCounselPathTypeOptions(inst));
+        mv.setViewName("design/consultation-list");
+        return mv;
+    }
+
+    private static String designStatusType(String status) {
+        if (status == null || status.isBlank()) return "";
+        if (status.contains("완료") || status.contains("예약")) return "done";
+        if (status.contains("대기")) return "pending";
+        return "";
+    }
+
+    @GetMapping({ "design/counsel/intake", "/design/counsel/intake" })
+    public ModelAndView designCounselIntake(
+            @RequestParam(value = "reservationId", required = false) Long reservationId,
+            HttpSession session) {
+        ModelAndView mv = new ModelAndView();
+        String inst = ensureInst(session);
+        if (inst == null) return new ModelAndView("redirect:/login");
+
+        List<CounselReservation> all = cs.listCounselReservations(inst, "ALL", 1000);
+        if (all == null) all = Collections.emptyList();
+
+        List<Map<String, Object>> rows = all.stream()
+                .filter(Objects::nonNull)
+                .map(r -> {
+                    String norm = normalizeReservationStatusParam(r.getStatus(), false);
+                    Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("id", r.getId());
+                    m.put("name", safeString(r.getPatient_name()));
+                    m.put("phone", safeString(r.getPatient_phone()));
+                    m.put("guardian", safeString(r.getGuardian_name()));
+                    m.put("time", safeString(r.getReserved_at()));
+                    m.put("by", safeString(r.getCreated_by()));
+                    m.put("prio", r.getPriority() != null ? r.getPriority() : 3);
+                    m.put("status", switch (norm) {
+                        case "COMPLETED" -> "입원상담 연계";
+                        case "CANCELLED" -> "취소";
+                        default -> "접수";
+                    });
+                    m.put("statusType", switch (norm) {
+                        case "COMPLETED" -> "done";
+                        case "CANCELLED" -> "cancel";
+                        default -> "receive";
+                    });
+                    m.put("link", "COMPLETED".equals(norm) ? "입원상담" : "");
+                    m.put("note", safeString(r.getCall_summary()));
+                    return m;
+                })
+                .collect(Collectors.toList());
+
+        mv.addObject("rows", rows);
+        mv.addObject("nowLocal", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")));
+        mv.addObject("selectedId", reservationId != null ? reservationId : 0L);
+        mv.setViewName("design/consultation-intake");
+        return mv;
+    }
+
+    @PostMapping({ "design/counsel/intake/save", "/design/counsel/intake/save" })
+    @ResponseBody
+    public Map<String, Object> designCounselIntakeSave(
+            @RequestParam(value = "id", required = false) Long id,
+            @RequestParam("patientName") String patientName,
+            @RequestParam(value = "patientPhone", required = false) String patientPhone,
+            @RequestParam(value = "guardianName", required = false) String guardianName,
+            @RequestParam(value = "callSummary", required = false) String callSummary,
+            @RequestParam(value = "priority", defaultValue = "3") Integer priority,
+            @RequestParam(value = "reservedAt", required = false) String reservedAt,
+            @RequestParam(value = "status", defaultValue = "RESERVED") String status,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) return Map.of("ok", false, "error", "로그인이 필요합니다.");
+        try {
+            CounselReservation reservation = new CounselReservation();
+            reservation.setId(id);
+            reservation.setPatient_name(patientName);
+            reservation.setPatient_phone(patientPhone);
+            reservation.setGuardian_name(guardianName);
+            reservation.setCall_summary(callSummary);
+            reservation.setPriority(priority);
+            String normalizedAt = safeString(reservedAt).trim();
+            if (normalizedAt.isEmpty() && (id == null || id <= 0)) {
+                normalizedAt = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            }
+            reservation.setReserved_at(normalizedAt);
+            reservation.setStatus(normalizeReservationStatusParam(status, false));
+            reservation.setCreated_by(resolveReservationActor(inst, session));
+            long savedId = cs.saveCounselReservation(inst, reservation);
+            Map<String, Object> ok = new java.util.LinkedHashMap<>();
+            ok.put("ok", true);
+            ok.put("id", savedId);
+            return ok;
+        } catch (IllegalArgumentException e) {
+            return Map.of("ok", false, "error", e.getMessage());
+        } catch (Exception e) {
+            log.warn("[design/intake] save fail inst={}, err={}", inst, e.toString());
+            return Map.of("ok", false, "error", "저장 중 오류가 발생했습니다.");
+        }
+    }
+
+    @PostMapping({ "design/counsel/intake/status", "/design/counsel/intake/status" })
+    @ResponseBody
+    public Map<String, Object> designCounselIntakeStatus(
+            @RequestParam("reservationId") Long reservationId,
+            @RequestParam("status") String status,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) return Map.of("ok", false, "error", "로그인이 필요합니다.");
+        try {
+            cs.updateCounselReservationStatus(inst, reservationId,
+                    normalizeReservationStatusParam(status, false),
+                    resolveReservationActor(inst, session));
+            return Map.of("ok", true);
+        } catch (Exception e) {
+            log.warn("[design/intake] status fail inst={}, reservationId={}, err={}", inst, reservationId, e.toString());
+            return Map.of("ok", false, "error", "상태 변경 중 오류가 발생했습니다.");
+        }
+    }
+
+    @GetMapping({ "design/counsel/inpatient", "/design/counsel/inpatient" })
+    public ModelAndView designCounselInpatient(
+            @RequestParam(value = "cs_idx", required = false) Integer csIdx,
+            @RequestParam(value = "reservationId", required = false) Long reservationId,
+            HttpSession session) {
+        ModelAndView mv = new ModelAndView();
+        String inst = ensureInst(session);
+        if (inst == null) return new ModelAndView("redirect:/login");
+
+        CounselData data = null;
+        List<Guardian> rawGuardians = Collections.emptyList();
+        List<CounselLog> rawHistory = Collections.emptyList();
+        CounselReservation reservation = null;
+
+        if (csIdx != null && csIdx > 0) {
+            data = cs.getCounselById(inst, csIdx);
+            if (data != null) {
+                String p = data.getCs_col_01();
+                if (p != null && p.matches("(?i)^[0-9a-f]{32,}$")) {
+                    try { data.setCs_col_01(mysqlAesDecryptHexToUtf8(p, aesKey)); } catch (Exception ignore) { data.setCs_col_01(""); }
+                }
+                rawGuardians = Optional.ofNullable(cs.getGuardiansById(inst, csIdx)).orElse(Collections.emptyList()).stream().filter(Objects::nonNull).toList();
+                for (Guardian g : rawGuardians) {
+                    String n = g.getName(); if (n != null && isLikelyHex(n)) { try { g.setName(mysqlAesDecryptHexToUtf8(n, aesKey)); } catch (Exception ignore) { g.setName(""); } }
+                    String c = g.getContact_number(); if (c != null && isLikelyHex(c)) { try { g.setContact_number(mysqlAesDecryptHexToUtf8(c, aesKey)); } catch (Exception ignore) { g.setContact_number(""); } }
+                }
+                rawHistory = Optional.ofNullable(cs.getCounselLog(inst, csIdx)).orElse(Collections.emptyList());
+            }
+        }
+        if (reservationId != null && reservationId > 0) {
+            reservation = cs.getCounselReservationById(inst, reservationId);
+            if (reservation != null) cs.touchOpenedAt(inst, reservationId);
+        }
+
+        Map<String, Object> categoryDataMap = Optional.ofNullable(cs.getCategoryData(inst))
+                .orElse(Collections.emptyMap());
+        @SuppressWarnings("unchecked")
+        List<Category1WithSubcategoriesAndOptions> categoryData = (List<Category1WithSubcategoriesAndOptions>) categoryDataMap
+                .getOrDefault("categoryData", Collections.emptyList());
+        @SuppressWarnings("unchecked")
+        Map<String, String> fieldTypeMapping = (Map<String, String>) categoryDataMap
+                .getOrDefault("fieldTypeMapping", Collections.emptyMap());
+        @SuppressWarnings("unchecked")
+        Map<String, List<Category3>> fieldOptionsMapping = (Map<String, List<Category3>>) categoryDataMap
+                .getOrDefault("fieldOptionsMapping", Collections.emptyMap());
+
+        Map<String, String> valueMap = Collections.emptyMap();
+        if (data != null && data.getCs_idx() > 0) {
+            List<CounselDataEntry> entries = Optional.ofNullable(cs.getEntriesByInstAndCsIdx(inst, data.getCs_idx()))
+                    .orElse(Collections.emptyList());
+            data.setEntries(entries);
+            valueMap = buildValueMap(data, categoryData, fieldTypeMapping, fieldOptionsMapping);
+        }
+
+        Map<String, Object> pd = new java.util.LinkedHashMap<>();
+        pd.put("csIdx",        data != null ? data.getCs_idx() : 0);
+        pd.put("reservationId", reservationId != null ? reservationId : 0L);
+        if (data != null) {
+            pd.put("name",        safeString(data.getCs_col_01()));
+            pd.put("gender",      safeString(data.getCs_col_02()));
+            pd.put("birth",       safeString(data.getCs_col_03()));
+            pd.put("age",         safeString(data.getCs_col_04()));
+            pd.put("insurance",   safeString(data.getCs_col_05()));
+            pd.put("damage",      safeString(data.getCs_col_06()));
+            pd.put("location",    safeString(data.getCs_col_07()));
+            pd.put("pathType",    safeString(data.getCs_col_08()));
+            pd.put("lead",        safeString(data.getCs_col_09()));
+            pd.put("bc",          safeString(data.getCs_col_10()));
+            pd.put("condition",   safeString(data.getCs_col_11()));
+            pd.put("counselDate", safeString(data.getCs_col_16()));
+            pd.put("counselor",   safeString(data.getCs_col_17()));
+            pd.put("method",      safeString(data.getCs_col_18()));
+            pd.put("result",         safeString(data.getCs_col_19()));
+            pd.put("nonAdmitReason", safeString(data.getCs_col_20()));
+            pd.put("admitDate",      safeString(data.getCs_col_21()));
+            pd.put("note",        safeString(data.getCs_col_32()));
+            pd.put("room",        safeString(data.getCs_col_38()));
+            pd.put("category",    safeString(data.getCs_col_42()));
+            pd.put("cs_col_22",   safeString(data.getCs_col_22()));
+            pd.put("cs_col_23",   safeString(data.getCs_col_23()));
+            pd.put("cs_col_24",   safeString(data.getCs_col_24()));
+            pd.put("cs_col_25",   safeString(data.getCs_col_25()));
+            pd.put("cs_col_26",   safeString(data.getCs_col_26()));
+            pd.put("cs_col_27",   safeString(data.getCs_col_27()));
+            pd.put("cs_col_28",   safeString(data.getCs_col_28()));
+            pd.put("cs_col_29",   safeString(data.getCs_col_29()));
+            pd.put("cs_col_30",   safeString(data.getCs_col_30()));
+            pd.put("cs_col_31",   safeString(data.getCs_col_31()));
+            pd.put("cs_col_33",   safeString(data.getCs_col_33()));
+            pd.put("cs_col_34",   safeString(data.getCs_col_34()));
+            pd.put("cs_col_35",   safeString(data.getCs_col_35()));
+        } else {
+            String preName = reservation != null ? safeString(reservation.getPatient_name()) : "";
+            String preNote = reservation != null ? safeString(reservation.getCall_summary()) : "";
+            for (String k : List.of("name","gender","birth","age","insurance","damage","location","pathType","lead","bc","condition","counselDate","counselor","method","result","admitDate","note","room","category",
+                    "cs_col_22","cs_col_23","cs_col_24","cs_col_25","cs_col_26","cs_col_27","cs_col_28","cs_col_29","cs_col_30","cs_col_31","cs_col_33","cs_col_34","cs_col_35")) pd.put(k, "");
+            pd.put("name", preName); pd.put("note", preNote);
+            pd.put("counselDate", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        }
+
+        List<Map<String, Object>> guardianList = new ArrayList<>();
+        for (Guardian g : rawGuardians) {
+            Map<String, Object> gm = new java.util.LinkedHashMap<>();
+            gm.put("id", "g" + g.getId()); gm.put("name", safeString(g.getName()));
+            gm.put("rel", safeString(g.getRelationship())); gm.put("phone", safeString(g.getContact_number()));
+            guardianList.add(gm);
+        }
+        if (guardianList.isEmpty()) {
+            Map<String, Object> gm = new java.util.LinkedHashMap<>();
+            gm.put("id", "g1");
+            gm.put("name", reservation != null ? safeString(reservation.getGuardian_name()) : "");
+            gm.put("rel", ""); gm.put("phone", "");
+            guardianList.add(gm);
+        }
+
+        List<Map<String, Object>> historyList = rawHistory.stream().filter(Objects::nonNull).map(h -> {
+            Map<String, Object> hm = new java.util.LinkedHashMap<>();
+            hm.put("id",     "h" + h.getIdx());
+            hm.put("date",   h.getCounsel_at() != null ? h.getCounsel_at() : "");
+            hm.put("author", safeString(h.getCounsel_name()));
+            hm.put("method", safeString(h.getCounsel_method()));
+            hm.put("result", safeString(h.getCounsel_result()));
+            hm.put("note",   safeString(h.getCounsel_content()));
+            hm.put("guardian", "");
+            return hm;
+        }).collect(Collectors.toList());
+
+        mv.addObject("pd", pd);
+        mv.addObject("guardianList", guardianList);
+        mv.addObject("historyList", historyList);
+        mv.addObject("statusOptions", cs.getCounselStatusOptions(inst));
+        mv.addObject("pathTypeOptions", cs.getCounselPathTypeOptions(inst));
+        mv.addObject("dynamicCategoryJson", toDynamicCategoryJson(categoryData, fieldTypeMapping));
+        mv.addObject("dynamicValueJson", toJsonOrEmptyObject(valueMap));
+        mv.addObject("today", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        mv.addObject("actor", resolveReservationActor(inst, session));
+        mv.setViewName("design/inpatient-consultation");
+        return mv;
+    }
+
+    @PostMapping({ "design/counsel/inpatient/save", "/design/counsel/inpatient/save" })
+    @ResponseBody
+    public Map<String, Object> designCounselInpatientSave(HttpServletRequest request, HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) return Map.of("ok", false, "error", "로그인이 필요합니다.");
+        try {
+            int csIdx = (int) parseLongSafely(request.getParameter("cs_idx"), 0L);
+            CounselData counselData = buildCounselDataFromRequest(request, inst);
+            final int savedIdx;
+            if (csIdx > 0 && cs.getCounselById(inst, csIdx) != null) {
+                counselData.setCs_idx(csIdx);
+                transactionTemplate.executeWithoutResult(status -> {
+                    cs.updateCounselData(counselData);
+                    boolean hasDynamicFieldInput = request.getParameterMap().keySet().stream()
+                            .anyMatch(k -> k != null && (k.startsWith("field_") || "dynamic_fields_present".equals(k)));
+                    if (hasDynamicFieldInput) {
+                        cs.deleteCounselDataEntriesByCsIdx(inst, csIdx);
+                        for (CounselDataEntry entry : parseDynamicEntries(request, inst)) {
+                            entry.setCs_idx((long) csIdx);
+                            cs.insertCounselDataEntry(inst, entry);
+                        }
+                    }
+                    cs.deleteGuardiansByCsIdx(inst, csIdx);
+                    for (Guardian g : Optional.ofNullable(counselData.getGuardians()).orElse(Collections.emptyList())) {
+                        g.setCs_idx((long) csIdx);
+                        if (!isBlank(g.getName()) || !isBlank(g.getRelationship()) || !isBlank(g.getContact_number()))
+                            cs.insertGuardian(inst, g);
+                    }
+                    saveCounselLogSnapshot(inst, csIdx, request);
+                    long rid = parseLongSafely(request.getParameter("reservation_id"), 0L);
+                    if (rid > 0) cs.linkReservationToCounsel(inst, rid, csIdx, resolveReservationActor(inst, session));
+                });
+                savedIdx = csIdx;
+            } else {
+                Integer newIdx = transactionTemplate.execute(status -> {
+                    int idx = cs.insertCounselData(counselData);
+                    if (idx <= 0) { status.setRollbackOnly(); return 0; }
+                    for (CounselDataEntry entry : parseDynamicEntries(request, inst)) {
+                        entry.setCs_idx((long) idx);
+                        cs.insertCounselDataEntry(inst, entry);
+                    }
+                    for (Guardian g : Optional.ofNullable(counselData.getGuardians()).orElse(Collections.emptyList())) {
+                        g.setCs_idx((long) idx);
+                        if (!isBlank(g.getName()) || !isBlank(g.getRelationship()) || !isBlank(g.getContact_number()))
+                            cs.insertGuardian(inst, g);
+                    }
+                    saveCounselLogSnapshot(inst, idx, request);
+                    long rid = parseLongSafely(request.getParameter("reservation_id"), 0L);
+                    if (rid > 0) cs.linkReservationToCounsel(inst, rid, idx, resolveReservationActor(inst, session));
+                    return idx;
+                });
+                savedIdx = newIdx != null ? newIdx : 0;
+            }
+            if (savedIdx <= 0) return Map.of("ok", false, "error", "저장에 실패했습니다.");
+            Map<String, Object> res = new java.util.LinkedHashMap<>();
+            res.put("ok", true); res.put("csIdx", savedIdx);
+            return res;
+        } catch (IllegalArgumentException e) {
+            return Map.of("ok", false, "error", e.getMessage());
+        } catch (Exception e) {
+            log.error("[design/inpatient] save fail inst={}", inst, e);
+            return Map.of("ok", false, "error", "저장 중 오류가 발생했습니다.");
+        }
+    }
+
+    @GetMapping({ "design/counsel/inpatient/heartbeat", "/design/counsel/inpatient/heartbeat" })
+    @ResponseBody
+    public Map<String, Object> designCounselInpatientHeartbeat(
+            @RequestParam("reservationId") Long reservationId,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) return Map.of("ok", false);
+        try {
+            if (reservationId > 0) cs.touchOpenedAt(inst, reservationId);
+            return Map.of("ok", true);
+        } catch (Exception e) {
+            return Map.of("ok", false);
+        }
+    }
+
+    @GetMapping({ "design/notices", "/design/notices" })
+    public String designNotices() {
+        return "design/notices";
+    }
+
+    @GetMapping({ "design/message", "/design/message" })
+    public String designMessage() {
+        return "design/message-management";
+    }
+
+    @GetMapping({ "design/counsel/log-settings", "/design/counsel/log-settings" })
+    public ModelAndView designCounselLogSettings(HttpSession session) {
+        ModelAndView mv = new ModelAndView("design/consultation-log-settings");
+        String inst = ensureInst(session);
+        if (inst == null) return new ModelAndView("redirect:/login");
+        try {
+            String json = counselListService.getLogSettings(inst);
+            mv.addObject("settingsJson", json != null && !json.isBlank() ? json : "[]");
+        } catch (Exception e) {
+            mv.addObject("settingsJson", "[]");
+        }
+        return mv;
+    }
+
+    @PostMapping({ "design/counsel/log-settings/save", "/design/counsel/log-settings/save" })
+    @ResponseBody
+    public Map<String, Object> designCounselLogSettingsSave(
+            @RequestBody List<Map<String, Object>> items,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) return Map.of("ok", false, "error", "로그인이 필요합니다.");
+        try {
+            String json = objectMapper.writeValueAsString(items);
+            counselListService.saveLogSettings(inst, json);
+            return Map.of("ok", true);
+        } catch (Exception e) {
+            log.error("[design/log-settings] save fail inst={}", inst, e);
+            return Map.of("ok", false, "error", "저장 실패");
+        }
+    }
+
+    private String toDynamicCategoryJson(
+            List<Category1WithSubcategoriesAndOptions> categoryData,
+            Map<String, String> fieldTypeMapping) {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (Category1WithSubcategoriesAndOptions c1Wrap : Optional.ofNullable(categoryData).orElse(Collections.emptyList())) {
+            if (c1Wrap == null || c1Wrap.getCategory1() == null) {
+                continue;
+            }
+            Category1 c1 = c1Wrap.getCategory1();
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", c1.getCc_col_01());
+            item.put("name", safeString(c1.getCc_col_02()));
+
+            List<Map<String, Object>> values = new ArrayList<>();
+            for (Category2WithOptions c2Wrap : Optional.ofNullable(c1Wrap.getSubcategories()).orElse(Collections.emptyList())) {
+                if (c2Wrap == null || c2Wrap.getCategory2() == null) {
+                    continue;
+                }
+                Category2 c2 = c2Wrap.getCategory2();
+                String fieldKey = "field_" + c1.getCc_col_01() + "_" + c2.getCc_col_01();
+                Map<String, Object> value = new LinkedHashMap<>();
+                value.put("id", c2.getCc_col_01());
+                value.put("name", safeString(c2.getCc_col_02()));
+                value.put("fieldKey", fieldKey);
+                value.put("kind", fieldTypeMapping == null ? "" : safeString(fieldTypeMapping.get(fieldKey)));
+
+                List<String> options = Optional.ofNullable(c2Wrap.getOptions()).orElse(Collections.emptyList()).stream()
+                        .filter(Objects::nonNull)
+                        .map(opt -> {
+                            String label = safeString(opt.getCc_col_03AsString()).trim();
+                            return label.isEmpty() ? safeString(opt.getCc_col_02()).trim() : label;
+                        })
+                        .filter(label -> !label.isBlank())
+                        .filter(label -> !label.equals(safeString(c2.getCc_col_02()).trim()))
+                        .collect(Collectors.toList());
+                value.put("options", options);
+                values.add(value);
+            }
+            item.put("values", values);
+            rows.add(item);
+        }
+        try {
+            return objectMapper.writeValueAsString(rows);
+        } catch (Exception e) {
+            log.warn("[design/inpatient] dynamic category json fail: {}", e.toString());
+            return "[]";
+        }
+    }
+
+    private String toJsonOrEmptyObject(Map<String, String> valueMap) {
+        try {
+            return objectMapper.writeValueAsString(Optional.ofNullable(valueMap).orElse(Collections.emptyMap()));
+        } catch (Exception e) {
+            log.warn("[design/inpatient] dynamic value json fail: {}", e.toString());
+            return "{}";
+        }
+    }
+
+    @GetMapping({ "design/user-management", "/design/user-management" })
+    public String designUserManagement() {
+        return "design/user-management";
+    }
+
+    @GetMapping({ "design/role-management", "/design/role-management" })
+    public String designRoleManagement() {
+        return "design/role-management";
     }
 
     private static String nullToEmpty(String s) {

@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MediPlat · 상담일지관리</title>
+  <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/layout.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/components.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/role-management.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/tweaks.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/datepicker.css}" />
+  <meta name="_csrf" th:content="${_csrf.token}" />
+  <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+
+  <style>
+    /* ===== Consultation Log Settings page ===== */
+    .cls-wrap {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    /* column card */
+    .cls-col {
+      background: var(--surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      min-height: 520px;
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow .2s var(--ease-smooth), border-color .2s var(--ease-smooth);
+      overflow: hidden;
+    }
+    .cls-col.is-focus {
+      border-color: color-mix(in oklab, var(--brand-500) 40%, var(--border-default));
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-500) 10%, transparent),
+                  var(--shadow-sm);
+    }
+
+    .cls-col__head {
+      padding: 14px 18px;
+      background: linear-gradient(180deg, var(--gray-50) 0%, var(--surface) 100%);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .cls-col__title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: .01em;
+    }
+    .cls-col__meta {
+      margin-left: auto;
+      font-size: 11.5px;
+      color: var(--text-tertiary);
+      font-variant-numeric: tabular-nums;
+      background: var(--gray-100);
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+    .cls-col__hint {
+      padding: 8px 18px;
+      font-size: 11.5px;
+      color: var(--text-tertiary);
+      background: var(--gray-50);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cls-col__hint svg { width: 12px; height: 12px; opacity: .7; }
+
+    /* list */
+    .cls-list {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .cls-list::-webkit-scrollbar { width: 8px; }
+    .cls-list::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 4px; }
+    .cls-list::-webkit-scrollbar-thumb:hover { background: var(--gray-300); }
+
+    .cls-item {
+      display: grid;
+      grid-template-columns: 22px 1fr auto auto auto;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px 9px 6px;
+      border-radius: 8px;
+      background: var(--surface);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background .12s, border-color .12s;
+      position: relative;
+    }
+    .cls-item:hover { background: var(--gray-50); }
+    .cls-item.is-selected {
+      background: color-mix(in oklab, var(--brand-500) 8%, #fff);
+      border-color: color-mix(in oklab, var(--brand-500) 28%, var(--border-default));
+    }
+    .cls-item.is-selected .cls-item__label { color: var(--brand-700); font-weight: 600; }
+    .cls-item.is-checked { background: color-mix(in oklab, var(--brand-500) 4%, #fff); }
+
+    .cls-item__drag {
+      width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      color: var(--gray-400);
+      cursor: grab;
+      border-radius: 4px;
+      transition: color .12s, background .12s;
+    }
+    .cls-item__drag:hover { color: var(--text-secondary); background: var(--gray-100); }
+    .cls-item__drag:active { cursor: grabbing; }
+    .cls-item__drag svg { width: 14px; height: 14px; }
+
+    .cls-item__label {
+      font-size: 13px;
+      color: var(--text-primary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .cls-item__kind {
+      font-size: 10.5px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--gray-100);
+      color: var(--text-tertiary);
+      font-weight: 500;
+      letter-spacing: .01em;
+    }
+    .cls-item__kind.is-checkbox { background: #e0f2fe; color: #0369a1; }
+    .cls-item__kind.is-radio    { background: #f0e7fe; color: #6d28d9; }
+    .cls-item__kind.is-select   { background: #fef3c7; color: #a16207; }
+    .cls-item__kind.is-text     { background: var(--gray-100); color: var(--gray-700); }
+
+    .cls-item__edit {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      background: transparent;
+      border: 0;
+      border-radius: 6px;
+      color: var(--text-tertiary);
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity .12s, background .12s, color .12s;
+    }
+    .cls-item:hover .cls-item__edit,
+    .cls-item.is-selected .cls-item__edit { opacity: 1; }
+    .cls-item__edit:hover { background: var(--brand-100); color: var(--brand-700); }
+    .cls-item__edit svg { width: 13px; height: 13px; }
+
+    .cls-item__check {
+      appearance: none;
+      width: 15px; height: 15px;
+      border: 1.5px solid var(--border-strong);
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: all .12s;
+      flex-shrink: 0;
+    }
+    .cls-item__check:checked {
+      background: var(--brand-500);
+      border-color: var(--brand-500);
+    }
+    .cls-item__check:checked::after {
+      content: '';
+      width: 7px; height: 4px;
+      border-left: 1.5px solid #fff;
+      border-bottom: 1.5px solid #fff;
+      transform: rotate(-45deg) translateY(-1px);
+    }
+
+    .cls-list__empty {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-tertiary);
+      font-size: 13px;
+      font-style: italic;
+    }
+
+    /* footer action row */
+    .cls-col__foot {
+      padding: 10px 12px;
+      border-top: 1px solid var(--border-subtle);
+      background: var(--gray-25, var(--gray-50));
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .cls-btn {
+      height: 36px;
+      padding: 0 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all .14s;
+    }
+    .cls-btn svg { width: 14px; height: 14px; }
+    .cls-btn--delete {
+      background: #fff;
+      color: var(--text-secondary);
+      border-color: var(--border-default);
+    }
+    .cls-btn--delete:hover:not(:disabled) {
+      background: #fef2f2;
+      color: #b91c1c;
+      border-color: #fca5a5;
+    }
+    .cls-btn--delete:disabled { opacity: .45; cursor: not-allowed; }
+    .cls-btn--add {
+      background: var(--brand-600);
+      color: #fff;
+    }
+    .cls-btn--add:hover:not(:disabled) { background: var(--brand-700); }
+    .cls-btn--add:disabled { opacity: .45; cursor: not-allowed; background: var(--gray-300); }
+
+    /* page footer */
+    .cls-page-foot {
+      margin-top: 20px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    .cls-page-foot .btn { min-width: 140px; justify-content: center; }
+
+    /* SortableJS drag states */
+    .cls-ghost {
+      opacity: .35;
+      background: color-mix(in oklab, var(--brand-500) 12%, #fff) !important;
+      border: 1px dashed var(--brand-500) !important;
+    }
+    .cls-chosen {
+      background: color-mix(in oklab, var(--brand-500) 4%, #fff) !important;
+    }
+    .cls-drag {
+      box-shadow: 0 8px 24px -4px rgba(0,0,0,.18), 0 4px 8px -2px rgba(0,0,0,.08) !important;
+      border-color: var(--brand-400) !important;
+      transform: rotate(.5deg);
+    }
+
+    /* Saved toast */
+    .cls-toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(8px);
+      background: var(--gray-900);
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 12px 30px -8px rgba(0,0,0,.3);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s, transform .25s var(--ease-smooth);
+      z-index: 400;
+    }
+    .cls-toast.is-on { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .cls-toast svg { width: 14px; height: 14px; color: var(--brand-400); }
+
+    /* ============ MODAL ============ */
+    .cm-modal {
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, .45);
+      display: grid;
+      place-items: center;
+      z-index: 500;
+      padding: 24px;
+      backdrop-filter: blur(2px);
+    }
+    .cm-dialog {
+      width: min(560px, 100%);
+      background: var(--gray-50);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 30px 60px -12px rgba(0,0,0,.25), 0 10px 25px -5px rgba(0,0,0,.1);
+      display: flex;
+      flex-direction: column;
+      max-height: calc(100vh - 48px);
+    }
+    .cm-head {
+      padding: 36px 36px 18px;
+      text-align: center;
+      background: var(--gray-50);
+    }
+    .cm-head__icon {
+      width: 72px; height: 72px;
+      margin: 0 auto 18px;
+      border-radius: 50%;
+      background: var(--gray-200);
+      display: grid;
+      place-items: center;
+      color: var(--gray-500);
+    }
+    .cm-head__icon svg { width: 30px; height: 30px; }
+    .cm-head__title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0 0 6px;
+      letter-spacing: -.01em;
+    }
+    .cm-head__sub {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      margin: 0;
+    }
+
+    .cm-body {
+      padding: 10px 36px 4px;
+      background: var(--gray-50);
+      overflow-y: auto;
+    }
+    .cm-field { margin-bottom: 20px; }
+    .cm-field__label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+    .cm-field__input {
+      width: 100%;
+      height: 40px;
+      background: transparent;
+      border: 0;
+      border-bottom: 2px solid var(--gray-300);
+      font-size: 16px;
+      color: var(--text-primary);
+      font-weight: 500;
+      font-family: inherit;
+      padding: 0 0 6px;
+      transition: border-color .2s;
+    }
+    .cm-field__input:focus {
+      outline: none;
+      border-color: var(--brand-600);
+    }
+    .cm-field__input::placeholder { color: var(--gray-400); font-weight: 400; }
+
+    /* checkbox group of kind options */
+    .cm-kinds {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 16px;
+      margin-top: 4px;
+    }
+    .cm-kind {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--text-primary);
+      cursor: pointer;
+      padding: 6px 4px;
+      border-radius: 6px;
+      transition: background .12s;
+    }
+    .cm-kind:hover { background: var(--gray-100); }
+    .cm-kind input[type="checkbox"] {
+      appearance: none;
+      width: 18px; height: 18px;
+      border: 1.5px solid var(--gray-400);
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: all .14s;
+      flex-shrink: 0;
+    }
+    .cm-kind input[type="checkbox"]:checked {
+      background: var(--brand-600);
+      border-color: var(--brand-600);
+    }
+    .cm-kind input[type="checkbox"]:checked::after {
+      content: '';
+      width: 9px; height: 5px;
+      border-left: 2px solid #fff;
+      border-bottom: 2px solid #fff;
+      transform: rotate(-45deg) translateY(-1px);
+    }
+
+    /* current-kind readonly card (edit mode) */
+    .cm-currentkind {
+      background: var(--gray-100);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 20px;
+    }
+    .cm-currentkind__label {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+    .cm-currentkind__chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 14px;
+      background: #fff;
+      border: 1px solid var(--border-default);
+      border-radius: 999px;
+      font-size: 12.5px;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+    .cm-currentkind__note {
+      font-size: 11.5px;
+      color: var(--text-tertiary);
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+
+    .cm-foot {
+      padding: 20px 36px 24px;
+      background: var(--gray-50);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .cm-btn {
+      height: 52px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      border: 0;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all .14s;
+    }
+    .cm-btn--primary { background: var(--brand-700); color: #fff; }
+    .cm-btn--primary:hover { background: var(--brand-800); }
+    .cm-btn--primary:disabled { background: var(--gray-400); cursor: not-allowed; }
+    .cm-btn--cancel { background: var(--gray-500); color: #fff; }
+    .cm-btn--cancel:hover { background: var(--gray-600); }
+
+    .cm-credit {
+      padding: 10px 0;
+      text-align: center;
+      font-size: 11px;
+      color: var(--gray-400);
+      background: var(--gray-100);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body>
+<script th:src="@{/assets/js/sprite.js}"></script>
+<!-- SortableJS for handle-drag reorder -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
+<div class="app"
+     data-screen-label="Consultation Log Settings"
+     :data-sidebar="$store.app.sidebarCollapsed ? 'collapsed' : 'expanded'"
+     :data-variation="$store.app.variation"
+     x-data>
+
+  <div id="slot-sidebar"></div>
+  <div id="slot-header"></div>
+
+  <main class="main">
+    <div class="page" x-data="logSettings()">
+      <div class="page__header">
+        <div>
+          <h1 class="page__title">상담일지관리</h1>
+          <p class="page__subtitle">상담일지에 표시되는 항목·설정값을 구성합니다. 햄버거를 드래그하면 순서가 자동 저장됩니다.</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn--outline"><svg><use href="#i-refresh"/></svg>초기화</button>
+          <button class="btn btn--outline"><svg><use href="#i-eye"/></svg>미리보기</button>
+        </div>
+      </div>
+
+      <!-- Three columns -->
+      <div class="cls-wrap">
+
+        <!-- COL 1: 상담항목 -->
+        <section class="cls-col" :class="{ 'is-focus': focusCol === 'items' }" @click="focusCol = 'items'">
+          <div class="cls-col__head">
+            <div class="cls-col__title">상담항목</div>
+            <div class="cls-col__meta"><span x-text="items.length"></span>개</div>
+          </div>
+          <div class="cls-col__hint">
+            <svg><use href="#i-info"/></svg>
+            항목을 선택하면 우측에서 설정값을 관리할 수 있습니다
+          </div>
+          <div class="cls-list" x-ref="itemList">
+            <template x-for="(it, ix) in items" :key="it.id">
+              <div class="cls-item"
+                   :data-id="it.id"
+                   :class="{ 'is-selected': selectedItemId === it.id, 'is-checked': it.checked }"
+                   @click="selectItem(it.id)">
+                <button type="button" class="cls-item__drag js-handle-item" title="드래그하여 순서 변경" @click.stop>
+                  <svg><use href="#i-drag"/></svg>
+                </button>
+                <span class="cls-item__label" x-text="it.name"></span>
+                <input type="checkbox" class="cls-item__check" :checked="it.checked"
+                       @change="it.checked = $event.target.checked" @click.stop />
+                <button type="button" class="cls-item__edit" title="수정"
+                        @click.stop="openEditItem(it)">
+                  <svg><use href="#i-edit"/></svg>
+                </button>
+              </div>
+            </template>
+            <div class="cls-list__empty" x-show="items.length === 0">항목이 없습니다</div>
+          </div>
+          <div class="cls-col__foot">
+            <button class="cls-btn cls-btn--delete" :disabled="!hasCheckedItems" @click="deleteCheckedItems()">
+              <svg><use href="#i-minus"/></svg>삭제
+            </button>
+            <button class="cls-btn cls-btn--add" @click="openAddItem()">
+              <svg><use href="#i-plus"/></svg>추가
+            </button>
+          </div>
+        </section>
+
+        <!-- COL 2: 설정값 -->
+        <section class="cls-col" :class="{ 'is-focus': focusCol === 'values' }" @click="focusCol = 'values'">
+          <div class="cls-col__head">
+            <div class="cls-col__title">
+              설정값
+              <span x-show="selectedItem" style="font-weight:500;color:var(--text-tertiary);font-size:12px;margin-left:6px;">
+                · <span x-text="selectedItem?.name"></span>
+              </span>
+            </div>
+            <div class="cls-col__meta"><span x-text="values.length"></span>개</div>
+          </div>
+          <div class="cls-col__hint">
+            <svg><use href="#i-info"/></svg>
+            <span x-show="selectedItem">항목의 설정값을 드래그하여 순서를 변경할 수 있습니다</span>
+            <span x-show="!selectedItem">좌측에서 상담항목을 먼저 선택하세요</span>
+          </div>
+          <div class="cls-list" x-ref="valueList">
+            <template x-for="(v, vi) in values" :key="v.id">
+              <div class="cls-item"
+                   :data-id="v.id"
+                   :class="{ 'is-selected': selectedValueId === v.id, 'is-checked': v.checked }"
+                   @click="selectValue(v.id)">
+                <button type="button" class="cls-item__drag js-handle-value" title="드래그하여 순서 변경" @click.stop>
+                  <svg><use href="#i-drag"/></svg>
+                </button>
+                <span class="cls-item__label" x-text="v.name"></span>
+                <span class="cls-item__kind" :class="kindClass(v.kind)" x-text="kindLabel(v.kind)"></span>
+                <input type="checkbox" class="cls-item__check" :checked="v.checked"
+                       @change="v.checked = $event.target.checked" @click.stop />
+                <button type="button" class="cls-item__edit" title="수정"
+                        @click.stop="openEditValue(v)">
+                  <svg><use href="#i-edit"/></svg>
+                </button>
+              </div>
+            </template>
+            <div class="cls-list__empty" x-show="selectedItem && values.length === 0">설정값이 없습니다</div>
+            <div class="cls-list__empty" x-show="!selectedItem">상담항목을 선택하세요</div>
+          </div>
+          <div class="cls-col__foot">
+            <button class="cls-btn cls-btn--delete" :disabled="!hasCheckedValues" @click="deleteCheckedValues()">
+              <svg><use href="#i-minus"/></svg>삭제
+            </button>
+            <button class="cls-btn cls-btn--add" :disabled="!selectedItem" @click="openAddValue()">
+              <svg><use href="#i-plus"/></svg>추가
+            </button>
+          </div>
+        </section>
+
+        <!-- COL 3: Select Box 설정값 -->
+        <section class="cls-col" :class="{ 'is-focus': focusCol === 'options' }" @click="focusCol = 'options'">
+          <div class="cls-col__head">
+            <div class="cls-col__title">
+              Select Box 설정값
+              <span x-show="selectedValue && selectedValue.kind === 'select'" style="font-weight:500;color:var(--text-tertiary);font-size:12px;margin-left:6px;">
+                · <span x-text="selectedValue?.name"></span>
+              </span>
+            </div>
+            <div class="cls-col__meta" x-show="selectedValue && selectedValue.kind === 'select'">
+              <span x-text="options.length"></span>개
+            </div>
+          </div>
+          <div class="cls-col__hint">
+            <svg><use href="#i-info"/></svg>
+            <span x-show="selectedValue && selectedValue.kind === 'select'">Select Box에 표시될 옵션 목록입니다</span>
+            <span x-show="!selectedValue || selectedValue.kind !== 'select'">Select Box 타입의 설정값 선택 시 활성화됩니다</span>
+          </div>
+          <div class="cls-list" x-ref="optionList">
+            <template x-for="(o, oi) in options" :key="o.id">
+              <div class="cls-item"
+                   :data-id="o.id"
+                   :class="{ 'is-checked': o.checked }">
+                <button type="button" class="cls-item__drag js-handle-option" title="드래그하여 순서 변경" @click.stop>
+                  <svg><use href="#i-drag"/></svg>
+                </button>
+                <span class="cls-item__label" x-text="o.name"></span>
+                <input type="checkbox" class="cls-item__check" :checked="o.checked"
+                       @change="o.checked = $event.target.checked" @click.stop />
+                <button type="button" class="cls-item__edit" title="수정"
+                        @click.stop="openEditOption(o)">
+                  <svg><use href="#i-edit"/></svg>
+                </button>
+              </div>
+            </template>
+            <div class="cls-list__empty" x-show="selectedValue?.kind === 'select' && options.length === 0">옵션이 없습니다</div>
+            <div class="cls-list__empty" x-show="!selectedValue || selectedValue.kind !== 'select'">
+              Select Box 타입을 선택하세요
+            </div>
+          </div>
+          <div class="cls-col__foot">
+            <button class="cls-btn cls-btn--delete" :disabled="!hasCheckedOptions" @click="deleteCheckedOptions()">
+              <svg><use href="#i-minus"/></svg>삭제
+            </button>
+            <button class="cls-btn cls-btn--add" :disabled="!selectedValue || selectedValue.kind !== 'select'" @click="openAddOption()">
+              <svg><use href="#i-plus"/></svg>추가
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <!-- Page footer -->
+      <div class="cls-page-foot">
+        <button class="btn btn--outline" disabled>미리보기</button>
+        <button class="btn btn--primary" @click="saveAll()"><svg><use href="#i-check"/></svg>저장</button>
+      </div>
+
+      <!-- toast -->
+      <div class="cls-toast" :class="{ 'is-on': toast }">
+        <svg><use href="#i-check"/></svg>
+        <span x-text="toast"></span>
+      </div>
+
+      <!-- ===== Modal: 상담항목 추가/수정 ===== -->
+      <template x-teleport="body">
+        <div class="cm-modal" x-show="modal === 'item'" x-transition.opacity
+             @click.self="closeModal()" @keydown.escape.window="closeModal()" x-cloak>
+          <div class="cm-dialog" @click.stop>
+            <div class="cm-head">
+              <div class="cm-head__icon"><svg><use href="#i-list"/></svg></div>
+              <h2 class="cm-head__title" x-text="modalMode === 'add' ? '상담항목 관리' : '상담항목 수정'"></h2>
+              <p class="cm-head__sub" x-text="modalMode === 'add' ? '새로운 상담항목을 입력해주세요.' : '수정할 상담항목명을 입력해주세요.'"></p>
+            </div>
+            <div class="cm-body">
+              <div class="cm-field">
+                <label class="cm-field__label">상담항목명</label>
+                <input type="text" class="cm-field__input" x-model="form.name"
+                       placeholder="분류 이름 입력" x-ref="firstInput" />
+              </div>
+            </div>
+            <div class="cm-foot">
+              <button class="cm-btn cm-btn--primary" @click="saveItem()" :disabled="!form.name.trim()">확인</button>
+              <button class="cm-btn cm-btn--cancel" @click="closeModal()">취소</button>
+            </div>
+            <div class="cm-credit">Copyright by Coresolution</div>
+          </div>
+        </div>
+      </template>
+
+      <!-- ===== Modal: 설정값 추가/수정 ===== -->
+      <template x-teleport="body">
+        <div class="cm-modal" x-show="modal === 'value'" x-transition.opacity
+             @click.self="closeModal()" @keydown.escape.window="closeModal()" x-cloak>
+          <div class="cm-dialog" @click.stop>
+            <div class="cm-head">
+              <div class="cm-head__icon"><svg><use href="#i-list"/></svg></div>
+              <h2 class="cm-head__title" x-text="modalMode === 'add' ? '상담항목 관리' : '설정값 수정'"></h2>
+              <p class="cm-head__sub" x-text="modalMode === 'add' ? '새로운 설정값을 입력해주세요.' : '수정할 설정값을 입력해주세요.'"></p>
+            </div>
+            <div class="cm-body">
+              <div class="cm-field">
+                <label class="cm-field__label">설정값명</label>
+                <input type="text" class="cm-field__input" x-model="form.name"
+                       placeholder="설정값 이름 입력" x-ref="firstInput" />
+              </div>
+
+              <!-- ADD: kind checkboxes -->
+              <div class="cm-field" x-show="modalMode === 'add'">
+                <div class="cm-kinds">
+                  <label class="cm-kind">
+                    <input type="checkbox" :checked="form.kind === 'checkbox'"
+                           @change="form.kind = $event.target.checked ? 'checkbox' : null" />
+                    Checkbox
+                  </label>
+                  <label class="cm-kind">
+                    <input type="checkbox" :checked="form.kind === 'radio'"
+                           @change="form.kind = $event.target.checked ? 'radio' : null" />
+                    Radio Box
+                  </label>
+                  <label class="cm-kind">
+                    <input type="checkbox" :checked="form.kind === 'select'"
+                           @change="form.kind = $event.target.checked ? 'select' : null" />
+                    Select Box
+                  </label>
+                  <label class="cm-kind">
+                    <input type="checkbox" :checked="form.kind === 'text'"
+                           @change="form.kind = $event.target.checked ? 'text' : null" />
+                    Text Box
+                  </label>
+                </div>
+              </div>
+
+              <!-- EDIT: show current kind read-only -->
+              <div class="cm-currentkind" x-show="modalMode === 'edit'">
+                <div class="cm-currentkind__label">현재 입력 방식</div>
+                <span class="cm-currentkind__chip" x-text="kindLabel(form.kind)"></span>
+                <div class="cm-currentkind__note">기존 상담 데이터 보호를 위해 입력 방식 변경은 제공하지 않습니다.</div>
+              </div>
+            </div>
+            <div class="cm-foot">
+              <button class="cm-btn cm-btn--primary" @click="saveValue()"
+                      :disabled="!form.name.trim() || (modalMode==='add' && !form.kind)">확인</button>
+              <button class="cm-btn cm-btn--cancel" @click="closeModal()">취소</button>
+            </div>
+            <div class="cm-credit">Copyright by Coresolution</div>
+          </div>
+        </div>
+      </template>
+
+      <!-- ===== Modal: Select Box 설정값 추가/수정 ===== -->
+      <template x-teleport="body">
+        <div class="cm-modal" x-show="modal === 'option'" x-transition.opacity
+             @click.self="closeModal()" @keydown.escape.window="closeModal()" x-cloak>
+          <div class="cm-dialog" @click.stop>
+            <div class="cm-head">
+              <div class="cm-head__icon"><svg><use href="#i-list"/></svg></div>
+              <h2 class="cm-head__title">상담항목 관리</h2>
+              <p class="cm-head__sub" x-text="modalMode === 'add' ? '새로운 Select Box 설정값을 입력해주세요.' : 'Select Box 설정값을 수정해주세요.'"></p>
+            </div>
+            <div class="cm-body">
+              <div class="cm-field">
+                <label class="cm-field__label">Select Box 설정값</label>
+                <input type="text" class="cm-field__input" x-model="form.name"
+                       placeholder="옵션 입력 (콤마로 구분)" x-ref="firstInput" />
+              </div>
+            </div>
+            <div class="cm-foot">
+              <button class="cm-btn cm-btn--primary" @click="saveOption()" :disabled="!form.name.trim()">확인</button>
+              <button class="cm-btn cm-btn--cancel" @click="closeModal()">취소</button>
+            </div>
+            <div class="cm-credit">Copyright by Coresolution</div>
+          </div>
+        </div>
+      </template>
+
+    </div>
+  </main>
+</div>
+
+<script th:src="@{/assets/js/app.js}"></script>
+<script th:src="@{/assets/js/chrome.js}" data-page="records" th:attr="data-ctx=@{/}"></script>
+<script th:src="@{/assets/js/datepicker.js}"></script>
+<script>
+  document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '상담 업무', current: '상담일지관리' }); });
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<script th:inline="javascript">
+function logSettings() {
+  const ctx = (/*[[@{/}]]*/ '/').replace(/\/$/, '');
+  const _saved = /*[[${settingsJson}]]*/ '[]';
+  const csrf = () => ({
+    token:  document.querySelector('meta[name="_csrf"]')?.content  || '',
+    header: document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN',
+  });
+
+  let _uid = 100;
+  const uid = () => ++_uid;
+
+  return {
+    focusCol: 'items',
+    toast: '',
+    toastTimer: null,
+
+    // data
+    items: [
+      { id: uid(), name: '상병명',        checked: false, _values: [
+        { id: uid(), name: '알츠하이머성치매', kind: 'checkbox', checked: false, _options: [] },
+        { id: uid(), name: '뇌경색',        kind: 'checkbox', checked: false, _options: [] },
+        { id: uid(), name: '파킨슨병',       kind: 'checkbox', checked: false, _options: [] },
+      ]},
+      { id: uid(), name: '마비상태',       checked: false, _values: [
+        { id: uid(), name: '편마비',       kind: 'radio', checked: false, _options: [] },
+        { id: uid(), name: '사지마비',     kind: 'radio', checked: false, _options: [] },
+        { id: uid(), name: '하지마비',     kind: 'radio', checked: false, _options: [] },
+      ]},
+      { id: uid(), name: '치치종류',       checked: false, _values: [] },
+      { id: uid(), name: '대상환자분류군', checked: false, _values: [
+        { id: uid(), name: '의료최고도',   kind: 'select', checked: false, _options: [
+          { id: uid(), name: '명료', checked: false },
+          { id: uid(), name: '기면', checked: false },
+          { id: uid(), name: '혼미', checked: false },
+          { id: uid(), name: '반혼수', checked: false },
+          { id: uid(), name: '혼수', checked: false },
+        ]},
+        { id: uid(), name: '의료고도',     kind: 'select', checked: false, _options: [] },
+        { id: uid(), name: '의료중도',     kind: 'select', checked: false, _options: [] },
+      ]},
+      { id: uid(), name: '상태',           checked: false, _values: [
+        { id: uid(), name: '의식상태',   kind: 'select', checked: false, _options: [
+          { id: uid(), name: '명료', checked: false },
+          { id: uid(), name: '기면', checked: false },
+          { id: uid(), name: '혼미', checked: false },
+          { id: uid(), name: '반혼수', checked: false },
+          { id: uid(), name: '혼수', checked: false },
+        ]},
+        { id: uid(), name: '폐렴',       kind: 'checkbox', checked: false, _options: [] },
+        { id: uid(), name: '패혈증',     kind: 'checkbox', checked: false, _options: [] },
+        { id: uid(), name: '비출혈',     kind: 'checkbox', checked: false, _options: [] },
+        { id: uid(), name: '뇌경색',     kind: 'checkbox', checked: false, _options: [] },
+        { id: uid(), name: '파킨슨병',   kind: 'checkbox', checked: false, _options: [] },
+        { id: uid(), name: '척추손상',   kind: 'checkbox', checked: false, _options: [] },
+        { id: uid(), name: '치매',       kind: 'checkbox', checked: false, _options: [] },
+        { id: uid(), name: '기도기 및 폐심화', kind: 'text', checked: false, _options: [] },
+      ]},
+      { id: uid(), name: '감정상태',       checked: false, _values: [] },
+      { id: uid(), name: '환자구분',       checked: false, _values: [] },
+      { id: uid(), name: '기타항목',       checked: false, _values: [] },
+      { id: uid(), name: '상담내용',       checked: false, _values: [] },
+    ],
+
+    selectedItemId: null,
+    selectedValueId: null,
+
+    // modal state
+    modal: null, // 'item' | 'value' | 'option' | null
+    modalMode: 'add', // 'add' | 'edit'
+    editingId: null,
+    form: { name: '', kind: null },
+
+    init() {
+      // Load from server-saved JSON
+      try {
+        const parsed = JSON.parse(_saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this.items = parsed.map(it => ({
+            id: uid(),
+            name: it.name || '',
+            checked: false,
+            _values: (it.values || []).map(v => ({
+              id: uid(),
+              name: v.name || '',
+              kind: v.kind || 'text',
+              checked: false,
+              _options: (v.options || []).map(o => ({ id: uid(), name: o.name || '', checked: false })),
+            })),
+          }));
+        }
+      } catch (e) {}
+      if (this.items.length) {
+        this.selectedItemId = this.items[0].id;
+        const firstV = this.items[0]._values?.[0];
+        if (firstV) this.selectedValueId = firstV.id;
+      }
+      this.$nextTick(() => this.mountSortables());
+    },
+
+    async saveAll() {
+      const payload = this.items.map(it => ({
+        name: it.name,
+        values: (it._values || []).map(v => ({
+          name: v.name,
+          kind: v.kind,
+          options: (v._options || []).map(o => ({ name: o.name })),
+        })),
+      }));
+      const c = csrf();
+      try {
+        const res = await fetch(ctx + '/design/counsel/log-settings/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', [c.header]: c.token },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        this.showToast(data.ok ? '저장되었습니다' : ('저장 실패: ' + (data.error || '')));
+      } catch (e) {
+        this.showToast('저장 중 오류가 발생했습니다');
+      }
+    },
+
+    // ===== Sortable setup =====
+    _sortables: {},
+    mountSortables() {
+      // destroy existing
+      Object.values(this._sortables).forEach(s => s?.destroy?.());
+      this._sortables = {};
+
+      const mkSortable = (el, handleSel, onEnd) => Sortable.create(el, {
+        handle: handleSel,
+        animation: 180,
+        ghostClass: 'cls-ghost',
+        chosenClass: 'cls-chosen',
+        dragClass: 'cls-drag',
+        forceFallback: true,
+        onEnd,
+      });
+
+      if (this.$refs.itemList) {
+        this._sortables.item = mkSortable(this.$refs.itemList, '.js-handle-item', (ev) => {
+          this.reorderArray(this.items, ev.oldIndex, ev.newIndex);
+          this.saveAll();
+        });
+      }
+      if (this.$refs.valueList) {
+        this._sortables.value = mkSortable(this.$refs.valueList, '.js-handle-value', (ev) => {
+          if (!this.selectedItem) return;
+          this.reorderArray(this.selectedItem._values, ev.oldIndex, ev.newIndex);
+          this.saveAll();
+        });
+      }
+      if (this.$refs.optionList) {
+        this._sortables.option = mkSortable(this.$refs.optionList, '.js-handle-option', (ev) => {
+          if (!this.selectedValue || this.selectedValue.kind !== 'select') return;
+          this.reorderArray(this.selectedValue._options, ev.oldIndex, ev.newIndex);
+          this.saveAll();
+        });
+      }
+    },
+    reorderArray(arr, oldIndex, newIndex) {
+      if (oldIndex === newIndex || oldIndex == null || newIndex == null) return;
+      const [moved] = arr.splice(oldIndex, 1);
+      arr.splice(newIndex, 0, moved);
+    },
+
+    // ===== Derived =====
+    get selectedItem() { return this.items.find(i => i.id === this.selectedItemId) || null; },
+    get selectedValue() {
+      if (!this.selectedItem) return null;
+      return this.selectedItem._values.find(v => v.id === this.selectedValueId) || null;
+    },
+    get values() { return this.selectedItem ? this.selectedItem._values : []; },
+    get options() {
+      const v = this.selectedValue;
+      return (v && v.kind === 'select') ? (v._options || []) : [];
+    },
+    get hasCheckedItems()   { return this.items.some(i => i.checked); },
+    get hasCheckedValues()  { return this.values.some(v => v.checked); },
+    get hasCheckedOptions() { return this.options.some(o => o.checked); },
+
+    kindLabel(k) {
+      return k === 'checkbox' ? '체크박스'
+           : k === 'radio'    ? '라디오박스'
+           : k === 'select'   ? '셀렉트박스'
+           : k === 'text'     ? '텍스트박스'
+           : '—';
+    },
+    kindClass(k) { return { 'is-checkbox': k==='checkbox', 'is-radio': k==='radio', 'is-select': k==='select', 'is-text': k==='text' }; },
+
+    // ===== Selection =====
+    selectItem(id) {
+      this.focusCol = 'items';
+      this.selectedItemId = id;
+      const first = this.selectedItem?._values?.[0];
+      this.selectedValueId = first ? first.id : null;
+    },
+    selectValue(id) {
+      this.focusCol = 'values';
+      this.selectedValueId = id;
+    },
+
+    // ===== Modal open handlers =====
+    openAddItem() {
+      this.modal = 'item'; this.modalMode = 'add'; this.editingId = null;
+      this.form = { name: '', kind: null };
+      this.$nextTick(() => this.$refs.firstInput?.focus());
+    },
+    openEditItem(it) {
+      this.modal = 'item'; this.modalMode = 'edit'; this.editingId = it.id;
+      this.form = { name: it.name, kind: null };
+      this.$nextTick(() => this.$refs.firstInput?.focus());
+    },
+    openAddValue() {
+      if (!this.selectedItem) return;
+      this.modal = 'value'; this.modalMode = 'add'; this.editingId = null;
+      this.form = { name: '', kind: null };
+      this.$nextTick(() => this.$refs.firstInput?.focus());
+    },
+    openEditValue(v) {
+      this.modal = 'value'; this.modalMode = 'edit'; this.editingId = v.id;
+      this.form = { name: v.name, kind: v.kind };
+      this.$nextTick(() => this.$refs.firstInput?.focus());
+    },
+    openAddOption() {
+      if (!this.selectedValue || this.selectedValue.kind !== 'select') return;
+      this.modal = 'option'; this.modalMode = 'add'; this.editingId = null;
+      this.form = { name: '', kind: null };
+      this.$nextTick(() => this.$refs.firstInput?.focus());
+    },
+    openEditOption(o) {
+      this.modal = 'option'; this.modalMode = 'edit'; this.editingId = o.id;
+      this.form = { name: o.name, kind: null };
+      this.$nextTick(() => this.$refs.firstInput?.focus());
+    },
+    closeModal() {
+      this.modal = null; this.editingId = null;
+      this.form = { name: '', kind: null };
+    },
+
+    // ===== Save handlers =====
+    saveItem() {
+      const n = this.form.name.trim();
+      if (!n) return;
+      if (this.modalMode === 'add') {
+        const nid = uid();
+        this.items.push({ id: nid, name: n, checked: false, _values: [] });
+        this.selectedItemId = nid;
+        this.selectedValueId = null;
+        this.showToast('상담항목이 추가되었습니다');
+      } else {
+        const it = this.items.find(i => i.id === this.editingId);
+        if (it) it.name = n;
+        this.showToast('상담항목이 수정되었습니다');
+      }
+      this.closeModal();
+      this.$nextTick(() => this.mountSortables());
+    },
+    saveValue() {
+      const n = this.form.name.trim();
+      if (!n || !this.selectedItem) return;
+      if (this.modalMode === 'add') {
+        if (!this.form.kind) return;
+        const nid = uid();
+        this.selectedItem._values.push({ id: nid, name: n, kind: this.form.kind, checked: false, _options: [] });
+        this.selectedValueId = nid;
+        this.showToast('설정값이 추가되었습니다');
+      } else {
+        const v = this.selectedItem._values.find(x => x.id === this.editingId);
+        if (v) v.name = n;
+        this.showToast('설정값이 수정되었습니다');
+      }
+      this.closeModal();
+      this.$nextTick(() => this.mountSortables());
+    },
+    saveOption() {
+      const n = this.form.name.trim();
+      if (!n || !this.selectedValue || this.selectedValue.kind !== 'select') return;
+      if (this.modalMode === 'add') {
+        // support comma-split input
+        const names = n.split(',').map(s => s.trim()).filter(Boolean);
+        names.forEach(name => this.selectedValue._options.push({ id: uid(), name, checked: false }));
+        this.showToast(`${names.length}개 옵션이 추가되었습니다`);
+      } else {
+        const o = this.selectedValue._options.find(x => x.id === this.editingId);
+        if (o) o.name = n;
+        this.showToast('옵션이 수정되었습니다');
+      }
+      this.closeModal();
+      this.$nextTick(() => this.mountSortables());
+    },
+
+    // ===== Delete =====
+    deleteCheckedItems() {
+      const toKeep = this.items.filter(i => !i.checked);
+      const removed = this.items.length - toKeep.length;
+      if (!removed) return;
+      this.items = toKeep;
+      if (!this.items.find(i => i.id === this.selectedItemId)) {
+        this.selectedItemId = this.items[0]?.id || null;
+        this.selectedValueId = this.items[0]?._values?.[0]?.id || null;
+      }
+      this.showToast(`${removed}개 항목이 삭제되었습니다`);
+      this.$nextTick(() => this.mountSortables());
+    },
+    deleteCheckedValues() {
+      if (!this.selectedItem) return;
+      const toKeep = this.selectedItem._values.filter(v => !v.checked);
+      const removed = this.selectedItem._values.length - toKeep.length;
+      if (!removed) return;
+      this.selectedItem._values = toKeep;
+      if (!toKeep.find(v => v.id === this.selectedValueId)) {
+        this.selectedValueId = toKeep[0]?.id || null;
+      }
+      this.showToast(`${removed}개 설정값이 삭제되었습니다`);
+      this.$nextTick(() => this.mountSortables());
+    },
+    deleteCheckedOptions() {
+      if (!this.selectedValue || this.selectedValue.kind !== 'select') return;
+      const toKeep = this.selectedValue._options.filter(o => !o.checked);
+      const removed = this.selectedValue._options.length - toKeep.length;
+      if (!removed) return;
+      this.selectedValue._options = toKeep;
+      this.showToast(`${removed}개 옵션이 삭제되었습니다`);
+      this.$nextTick(() => this.mountSortables());
+    },
+
+    // ===== Toast =====
+    showToast(msg) {
+      this.toast = msg;
+      clearTimeout(this.toastTimer);
+      this.toastTimer = setTimeout(() => this.toast = '', 1800);
+    },
+  };
+}
+</script>
+</body>
+</html>

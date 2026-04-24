@@ -9,7 +9,7 @@
   grid-template-areas:
     "sidebar header"
     "sidebar main";
-  min-height: 100vh;
+  height: 100vh;
   transition: grid-template-columns var(--dur-base) var(--ease-smooth);
 }
 

@@ -1,15 +1,16 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MediPlat · 역할 관리</title>
 
-  <link rel="stylesheet" href="assets/css/tokens.css" />
-  <link rel="stylesheet" href="assets/css/base.css" />
-  <link rel="stylesheet" href="assets/css/layout.css" />
-  <link rel="stylesheet" href="assets/css/role-management.css" />
-  <link rel="stylesheet" href="assets/css/tweaks.css" />
+  <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/layout.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/role-management.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/tweaks.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/datepicker.css}" />
 </head>
 <body>
 
@@ -75,10 +76,10 @@
 
       <!-- Tabs -->
       <div class="tabs" role="tablist">
-        <button class="tab" role="tab">
+        <a class="tab" th:href="@{/design/user-management}" role="tab">
           <svg><use href="#i-users"/></svg>
           사용자 관리
-        </button>
+        </a>
         <button class="tab is-active" role="tab" aria-selected="true">
           <svg><use href="#i-key"/></svg>
           역할 관리
@@ -301,9 +302,10 @@
   }/*EDITMODE-END*/;
 </script>
 
-<script src="assets/js/sprite.js"></script>
-<script src="assets/js/app.js"></script>
-<script src="assets/js/chrome.js" data-page="admin"></script>
+<script th:src="@{/assets/js/sprite.js}"></script>
+<script th:src="@{/assets/js/app.js}"></script>
+<script th:src="@{/assets/js/datepicker.js}"></script>
+<script th:src="@{/assets/js/chrome.js}" data-page="admin" th:attr="data-ctx=@{/}"></script>
 <script>
   document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '관리자', current: '역할 관리' }); });
 </script>

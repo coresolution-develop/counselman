@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MediPlat · 사용자 관리</title>
+
+
+  <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/layout.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/components.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/role-management.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/tweaks.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/datepicker.css}" />
+  <style>
+    /* ===== User Management – scoped styles ===== */
+    .um-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; align-items: start; }
+    @media (max-width: 1180px) { .um-grid { grid-template-columns: 1fr; } }
+
+    .um-hero {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+      gap: 20px;
+      padding: 22px 24px;
+      border-radius: var(--radius-lg);
+      background:
+        radial-gradient(1200px 200px at 90% 0%, color-mix(in oklab, var(--brand-500) 10%, transparent), transparent 60%),
+        linear-gradient(180deg, #fff 0%, var(--gray-50) 100%);
+      border: 1px solid var(--border-default);
+      overflow: hidden;
+    }
+    .um-hero__eyebrow { font-size: 11px; font-weight: 600; color: var(--brand-700); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+    .um-hero__title { font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.015em; margin-bottom: 4px; }
+    .um-hero__sub { font-size: 13px; color: var(--text-secondary); }
+    .um-hero__stats { display: flex; gap: 10px; }
+    .um-chip { min-width: 72px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border-default); background: #fff; text-align: center; }
+    .um-chip--brand { background: color-mix(in oklab, var(--brand-500) 8%, #fff); border-color: color-mix(in oklab, var(--brand-500) 25%, var(--border-default)); }
+    .um-chip--mute { background: var(--gray-50); }
+    .um-chip__val { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-primary); letter-spacing: -0.02em; }
+    .um-chip--brand .um-chip__val { color: var(--brand-700); }
+    .um-chip__lbl { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+
+    .um-toolbar { display: flex; align-items: center; gap: 10px; margin: 16px 0 10px; flex-wrap: wrap; }
+    .um-search { flex: 1; min-width: 260px; position: relative; }
+    .um-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--text-tertiary); }
+    .um-search input { width: 100%; height: 38px; padding: 0 14px 0 36px; border: 1px solid var(--border-default); border-radius: 10px; background: #fff; font-size: 13px; transition: all .15s; }
+    .um-search input:focus { border-color: var(--brand-400); box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-500) 14%, transparent); outline: none; }
+
+    .um-list {
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      background: #fff;
+      overflow: hidden;
+    }
+    .um-list__head {
+      display: grid;
+      grid-template-columns: minmax(160px, 2fr) minmax(110px, 1.6fr) minmax(88px, 1fr) minmax(0, 1.6fr) 110px 40px;
+      gap: 12px;
+      padding: 12px 18px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      background: var(--gray-50);
+      border-bottom: 1px solid var(--border-default);
+    }
+    .um-row {
+      display: grid;
+      grid-template-columns: minmax(160px, 2fr) minmax(110px, 1.6fr) minmax(88px, 1fr) minmax(0, 1.6fr) 110px 40px;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border-subtle);
+      cursor: pointer;
+      transition: background .12s;
+    }
+    @media (max-width: 880px) {
+      .um-list__head, .um-row { grid-template-columns: minmax(140px, 2fr) minmax(0, 1.2fr) 88px 100px 30px; }
+      .um-list__head > :nth-child(4), .um-row > .um-email { display: none; }
+    }
+    .um-row:last-child { border-bottom: 0; }
+    .um-row:hover { background: var(--gray-50); }
+    .um-row.is-active { background: color-mix(in oklab, var(--brand-500) 6%, transparent); }
+    .um-row.is-active::before { content:""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--brand-500); }
+    .um-row { position: relative; }
+
+    .um-user { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .um-avatar { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 14px; flex: 0 0 auto; box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); }
+    .um-user__meta { min-width: 0; }
+    .um-user__name { font-weight: 600; font-size: 13.5px; color: var(--text-primary); letter-spacing: -0.01em; }
+    .um-user__id { font-size: 11px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+
+    .um-dept { font-size: 13px; color: var(--text-primary); }
+    .um-dept__rank { display: block; font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+    .um-email { font-size: 13px; color: var(--text-secondary); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .um-role { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: -0.005em; }
+    .um-role--admin    { background: #fef3c7; color: #92400e; }
+    .um-role--super    { background: #ede9fe; color: #6d28d9; }
+    .um-role--staff    { background: #dbeafe; color: #1e40af; }
+    .um-role--counsel  { background: color-mix(in oklab, var(--brand-500) 14%, #fff); color: var(--brand-700); }
+
+    .um-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; }
+    .um-status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+    .um-status--active::before { background: var(--success, #10b981); box-shadow: 0 0 0 3px color-mix(in oklab, var(--success, #10b981) 20%, transparent); }
+    .um-status--active { color: var(--success, #10b981); }
+    .um-status--pause::before  { background: #f59e0b; }
+    .um-status--pause { color: #b45309; }
+    .um-status--off::before    { background: var(--gray-400); }
+    .um-status--off { color: var(--text-tertiary); }
+
+    .um-more { justify-self: end; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; border: 1px solid transparent; color: var(--text-tertiary); }
+    .um-more:hover { background: #fff; border-color: var(--border-default); color: var(--text-primary); }
+
+    /* ===== Detail side panel ===== */
+    .um-side {
+      position: sticky;
+      top: 16px;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      background: #fff;
+      overflow: hidden;
+    }
+    .um-side__cover {
+      position: relative;
+      padding: 22px 22px 18px;
+      background: linear-gradient(135deg, color-mix(in oklab, var(--brand-500) 92%, #000) 0%, var(--brand-500) 60%, color-mix(in oklab, var(--brand-500) 70%, #22d3ee) 100%);
+      color: #fff;
+    }
+    .um-side__cover::after { content:""; position: absolute; inset: 0; background: radial-gradient(400px 200px at 100% 0%, rgba(255,255,255,.2), transparent 55%); pointer-events:none; }
+    .um-side__avatar { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 22px; font-weight: 700; background: rgba(255,255,255,.22); border: 2px solid rgba(255,255,255,.4); backdrop-filter: blur(4px); }
+    .um-side__name { margin-top: 14px; font-size: 20px; font-weight: 700; letter-spacing: -0.015em; display: flex; align-items: center; gap: 8px; }
+    .um-side__name .badge { background: rgba(255,255,255,.2); color: #fff; }
+    .um-side__id { font-size: 12px; opacity: .85; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+    .um-side__body { padding: 18px 22px 22px; }
+    .um-field { display: grid; grid-template-columns: 88px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--border-subtle); align-items: start; }
+    .um-field:last-of-type { border-bottom: 0; }
+    .um-field__label { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .05em; padding-top: 2px; }
+    .um-field__value { font-size: 13px; color: var(--text-primary); font-weight: 500; }
+    .um-field__value .sub { display: block; font-size: 11px; color: var(--text-tertiary); font-weight: 400; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+    .um-side__perms { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .um-side__perm { padding: 4px 9px; border-radius: 6px; background: var(--gray-100); font-size: 11px; color: var(--text-secondary); }
+
+    .um-side__actions { display: flex; gap: 8px; padding: 14px 22px; background: var(--gray-50); border-top: 1px solid var(--border-subtle); }
+    .um-side__actions .btn { flex: 1; justify-content: center; }
+
+    /* status filter tabs */
+    .um-tabs { display: flex; gap: 4px; padding: 4px; background: var(--gray-100); border-radius: 10px; }
+    .um-tabs button { padding: 6px 12px; border-radius: 7px; font-size: 12px; font-weight: 600; color: var(--text-secondary); background: transparent; transition: all .12s; }
+    .um-tabs button.is-active { background: #fff; color: var(--text-primary); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+    .um-tabs .count { font-variant-numeric: tabular-nums; opacity: .6; margin-left: 4px; }
+
+    .um-empty { padding: 48px 24px; text-align: center; color: var(--text-tertiary); font-size: 13px; }
+  </style>
+</head>
+<body>
+<script th:src="@{/assets/js/sprite.js}"></script>
+
+<div class="app"
+     data-screen-label="User Management"
+     :data-sidebar="$store.app.sidebarCollapsed ? 'collapsed' : 'expanded'"
+     :data-variation="$store.app.variation"
+     x-data>
+
+  <div id="slot-sidebar"></div>
+  <div id="slot-header"></div>
+
+  <main class="main">
+    <div class="page" x-data="userMgmt()">
+
+      <!-- Admin sub-tabs (Users / Roles) -->
+      <div class="tabs" role="tablist">
+        <button class="tab is-active" role="tab" aria-selected="true">
+          <svg><use href="#i-users"/></svg>
+          사용자 관리
+        </button>
+        <a class="tab" th:href="@{/design/role-management}" role="tab">
+          <svg><use href="#i-key"/></svg>
+          역할 관리
+        </a>
+      </div>
+
+      <!-- Hero -->
+      <div class="um-hero" style="margin-top: 4px;">
+        <div>
+          <div class="um-hero__eyebrow">관리자 설정</div>
+          <h1 class="um-hero__title">사용자 관리</h1>
+          <p class="um-hero__sub">기관의 사용자 계정과 역할 · 상태를 한 곳에서 관리합니다</p>
+        </div>
+        <div class="um-hero__stats">
+          <div class="um-chip"><div class="um-chip__val" x-text="users.length"></div><div class="um-chip__lbl">전체</div></div>
+          <div class="um-chip um-chip--brand"><div class="um-chip__val" x-text="users.filter(u=>u.status==='active').length"></div><div class="um-chip__lbl">사용중</div></div>
+          <div class="um-chip um-chip--mute"><div class="um-chip__val" x-text="users.filter(u=>u.status!=='active').length"></div><div class="um-chip__lbl">사용중지</div></div>
+        </div>
+        <button class="btn btn--primary" style="height:40px;">
+          <svg><use href="#i-user-plus"/></svg>
+          새 사용자
+        </button>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="um-toolbar">
+        <div class="um-tabs">
+          <button :class="{'is-active': tab==='all'}" @click="tab='all'">전체<span class="count" x-text="users.length"></span></button>
+          <button :class="{'is-active': tab==='active'}" @click="tab='active'">사용중<span class="count" x-text="users.filter(u=>u.status==='active').length"></span></button>
+          <button :class="{'is-active': tab==='pause'}" @click="tab='pause'">일시정지<span class="count" x-text="users.filter(u=>u.status==='pause').length"></span></button>
+          <button :class="{'is-active': tab==='off'}" @click="tab='off'">사용중지<span class="count" x-text="users.filter(u=>u.status==='off').length"></span></button>
+        </div>
+        <select class="select" x-model="roleFilter" style="height:38px;">
+          <option value="">전체 역할</option>
+          <option value="admin">관리자</option>
+          <option value="super">슈퍼바이저</option>
+          <option value="staff">실무진</option>
+          <option value="counsel">상담사</option>
+        </select>
+        <div class="um-search">
+          <svg><use href="#i-search"/></svg>
+          <input type="text" placeholder="이름, 사번, 이메일로 검색" x-model="q" />
+        </div>
+      </div>
+
+      <!-- Split: list + detail -->
+      <div class="um-grid">
+
+        <div>
+          <div class="um-list">
+            <div class="um-list__head">
+              <div>사용자</div>
+              <div>부서 · 직급</div>
+              <div>역할</div>
+              <div>이메일</div>
+              <div>상태</div>
+              <div></div>
+            </div>
+
+            <template x-for="u in visible" :key="u.id">
+              <div class="um-row" :class="{ 'is-active': selected === u.id }" @click="selected = u.id">
+                <div class="um-user">
+                  <span class="um-avatar" :style="{ background: u.color }" x-text="u.initial"></span>
+                  <div class="um-user__meta">
+                    <div class="um-user__name" x-text="u.name"></div>
+                    <div class="um-user__id" x-text="u.employeeId"></div>
+                  </div>
+                </div>
+                <div class="um-dept">
+                  <span x-text="u.dept"></span>
+                  <span class="um-dept__rank" x-text="u.rank"></span>
+                </div>
+                <div>
+                  <span class="um-role" :class="'um-role--' + u.role" x-text="roleLabel(u.role)"></span>
+                </div>
+                <div class="um-email" x-text="u.email"></div>
+                <div>
+                  <span class="um-status" :class="'um-status--' + u.status" x-text="statusLabel(u.status)"></span>
+                </div>
+                <button class="um-more" aria-label="more" @click.stop>
+                  <svg><use href="#i-chevron-right"/></svg>
+                </button>
+              </div>
+            </template>
+
+            <template x-if="visible.length === 0">
+              <div class="um-empty">검색 결과가 없습니다</div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Detail side panel -->
+        <aside class="um-side" x-show="current">
+          <div class="um-side__cover">
+            <div class="um-side__avatar" :style="{ background: 'rgba(255,255,255,.25)' }" x-text="current?.initial"></div>
+            <div class="um-side__name">
+              <span x-text="current?.name"></span>
+              <span class="badge" x-text="roleLabel(current?.role)"></span>
+            </div>
+            <div class="um-side__id" x-text="current?.employeeId + ' · ' + (current?.dept || '')"></div>
+          </div>
+          <div class="um-side__body">
+            <div class="um-field">
+              <span class="um-field__label">이메일</span>
+              <span class="um-field__value" x-text="current?.email"></span>
+            </div>
+            <div class="um-field">
+              <span class="um-field__label">부서</span>
+              <span class="um-field__value">
+                <span x-text="current?.dept"></span>
+                <span class="sub" x-text="current?.rank"></span>
+              </span>
+            </div>
+            <div class="um-field">
+              <span class="um-field__label">전화</span>
+              <span class="um-field__value" x-text="current?.phone || '—'"></span>
+            </div>
+            <div class="um-field">
+              <span class="um-field__label">상태</span>
+              <span class="um-field__value">
+                <span class="um-status" :class="'um-status--' + current?.status" x-text="statusLabel(current?.status)"></span>
+              </span>
+            </div>
+            <div class="um-field">
+              <span class="um-field__label">최근접속</span>
+              <span class="um-field__value">
+                <span x-text="current?.lastSeen"></span>
+                <span class="sub" x-text="current?.lastIp"></span>
+              </span>
+            </div>
+            <div class="um-field">
+              <span class="um-field__label">권한</span>
+              <div class="um-field__value" style="width:100%;">
+                <div class="um-side__perms">
+                  <template x-for="p in (current?.perms || [])" :key="p">
+                    <span class="um-side__perm" x-text="p"></span>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="um-side__actions">
+            <button class="btn btn--outline"><svg><use href="#i-refresh"/></svg>비밀번호 초기화</button>
+            <button class="btn btn--primary"><svg><use href="#i-edit"/></svg>정보 수정</button>
+          </div>
+        </aside>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+function userMgmt() {
+  return {
+    q: '',
+    tab: 'all',
+    roleFilter: '',
+    selected: 'leesumin',
+    users: [
+      { id:'leesumin', name:'이수민', initial:'이', color:'#10b981', employeeId:'EMP-2021-0014', dept:'시스템개발팀', rank:'주임', role:'admin',   email:'dev@coresolution.kr', phone:'010-1234-5678', status:'active', lastSeen:'2026-04-23 17:42', lastIp:'192.168.0.14', perms:['사용자 관리','역할 관리','상담 접수','상담리스트','문자관리','방문예약관리'] },
+      { id:'kimjintae', name:'김진태', initial:'김', color:'#ec4899', employeeId:'EMP-2019-0042', dept:'진료부',         rank:'차장', role:'admin',   email:'jt@example.kr',       phone:'010-2345-6789', status:'active', lastSeen:'2026-04-23 13:10', lastIp:'192.168.0.22', perms:['상담 접수','상담리스트','공지사항','상담통계'] },
+      { id:'jeongmingyu', name:'정민규', initial:'정', color:'#f59e0b', employeeId:'EMP-2020-0011', dept:'원무부',         rank:'사원', role:'super',   email:'mg@example.kr',       phone:'010-3456-7890', status:'active', lastSeen:'2026-04-23 10:55', lastIp:'192.168.0.31', perms:['상담 접수','상담리스트'] },
+      { id:'kwonmihui',   name:'권미희', initial:'권', color:'#10b981', employeeId:'EMP-2020-0028', dept:'원무부',         rank:'부장', role:'super',   email:'mh@example.kr',       phone:'010-4567-8901', status:'active', lastSeen:'2026-04-22 18:30', lastIp:'192.168.0.33', perms:['상담 접수','공지사항','상담일지관리'] },
+      { id:'leesunkyung', name:'이선경', initial:'이', color:'#14b8a6', employeeId:'EMP-2022-0052', dept:'원무부',         rank:'상담간호사', role:'super', email:'sk@example.kr',  phone:'010-5678-9012', status:'active', lastSeen:'2026-04-22 16:12', lastIp:'192.168.0.39', perms:['상담 접수','상담리스트','문자관리'] },
+      { id:'choihyukbong', name:'최혁봉', initial:'최', color:'#0ea5e9', employeeId:'EMP-2023-0008', dept:'원무부',        rank:'사원', role:'super',   email:'hb@example.kr',       phone:'010-6789-0123', status:'active', lastSeen:'2026-04-22 09:44', lastIp:'192.168.0.41', perms:['상담 접수','방문예약관리'] },
+      { id:'kimhyunjung', name:'김현정', initial:'김', color:'#84cc16', employeeId:'EMP-2024-0003', dept:'상담실',         rank:'상담사', role:'counsel', email:'hj@example.kr',       phone:'010-7890-1234', status:'pause', lastSeen:'2026-04-18 11:22', lastIp:'192.168.0.52', perms:['상담리스트','문자관리'] },
+      { id:'parkjihye',   name:'박지혜', initial:'박', color:'#8b5cf6', employeeId:'EMP-2023-0021', dept:'상담실',         rank:'주임', role:'staff',   email:'jh@example.kr',       phone:'010-8901-2345', status:'off',   lastSeen:'2026-04-01 14:08', lastIp:'—',             perms:['상담리스트'] },
+      { id:'jungsoyeon',  name:'정소연', initial:'정', color:'#f43f5e', employeeId:'EMP-2022-0019', dept:'법인사무실',      rank:'과장', role:'staff',   email:'sy@example.kr',       phone:'010-9012-3456', status:'active', lastSeen:'2026-04-23 15:02', lastIp:'192.168.0.61', perms:['상담통계','상담일지관리','방문예약관리'] },
+    ],
+
+    get current() { return this.users.find(u => u.id === this.selected) || null; },
+    get visible() {
+      const q = this.q.trim().toLowerCase();
+      return this.users.filter(u => {
+        if (this.tab !== 'all' && u.status !== this.tab) return false;
+        if (this.roleFilter && u.role !== this.roleFilter) return false;
+        if (!q) return true;
+        return (u.name + ' ' + u.email + ' ' + u.employeeId + ' ' + u.dept).toLowerCase().includes(q);
+      });
+    },
+    roleLabel(r) {
+      return ({ admin:'관리자', super:'슈퍼바이저', staff:'실무진', counsel:'상담사' })[r] || '';
+    },
+    statusLabel(s) {
+      return ({ active:'사용중', pause:'일시정지', off:'사용중지' })[s] || '';
+    },
+  };
+}
+</script>
+
+<script th:src="@{/assets/js/app.js}"></script>
+<script th:src="@{/assets/js/datepicker.js}"></script>
+<script th:src="@{/assets/js/chrome.js}" data-page="users" th:attr="data-ctx=@{/}"></script>
+<script>
+  document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '시스템', current: '사용자 관리' }); });
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MediPlat · 상담리스트</title>
+  <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/layout.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/components.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/role-management.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/tweaks.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/datepicker.css}" />
+  <style>
+    @keyframes pulse-soft {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: .55; }
+    }
+  </style>
+</head>
+<body>
+<script th:src="@{/assets/js/sprite.js}"></script>
+
+<div class="app"
+     data-screen-label="Consultation List"
+     :data-sidebar="$store.app.sidebarCollapsed ? 'collapsed' : 'expanded'"
+     :data-variation="$store.app.variation"
+     x-data>
+
+  <div id="slot-sidebar"></div>
+  <div id="slot-header"></div>
+
+  <main class="main">
+    <div class="page" x-data="listPage()">
+      <div class="page__header">
+        <div>
+          <h1 class="page__title">상담리스트</h1>
+          <p class="page__subtitle">우선순위 대기 상담과 전체 상담 기록을 관리합니다</p>
+        </div>
+      </div>
+
+      <!-- Search bar -->
+      <form class="search-bar" th:action="@{/design/counsel/list}" method="get">
+        <select class="select" name="dateRange">
+          <option value="all"    th:selected="${cri != null and cri.dateRange == 'all'}">전체기간</option>
+          <option value="10"     th:selected="${cri == null or cri.dateRange == '10' or cri.dateRange == ''}">최근 10일</option>
+          <option value="30"     th:selected="${cri != null and cri.dateRange == '30'}">최근 30일</option>
+          <option value="90"     th:selected="${cri != null and cri.dateRange == '90'}">최근 90일</option>
+          <option value="custom" th:selected="${cri != null and cri.dateRange == 'custom'}">직접 선택</option>
+        </select>
+        <input type="date" class="input" name="startDate" th:value="${cri != null ? cri.startDate : ''}" />
+        <span class="search-bar__to">—</span>
+        <input type="date" class="input" name="endDate" th:value="${cri != null ? cri.endDate : ''}" />
+        <select class="select" name="status">
+          <option value="all" th:selected="${cri == null or #strings.isEmpty(cri.status) or cri.status == 'all'}">전체 상태</option>
+          <option th:each="s : ${statusOptions}" th:value="${s}" th:text="${s}"
+                  th:selected="${cri != null and cri.status == s}"></option>
+        </select>
+        <select class="select" name="pathType">
+          <option value="all" th:selected="${cri == null or #strings.isEmpty(cri.pathType) or cri.pathType == 'all'}">전체 경로</option>
+          <option th:each="p : ${pathTypeOptions}" th:value="${p}" th:text="${p}"
+                  th:selected="${cri != null and cri.pathType == p}"></option>
+        </select>
+        <input type="text" class="input" name="keyword"
+               th:value="${cri != null ? cri.keyword : ''}"
+               placeholder="환자명, 보호자명, 전화번호, 상담내용 검색" />
+        <label class="search-bar__check">
+          <input type="checkbox" name="end" value="on"
+                 th:checked="${cri == null or cri.end == 'on'}" />완료 합계 포함
+        </label>
+        <button type="submit" class="btn btn--primary" style="height:34px;"><svg><use href="#i-search"/></svg>검색</button>
+      </form>
+
+      <!-- Priority queue -->
+      <div class="section-head">
+        <span class="section-head__title">상담 접수 대기</span>
+        <span class="badge badge--warn">우선순위순</span>
+        <span class="section-head__hint" x-text="queue.length + '건 대기'"></span>
+        <div style="flex:1"></div>
+        <button class="btn-xs"><svg><use href="#i-refresh"/></svg>새로고침</button>
+        <button class="btn-xs btn-xs--brand">접수 관리</button>
+      </div>
+
+      <div class="queue">
+        <template x-for="(q, i) in queue" :key="q.id">
+          <div class="queue-card" style="cursor:pointer;"
+               :style="q.beingWorkedOn ? 'border-color: var(--brand-400); background: color-mix(in oklab, var(--brand-500) 4%, #fff);' : ''"
+               @click="window.location.href = ctx + '/design/counsel/inpatient?reservationId=' + q.id">
+            <div class="queue-card__head">
+              <span class="prio" :class="'prio--' + q.prio" x-text="'P' + q.prio"></span>
+              <span class="queue-card__name" x-text="q.name"></span>
+              <span x-show="q.beingWorkedOn"
+                style="margin-left:auto;font-size:10px;font-weight:700;color:var(--brand-600);
+                       background:color-mix(in oklab,var(--brand-500) 12%,#fff);
+                       border:1px solid color-mix(in oklab,var(--brand-500) 30%,transparent);
+                       padding:2px 6px;border-radius:999px;animation:pulse-soft 2s infinite;">상담중</span>
+            </div>
+            <div class="queue-card__phone" x-text="q.phone"></div>
+            <div class="queue-card__time" x-text="q.time"></div>
+            <div class="queue-card__actions">
+              <button class="btn-xs btn-xs--brand" style="flex:1;justify-content:center;"
+                @click.stop="window.location.href = ctx + '/design/counsel/intake?reservationId=' + q.id">상세보기</button>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Records table -->
+      <div class="section-head">
+        <span class="section-head__title">상담 기록 목록</span>
+        <span class="section-head__hint" th:text="${cnt} + '건'" x-text="records.length + '건'"></span>
+        <div style="flex:1"></div>
+        <div class="filter-pills">
+          <button class="pill is-active">전체 <span class="pill__count">12</span></button>
+          <button class="pill">오늘</button>
+          <button class="pill">미완료</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" /></th>
+              <th>상담일</th><th>환자명</th><th>잠재고객</th><th>보호자전화번호</th>
+              <th>상담유입경로</th><th>연락처</th><th>보호자명</th><th class="col-center">관계</th>
+              <th>상담결과</th><th>상담자</th><th>상병명</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="r in records" :key="r.id">
+              <tr :class="{ 'is-selected': r.selected }" style="cursor:pointer;"
+                  @dblclick="window.location.href = ctx + '/design/counsel/inpatient?cs_idx=' + r.id">
+                <td><input type="checkbox" :checked="r.selected" /></td>
+                <td class="col-num" x-text="r.date"></td>
+                <td>
+                  <div class="av">
+                    <span x-text="r.patient"></span>
+                    <template x-if="r.tag"><span class="av__circle" :style="{ background: r.tagColor }" x-text="r.tag"></span></template>
+                  </div>
+                </td>
+                <td>
+                  <template x-if="r.lead"><span class="av__circle" :style="{ background: r.leadColor, width:'18px', height:'18px', fontSize:'9px' }" x-text="r.lead"></span></template>
+                </td>
+                <td class="col-num" x-text="r.phone"></td>
+                <td x-text="r.route || '—'"></td>
+                <td x-text="r.contact || '—'"></td>
+                <td x-text="r.guardian || '—'"></td>
+                <td class="col-center" x-text="r.rel || '—'"></td>
+                <td><span class="status" :class="'status--' + r.statusType" x-text="r.status"></span></td>
+                <td x-text="r.counselor"></td>
+                <td>
+                  <template x-for="(t, i) in (r.tags || [])" :key="i">
+                    <span class="tag-chip" x-text="t"></span>
+                  </template>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Footer bar -->
+      <div class="footer-bar">
+        <button class="btn btn--ghost">환자정보삭제</button>
+        <button class="btn btn--outline"><svg><use href="#i-send"/></svg>일괄 문자 보내기</button>
+        <a th:href="@{/design/counsel/inpatient}" class="btn btn--outline">상담 접수</a>
+        <a th:href="@{/design/counsel/intake}" class="btn btn--primary"><svg><use href="#i-plus"/></svg>신규상담</a>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+function listPage() {
+  const ctx = (/*[[@{/}]]*/ '/').replace(/\/$/, '');
+  return {
+    ctx,
+    queue:   /*[[${queueItems}]]*/ [],
+    records: /*[[${recordItems}]]*/ [],
+  };
+}
+</script>
+
+<script th:src="@{/assets/js/app.js}"></script>
+<script th:src="@{/assets/js/datepicker.js}"></script>
+<script th:src="@{/assets/js/chrome.js}" data-page="list" th:attr="data-ctx=@{/}"></script>
+<script>
+  document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '상담 업무', current: '상담리스트' }); });
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</body>
+</html>

@@ -31,6 +31,16 @@ public class CounselListService {
         }
     }
 
+    public String getLogSettings(String inst) {
+        try { return mapper.selectLogSettings(inst); } catch (Exception e) { return null; }
+    }
+
+    @Transactional
+    public void saveLogSettings(String inst, String json) {
+        mapper.deleteLogSettings(inst);
+        mapper.insertLogSettings(inst, json);
+    }
+
     // (기존 컨트롤러 루프를 그대로 쓰고 싶다면)
     @Transactional
     public void replaceAllLoop(String inst, List<OrderedItem> items) {

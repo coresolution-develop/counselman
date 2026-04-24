@@ -1,18 +1,19 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MediPlat · 문자관리</title>
-  <link rel="stylesheet" href="assets/css/tokens.css" />
-  <link rel="stylesheet" href="assets/css/base.css" />
-  <link rel="stylesheet" href="assets/css/layout.css" />
-  <link rel="stylesheet" href="assets/css/components.css" />
-  <link rel="stylesheet" href="assets/css/role-management.css" />
-  <link rel="stylesheet" href="assets/css/tweaks.css" />
+  <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/layout.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/components.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/role-management.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/tweaks.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/datepicker.css}" />
 </head>
 <body>
-<script src="assets/js/sprite.js"></script>
+<script th:src="@{/assets/js/sprite.js}"></script>
 
 <div class="app"
      data-screen-label="Message Management"
@@ -115,8 +116,9 @@
   </main>
 </div>
 
-<script src="assets/js/app.js"></script>
-<script src="assets/js/chrome.js" data-page="message"></script>
+<script th:src="@{/assets/js/app.js}"></script>
+<script th:src="@{/assets/js/datepicker.js}"></script>
+<script th:src="@{/assets/js/chrome.js}" data-page="message" th:attr="data-ctx=@{/}"></script>
 <script>
   document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '커뮤니케이션', current: '문자관리 · 상용구' }); });
 </script>
