@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MediPlat · 입원상담</title>
+  <link rel="stylesheet" href="assets/css/tokens.css" />
+  <link rel="stylesheet" href="assets/css/base.css" />
+  <link rel="stylesheet" href="assets/css/layout.css" />
+  <link rel="stylesheet" href="assets/css/components.css" />
+  <link rel="stylesheet" href="assets/css/role-management.css" />
+  <link rel="stylesheet" href="assets/css/tweaks.css" />
+  <link rel="stylesheet" href="assets/css/datepicker.css" />
+  <style>
+    [x-cloak] { display: none !important; }
+    /* ===== Inpatient Consultation (ic-*) ===== */
+    .ic-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr); gap: 20px; align-items: start; }
+    @media (max-width: 1200px) { .ic-grid { grid-template-columns: 1fr; } }
+
+    .ic-card {
+      background: #fff;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .ic-card__head {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 18px;
+      background: linear-gradient(180deg, var(--gray-50), #fff);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .ic-card__head h2 { font-size: 13px; font-weight: 700; letter-spacing: -0.01em; }
+    .ic-card__head .eyebrow { font-size: 11px; color: var(--text-tertiary); margin-left: auto; font-variant-numeric: tabular-nums; }
+    .ic-card__head .ic-tag {
+      padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;
+      background: color-mix(in oklab, var(--brand-500) 12%, #fff);
+      color: var(--brand-700);
+      border: 1px solid color-mix(in oklab, var(--brand-500) 22%, transparent);
+    }
+
+    /* ===== Patient info top strip ===== */
+    .ic-top { padding: 18px; display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 12px 14px; }
+    .ic-top .ic-field--wide { grid-column: span 2; }
+    @media (max-width: 1400px) { .ic-top { grid-template-columns: repeat(4, minmax(0,1fr)); } }
+    @media (max-width: 820px)  { .ic-top { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+
+    .ic-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+    .ic-field__label { font-size: 11px; font-weight: 600; color: var(--text-tertiary); letter-spacing: .02em; display: inline-flex; align-items: center; gap: 4px; }
+    .ic-field__label .req { color: var(--danger, #ef4444); font-weight: 700; }
+    .ic-field__control { position: relative; }
+
+    .ic-input, .ic-select {
+      width: 100%; height: 34px;
+      padding: 0 12px;
+      border: 1px solid var(--border-default);
+      border-radius: 8px;
+      background: #fff;
+      font-size: 13px; color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+      transition: all .15s;
+    }
+    .ic-input:focus, .ic-select:focus { outline: none; border-color: var(--brand-400); box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-500) 14%, transparent); }
+    .ic-input::placeholder { color: var(--text-tertiary); }
+    .ic-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8f98' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 30px; }
+
+    .ic-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+    .ic-switch { position: relative; width: 36px; height: 20px; border-radius: 999px; background: var(--gray-200); cursor: pointer; transition: background .15s; flex: 0 0 auto; }
+    .ic-switch::after { content:""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.18); transition: transform .18s; }
+    .ic-switch.is-on { background: var(--brand-500); }
+    .ic-switch.is-on::after { transform: translateX(16px); }
+
+    /* ===== Grouped rows (상병명 / 마비상태 / ...) ===== */
+    .ic-sections { padding: 8px 10px 18px; }
+    .ic-row {
+      display: grid;
+      grid-template-columns: 100px minmax(0,1fr);
+      gap: 14px;
+      padding: 14px 8px;
+      border-top: 1px dashed var(--border-subtle);
+      align-items: start;
+    }
+    .ic-row:first-child { border-top: 0; }
+    .ic-row__label {
+      font-size: 12px; font-weight: 700; color: var(--text-primary);
+      padding: 8px 10px;
+      background: var(--gray-50);
+      border-radius: 8px;
+      text-align: center;
+      border: 1px solid var(--border-subtle);
+      position: sticky; top: 0;
+    }
+    .ic-row__body { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+    .ic-chips {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+      gap: 8px;
+    }
+    .ic-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid var(--border-default);
+      border-radius: 8px;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      background: #fff;
+      cursor: pointer;
+      transition: all .14s var(--ease-smooth);
+      user-select: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ic-chip:hover { border-color: var(--brand-300); background: color-mix(in oklab, var(--brand-500) 4%, #fff); color: var(--text-primary); }
+    .ic-chip.is-on {
+      background: color-mix(in oklab, var(--brand-500) 10%, #fff);
+      border-color: var(--brand-500);
+      color: var(--brand-700);
+      font-weight: 600;
+    }
+    .ic-chip__box {
+      width: 14px; height: 14px; border-radius: 4px; flex: 0 0 14px;
+      border: 1.5px solid var(--gray-300);
+      display: grid; place-items: center;
+      background: #fff;
+      transition: all .14s;
+    }
+    .ic-chip.is-on .ic-chip__box { background: var(--brand-500); border-color: var(--brand-500); }
+    .ic-chip.is-on .ic-chip__box::after { content:""; width: 7px; height: 4px; border: 2px solid #fff; border-top: 0; border-right: 0; transform: translateY(-1px) rotate(-45deg); }
+
+    .ic-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .ic-inline-select { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 160px); gap: 8px; align-items: center; }
+
+    /* ===== Consultation panel (right) ===== */
+    .ic-side__top {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px;
+    }
+    .ic-side__top .full { grid-column: 1 / -1; }
+
+    .ic-room {
+      margin: 16px 18px;
+      padding: 14px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, color-mix(in oklab, var(--brand-500) 8%, #fff), color-mix(in oklab, var(--brand-500) 2%, #fff));
+      border: 1px solid color-mix(in oklab, var(--brand-500) 20%, var(--border-default));
+    }
+    .ic-room__title { font-size: 12px; font-weight: 700; color: var(--brand-700); margin-bottom: 10px; display:flex; align-items:center; gap:6px; }
+    .ic-room__btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .ic-room__btn {
+      display:flex; align-items:center; justify-content:center; gap:6px;
+      height: 38px; border-radius: 8px;
+      font-size: 12.5px; font-weight: 600;
+      transition: all .14s;
+    }
+    .ic-room__btn--primary { background: var(--brand-500); color: #fff; }
+    .ic-room__btn--primary:hover { background: var(--brand-600); }
+    .ic-room__btn--ghost { background: #fff; color: var(--text-secondary); border: 1px solid var(--border-default); }
+    .ic-room__btn--ghost:hover { border-color: var(--brand-400); color: var(--brand-700); }
+
+    /* ===== Recorder ===== */
+    .ic-recorder { margin: 0 18px; padding: 16px; border: 1px solid var(--border-default); border-radius: 12px; background: #fff; }
+    .ic-recorder__head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .ic-recorder__title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+    .ic-recorder__badge {
+      margin-left: auto;
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 2px 8px; border-radius: 999px;
+      font-size: 11px; font-weight: 600;
+      background: var(--gray-100); color: var(--text-secondary);
+    }
+    .ic-recorder__badge .pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--gray-400); }
+    .ic-recorder.is-rec .ic-recorder__badge { background: #fee2e2; color: #991b1b; }
+    .ic-recorder.is-rec .ic-recorder__badge .pulse { background: #ef4444; animation: pulse 1.4s infinite; }
+    @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 #ef4444; } 50% { box-shadow: 0 0 0 5px transparent; } }
+
+    .ic-dropzone {
+      padding: 14px; border: 1.5px dashed var(--border-default); border-radius: 10px;
+      text-align: center; color: var(--text-tertiary); font-size: 12px;
+      background: var(--gray-50);
+      transition: all .15s;
+    }
+    .ic-dropzone:hover { border-color: var(--brand-400); background: color-mix(in oklab, var(--brand-500) 4%, #fff); color: var(--text-secondary); }
+    .ic-dropzone strong { color: var(--brand-700); font-weight: 600; }
+
+    .ic-wave {
+      height: 36px; margin: 12px 0;
+      display: flex; align-items: center; gap: 2px;
+      padding: 0 4px;
+    }
+    .ic-wave span {
+      flex: 1; min-width: 2px; background: var(--gray-300);
+      border-radius: 2px;
+      transition: height .2s, background .2s;
+    }
+    .ic-recorder.is-rec .ic-wave span { background: var(--brand-500); animation: wave 1s ease-in-out infinite; }
+    @keyframes wave { 0%, 100% { transform: scaleY(.4); } 50% { transform: scaleY(1); } }
+
+    .ic-recorder__actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .ic-recorder__btn {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 8px 4px; border-radius: 8px;
+      font-size: 11px; font-weight: 600;
+      background: #fff; color: var(--text-secondary);
+      border: 1px solid var(--border-default);
+      transition: all .14s;
+    }
+    .ic-recorder__btn svg { width: 14px; height: 14px; }
+    .ic-recorder__btn:hover { border-color: var(--brand-400); color: var(--brand-700); }
+    .ic-recorder__btn.is-primary { background: var(--brand-500); color: #fff; border-color: var(--brand-500); }
+    .ic-recorder__btn.is-danger  { background: #ef4444; color: #fff; border-color: #ef4444; }
+    .ic-recorder__btn[disabled] { opacity: .5; pointer-events: none; }
+
+    .ic-side__section { padding: 16px 18px; border-top: 1px solid var(--border-subtle); }
+    .ic-side__section-title { font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+    .ic-side__section-title svg { width: 13px; height: 13px; color: var(--text-tertiary); }
+
+    .ic-textarea {
+      width: 100%; min-height: 140px;
+      padding: 12px 14px;
+      border: 1px solid var(--border-default);
+      border-radius: 10px;
+      background: #fff;
+      font: 13px/1.6 var(--font-sans);
+      resize: vertical;
+      transition: all .15s;
+    }
+    .ic-textarea:focus { outline: none; border-color: var(--brand-400); box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-500) 14%, transparent); }
+
+    /* ===== Bottom action bar ===== */
+    .ic-footer {
+      display: flex; justify-content: flex-end; gap: 10px;
+      padding: 14px 18px;
+      margin-top: 16px;
+      background: #fff;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 1px 2px rgba(0,0,0,.04);
+      position: sticky; bottom: 16px; z-index: 2;
+    }
+    .ic-footer .spacer { flex: 1; font-size: 12px; color: var(--text-tertiary); align-self: center; }
+
+    /* Guardian rows */
+    .ic-guardian { display: grid; grid-template-columns: 1.1fr 0.7fr 1.4fr; gap: 8px; align-items: center; }
+    @media (max-width: 1400px) { .ic-guardian { grid-template-columns: 1fr 1fr 1.5fr; } }
+
+    /* Phone input with actions */
+    .ic-phone-cell { display: grid; grid-template-columns: 1fr auto; gap: 4px; align-items: center; }
+    .ic-phone-actions { display: inline-flex; gap: 2px; }
+    .ic-phone-actions .btn-icon {
+      width: 28px; height: 28px;
+      display: grid; place-items: center;
+      background: #fff;
+      border: 1px solid var(--border-default);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .ic-phone-actions .btn-icon:hover { border-color: var(--brand-500); color: var(--brand-600); background: color-mix(in oklab, var(--brand-500) 6%, #fff); }
+    .ic-phone-actions .btn-icon svg { width: 14px; height: 14px; }
+    .ic-phone-actions .btn-icon--danger:hover { border-color: #ef4444; color: #ef4444; background: color-mix(in oklab, #ef4444 6%, #fff); }
+
+    /* ===== SMS Modal ===== */
+    .sms-modal {
+      position: fixed; inset: 0;
+      display: grid; place-items: center;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      padding: 24px;
+    }
+    .sms-dialog {
+      width: min(1400px, 100%);
+      max-height: calc(100vh - 48px);
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.3);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sms-head {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .sms-head__title { font-size: 17px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 10px; }
+    .sms-head__title svg { width: 18px; height: 18px; color: var(--brand-600); }
+    .sms-head__sub { font-size: 12px; color: var(--text-tertiary); margin-left: 8px; font-weight: 500; }
+    .sms-head__close { background: none; border: 0; width: 34px; height: 34px; display: grid; place-items: center; color: var(--text-tertiary); border-radius: 8px; cursor: pointer; transition: all .14s; }
+    .sms-head__close:hover { background: var(--gray-100); color: var(--text-primary); }
+    .sms-head__close svg { width: 18px; height: 18px; }
+
+    .sms-body {
+      display: grid;
+      grid-template-columns: 300px 1fr 320px;
+      gap: 0;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* Columns */
+    .sms-col { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
+    .sms-col--left { background: var(--gray-50); padding: 16px; gap: 12px; border-right: 1px solid var(--border-subtle); }
+    .sms-col--center { padding: 16px; gap: 12px; display: flex; flex-direction: column; background: #fff; }
+    .sms-col--right { background: var(--gray-50); border-left: 1px solid var(--border-subtle); }
+
+    .sms-card {
+      background: #fff;
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .sms-card__head {
+      padding: 10px 14px;
+      background: var(--gray-100);
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-align: center;
+      border-bottom: 1px solid var(--border-subtle);
+      letter-spacing: 0.01em;
+    }
+    .sms-card__body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+    /* Recipient list */
+    .sms-recipient-list { display: flex; flex-direction: column; gap: 6px; }
+    .sms-recipient-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 10px;
+      background: var(--gray-50);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+    }
+    .sms-recipient-row input[type="checkbox"] { accent-color: var(--brand-500); margin: 0; width: 14px; height: 14px; flex-shrink: 0; }
+    .sms-recipient-row .phone { flex: 1; font-size: 13px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+    .sms-recipient-row .rm {
+      width: 22px; height: 22px;
+      background: transparent;
+      color: var(--text-tertiary);
+      border: 0;
+      border-radius: 4px;
+      display: grid; place-items: center;
+      cursor: pointer;
+      transition: all .12s;
+    }
+    .sms-recipient-row .rm:hover { background: #fee2e2; color: #ef4444; }
+    .sms-recipient-row .rm svg { width: 12px; height: 12px; }
+    .sms-recipient-add {
+      display: grid; grid-template-columns: 1fr auto; gap: 6px;
+    }
+    .sms-recipient-add input {
+      height: 32px; padding: 0 10px;
+      border: 1px solid var(--border-default);
+      border-radius: 6px;
+      font-size: 12.5px;
+      font-family: inherit;
+      font-variant-numeric: tabular-nums;
+    }
+    .sms-recipient-add input:focus { outline: none; border-color: var(--brand-400); box-shadow: 0 0 0 2px color-mix(in oklab, var(--brand-500) 14%, transparent); }
+    .sms-recipient-add button {
+      width: 32px; height: 32px;
+      background: var(--brand-500);
+      color: #fff;
+      border: 0;
+      border-radius: 6px;
+      display: grid; place-items: center;
+      cursor: pointer;
+      transition: background .14s;
+    }
+    .sms-recipient-add button:hover { background: var(--brand-600); }
+    .sms-recipient-add button svg { width: 14px; height: 14px; }
+
+    /* Reservation send */
+    .sms-schedule {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .sms-schedule > .toggle {
+      grid-column: 1 / -1;
+      height: 34px;
+      border: 1px solid var(--border-default);
+      background: #fff;
+      border-radius: 6px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all .14s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .sms-schedule > .toggle.is-on { background: var(--brand-500); color: #fff; border-color: var(--brand-500); }
+    .sms-schedule > .toggle svg { width: 13px; height: 13px; }
+    .sms-schedule .picker-row { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr auto; gap: 6px; }
+    .sms-schedule .hm-row { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; }
+    .sms-schedule .reset-btn {
+      height: 34px; width: 34px;
+      display: grid; place-items: center;
+      background: #fff;
+      border: 1px solid var(--border-default);
+      border-radius: 6px;
+      color: var(--text-tertiary);
+      cursor: pointer;
+    }
+    .sms-schedule .reset-btn:hover { color: var(--text-primary); border-color: var(--gray-300); }
+    .sms-schedule .reset-btn svg { width: 13px; height: 13px; }
+
+    /* Phrase / Signature pick list */
+    .sms-picklist {
+      display: grid;
+      grid-template-columns: 1fr 1.3fr;
+      gap: 0;
+      min-height: 150px;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .sms-picklist__items {
+      max-height: 180px;
+      overflow-y: auto;
+      padding: 6px;
+      background: #fff;
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .sms-picklist__item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 9px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 12.5px;
+      color: var(--text-primary);
+      transition: background .12s;
+    }
+    .sms-picklist__item:hover { background: var(--gray-50); }
+    .sms-picklist__item.is-sel { background: color-mix(in oklab, var(--brand-500) 10%, #fff); color: var(--brand-700); font-weight: 600; }
+    .sms-picklist__item input { accent-color: var(--brand-500); margin: 0; }
+    .sms-picklist__preview {
+      padding: 10px 12px;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      background: var(--gray-50);
+      line-height: 1.55;
+      overflow-y: auto;
+      white-space: pre-line;
+    }
+    .sms-picklist__preview.is-empty { color: var(--text-tertiary); font-style: italic; }
+    .sms-apply-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+    .sms-apply-btn {
+      padding: 8px 10px;
+      background: #fff;
+      color: var(--brand-600);
+      border: 1px solid var(--brand-400);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all .14s;
+    }
+    .sms-apply-btn:hover { background: var(--brand-500); color: #fff; }
+    .sms-apply-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .sms-apply-btn.is-primary { background: var(--brand-500); color: #fff; border-color: var(--brand-500); }
+    .sms-apply-btn.is-primary:hover { background: var(--brand-600); }
+
+    /* Center: editors */
+    .sms-editor {
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      overflow: hidden;
+    }
+    .sms-editor__top {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--gray-50);
+    }
+    .sms-editor__label { font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+    .sms-editor__bytes {
+      margin-left: 10px;
+      font-size: 12px;
+      color: var(--text-tertiary);
+      font-variant-numeric: tabular-nums;
+    }
+    .sms-editor__bytes .is-mms { color: var(--brand-600); font-weight: 600; }
+    .sms-editor__reload {
+      margin-left: auto;
+      background: none; border: 0;
+      width: 26px; height: 26px;
+      display: grid; place-items: center;
+      color: var(--text-tertiary);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .sms-editor__reload:hover { background: var(--gray-100); color: var(--text-primary); }
+    .sms-editor__reload svg { width: 14px; height: 14px; }
+    .sms-editor textarea {
+      width: 100%;
+      border: 0;
+      padding: 14px;
+      resize: none;
+      font-family: inherit;
+      font-size: 13.5px;
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 220px;
+    }
+    .sms-editor textarea:focus { outline: none; }
+    .sms-editor textarea.sig { min-height: 140px; border-top: 1px solid var(--border-subtle); }
+    .sms-editor__attach {
+      padding: 8px 12px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: center;
+      background: var(--gray-50);
+    }
+    .sms-editor__attach button {
+      background: #fff;
+      border: 1px solid var(--border-default);
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: inherit;
+    }
+    .sms-editor__attach button:hover { border-color: var(--brand-500); color: var(--brand-600); }
+    .sms-editor__attach svg { width: 13px; height: 13px; }
+
+    .sms-save-phrase {
+      padding: 11px;
+      background: var(--brand-500);
+      color: #fff;
+      border: 0;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background .14s;
+    }
+    .sms-save-phrase:hover { background: var(--brand-600); }
+
+    /* Right: history */
+    .sms-history-head {
+      padding: 14px 14px 8px;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--gray-50);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .sms-history {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .sms-history__item {
+      background: #fff;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: all .14s;
+      text-align: left;
+      width: 100%;
+      font-family: inherit;
+    }
+    .sms-history__item:hover { border-color: var(--brand-400); background: color-mix(in oklab, var(--brand-500) 4%, #fff); }
+    .sms-history__body { font-size: 12.5px; color: var(--text-primary); margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.45; white-space: pre-line; }
+    .sms-history__meta { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; border-top: 1px solid var(--border-subtle); padding-top: 6px; }
+
+    /* Footer */
+    .sms-foot {
+      display: flex;
+      align-items: center;
+      padding: 14px 24px;
+      border-top: 1px solid var(--border-subtle);
+      background: var(--gray-50);
+      gap: 12px;
+    }
+    .sms-foot__ad {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+    }
+    .sms-foot__ad input { accent-color: var(--brand-500); }
+    .sms-foot .btn-group { margin-left: auto; display: flex; gap: 8px; }
+    .sms-foot .btn {
+      padding: 9px 22px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      border: 0;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .sms-foot .btn--ghost { background: #fff; color: var(--text-secondary); border: 1px solid var(--border-default); }
+    .sms-foot .btn--ghost:hover { background: var(--gray-50); }
+    .sms-foot .btn--primary { background: var(--brand-500); color: #fff; display: inline-flex; align-items: center; gap: 6px; }
+    .sms-foot .btn--primary:hover { background: var(--brand-600); }
+    .sms-foot .btn--primary:disabled { background: var(--gray-300); cursor: not-allowed; }
+    .sms-foot .btn--primary svg { width: 14px; height: 14px; }
+
+    /* History table */
+    .ic-history { border: 1px solid var(--border-subtle); border-radius: 10px; overflow: hidden; background: #fff; }
+    .ic-history__head { display: grid; grid-template-columns: 60px 1fr 80px 70px; gap: 10px; padding: 10px 14px; font-size: 11px; font-weight: 600; color: var(--text-tertiary); background: var(--gray-50); border-bottom: 1px solid var(--border-subtle); text-transform: uppercase; letter-spacing: .04em; }
+    .ic-history__row { display: grid; grid-template-columns: 60px 1fr 80px 70px; gap: 10px; padding: 11px 14px; border-bottom: 1px solid var(--border-subtle); font-size: 12.5px; color: var(--text-secondary); background: #fff; text-align: left; width: 100%; cursor: pointer; transition: background .12s; align-items: center; border-left: 0; border-right: 0; border-top: 0; }
+    .ic-history__row:last-child { border-bottom: 0; }
+    .ic-history__row:hover { background: color-mix(in oklab, var(--brand-500) 5%, #fff); }
+    .ic-history__row .mono { font-variant-numeric: tabular-nums; font-size: 12px; }
+    .ic-history__empty { padding: 28px 16px; text-align: center; font-size: 12.5px; color: var(--text-tertiary); }
+
+    .ic-result-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 5px; vertical-align: middle; background: var(--gray-400); }
+    .ic-result-dot--success { background: #10b981; }
+    .ic-result-dot--warning { background: #f59e0b; }
+    .ic-result-dot--danger  { background: #ef4444; }
+    .ic-result-dot--info    { background: var(--brand-500); }
+
+    /* Modal */
+    .ic-modal__backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); display: grid; place-items: center; z-index: 100; backdrop-filter: blur(2px); animation: fadeIn .15s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .ic-modal { width: min(560px, 92vw); background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.3); animation: slideUp .18s var(--ease-smooth); }
+    @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .ic-modal__head { padding: 16px 20px; background: linear-gradient(135deg, var(--brand-700), var(--brand-500)); color: #fff; display: flex; align-items: center; gap: 10px; }
+    .ic-modal__head h3 { font-size: 15px; font-weight: 700; flex: 1; }
+    .ic-modal__head button { color: #fff; background: transparent; border: 0; cursor: pointer; padding: 4px; border-radius: 6px; }
+    .ic-modal__head button:hover { background: rgba(255,255,255,.15); }
+    .ic-modal__body { padding: 20px; display: flex; flex-direction: column; gap: 14px; max-height: 70vh; overflow: auto; }
+    .ic-modal__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+    .ic-modal__foot { padding: 14px 20px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: flex-end; gap: 8px; }
+  </style>
+</head>
+<body>
+<script src="assets/js/sprite.js"></script>
+
+<div class="app"
+     data-screen-label="Inpatient Consultation"
+     :data-sidebar="$store.app.sidebarCollapsed ? 'collapsed' : 'expanded'"
+     :data-variation="$store.app.variation"
+     x-data>
+
+  <div id="slot-sidebar"></div>
+  <div id="slot-header"></div>
+
+  <main class="main">
+    <div class="page" x-data="inpatientForm()">
+
+      <!-- Page header -->
+      <div class="page__header">
+        <div>
+          <h1 class="page__title">입원상담</h1>
+          <p class="page__subtitle">환자 상세 정보와 상담 기록을 한 화면에서 관리합니다</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn--outline"><svg><use href="#i-refresh"/></svg>초기화</button>
+          <button class="btn btn--outline"><svg><use href="#i-eye"/></svg>미리보기</button>
+        </div>
+      </div>
+
+      <!-- Split grid -->
+      <div class="ic-grid">
+
+        <!-- ============ LEFT: Patient details ============ -->
+        <section>
+          <div class="ic-card">
+            <div class="ic-card__head">
+              <span class="ic-tag">1</span>
+              <h2>환자 상세정보</h2>
+              <span class="eyebrow" x-text="'ID ' + patient.id"></span>
+            </div>
+
+            <!-- Top patient strip -->
+            <div class="ic-top">
+              <div class="ic-field ic-field--wide">
+                <label class="ic-field__label">환자명 <span class="req">*</span></label>
+                <input type="text" class="ic-input" placeholder="홍길동" x-model="patient.name" />
+              </div>
+              <div class="ic-field">
+                <label class="ic-field__label">성별</label>
+                <select class="ic-select"><option>선택하세요</option><option>남</option><option>여</option></select>
+              </div>
+              <div class="ic-field">
+                <label class="ic-field__label">현재재원지</label>
+                <select class="ic-select"><option>선택하세요</option><option>본원</option><option>타원</option><option>자택</option></select>
+              </div>
+              <div class="ic-field">
+                <label class="ic-field__label">보험유형</label>
+                <select class="ic-select"><option>선택하세요</option><option>건강보험</option><option>의료급여</option><option>산재</option></select>
+              </div>
+              <div class="ic-field">
+                <label class="ic-field__label">손상보험</label>
+                <label class="ic-toggle">
+                  <span class="ic-switch" :class="{ 'is-on': patient.damage }" @click="patient.damage=!patient.damage"></span>
+                  <span x-text="patient.damage ? '가입' : '미가입'"></span>
+                </label>
+              </div>
+              <div class="ic-field">
+                <label class="ic-field__label">생년월일</label>
+                <input type="date" class="ic-input" x-model="patient.birth" />
+              </div>
+              <div class="ic-field">
+                <label class="ic-field__label">나이</label>
+                <input type="text" class="ic-input" placeholder="세" value="72" />
+              </div>
+              <div class="ic-field ic-field--wide">
+                <label class="ic-field__label">상담유입경로</label>
+                <select class="ic-select"><option>선택하세요</option><option>인터넷 광고</option><option>가족 소개</option><option>병원 소개</option></select>
+              </div>
+              <div class="ic-field">
+                <label class="ic-field__label">잠재고객</label>
+                <select class="ic-select"><option>선택하세요</option><option>A</option><option>B</option><option>C</option></select>
+              </div>
+              <div class="ic-field">
+                <label class="ic-field__label">BC</label>
+                <label class="ic-toggle">
+                  <span class="ic-switch" :class="{ 'is-on': patient.bc }" @click="patient.bc=!patient.bc"></span>
+                  <span x-text="patient.bc ? 'ON' : 'OFF'"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Grouped rows -->
+            <div class="ic-sections">
+
+              <!-- 상병명 -->
+              <div class="ic-row">
+                <div class="ic-row__label">상병명</div>
+                <div class="ic-row__body">
+                  <div class="ic-chips">
+                    <template x-for="(c, i) in diagnoses" :key="c.id">
+                      <div class="ic-chip" :class="{ 'is-on': c.on }" @click="c.on = !c.on">
+                        <span class="ic-chip__box"></span>
+                        <span x-text="c.label"></span>
+                      </div>
+                    </template>
+                  </div>
+                  <div class="ic-inline-select">
+                    <input type="text" class="ic-input" placeholder="기타 질환 (일반) 입력" />
+                    <input type="text" class="ic-input" placeholder="암(암종)" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- 마비상태 -->
+              <div class="ic-row">
+                <div class="ic-row__label">마비상태</div>
+                <div class="ic-row__body">
+                  <div class="ic-chips">
+                    <template x-for="c in paralysis" :key="c.id">
+                      <div class="ic-chip" :class="{ 'is-on': c.on }" @click="c.on = !c.on">
+                        <span class="ic-chip__box"></span>
+                        <span x-text="c.label"></span>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 처치종류 -->
+              <div class="ic-row">
+                <div class="ic-row__label">처치종류</div>
+                <div class="ic-row__body">
+                  <div class="ic-chips">
+                    <template x-for="c in treatments" :key="c.id">
+                      <div class="ic-chip" :class="{ 'is-on': c.on }" @click="c.on = !c.on">
+                        <span class="ic-chip__box"></span>
+                        <span x-text="c.label"></span>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 여성환자분류군 -->
+              <div class="ic-row">
+                <div class="ic-row__label">여성환자<br/>분류군</div>
+                <div class="ic-row__body">
+                  <select class="ic-select" style="max-width:320px;">
+                    <option>선택하세요</option><option>임신 전</option><option>임신 중</option><option>출산 후</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- 상태 -->
+              <div class="ic-row">
+                <div class="ic-row__label">상태</div>
+                <div class="ic-row__body">
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
+                    <div class="ic-inline-select">
+                      <span style="font-size:12.5px;color:var(--text-secondary);">의식혼재</span>
+                      <select class="ic-select"><option>선택하세요</option><option>명료</option><option>혼미</option></select>
+                    </div>
+                    <div class="ic-inline-select">
+                      <span style="font-size:12.5px;color:var(--text-secondary);">기저기사용유무</span>
+                      <select class="ic-select"><option>선택하세요</option><option>사용</option><option>미사용</option></select>
+                    </div>
+                    <div class="ic-inline-select">
+                      <span style="font-size:12.5px;color:var(--text-secondary);">현재식사</span>
+                      <select class="ic-select"><option>선택하세요</option><option>일반식</option><option>치료식</option></select>
+                    </div>
+                    <div class="ic-inline-select">
+                      <span style="font-size:12.5px;color:var(--text-secondary);">욕창유무</span>
+                      <select class="ic-select"><option>선택하세요</option><option>없음</option><option>1단계</option><option>2단계</option><option>3단계</option></select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 감염상태 -->
+              <div class="ic-row">
+                <div class="ic-row__label">감염상태</div>
+                <div class="ic-row__body">
+                  <div class="ic-chips">
+                    <template x-for="c in infection" :key="c.id">
+                      <div class="ic-chip" :class="{ 'is-on': c.on }" @click="c.on = !c.on">
+                        <span class="ic-chip__box"></span>
+                        <span x-text="c.label"></span>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 환자구분 -->
+              <div class="ic-row">
+                <div class="ic-row__label">환자구분</div>
+                <div class="ic-row__body">
+                  <div class="ic-chips" style="grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));">
+                    <template x-for="c in category" :key="c.id">
+                      <div class="ic-chip" :class="{ 'is-on': c.on }" @click="c.on = !c.on">
+                        <span class="ic-chip__box"></span>
+                        <span x-text="c.label"></span>
+                      </div>
+                    </template>
+                  </div>
+                  <select class="ic-select" style="max-width:240px;"><option>선택하세요</option><option>신규</option><option>재원</option><option>퇴원</option></select>
+                </div>
+              </div>
+
+              <!-- 기타항목 -->
+              <div class="ic-row">
+                <div class="ic-row__label">기타항목</div>
+                <div class="ic-row__body">
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <div class="ic-inline-select">
+                      <div class="ic-chip" :class="{ 'is-on': extras.covid }" @click="extras.covid = !extras.covid">
+                        <span class="ic-chip__box"></span>
+                        <span>코로나 검사 결과지</span>
+                      </div>
+                      <select class="ic-select"><option>선택하세요</option><option>음성</option><option>양성</option><option>미확인</option></select>
+                    </div>
+                    <div class="ic-inline-select">
+                      <div class="ic-chip" :class="{ 'is-on': extras.isolate }" @click="extras.isolate = !extras.isolate">
+                        <span class="ic-chip__box"></span>
+                        <span>격리실 청구</span>
+                      </div>
+                      <select class="ic-select"><option>선택하세요</option><option>해당</option><option>비해당</option></select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 상담내용 (간단) -->
+              <div class="ic-row">
+                <div class="ic-row__label">상담내용</div>
+                <div class="ic-row__body">
+                  <input type="text" class="ic-input" placeholder="상담 개요를 간단히 입력하세요" />
+                </div>
+              </div>
+
+              <!-- 현상태 (textarea) -->
+              <div class="ic-row">
+                <div class="ic-row__label">현상태</div>
+                <div class="ic-row__body">
+                  <textarea class="ic-textarea" placeholder="환자의 현재 상태, 주요 증상, 생활자립 정도 등을 기록하세요"></textarea>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ RIGHT: Consultation ============ -->
+        <aside class="ic-card" style="position: sticky; top: 16px;">
+          <div class="ic-card__head">
+            <span class="ic-tag" style="background:#ede9fe;color:#6d28d9;border-color:#c4b5fd;">2</span>
+            <h2>상담 기록</h2>
+            <span class="eyebrow">2026-04-24 · 이수민</span>
+          </div>
+
+          <!-- Guardians (multi) -->
+          <div class="ic-side__section" style="padding-top: 14px;">
+            <div class="ic-side__section-title">
+              <svg><use href="#i-users"/></svg>
+              보호자 정보
+              <button class="btn btn--outline" style="margin-left:auto;height:26px;padding:0 8px;font-size:11px;" @click="addGuardian()">
+                <svg><use href="#i-plus"/></svg> 추가
+              </button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <template x-for="(g, gi) in guardians" :key="g.id">
+                <div class="ic-guardian">
+                  <input type="text" class="ic-input" placeholder="보호자명" x-model="g.name" />
+                  <input type="text" class="ic-input" placeholder="관계" x-model="g.rel" />
+                  <div class="ic-phone-cell">
+                    <input type="text" class="ic-input" placeholder="010-0000-0000" x-model="g.phone" />
+                    <div class="ic-phone-actions">
+                      <button type="button" class="btn-icon" title="문자 전송"
+                        @click="openSms(g.phone)" :disabled="!g.phone">
+                        <svg><use href="#i-send"/></svg>
+                      </button>
+                      <button type="button" class="btn-icon btn-icon--danger" title="제거"
+                        @click="removeGuardian(gi)" x-show="guardians.length > 1">
+                        <svg><use href="#i-x"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Consultation meta -->
+          <div class="ic-side__top" style="border-top: 1px solid var(--border-subtle);">
+            <div class="ic-field">
+              <label class="ic-field__label">상담일자</label>
+              <input type="date" class="ic-input" value="2026-04-24" />
+            </div>
+            <div class="ic-field">
+              <label class="ic-field__label">상담자</label>
+              <input type="text" class="ic-input" value="이수민" readonly />
+            </div>
+            <div class="ic-field">
+              <label class="ic-field__label">방법</label>
+              <select class="ic-select" x-model="meta.method"><option value="">선택하세요</option><option>전화</option><option>방문</option><option>온라인</option></select>
+            </div>
+            <div class="ic-field">
+              <label class="ic-field__label">결과</label>
+              <select class="ic-select" x-model="meta.result">
+                <option value="">선택하세요</option>
+                <option>입원예약</option><option>입원대기</option><option>보류</option><option>취소</option>
+              </select>
+            </div>
+
+            <!-- Conditional fields when 결과 === 입원예약 -->
+            <template x-if="meta.result === '입원예약'">
+              <div class="full" style="display:grid;grid-template-columns: 1fr 1fr 1fr;gap:10px;padding:12px;border-radius:10px;background: color-mix(in oklab, var(--brand-500) 5%, #fff);border:1px dashed color-mix(in oklab, var(--brand-500) 30%, transparent);">
+                <div class="ic-field">
+                  <label class="ic-field__label">입원예정일</label>
+                  <input type="date" class="ic-input" x-model="meta.admitDate" />
+                </div>
+                <div class="ic-field">
+                  <label class="ic-field__label">예정시간</label>
+                  <input type="time" class="ic-input" placeholder="HH:mm" x-model="meta.admitTime" />
+                </div>
+                <div class="ic-field">
+                  <label class="ic-field__label">예상 호실</label>
+                  <input type="text" class="ic-input" placeholder="101호" x-model="meta.admitRoom" />
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- Room selection -->
+          <div class="ic-room">
+            <div class="ic-room__title">
+              <svg style="width:14px;height:14px;"><use href="#i-bed"/></svg>
+              병실 선택
+            </div>
+            <div class="ic-room__btns">
+              <a href="Ward Status.html" class="ic-room__btn ic-room__btn--primary" style="text-decoration:none;">
+                <svg><use href="#i-list"/></svg> 병실현황판 보기
+              </a>
+              <button class="ic-room__btn ic-room__btn--ghost" x-text="selectedBed ? selectedBed : '선택된 병상 없음'"></button>
+            </div>
+          </div>
+
+          <!-- Admission agreement -->
+          <div class="ic-room" style="background: linear-gradient(135deg, #fef3c7, #fffbeb); border-color: #fcd34d;">
+            <div class="ic-room__title" style="color:#92400e;">
+              <svg style="width:14px;height:14px;"><use href="#i-edit"/></svg>
+              입원서약서
+            </div>
+            <div class="ic-room__btns">
+              <a href="Admission Agreement.html" class="ic-room__btn ic-room__btn--primary" style="text-decoration:none;background:#f59e0b;">
+                <svg><use href="#i-edit"/></svg> 입원서약서 페이지 열기
+              </a>
+              <button class="ic-room__btn ic-room__btn--ghost" x-text="agreementLabel()"
+                :style="agreementStatus === 'done' ? 'color: var(--success, #10b981); border-color: var(--success, #10b981);' : ''"></button>
+            </div>
+          </div>
+
+          <!-- Recorder -->
+          <div class="ic-recorder" :class="{ 'is-rec': recorder === 'rec' }" style="margin-bottom: 0;">
+            <div class="ic-recorder__head">
+              <svg style="width:14px;height:14px;color:var(--text-tertiary);"><use href="#i-chat"/></svg>
+              <span class="ic-recorder__title">상담내용 · 음성 녹음</span>
+              <span class="ic-recorder__badge">
+                <span class="pulse"></span>
+                <span x-text="recorderLabel()"></span>
+              </span>
+            </div>
+
+            <div class="ic-dropzone">
+              녹음 파일을 여기에 <strong>끌어놓거나 클릭</strong>해 업로드<br/>
+              <span style="font-size:11px;">지원 포맷 · mp3, wav, m4a, webm · 최대 50MB</span>
+            </div>
+
+            <div class="ic-wave">
+              <template x-for="i in 40"><span :style="{ height: (10 + ((i * 13) % 24)) + 'px' }"></span></template>
+            </div>
+
+            <div class="ic-recorder__actions">
+              <button class="ic-recorder__btn is-danger" @click="recorder = recorder === 'rec' ? 'idle' : 'rec'">
+                <svg><use href="#i-phone"/></svg>
+                <span x-text="recorder === 'rec' ? '녹음중' : '녹음 시작'"></span>
+              </button>
+              <button class="ic-recorder__btn" :disabled="recorder !== 'rec'" @click="recorder = 'paused'">
+                <svg><use href="#i-clock"/></svg>
+                녹음 중지
+              </button>
+              <button class="ic-recorder__btn">
+                <svg><use href="#i-sliders"/></svg>
+                커스텀 설정
+              </button>
+              <button class="ic-recorder__btn is-primary">
+                <svg><use href="#i-check"/></svg>
+                상담 요약
+              </button>
+            </div>
+          </div>
+
+          <!-- File upload section -->
+          <div class="ic-side__section">
+            <div class="ic-side__section-title">
+              <svg><use href="#i-notebook"/></svg>
+              소견서 · CT · MRI · 처방전 등
+            </div>
+            <div class="ic-dropzone">
+              서류 파일을 여기에 <strong>끌어놓거나 클릭</strong>해 업로드<br/>
+              <span style="font-size:11px;">지원 포맷 · PDF, 이미지, Word, Excel, 한글, 텍스트</span>
+            </div>
+          </div>
+
+          <!-- Previous consultations -->
+          <div class="ic-side__section">
+            <div class="ic-side__section-title">
+              <svg><use href="#i-clock"/></svg>
+              이전 상담 이력
+              <span style="margin-left:auto;font-size:11px;font-weight:500;color:var(--text-tertiary);" x-text="history.length + '건'"></span>
+            </div>
+            <div class="ic-history">
+              <div class="ic-history__head">
+                <span>방법</span>
+                <span>상담일자</span>
+                <span>결과</span>
+                <span>상담자</span>
+              </div>
+              <template x-for="(h, hi) in history" :key="h.id">
+                <button class="ic-history__row" @click="openHistory(h)">
+                  <span x-text="h.method || '—'"></span>
+                  <span class="mono" x-text="h.date"></span>
+                  <span>
+                    <span class="ic-result-dot" :class="'ic-result-dot--' + resultTone(h.result)"></span>
+                    <span x-text="h.result || '—'"></span>
+                  </span>
+                  <span x-text="h.author"></span>
+                </button>
+              </template>
+              <div x-show="history.length === 0" class="ic-history__empty">저장된 상담 이력이 없습니다</div>
+            </div>
+          </div>
+        </aside>
+
+      </div>
+
+      <!-- Footer actions -->
+      <div class="ic-footer">
+        <span class="spacer">자동저장 · 14:23 · <span style="color: var(--success, #10b981);">●</span> 저장됨</span>
+        <button class="btn btn--outline"><svg><use href="#i-download"/></svg>일지 출력</button>
+        <button class="btn btn--outline"><svg><use href="#i-download"/></svg>입원서식 출력</button>
+        <button class="btn btn--primary"><svg><use href="#i-check"/></svg>환자정보 저장</button>
+      </div>
+
+      <!-- History detail modal -->
+      <template x-teleport="body">
+        <div class="ic-modal__backdrop" x-show="showHistory" x-transition.opacity @click.self="showHistory = false" @keydown.escape.window="showHistory = false" x-cloak>          <div class="ic-modal" @click.stop>
+            <div class="ic-modal__head">
+              <svg style="width:16px;height:16px;"><use href="#i-clock"/></svg>
+              <h3>상담 이력 상세</h3>
+              <button @click="showHistory = false" aria-label="닫기"><svg style="width:18px;height:18px;"><use href="#i-x"/></svg></button>
+            </div>
+            <div class="ic-modal__body" x-show="selectedHistory">
+              <div class="ic-modal__grid">
+                <div class="ic-field">
+                  <label class="ic-field__label">상담일자</label>
+                  <input type="text" class="ic-input" :value="selectedHistory?.date" readonly />
+                </div>
+                <div class="ic-field">
+                  <label class="ic-field__label">상담자</label>
+                  <input type="text" class="ic-input" :value="selectedHistory?.author" readonly />
+                </div>
+                <div class="ic-field">
+                  <label class="ic-field__label">상담방법</label>
+                  <input type="text" class="ic-input" :value="selectedHistory?.method || '—'" readonly />
+                </div>
+                <div class="ic-field">
+                  <label class="ic-field__label">상담결과</label>
+                  <input type="text" class="ic-input" :value="selectedHistory?.result || '—'" readonly />
+                </div>
+              </div>
+              <div class="ic-field">
+                <label class="ic-field__label">상담내용</label>
+                <textarea class="ic-textarea" readonly x-text="selectedHistory?.note || '기록된 상담내용이 없습니다.'"></textarea>
+              </div>
+              <div style="font-size:12px;color:var(--text-tertiary);" x-text="selectedHistory?.guardian ? ('보호자: ' + selectedHistory.guardian) : '보호자 정보가 없습니다.'"></div>
+            </div>
+            <div class="ic-modal__foot">
+              <button class="btn btn--outline" @click="showHistory = false">닫기</button>
+              <button class="btn btn--primary"><svg><use href="#i-edit"/></svg>현재 상담에 복사</button>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- SMS Send Modal -->
+      <template x-teleport="body">
+        <div class="sms-modal" x-show="sms.open" x-transition.opacity @click.self="closeSms()" @keydown.escape.window="closeSms()" x-cloak>
+          <div class="sms-dialog" @click.stop>
+            <div class="sms-head">
+              <div class="sms-head__title">
+                <svg><use href="#i-send"/></svg>
+                문자 전송
+                <span class="sms-head__sub">보호자에게 문자 메시지를 발송합니다</span>
+              </div>
+              <button class="sms-head__close" @click="closeSms()" aria-label="닫기">
+                <svg><use href="#i-x"/></svg>
+              </button>
+            </div>
+
+            <div class="sms-body">
+              <!-- LEFT -->
+              <div class="sms-col sms-col--left">
+                <!-- 발신번호 -->
+                <div class="sms-card">
+                  <div class="sms-card__head">발신번호</div>
+                  <div class="sms-card__body">
+                    <select class="ic-input" x-model="sms.sender">
+                      <option value="(카운셀맨(효사랑가족)) 063-711-1111">(카운셀맨(효사랑가족)) 063-711-1111</option>
+                      <option value="(대표번호) 063-720-0000">(대표번호) 063-720-0000</option>
+                      <option value="(상담팀) 063-711-1122">(상담팀) 063-711-1122</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- 수신번호 -->
+                <div class="sms-card">
+                  <div class="sms-card__head">수신번호</div>
+                  <div class="sms-card__body">
+                    <div class="sms-recipient-list">
+                      <template x-for="(r, ri) in sms.recipients" :key="ri">
+                        <div class="sms-recipient-row">
+                          <input type="checkbox" :checked="r.on" @change="r.on = $event.target.checked" />
+                          <span class="phone" x-text="r.phone"></span>
+                          <button class="rm" title="제거" @click="sms.recipients.splice(ri,1)">
+                            <svg><use href="#i-x"/></svg>
+                          </button>
+                        </div>
+                      </template>
+                      <div x-show="sms.recipients.length === 0" style="padding:10px;text-align:center;color:var(--text-tertiary);font-size:12px;background:#fff;border-radius:6px;border:1px dashed var(--border-subtle);">
+                        수신자가 없습니다
+                      </div>
+                    </div>
+                    <div class="sms-recipient-add">
+                      <input type="text" placeholder="010-0000-0000" x-model="sms.newRecipient"
+                        @keydown.enter.prevent="addRecipient()" />
+                      <button @click="addRecipient()" title="추가">
+                        <svg><use href="#i-plus"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 예약발송 -->
+                <div class="sms-card">
+                  <div class="sms-card__head">예약발송</div>
+                  <div class="sms-card__body">
+                    <div class="sms-schedule">
+                      <button type="button" class="toggle" :class="{ 'is-on': sms.schedule.on }" @click="sms.schedule.on = !sms.schedule.on">
+                        <svg><use href="#i-clock"/></svg>
+                        <span x-text="sms.schedule.on ? '예약발송 사용' : '즉시발송'"></span>
+                      </button>
+                      <div class="picker-row">
+                        <input type="date" class="ic-input" x-model="sms.schedule.date" :disabled="!sms.schedule.on" placeholder="날짜 선택" />
+                      </div>
+                      <div class="hm-row">
+                        <select class="ic-input" x-model="sms.schedule.hour" :disabled="!sms.schedule.on" style="font-size:12px;">
+                          <option value="">시간 선택</option>
+                          <template x-for="h in 24" :key="h"><option :value="h-1" x-text="(h-1).toString().padStart(2,'0') + '시'"></option></template>
+                        </select>
+                        <select class="ic-input" x-model="sms.schedule.min" :disabled="!sms.schedule.on" style="font-size:12px;">
+                          <option value="">분 선택</option>
+                          <template x-for="m in [0,10,20,30,40,50]" :key="m"><option :value="m" x-text="m.toString().padStart(2,'0') + '분'"></option></template>
+                        </select>
+                        <button type="button" class="reset-btn" title="초기화" @click="sms.schedule = { on:false, date:'', hour:'', min:'' }">
+                          <svg><use href="#i-refresh"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 상용구 -->
+                <div class="sms-card">
+                  <div class="sms-card__head">상용구</div>
+                  <div class="sms-card__body">
+                    <div class="sms-picklist">
+                      <div class="sms-picklist__items">
+                        <template x-for="(p, pi) in sms.phrases" :key="pi">
+                          <label class="sms-picklist__item" :class="{ 'is-sel': sms.phraseIdx === pi }">
+                            <input type="radio" name="sms-phrase" :value="pi" x-model.number="sms.phraseIdx" />
+                            <span x-text="p.title"></span>
+                          </label>
+                        </template>
+                      </div>
+                      <div class="sms-picklist__preview" :class="{ 'is-empty': sms.phraseIdx === null }"
+                        x-text="sms.phraseIdx !== null ? sms.phrases[sms.phraseIdx].body : '선택한 상용구 내용이 여기에 표시됩니다.'"></div>
+                    </div>
+                    <div class="sms-apply-row">
+                      <button class="sms-apply-btn is-primary" @click="applyToBody()" :disabled="sms.phraseIdx === null">본문에 넣기</button>
+                      <button class="sms-apply-btn" @click="applyToSignature()" :disabled="sms.phraseIdx === null">서명란에 넣기</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 서명 -->
+                <div class="sms-card">
+                  <div class="sms-card__head">서명</div>
+                  <div class="sms-card__body">
+                    <div class="sms-picklist">
+                      <div class="sms-picklist__items">
+                        <template x-for="(s, si) in sms.signatures" :key="si">
+                          <label class="sms-picklist__item" :class="{ 'is-sel': sms.sigIdx === si }">
+                            <input type="radio" name="sms-sig" :value="si" x-model.number="sms.sigIdx" />
+                            <span x-text="s.title"></span>
+                          </label>
+                        </template>
+                      </div>
+                      <div class="sms-picklist__preview" :class="{ 'is-empty': sms.sigIdx === null }"
+                        x-text="sms.sigIdx !== null ? sms.signatures[sms.sigIdx].body : '선택한 서명 내용이 여기에 표시됩니다.'"></div>
+                    </div>
+                    <div class="sms-apply-row">
+                      <button class="sms-apply-btn" @click="applySigToBody()" :disabled="sms.sigIdx === null">본문에 넣기</button>
+                      <button class="sms-apply-btn is-primary" @click="applySigToSignature()" :disabled="sms.sigIdx === null">서명란에 넣기</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- CENTER -->
+              <div class="sms-col sms-col--center">
+                <div class="sms-editor">
+                  <div class="sms-editor__top">
+                    <span class="sms-editor__label">문자입력</span>
+                    <span class="sms-editor__bytes" :class="{ 'is-mms': smsByteCount > 90 }">
+                      <span x-text="smsByteCount"></span> / <span x-text="smsByteCount > 90 ? '2000 byte · 장문(MMS)' : '90 byte · 단문(SMS)'"></span>
+                    </span>
+                    <button class="sms-editor__reload" title="초기화" @click="sms.body = ''"><svg><use href="#i-refresh"/></svg></button>
+                  </div>
+                  <textarea x-model="sms.body" placeholder="문자 내용을 입력해주세요."></textarea>
+                  <div class="sms-editor__attach">
+                    <button type="button"><svg><use href="#i-paperclip"/></svg>이미지 첨부 (MMS)</button>
+                  </div>
+                </div>
+
+                <div class="sms-editor">
+                  <div class="sms-editor__top">
+                    <span class="sms-editor__label">서명 및 인사말</span>
+                    <button class="sms-editor__reload" title="초기화" @click="sms.signature = ''"><svg><use href="#i-refresh"/></svg></button>
+                  </div>
+                  <textarea class="sig" x-model="sms.signature" placeholder="서명 및 인사말을 입력해주세요."></textarea>
+                </div>
+
+                <button class="sms-save-phrase">상용구 저장</button>
+              </div>
+
+              <!-- RIGHT: history -->
+              <div class="sms-col sms-col--right">
+                <div class="sms-history-head">최근 전송 내역</div>
+                <div class="sms-history">
+                  <template x-for="(h, hi) in sms.history" :key="hi">
+                    <button type="button" class="sms-history__item" @click="sms.body = h.body">
+                      <div class="sms-history__body" x-text="h.body"></div>
+                      <div class="sms-history__meta">
+                        <span x-text="h.phone"></span>
+                        <span x-text="h.date"></span>
+                      </div>
+                    </button>
+                  </template>
+                </div>
+              </div>
+            </div>
+
+            <div class="sms-foot">
+              <label class="sms-foot__ad">
+                <input type="checkbox" x-model="sms.isAd" />
+                광고문자(080 무료수신거부)
+              </label>
+              <div class="btn-group">
+                <button class="btn btn--ghost" @click="closeSms()">닫기</button>
+                <button class="btn btn--primary" @click="sendSms()" :disabled="!sms.body || !sms.recipients.filter(r=>r.on).length">
+                  <svg><use href="#i-send"/></svg>전송
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
+    </div>
+  </main>
+</div>
+
+<script>
+function inpatientForm() {
+  const make = (labels) => labels.map((l, i) => ({ id: 'c' + i, label: l, on: false }));
+  return {
+    recorder: 'idle', // idle | rec | paused
+    patient: { id: 'P-2026-0014', name: '', birth: '', damage: false, bc: false },
+    extras: { covid: false, isolate: false },
+    meta: { method: '', result: '', admitDate: '', admitTime: '', admitRoom: '' },
+
+    guardians: [
+      { id: 'g1', name: '', rel: '', phone: '' },
+    ],
+    addGuardian() {
+      if (this.guardians.length >= 4) return;
+      this.guardians.push({ id: 'g' + Date.now(), name: '', rel: '', phone: '' });
+    },
+    removeGuardian(i) { this.guardians.splice(i, 1); },
+
+    // Selected bed from 병실현황판 (via URL ?bed=101호-3)
+    selectedBed: new URLSearchParams(location.search).get('bed') || '',
+
+    // Agreement status (read from localStorage)
+    agreementStatus: (localStorage.getItem('mp_agreement_status') || 'pending'),
+    agreementLabel() {
+      return { pending: '미작성', progress: '작성중', done: '작성완료' }[this.agreementStatus] || '미작성';
+    },
+
+    // History
+    showHistory: false,
+    selectedHistory: null,
+    history: [
+      { id:'h1', date:'2026-04-21', author:'이수민', method:'전화', result:'입원대기', note:'가족 상담 요청. 월요일 방문 예정.', guardian:'장녀 김○○ (010-1234-5678)' },
+      { id:'h2', date:'2026-04-18', author:'이수민', method:'방문',  result:'보류',     note:'병실 확인 후 재연락 예정.', guardian:'장녀 김○○' },
+      { id:'h3', date:'2026-04-15', author:'박지은', method:'전화',  result:'',         note:'', guardian:'' },
+      { id:'h4', date:'2026-04-10', author:'이수민', method:'전화',  result:'',         note:'', guardian:'' },
+      { id:'h5', date:'2026-04-05', author:'박지은', method:'전화',  result:'취소',     note:'환자 상태 호전으로 입원 취소.', guardian:'' },
+    ],
+    openHistory(h) { this.selectedHistory = h; this.showHistory = true; },
+
+    // SMS Modal state
+    sms: {
+      open: false,
+      sender: '(카운셀맨(효사랑가족)) 063-711-1111',
+      recipients: [],
+      newRecipient: '',
+      schedule: { on: false, date: '', hour: '', min: '' },
+      body: '',
+      signature: '',
+      isAd: false,
+      phraseIdx: null,
+      sigIdx: null,
+      phrases: [
+        { title: '새해인사', body: '새해 복 많이 받으세요. 올해도 건강하시고 행복하시길 기원합니다. - 효사랑가족요양병원' },
+        { title: '입원 안내', body: '안녕하세요. 효사랑가족요양병원입니다. 입원 예약 관련 안내드립니다.\n방문 시 신분증 및 건강보험증을 지참해 주세요.' },
+        { title: '상담 확인', body: '상담 문의 주셔서 감사합니다. 담당자가 확인 후 연락드리겠습니다.' },
+        { title: '예약 확정', body: '입원 예약이 확정되었습니다. 예정일에 맞춰 방문 부탁드립니다.' },
+      ],
+      signatures: [
+        { title: 'ㅅㄹㅇㄴ', body: '효사랑가족요양병원 입원상담실\nTEL. 063-711-1111' },
+        { title: 'ㅅㄹㅇㄱ', body: '효사랑가족요양병원\n전북 전주시 완산구 ○○로 000' },
+      ],
+      history: [
+        { body: 'MMS 테스트입니다\nMMS', phone: '01031233773', date: '2026-04-21 14:56' },
+        { body: '개발서버 테스트 입니다.', phone: '01031233773', date: '2026-04-03 16:13' },
+        { body: '안녕하세요', phone: '01031233773', date: '2026-04-03 16:00' },
+        { body: 'testtest', phone: '01031233773', date: '2026-04-03 15:51' },
+        { body: 'test', phone: '01031233773', date: '2026-04-03 15:50' },
+        { body: 'test', phone: '01031233773', date: '2026-04-03 15:17' },
+        { body: 'test', phone: '01031233773', date: '2026-04-03 15:12' },
+      ],
+    },
+    get smsByteCount() {
+      const s = (this.sms.body || '') + (this.sms.signature ? '\n' + this.sms.signature : '');
+      let b = 0;
+      for (const ch of s) { b += ch.charCodeAt(0) > 127 ? 2 : 1; }
+      return b;
+    },
+    openSms(phone) {
+      const p = (phone || '').trim();
+      this.sms.recipients = p ? [{ phone: p, on: true }] : [];
+      this.sms.newRecipient = '';
+      this.sms.open = true;
+    },
+    closeSms() { this.sms.open = false; },
+    addRecipient() {
+      const v = (this.sms.newRecipient || '').trim();
+      if (!v) return;
+      this.sms.recipients.push({ phone: v, on: true });
+      this.sms.newRecipient = '';
+    },
+    applyToBody() {
+      if (this.sms.phraseIdx === null) return;
+      const cur = this.sms.body ? (this.sms.body + '\n') : '';
+      this.sms.body = cur + this.sms.phrases[this.sms.phraseIdx].body;
+    },
+    applyToSignature() {
+      if (this.sms.phraseIdx === null) return;
+      const cur = this.sms.signature ? (this.sms.signature + '\n') : '';
+      this.sms.signature = cur + this.sms.phrases[this.sms.phraseIdx].body;
+    },
+    applySigToBody() {
+      if (this.sms.sigIdx === null) return;
+      const cur = this.sms.body ? (this.sms.body + '\n') : '';
+      this.sms.body = cur + this.sms.signatures[this.sms.sigIdx].body;
+    },
+    applySigToSignature() {
+      if (this.sms.sigIdx === null) return;
+      this.sms.signature = this.sms.signatures[this.sms.sigIdx].body;
+    },
+    sendSms() {
+      const targets = this.sms.recipients.filter(r => r.on).map(r => r.phone);
+      if (!targets.length || !this.sms.body) return;
+      alert(`${targets.length}명에게 문자를 전송했습니다.\n\n[수신자]\n${targets.join(', ')}\n\n[본문]\n${this.sms.body}`);
+      this.closeSms();
+    },
+
+    resultTone(r) {
+      if (r === '입원예약') return 'success';
+      if (r === '입원대기') return 'info';
+      if (r === '보류')     return 'warning';
+      if (r === '취소')     return 'danger';
+      return '';
+    },
+    diagnoses: [
+      { id:'d1', label:'의식상태', on:true },
+      { id:'d2', label:'뇌경색', on:true },
+      { id:'d3', label:'과다손상', on:false },
+      { id:'d4', label:'척추주상', on:false },
+      { id:'d5', label:'치매', on:false },
+      { id:'d6', label:'섬망(장단)', on:false },
+      { id:'d7', label:'심장질환', on:false },
+      { id:'d8', label:'고혈압', on:true },
+      { id:'d9', label:'당뇨', on:false },
+      { id:'d10', label:'뇌출혈', on:false },
+      { id:'d11', label:'파킨슨병', on:false },
+      { id:'d12', label:'호흡기질환', on:false },
+      { id:'d13', label:'우울증', on:false },
+      { id:'d14', label:'근골격계 질환', on:false },
+      { id:'d15', label:'문제행동', on:false },
+    ],
+    paralysis: make(['사지마비','하지마비','편마비','해당없음']),
+    treatments: [
+      ...make(['영양주사','흡인요법','산소요법','욕창간호','L-tube/PEG','인슐린주사','호흡부전기','드레싱','기저기교체','수혈','투석','기타','동증관리','공기청정','관급영양','만성치료','Poly/Cysto']).map((x,i)=>({ ...x, on: [0,1,4].includes(i) }))
+    ],
+    infection: make(['HPV','HCV','MRSA','VRE','CRE']),
+    category: [
+      { id:'g1', label:'재활(뇌손상)', on:true },
+      { id:'g2', label:'재활(근골격계)', on:false },
+      { id:'g3', label:'투석', on:false },
+      { id:'g4', label:'암', on:false },
+      { id:'g5', label:'요양', on:false },
+    ],
+    recorderLabel() {
+      return this.recorder === 'rec' ? '녹음 중' : this.recorder === 'paused' ? '일시정지' : '대기 중';
+    },
+  };
+}
+</script>
+
+<script src="assets/js/app.js"></script>
+<script src="assets/js/chrome.js" data-page="inpatient"></script>
+<script>
+  document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '상담 업무', current: '입원상담' }); });
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<script src="assets/js/datepicker.js"></script>
+</body>
+</html>
