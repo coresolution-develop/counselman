@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="_csrf"        th:content="${_csrf.token}"/>
+  <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
   <title>MediPlat · 역할 관리</title>
 
   <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
@@ -12,6 +14,64 @@
   <link rel="stylesheet" th:href="@{/assets/css/role-management.css}" />
   <link rel="stylesheet" th:href="@{/assets/css/tweaks.css}" />
   <link rel="stylesheet" th:href="@{/assets/css/datepicker.css}" />
+  <style>
+    /* ===== Role Management – modal styles ===== */
+    .rm-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,.45); backdrop-filter: blur(2px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .rm-modal {
+      background: #fff; border-radius: 16px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.22);
+      width: 100%; max-width: 480px;
+      overflow: hidden;
+    }
+    .rm-modal--lg { max-width: 560px; }
+    .rm-modal__head {
+      display: flex; align-items: center; gap: 12px;
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .rm-modal__head-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: grid; place-items: center;
+      background: color-mix(in oklab, var(--brand-500) 10%, #fff);
+      color: var(--brand-600); flex-shrink: 0;
+    }
+    .rm-modal__head-icon svg { width: 20px; height: 20px; }
+    .rm-modal__title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+    .rm-modal__body { padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+    .rm-modal__footer { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 24px; background: var(--gray-50); border-top: 1px solid var(--border-subtle); }
+    .rm-form-group { display: flex; flex-direction: column; gap: 5px; }
+    .rm-form-group label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+    .rm-form-group input, .rm-form-group textarea {
+      padding: 8px 12px; border: 1px solid var(--border-default); border-radius: 8px;
+      font-size: 13px; background: #fff; transition: all .15s; font-family: inherit;
+    }
+    .rm-form-group textarea { resize: vertical; min-height: 72px; }
+    .rm-form-group input:focus, .rm-form-group textarea:focus {
+      border-color: var(--brand-400); outline: none;
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-500) 14%, transparent);
+    }
+    .rm-user-list { display: flex; flex-direction: column; gap: 4px; max-height: 280px; overflow-y: auto; }
+    .rm-user-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; border-radius: 10px; cursor: pointer;
+      border: 1px solid transparent; transition: all .12s;
+    }
+    .rm-user-item:hover { background: var(--gray-50); border-color: var(--border-subtle); }
+    .rm-user-item.is-selected { background: color-mix(in oklab, var(--brand-500) 8%, #fff); border-color: var(--brand-300); }
+    .rm-user-avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .rm-user-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .rm-user-meta { font-size: 11px; color: var(--text-tertiary); }
+    .rm-search-box { position: relative; }
+    .rm-search-box svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-tertiary); }
+    .rm-search-box input { width: 100%; height: 36px; padding: 0 12px 0 32px; border: 1px solid var(--border-default); border-radius: 8px; font-size: 13px; }
+    .rm-search-box input:focus { outline: none; border-color: var(--brand-400); box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-500) 14%, transparent); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
 </head>
 <body>
 <script th:src="@{/assets/js/sprite.js}"></script>
@@ -50,33 +110,41 @@
         </button>
       </div>
 
+      <!-- Loading skeleton -->
+      <template x-if="loading">
+        <div style="padding:48px;text-align:center;color:var(--text-tertiary);font-size:13px;">
+          <svg style="width:20px;height:20px;animation:spin 1s linear infinite;margin-bottom:8px;display:block;margin-inline:auto"><use href="#i-refresh"/></svg>
+          불러오는 중...
+        </div>
+      </template>
+
       <!-- Split shell -->
-      <div class="role-shell" style="container-type: inline-size;">
+      <div class="role-shell" style="container-type: inline-size;" x-show="!loading">
 
         <!-- ===== Role list ===== -->
         <aside class="panel">
           <div class="panel__header">
             <span class="panel__title">역할 목록</span>
-            <span class="panel__count" x-text="roles.length + '개'">6개</span>
+            <span class="panel__count" x-text="roles.length + '개'"></span>
           </div>
           <div class="panel__body">
             <ul class="role-list" role="tablist">
-              <template x-for="r in roles" :key="r.id">
+              <template x-for="r in roles" :key="r.role_id">
                 <li class="role-item"
-                    :class="{ 'is-active': activeRole === r.id }"
-                    @click="selectRole(r.id)">
+                    :class="{ 'is-active': activeRole == r.role_id }"
+                    @click="selectRole(r.role_id)">
                   <div class="role-item__icon">
-                    <svg><use :href="'#i-' + r.icon"></use></svg>
+                    <svg><use :href="'#i-' + iconForRole(r)"></use></svg>
                   </div>
                   <div>
-                    <div class="role-item__name" x-text="r.name"></div>
-                    <div class="role-item__meta" x-text="r.meta"></div>
+                    <div class="role-item__name" x-text="r.role_name"></div>
+                    <div class="role-item__meta" x-text="(r.user_count || 0) + '명'"></div>
                   </div>
                   <svg class="role-item__chevron"><use href="#i-chevron-right"/></svg>
                 </li>
               </template>
             </ul>
-            <button class="role-list__add">
+            <button class="role-list__add" @click="openAddRole()">
               <svg><use href="#i-plus"/></svg>
               새 역할 만들기
             </button>
@@ -84,37 +152,37 @@
         </aside>
 
         <!-- ===== Detail ===== -->
-        <section class="role-detail">
+        <section class="role-detail" x-show="current">
 
           <!-- Hero banner -->
           <div class="role-hero" :key="activeRole" style="view-transition-name: role-hero;">
             <div class="role-hero__icon">
-              <svg><use :href="'#i-' + current.icon"></use></svg>
+              <svg><use :href="'#i-' + (current ? iconForRole(current) : 'key')"></use></svg>
             </div>
             <div class="role-hero__meta">
               <div class="role-hero__eyebrow">역할 세부 설정</div>
               <div class="role-hero__name">
-                <span x-text="current.name"></span>
-                <span class="badge badge--brand">활성</span>
+                <span x-text="current?.role_name"></span>
+                <span class="badge badge--brand" x-text="current?.is_system ? '시스템' : '활성'"></span>
               </div>
-              <div class="role-hero__desc" x-text="current.desc"></div>
+              <div class="role-hero__desc" x-text="current?.description || ''"></div>
             </div>
             <div class="role-hero__stats">
               <div class="role-stat">
-                <div class="role-stat__value" x-text="current.selected.length"></div>
+                <div class="role-stat__value" x-text="currentPerms.length"></div>
                 <div class="role-stat__label">권한 수</div>
               </div>
               <div class="role-stat">
-                <div class="role-stat__value" x-text="current.users.length"></div>
+                <div class="role-stat__value" x-text="currentUsers.length"></div>
                 <div class="role-stat__label">할당 인원</div>
               </div>
             </div>
             <div class="role-actions">
-              <button class="btn btn--ghost" title="복제">
+              <button class="btn btn--ghost" title="복제" @click="openClone()">
                 <svg><use href="#i-copy"/></svg>
                 복제
               </button>
-              <button class="btn btn--outline">
+              <button class="btn btn--outline" @click="openRename()" :disabled="current?.is_system == 1">
                 <svg><use href="#i-edit"/></svg>
                 이름 변경
               </button>
@@ -126,7 +194,7 @@
             <div class="panel__header">
               <span class="panel__title">권한 설정</span>
               <span class="panel__count">
-                <span x-text="current.selected.length"></span> / <span x-text="totalPerms"></span>
+                <span x-text="currentPerms.length"></span> / <span x-text="totalPerms"></span>
               </span>
               <div style="flex:1"></div>
               <div class="perm-panel__search">
@@ -135,6 +203,10 @@
               </div>
             </div>
 
+            <template x-if="groups.length === 0">
+              <div style="padding:24px;text-align:center;font-size:13px;color:var(--text-tertiary)">권한 목록을 불러오지 못했습니다</div>
+            </template>
+
             <template x-for="g in groups" :key="g.id">
               <div class="perm-group" x-show="filteredItems(g).length > 0">
                 <div class="perm-group__header">
@@ -142,7 +214,7 @@
                   <span class="perm-group__count">
                     <span x-text="groupCount(g.id)"></span>/<span x-text="g.items.length"></span>
                   </span>
-                  <button class="perm-group__toggle-all" @click="toggleGroup(g.id)">
+                  <button class="perm-group__toggle-all" @click="toggleGroup(g.id)" :disabled="current?.is_system == 1">
                     전체 <span x-text="g.items.every(i=>has(i.id)) ? '해제' : '선택'"></span>
                   </button>
                 </div>
@@ -151,6 +223,7 @@
                     <label class="perm-card">
                       <input type="checkbox"
                              :checked="has(p.id)"
+                             :disabled="current?.is_system == 1"
                              @change="toggle(p.id)" />
                       <span class="perm-card__check">
                         <svg><use href="#i-check"/></svg>
@@ -173,27 +246,27 @@
           <div class="panel users-panel">
             <div class="panel__header">
               <span class="panel__title">이 역할의 사용자</span>
-              <span class="panel__count" x-text="current.users.length + '명'"></span>
+              <span class="panel__count" x-text="currentUsers.length + '명'"></span>
             </div>
             <div class="users-panel__body">
-              <template x-if="current.users.length === 0">
+              <template x-if="currentUsers.length === 0">
                 <div class="users-empty">할당된 사용자가 없습니다</div>
               </template>
-              <template x-if="current.users.length > 0">
+              <template x-if="currentUsers.length > 0">
                 <div class="users-chips">
-                  <template x-for="u in current.users" :key="u.id">
+                  <template x-for="u in currentUsers" :key="u.id">
                     <div class="user-chip">
-                      <div class="user-chip__avatar" :style="{ background: u.color }" x-text="u.name.charAt(0)"></div>
+                      <div class="user-chip__avatar" :style="{ background: u.color }" x-text="(u.name || '?').charAt(0)"></div>
                       <span x-text="u.name"></span>
-                      <span class="user-chip__id" x-text="'(' + u.id + ')'"></span>
-                      <button class="user-chip__remove" aria-label="제거">
+                      <span class="user-chip__id" x-text="u.dept ? '(' + u.dept + ')' : ''"></span>
+                      <button class="user-chip__remove" aria-label="제거" @click.stop="removeUser(u.id)">
                         <svg><use href="#i-x"/></svg>
                       </button>
                     </div>
                   </template>
                 </div>
               </template>
-              <button class="user-add">
+              <button class="user-add" @click="openAddUser()">
                 <svg><use href="#i-plus"/></svg>
                 사용자 추가
               </button>
@@ -205,14 +278,119 @@
             <div class="save-bar">
               <div class="save-bar__dot"></div>
               <div class="save-bar__msg">
-                <strong x-text="current.name"></strong> 역할에 저장되지 않은 변경사항이 있습니다
+                <strong x-text="current?.role_name"></strong> 역할에 저장되지 않은 변경사항이 있습니다
               </div>
-              <button class="save-bar__btn-ghost" @click="dirty = false">되돌리기</button>
+              <button class="save-bar__btn-ghost" @click="revert()">되돌리기</button>
               <button class="save-bar__btn-save" @click="save()">변경사항 저장</button>
             </div>
           </template>
 
         </section>
+      </div>
+
+      <!-- ====== Add Role Modal ====== -->
+      <div class="rm-overlay" x-show="showAddRole" x-cloak @click.self="showAddRole=false" style="display:none">
+        <div class="rm-modal">
+          <div class="rm-modal__head">
+            <div class="rm-modal__head-icon"><svg><use href="#i-plus"/></svg></div>
+            <div class="rm-modal__title">새 역할 만들기</div>
+          </div>
+          <div class="rm-modal__body">
+            <div class="rm-form-group">
+              <label>역할 이름 <span style="color:#ef4444">*</span></label>
+              <input type="text" x-model="addRoleForm.role_name" placeholder="예: 시니어 상담사" @keydown.enter="submitAddRole()" />
+            </div>
+            <div class="rm-form-group">
+              <label>설명</label>
+              <textarea x-model="addRoleForm.description" placeholder="이 역할에 대한 간단한 설명 (선택)"></textarea>
+            </div>
+          </div>
+          <div class="rm-modal__footer">
+            <button class="btn btn--outline" @click="showAddRole=false">취소</button>
+            <button class="btn btn--primary" @click="submitAddRole()" :disabled="!addRoleForm.role_name.trim()">만들기</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== Rename Role Modal ====== -->
+      <div class="rm-overlay" x-show="showRenameRole" x-cloak @click.self="showRenameRole=false" style="display:none">
+        <div class="rm-modal">
+          <div class="rm-modal__head">
+            <div class="rm-modal__head-icon"><svg><use href="#i-edit"/></svg></div>
+            <div class="rm-modal__title">역할 이름 변경</div>
+          </div>
+          <div class="rm-modal__body">
+            <div class="rm-form-group">
+              <label>역할 이름</label>
+              <input type="text" x-model="renameForm.role_name" @keydown.enter="submitRename()" />
+            </div>
+            <div class="rm-form-group">
+              <label>설명</label>
+              <textarea x-model="renameForm.description"></textarea>
+            </div>
+          </div>
+          <div class="rm-modal__footer">
+            <button class="btn btn--outline" @click="showRenameRole=false">취소</button>
+            <button class="btn btn--primary" @click="submitRename()" :disabled="!renameForm.role_name.trim()">저장</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== Clone Role Modal ====== -->
+      <div class="rm-overlay" x-show="showCloneRole" x-cloak @click.self="showCloneRole=false" style="display:none">
+        <div class="rm-modal">
+          <div class="rm-modal__head">
+            <div class="rm-modal__head-icon"><svg><use href="#i-copy"/></svg></div>
+            <div class="rm-modal__title">역할 복제</div>
+          </div>
+          <div class="rm-modal__body">
+            <div style="font-size:13px;color:var(--text-secondary)">
+              <strong x-text="current?.role_name"></strong> 역할을 복제하고 새 이름을 지정합니다.
+            </div>
+            <div class="rm-form-group">
+              <label>새 역할 이름</label>
+              <input type="text" x-model="cloneForm.role_name" @keydown.enter="submitClone()" />
+            </div>
+          </div>
+          <div class="rm-modal__footer">
+            <button class="btn btn--outline" @click="showCloneRole=false">취소</button>
+            <button class="btn btn--primary" @click="submitClone()" :disabled="!cloneForm.role_name.trim()">복제</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== Add User to Role Modal ====== -->
+      <div class="rm-overlay" x-show="showAddUser" x-cloak @click.self="showAddUser=false" style="display:none">
+        <div class="rm-modal rm-modal--lg">
+          <div class="rm-modal__head">
+            <div class="rm-modal__head-icon"><svg><use href="#i-user-plus"/></svg></div>
+            <div class="rm-modal__title">사용자 추가</div>
+          </div>
+          <div class="rm-modal__body">
+            <div class="rm-search-box">
+              <svg><use href="#i-search"/></svg>
+              <input type="text" x-model="userSearch" placeholder="이름, 아이디로 검색" />
+            </div>
+            <div class="rm-user-list">
+              <template x-if="filteredAllUsers.length === 0">
+                <div style="padding:16px;text-align:center;font-size:13px;color:var(--text-tertiary)">사용자가 없습니다</div>
+              </template>
+              <template x-for="u in filteredAllUsers" :key="u.id">
+                <div class="rm-user-item" :class="{ 'is-selected': selectedUserId == u.id }" @click="selectedUserId = u.id">
+                  <div class="rm-user-avatar" :style="{ background: u.color }" x-text="(u.name || '?').charAt(0)"></div>
+                  <div>
+                    <div class="rm-user-name" x-text="u.name"></div>
+                    <div class="rm-user-meta" x-text="(u.dept || '') + (u.login ? ' · ' + u.login : '')"></div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+          <div class="rm-modal__footer">
+            <button class="btn btn--outline" @click="showAddUser=false">취소</button>
+            <button class="btn btn--primary" @click="confirmAddUser()" :disabled="!selectedUserId">추가</button>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -266,10 +444,371 @@
   }/*EDITMODE-END*/;
 </script>
 
-<script th:src="@{/assets/js/sprite.js}"></script>
 <script th:src="@{/assets/js/app.js}"></script>
 <script th:src="@{/assets/js/datepicker.js}"></script>
 <script th:src="@{/assets/js/chrome.js}" data-page="admin" th:attr="data-ctx=@{/}"></script>
+
+<!-- API-driven roleManager — overrides the hardcoded version in app.js -->
+<script>
+(function () {
+  const ctx = document.querySelector('[data-ctx]')?.dataset.ctx || '/';
+
+  function csrfHeaders() {
+    const token  = document.querySelector('meta[name="_csrf"]')?.content;
+    const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+    return (token && header) ? { [header]: token } : {};
+  }
+
+  const COLORS = ['#10b981','#ec4899','#f59e0b','#14b8a6','#0ea5e9','#8b5cf6','#f43f5e','#84cc16'];
+  function nameToColor(name) {
+    if (!name) return COLORS[0];
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+    return COLORS[Math.abs(h) % COLORS.length];
+  }
+
+  // Icon map for permission menu keys (fallback)
+  const MENU_ICONS = {
+    counsel: 'notebook', consultation: 'notebook', consult: 'notebook',
+    comms: 'chat', comm: 'chat', message: 'message', notice: 'megaphone',
+    admin: 'shield', system: 'shield',
+    institution: 'building', org: 'building',
+    users: 'users', user: 'users',
+    roles: 'key', role: 'key',
+    statistics: 'chart', stats: 'chart',
+    reception: 'inbox', reservation: 'calendar',
+    hospitalization: 'bed',
+    records: 'notebook',
+  };
+
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('roleManager', () => ({
+      loading: true,
+      roles: [],
+      groups: [],
+      activeRole: null,
+      currentPerms: [],
+      originalPerms: [],
+      currentUsers: [],
+      search: '',
+      dirty: false,
+
+      // Add role modal
+      showAddRole: false,
+      addRoleForm: { role_name: '', description: '' },
+
+      // Rename modal
+      showRenameRole: false,
+      renameForm: { role_name: '', description: '' },
+
+      // Clone modal
+      showCloneRole: false,
+      cloneForm: { role_name: '' },
+
+      // Add user modal
+      showAddUser: false,
+      allUsers: [],
+      userSearch: '',
+      selectedUserId: null,
+
+      get current() { return this.roles.find(r => r.role_id == this.activeRole) || null; },
+      get totalPerms() { return this.groups.reduce((a, g) => a + g.items.length, 0); },
+      get filteredAllUsers() {
+        const q = this.userSearch.trim().toLowerCase();
+        if (!q) return this.allUsers;
+        return this.allUsers.filter(u =>
+          (u.name || '').toLowerCase().includes(q) ||
+          (u.login || '').toLowerCase().includes(q) ||
+          (u.dept || '').toLowerCase().includes(q)
+        );
+      },
+
+      async init() {
+        await Promise.all([this.loadRoles(), this.loadPermMaster()]);
+        this.loading = false;
+      },
+
+      async loadRoles() {
+        try {
+          const res = await fetch(ctx + 'api/roles');
+          if (res.ok) {
+            this.roles = await res.json();
+            if (this.roles.length && this.activeRole === null) {
+              await this.selectRole(this.roles[0].role_id);
+            }
+          }
+        } catch(e) { console.error('loadRoles', e); }
+      },
+
+      async loadPermMaster() {
+        try {
+          const res = await fetch(ctx + 'api/roles/permission-master');
+          if (!res.ok) { this.groups = this._fallbackGroups(); return; }
+          const perms = await res.json();
+          if (!perms.length) { this.groups = this._fallbackGroups(); return; }
+
+          // Group by menu_key
+          const groupMap = {};
+          const groupOrder = [];
+          perms.forEach(p => {
+            if (!groupMap[p.menu_key]) {
+              groupMap[p.menu_key] = { id: p.menu_key, label: p.menu_label || p.menu_key, items: [] };
+              groupOrder.push(p.menu_key);
+            }
+            groupMap[p.menu_key].items.push({
+              id: p.code,
+              name: p.label_ko || p.code,
+              desc: (p.resource || '') + (p.action ? ':' + p.action : ''),
+              icon: MENU_ICONS[p.menu_key] || MENU_ICONS[p.resource] || 'key',
+            });
+          });
+          this.groups = groupOrder.map(k => groupMap[k]);
+        } catch(e) {
+          console.error('loadPermMaster', e);
+          this.groups = this._fallbackGroups();
+        }
+      },
+
+      // Fallback permission groups mirroring app.js (used when permission-master table doesn't exist)
+      _fallbackGroups() {
+        return [
+          { id: 'consult', label: '상담 업무', items: [
+            { id: 'reception',        name: '상담 접수',     desc: '신규 상담 접수 및 배정', icon: 'inbox' },
+            { id: 'hospitalization',  name: '입원 상담',     desc: '입원 관련 상담 관리',    icon: 'bed' },
+            { id: 'list',             name: '상담 리스트',   desc: '전체 상담 이력 조회',    icon: 'list' },
+            { id: 'records',          name: '상담일지 관리', desc: '상담 일지 작성 · 수정',  icon: 'notebook' },
+            { id: 'statistics',       name: '상담 통계',     desc: '상담 KPI 및 리포트',     icon: 'chart' },
+          ]},
+          { id: 'comms', label: '커뮤니케이션', items: [
+            { id: 'notice',      name: '공지사항',     desc: '내부 공지 작성 · 조회',   icon: 'megaphone' },
+            { id: 'message',     name: '문자관리',     desc: '문자 발송 · 템플릿',      icon: 'chat' },
+            { id: 'reservation', name: '방문예약관리', desc: '방문 예약 생성 · 조회',   icon: 'calendar' },
+          ]},
+          { id: 'admin', label: '시스템 관리', items: [
+            { id: 'admin',       name: '관리자',       desc: '관리자 전용 메뉴 접근',        icon: 'shield' },
+            { id: 'institution', name: '기관 관리',    desc: '소속 기관 정보 관리',          icon: 'building' },
+            { id: 'users',       name: '사용자 관리',  desc: '계정 생성 · 삭제 · 역할 배정', icon: 'users' },
+            { id: 'roles',       name: '역할 관리',    desc: '권한 역할 생성 · 수정',        icon: 'key' },
+          ]},
+        ];
+      },
+
+      iconForRole(r) {
+        if (!r) return 'key';
+        const n = (r.role_name || '').toLowerCase();
+        if (n.includes('관리') || r.is_system == 1) return 'shield';
+        if (n.includes('상담')) return 'headset';
+        if (n.includes('접수')) return 'clipboard';
+        if (n.includes('법인') || n.includes('기관')) return 'building';
+        if (n.includes('문자') || n.includes('메시지')) return 'message';
+        if (n.includes('리뷰') || n.includes('검토')) return 'eye';
+        return 'key';
+      },
+
+      async selectRole(id) {
+        if (document.startViewTransition) {
+          document.startViewTransition(() => { this.activeRole = id; this.dirty = false; });
+        } else {
+          this.activeRole = id;
+          this.dirty = false;
+        }
+        await Promise.all([this.loadPerms(id), this.loadUsers(id)]);
+      },
+
+      async loadPerms(roleId) {
+        try {
+          const res = await fetch(ctx + 'api/roles/' + roleId + '/permissions');
+          if (res.ok) {
+            this.currentPerms = await res.json();
+            this.originalPerms = [...this.currentPerms];
+          }
+        } catch(e) { console.error('loadPerms', e); }
+      },
+
+      async loadUsers(roleId) {
+        try {
+          const res = await fetch(ctx + 'api/roles/' + roleId + '/users');
+          if (res.ok) {
+            const list = await res.json();
+            this.currentUsers = list.map(u => ({
+              id:    u.user_id,
+              name:  u.user_name  || '',
+              login: u.user_login || '',
+              dept:  u.dept       || '',
+              color: nameToColor(u.user_name || ''),
+            }));
+          }
+        } catch(e) { console.error('loadUsers', e); }
+      },
+
+      // ── Permissions ──────────────────────────────────
+      has(permCode) { return this.currentPerms.includes(permCode); },
+
+      toggle(permCode) {
+        if (this.current?.is_system == 1) return;
+        const i = this.currentPerms.indexOf(permCode);
+        if (i === -1) this.currentPerms.push(permCode); else this.currentPerms.splice(i, 1);
+        this.dirty = JSON.stringify([...this.currentPerms].sort()) !== JSON.stringify([...this.originalPerms].sort());
+      },
+
+      toggleGroup(groupId) {
+        if (this.current?.is_system == 1) return;
+        const g = this.groups.find(x => x.id === groupId); if (!g) return;
+        const ids = g.items.map(i => i.id);
+        const allOn = ids.every(id => this.has(id));
+        if (allOn) this.currentPerms = this.currentPerms.filter(x => !ids.includes(x));
+        else ids.forEach(id => { if (!this.currentPerms.includes(id)) this.currentPerms.push(id); });
+        this.dirty = JSON.stringify([...this.currentPerms].sort()) !== JSON.stringify([...this.originalPerms].sort());
+      },
+
+      groupCount(groupId) {
+        const g = this.groups.find(x => x.id === groupId); if (!g) return 0;
+        return g.items.filter(i => this.has(i.id)).length;
+      },
+
+      filteredItems(group) {
+        const q = this.search.trim().toLowerCase(); if (!q) return group.items;
+        return group.items.filter(i => i.name.toLowerCase().includes(q) || i.desc.toLowerCase().includes(q));
+      },
+
+      async save() {
+        if (!this.activeRole) return;
+        try {
+          const res = await fetch(ctx + 'api/roles/' + this.activeRole + '/permissions', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+            body: JSON.stringify({ permissions: this.currentPerms })
+          });
+          if (res.ok) {
+            this.originalPerms = [...this.currentPerms];
+            this.dirty = false;
+            this.$dispatch('toast', { message: '변경사항이 저장되었습니다' });
+          }
+        } catch(e) { console.error('save', e); }
+      },
+
+      revert() {
+        this.currentPerms = [...this.originalPerms];
+        this.dirty = false;
+      },
+
+      // ── Role CRUD ────────────────────────────────────
+      openAddRole() {
+        this.addRoleForm = { role_name: '', description: '' };
+        this.showAddRole = true;
+      },
+      async submitAddRole() {
+        if (!this.addRoleForm.role_name.trim()) return;
+        try {
+          const res = await fetch(ctx + 'api/roles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+            body: JSON.stringify(this.addRoleForm)
+          });
+          if (res.ok) {
+            const data = await res.json();
+            this.showAddRole = false;
+            await this.loadRoles();
+            await this.selectRole(data.role_id);
+          }
+        } catch(e) { console.error('submitAddRole', e); }
+      },
+
+      openRename() {
+        if (!this.current || this.current.is_system == 1) return;
+        this.renameForm = { role_name: this.current.role_name, description: this.current.description || '' };
+        this.showRenameRole = true;
+      },
+      async submitRename() {
+        if (!this.renameForm.role_name.trim()) return;
+        try {
+          const res = await fetch(ctx + 'api/roles/' + this.activeRole, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+            body: JSON.stringify(this.renameForm)
+          });
+          if (res.ok) { this.showRenameRole = false; await this.loadRoles(); }
+        } catch(e) { console.error('submitRename', e); }
+      },
+
+      openClone() {
+        if (!this.current) return;
+        this.cloneForm = { role_name: this.current.role_name + ' (복사)' };
+        this.showCloneRole = true;
+      },
+      async submitClone() {
+        if (!this.cloneForm.role_name.trim()) return;
+        try {
+          const res = await fetch(ctx + 'api/roles/' + this.activeRole + '/copy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+            body: JSON.stringify({ role_name: this.cloneForm.role_name })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            this.showCloneRole = false;
+            await this.loadRoles();
+            await this.selectRole(data.role_id);
+          }
+        } catch(e) { console.error('submitClone', e); }
+      },
+
+      // ── User assignment ──────────────────────────────
+      async openAddUser() {
+        try {
+          const res = await fetch(ctx + 'api/roles/users');
+          if (res.ok) {
+            const all = await res.json();
+            const currentIds = this.currentUsers.map(u => u.id);
+            this.allUsers = all
+              .filter(u => !currentIds.includes(u.user_id))
+              .map(u => ({
+                id:    u.user_id,
+                name:  u.user_name  || '',
+                login: u.user_login || '',
+                dept:  u.dept       || '',
+                color: nameToColor(u.user_name || ''),
+              }));
+          }
+        } catch(e) { console.error('openAddUser', e); }
+        this.userSearch = '';
+        this.selectedUserId = null;
+        this.showAddUser = true;
+      },
+
+      async confirmAddUser() {
+        if (!this.selectedUserId) return;
+        try {
+          const res = await fetch(ctx + 'api/roles/user/' + this.selectedUserId, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+            body: JSON.stringify({ role_id: this.activeRole })
+          });
+          if (res.ok) {
+            this.showAddUser = false;
+            await this.loadUsers(this.activeRole);
+            await this.loadRoles();
+          }
+        } catch(e) { console.error('confirmAddUser', e); }
+      },
+
+      async removeUser(userId) {
+        try {
+          const res = await fetch(ctx + 'api/roles/user/' + userId + '/' + this.activeRole, {
+            method: 'DELETE',
+            headers: csrfHeaders()
+          });
+          if (res.ok) {
+            this.currentUsers = this.currentUsers.filter(u => u.id !== userId);
+            await this.loadRoles();
+          }
+        } catch(e) { console.error('removeUser', e); }
+      },
+    }));
+  });
+}());
+</script>
+
 <script>
   document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '관리자', current: '역할 관리' }); });
 </script>

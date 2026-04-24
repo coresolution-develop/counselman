@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="_csrf"        th:content="${_csrf.token}"/>
+  <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
   <title>MediPlat · 사용자 관리</title>
-
 
   <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
   <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
@@ -157,6 +158,49 @@
     .um-tabs .count { font-variant-numeric: tabular-nums; opacity: .6; margin-left: 4px; }
 
     .um-empty { padding: 48px 24px; text-align: center; color: var(--text-tertiary); font-size: 13px; }
+
+    /* ===== Modals ===== */
+    .um-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,.45); backdrop-filter: blur(2px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .um-modal {
+      background: #fff; border-radius: 16px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.22);
+      width: 100%; max-width: 520px;
+      overflow: hidden;
+    }
+    .um-modal--sm { max-width: 380px; }
+    .um-modal__head {
+      display: flex; align-items: center; gap: 12px;
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .um-modal__head-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: grid; place-items: center;
+      background: color-mix(in oklab, var(--brand-500) 10%, #fff);
+      color: var(--brand-600);
+    }
+    .um-modal__head-icon svg { width: 20px; height: 20px; }
+    .um-modal__title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+    .um-modal__body { padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+    .um-modal__footer { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 24px; background: var(--gray-50); border-top: 1px solid var(--border-subtle); }
+
+    .um-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .um-form-group { display: flex; flex-direction: column; gap: 5px; }
+    .um-form-group label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+    .um-form-group input, .um-form-group select { height: 38px; padding: 0 12px; border: 1px solid var(--border-default); border-radius: 8px; font-size: 13px; background: #fff; transition: all .15s; }
+    .um-form-group input:focus, .um-form-group select:focus { border-color: var(--brand-400); box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-500) 14%, transparent); outline: none; }
+    .um-form-group--full { grid-column: 1 / -1; }
+    .um-form-err { font-size: 12px; color: #ef4444; padding: 8px 12px; border-radius: 8px; background: #fef2f2; border: 1px solid #fecaca; }
+
+    .um-pw-box { background: var(--gray-50); border: 1px dashed var(--border-default); border-radius: 10px; padding: 16px; text-align: center; }
+    .um-pw-box__label { font-size: 11px; color: var(--text-tertiary); margin-bottom: 6px; }
+    .um-pw-box__value { font-size: 22px; font-weight: 700; font-family: monospace; letter-spacing: .12em; color: var(--text-primary); }
+    .um-pw-box__copy { margin-top: 10px; font-size: 12px; color: var(--brand-600); cursor: pointer; }
   </style>
 </head>
 <body>
@@ -206,7 +250,7 @@
           <div class="um-chip um-chip--brand"><div class="um-chip__val" x-text="users.filter(u=>u.status==='active').length"></div><div class="um-chip__lbl">사용중</div></div>
           <div class="um-chip um-chip--mute"><div class="um-chip__val" x-text="users.filter(u=>u.status!=='active').length"></div><div class="um-chip__lbl">사용중지</div></div>
         </div>
-        <button class="btn btn--primary" style="height:40px;">
+        <button class="btn btn--primary" style="height:40px;" @click="openAdd()">
           <svg><use href="#i-user-plus"/></svg>
           새 사용자
         </button>
@@ -282,22 +326,22 @@
         <!-- Detail side panel -->
         <aside class="um-side" x-show="current">
           <div class="um-side__cover">
-            <div class="um-side__avatar" :style="{ background: 'rgba(255,255,255,.25)' }" x-text="current?.initial"></div>
+            <div class="um-side__avatar" x-text="current?.initial"></div>
             <div class="um-side__name">
               <span x-text="current?.name"></span>
               <span class="badge" x-text="roleLabel(current?.role)"></span>
             </div>
-            <div class="um-side__id" x-text="current?.employeeId + ' · ' + (current?.dept || '')"></div>
+            <div class="um-side__id" x-text="(current?.employeeId || '') + ' · ' + (current?.dept || '')"></div>
           </div>
           <div class="um-side__body">
             <div class="um-field">
               <span class="um-field__label">이메일</span>
-              <span class="um-field__value" x-text="current?.email"></span>
+              <span class="um-field__value" x-text="current?.email || '—'"></span>
             </div>
             <div class="um-field">
               <span class="um-field__label">부서</span>
               <span class="um-field__value">
-                <span x-text="current?.dept"></span>
+                <span x-text="current?.dept || '—'"></span>
                 <span class="sub" x-text="current?.rank"></span>
               </span>
             </div>
@@ -311,45 +355,219 @@
                 <span class="um-status" :class="'um-status--' + current?.status" x-text="statusLabel(current?.status)"></span>
               </span>
             </div>
-            <div class="um-field">
-              <span class="um-field__label">최근접속</span>
-              <span class="um-field__value">
-                <span x-text="current?.lastSeen"></span>
-                <span class="sub" x-text="current?.lastIp"></span>
-              </span>
-            </div>
-            <div class="um-field">
-              <span class="um-field__label">권한</span>
-              <div class="um-field__value" style="width:100%;">
-                <div class="um-side__perms">
-                  <template x-for="p in (current?.perms || [])" :key="p">
-                    <span class="um-side__perm" x-text="p"></span>
-                  </template>
-                </div>
-              </div>
-            </div>
           </div>
           <div class="um-side__actions">
-            <button class="btn btn--outline"><svg><use href="#i-refresh"/></svg>비밀번호 초기화</button>
-            <button class="btn btn--primary"><svg><use href="#i-edit"/></svg>정보 수정</button>
+            <button class="btn btn--outline" @click="openResetPw()">
+              <svg><use href="#i-refresh"/></svg>비밀번호 초기화
+            </button>
+            <button class="btn btn--primary" @click="openEdit()">
+              <svg><use href="#i-edit"/></svg>정보 수정
+            </button>
           </div>
         </aside>
 
       </div>
+
+      <!-- ====== Add User Modal ====== -->
+      <div class="um-overlay" x-show="showAdd" x-cloak @click.self="showAdd=false" style="display:none">
+        <div class="um-modal">
+          <div class="um-modal__head">
+            <div class="um-modal__head-icon"><svg><use href="#i-user-plus"/></svg></div>
+            <div class="um-modal__title">새 사용자 추가</div>
+          </div>
+          <div class="um-modal__body">
+            <template x-if="addError">
+              <div class="um-form-err" x-text="addError"></div>
+            </template>
+            <div class="um-form-row">
+              <div class="um-form-group">
+                <label>이름 <span style="color:#ef4444">*</span></label>
+                <input type="text" x-model="addForm.name" placeholder="홍길동" />
+              </div>
+              <div class="um-form-group">
+                <label>아이디 <span style="color:#ef4444">*</span></label>
+                <input type="text" x-model="addForm.loginId" placeholder="user123" autocomplete="off"/>
+              </div>
+            </div>
+            <div class="um-form-row">
+              <div class="um-form-group">
+                <label>비밀번호 <span style="color:#ef4444">*</span></label>
+                <input type="password" x-model="addForm.password" placeholder="••••••••" autocomplete="new-password"/>
+              </div>
+              <div class="um-form-group">
+                <label>역할</label>
+                <select x-model="addForm.role">
+                  <option value="staff">실무진</option>
+                  <option value="admin">관리자</option>
+                  <option value="super">슈퍼바이저</option>
+                </select>
+              </div>
+            </div>
+            <div class="um-form-row">
+              <div class="um-form-group">
+                <label>부서</label>
+                <input type="text" x-model="addForm.dept" placeholder="상담팀" />
+              </div>
+              <div class="um-form-group">
+                <label>직급</label>
+                <input type="text" x-model="addForm.rank" placeholder="팀장" />
+              </div>
+            </div>
+            <div class="um-form-row">
+              <div class="um-form-group">
+                <label>이메일</label>
+                <input type="email" x-model="addForm.email" placeholder="user@example.com" />
+              </div>
+              <div class="um-form-group">
+                <label>연락처</label>
+                <input type="tel" x-model="addForm.phone" placeholder="010-0000-0000" />
+              </div>
+            </div>
+          </div>
+          <div class="um-modal__footer">
+            <button class="btn btn--outline" @click="showAdd=false" :disabled="addLoading">취소</button>
+            <button class="btn btn--primary" @click="submitAdd()" :disabled="addLoading">
+              <template x-if="addLoading"><svg style="width:14px;height:14px;animation:spin 1s linear infinite"><use href="#i-refresh"/></svg></template>
+              사용자 추가
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== Edit User Modal ====== -->
+      <div class="um-overlay" x-show="showEdit" x-cloak @click.self="showEdit=false" style="display:none">
+        <div class="um-modal">
+          <div class="um-modal__head">
+            <div class="um-modal__head-icon"><svg><use href="#i-edit"/></svg></div>
+            <div class="um-modal__title">사용자 정보 수정</div>
+          </div>
+          <div class="um-modal__body">
+            <div class="um-form-row">
+              <div class="um-form-group">
+                <label>이름</label>
+                <input type="text" x-model="editForm.name" />
+              </div>
+              <div class="um-form-group">
+                <label>역할</label>
+                <select x-model="editForm.role">
+                  <option value="staff">실무진</option>
+                  <option value="admin">관리자</option>
+                  <option value="super">슈퍼바이저</option>
+                </select>
+              </div>
+            </div>
+            <div class="um-form-row">
+              <div class="um-form-group">
+                <label>부서</label>
+                <input type="text" x-model="editForm.dept" />
+              </div>
+              <div class="um-form-group">
+                <label>직급</label>
+                <input type="text" x-model="editForm.rank" />
+              </div>
+            </div>
+            <div class="um-form-row">
+              <div class="um-form-group">
+                <label>이메일</label>
+                <input type="email" x-model="editForm.email" />
+              </div>
+              <div class="um-form-group">
+                <label>연락처</label>
+                <input type="tel" x-model="editForm.phone" />
+              </div>
+            </div>
+            <div class="um-form-row">
+              <div class="um-form-group">
+                <label>상태</label>
+                <select x-model="editForm.status">
+                  <option value="y">사용중</option>
+                  <option value="n">사용중지</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="um-modal__footer">
+            <button class="btn btn--outline" @click="showEdit=false" :disabled="editLoading">취소</button>
+            <button class="btn btn--primary" @click="submitEdit()" :disabled="editLoading">저장</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== Reset Password Modal ====== -->
+      <div class="um-overlay" x-show="showResetPw" x-cloak @click.self="if(!tempPw) showResetPw=false" style="display:none">
+        <div class="um-modal um-modal--sm">
+          <div class="um-modal__head">
+            <div class="um-modal__head-icon"><svg><use href="#i-refresh"/></svg></div>
+            <div class="um-modal__title">비밀번호 초기화</div>
+          </div>
+          <div class="um-modal__body">
+            <template x-if="!tempPw">
+              <div style="font-size:13px;color:var(--text-secondary);line-height:1.6">
+                <strong x-text="current?.name"></strong> 님의 비밀번호를 초기화하고 임시 비밀번호를 발급합니다.<br/>
+                계속하시겠습니까?
+              </div>
+            </template>
+            <template x-if="tempPw">
+              <div>
+                <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">임시 비밀번호가 발급되었습니다. 사용자에게 전달해 주세요.</div>
+                <div class="um-pw-box">
+                  <div class="um-pw-box__label">임시 비밀번호</div>
+                  <div class="um-pw-box__value" x-text="tempPw"></div>
+                  <div class="um-pw-box__copy" @click="copyTempPw()">클립보드에 복사</div>
+                </div>
+              </div>
+            </template>
+          </div>
+          <div class="um-modal__footer">
+            <template x-if="!tempPw">
+              <button class="btn btn--outline" @click="showResetPw=false">취소</button>
+            </template>
+            <template x-if="!tempPw">
+              <button class="btn btn--primary" @click="confirmResetPw()" :disabled="resetPwLoading">초기화</button>
+            </template>
+            <template x-if="tempPw">
+              <button class="btn btn--primary" @click="showResetPw=false; tempPw=null">닫기</button>
+            </template>
+          </div>
+        </div>
+      </div>
+
     </div>
   </main>
 </div>
 
 <script th:inline="javascript">
 const _users = /*[[${usersJson}]]*/ '[]';
+const _ctx   = /*[[@{/}]]*/ '/';
+
 function userMgmt() {
   const dbUsers = (() => { try { return JSON.parse(_users); } catch(e) { return []; } })();
+
+  function csrfHeaders() {
+    const token  = document.querySelector('meta[name="_csrf"]')?.content;
+    const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+    return (token && header) ? { [header]: token } : {};
+  }
+
   return {
-    q: '',
-    tab: 'all',
-    roleFilter: '',
-    selected: null,
+    q: '', tab: 'all', roleFilter: '', selected: null,
     users: dbUsers,
+
+    // Add modal
+    showAdd: false,
+    addForm: { name:'', loginId:'', password:'', orgName:'', dept:'', rank:'', email:'', phone:'', role:'staff' },
+    addLoading: false,
+    addError: '',
+
+    // Edit modal
+    showEdit: false,
+    editForm: { name:'', dept:'', rank:'', email:'', phone:'', status:'y', role:'staff' },
+    editLoading: false,
+
+    // Reset PW modal
+    showResetPw: false,
+    resetPwLoading: false,
+    tempPw: null,
 
     init() {
       if (this.users.length) this.selected = this.users[0].id;
@@ -365,11 +583,85 @@ function userMgmt() {
         return (u.name + ' ' + u.email + ' ' + u.employeeId + ' ' + (u.dept||'')).toLowerCase().includes(q);
       });
     },
-    roleLabel(r) {
-      return ({ admin:'관리자', super:'슈퍼바이저', staff:'실무진', counsel:'상담사' })[r] || r || '';
+
+    roleLabel(r)   { return ({ admin:'관리자', super:'슈퍼바이저', staff:'실무진', counsel:'상담사' })[r] || r || ''; },
+    statusLabel(s) { return ({ active:'사용중', pause:'일시정지', off:'사용중지' })[s] || ''; },
+
+    // ─── Add user ─────────────────────────────
+    openAdd() {
+      this.addForm = { name:'', loginId:'', password:'', orgName:'', dept:'', rank:'', email:'', phone:'', role:'staff' };
+      this.addError = '';
+      this.showAdd = true;
     },
-    statusLabel(s) {
-      return ({ active:'사용중', pause:'일시정지', off:'사용중지' })[s] || '';
+    async submitAdd() {
+      if (!this.addForm.name.trim() || !this.addForm.loginId.trim() || !this.addForm.password.trim()) {
+        this.addError = '이름, 아이디, 비밀번호는 필수입니다.';
+        return;
+      }
+      this.addLoading = true; this.addError = '';
+      try {
+        const res = await fetch(_ctx + 'api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+          body: JSON.stringify(this.addForm)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) { this.showAdd = false; window.location.reload(); }
+        else this.addError = data.error || '사용자 추가에 실패했습니다.';
+      } catch(e) {
+        this.addError = '서버 오류가 발생했습니다.';
+      } finally {
+        this.addLoading = false;
+      }
+    },
+
+    // ─── Edit user ─────────────────────────────
+    openEdit() {
+      if (!this.current) return;
+      this.editForm = {
+        name:   this.current.name   || '',
+        dept:   this.current.dept   || '',
+        rank:   this.current.rank   || '',
+        email:  this.current.email  || '',
+        phone:  this.current.phone  || '',
+        status: this.current.status === 'active' ? 'y' : 'n',
+        role:   this.current.role   || 'staff',
+      };
+      this.showEdit = true;
+    },
+    async submitEdit() {
+      if (!this.current) return;
+      this.editLoading = true;
+      try {
+        const res = await fetch(_ctx + 'api/users/' + this.current.id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+          body: JSON.stringify(this.editForm)
+        });
+        if (res.ok) { this.showEdit = false; window.location.reload(); }
+      } finally {
+        this.editLoading = false;
+      }
+    },
+
+    // ─── Reset password ────────────────────────
+    openResetPw() { this.tempPw = null; this.showResetPw = true; },
+    async confirmResetPw() {
+      if (!this.current) return;
+      this.resetPwLoading = true;
+      try {
+        const res = await fetch(_ctx + 'api/users/' + this.current.id + '/reset-password', {
+          method: 'POST',
+          headers: csrfHeaders()
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) this.tempPw = data.tempPassword;
+      } finally {
+        this.resetPwLoading = false;
+      }
+    },
+    copyTempPw() {
+      if (this.tempPw) navigator.clipboard?.writeText(this.tempPw);
     },
   };
 }

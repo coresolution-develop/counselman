@@ -7591,6 +7591,47 @@ public class PageController {
             valueMap = buildValueMap(data, categoryData, fieldTypeMapping, fieldOptionsMapping);
         }
 
+        Counsel_phone cp = new Counsel_phone();
+        cp.setInst(inst);
+        List<Map<String, String>> phOptions = Optional.ofNullable(cs.selectPhone(cp)).orElse(Collections.emptyList())
+                .stream()
+                .filter(Objects::nonNull)
+                .map(p -> {
+                    String num = safeString(p.getPhone_num()).trim();
+                    if (num.isEmpty()) return null;
+                    String name = safeString(p.getPhone_name()).trim();
+                    Map<String, String> m = new java.util.LinkedHashMap<>();
+                    m.put("value", num);
+                    m.put("text", "(" + (name.isEmpty() ? "미지정" : name) + ") " + num);
+                    return m;
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        SmsTemplate smsTemplateParam = new SmsTemplate();
+        smsTemplateParam.setInst(inst);
+        List<Map<String, String>> smsPhrases = Optional.ofNullable(ss.SelectTemplateView(smsTemplateParam))
+                .orElse(Collections.emptyList())
+                .stream()
+                .filter(Objects::nonNull)
+                .map(t -> {
+                    Map<String, String> m = new java.util.LinkedHashMap<>();
+                    m.put("title", safeString(t.getTitle()));
+                    m.put("body", safeString(t.getTemplate()));
+                    return m;
+                })
+                .collect(Collectors.toList());
+        List<Map<String, String>> smsSignatures = Optional.ofNullable(cs.SelectCard(inst)).orElse(Collections.emptyList())
+                .stream()
+                .filter(Objects::nonNull)
+                .map(c -> {
+                    Map<String, String> m = new java.util.LinkedHashMap<>();
+                    m.put("title", safeString(c.getTitle()));
+                    m.put("body", safeString(c.getContent()));
+                    return m;
+                })
+                .collect(Collectors.toList());
+
         Map<String, Object> pd = new java.util.LinkedHashMap<>();
         pd.put("csIdx",        data != null ? data.getCs_idx() : 0);
         pd.put("reservationId", reservationId != null ? reservationId : 0L);
@@ -7671,6 +7712,9 @@ public class PageController {
         mv.addObject("pathTypeOptions", cs.getCounselPathTypeOptions(inst));
         mv.addObject("dynamicCategoryJson", toDynamicCategoryJson(categoryData, fieldTypeMapping));
         mv.addObject("dynamicValueJson", toJsonOrEmptyObject(valueMap));
+        mv.addObject("smsSenderOptions", phOptions);
+        mv.addObject("smsPhrases", smsPhrases);
+        mv.addObject("smsSignatures", smsSignatures);
         mv.addObject("today", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
         mv.addObject("actor", actorName);
         mv.setViewName("design/inpatient-consultation");
