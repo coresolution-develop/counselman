@@ -15,6 +15,7 @@
     { section: '상담 업무', items: [
       { id: 'reception',   label: '상담 접수',    icon: 'inbox',      href: '/design/counsel/intake' },
       { id: 'inpatient',   label: '입원상담',     icon: 'bed',        href: '/design/counsel/inpatient' },
+      { id: 'ward',        label: '병실현황판',   icon: 'bed',        href: '/room-board' },
       { id: 'list',        label: '상담리스트',   icon: 'list',       href: '/design/counsel/list' },
       { id: 'notice',      label: '공지사항',     icon: 'megaphone',  href: '/design/notices' },
       { id: 'stats',       label: '상담통계',     icon: 'chart',      href: '#' },
@@ -27,7 +28,6 @@
       ]},
     ]},
     { section: '시스템', items: [
-      { id: 'users',       label: '사용자 관리',   icon: 'users',      href: '/design/user-management' },
       { id: 'admin',       label: '관리자',       icon: 'shield',     href: '/design/role-management', badge: '3' },
     ]},
   ];
