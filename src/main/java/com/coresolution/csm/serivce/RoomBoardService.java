@@ -1163,21 +1163,26 @@ public class RoomBoardService {
     public List<AdmissionReservationItem> listAdmissionReservations(String inst) {
         String safe = sanitizeInst(inst);
         String sql = """
-                SELECT cs_idx,
-                       cs_col_01 AS patient_name_hex,
-                       cs_col_02 AS gender,
-                       cs_col_03 AS birth_date,
-                       cs_col_13 AS guardian_name,
-                       cs_col_15 AS guardian_phone,
-                       cs_col_16 AS counsel_date,
-                       cs_col_17 AS counselor,
-                       cs_col_19 AS status,
-                       cs_col_21 AS planned_date,
-                       cs_col_38 AS room_name
-                  FROM csm.counsel_data_%s
-                 WHERE cs_col_19 = '입원예약'
-                 ORDER BY cs_col_21 ASC, cs_idx ASC
-                """.formatted(safe);
+                SELECT cd.cs_idx,
+                       cd.cs_col_01 AS patient_name_hex,
+                       cd.cs_col_02 AS gender,
+                       cd.cs_col_03 AS birth_date,
+                       g.name             AS guardian_name,
+                       g.contact_number   AS guardian_phone_hex,
+                       cd.cs_col_16 AS counsel_date,
+                       cd.cs_col_17 AS counselor,
+                       cd.cs_col_19 AS status,
+                       cd.cs_col_21 AS planned_date,
+                       cd.cs_col_38 AS room_name
+                  FROM csm.counsel_data_%s cd
+                  LEFT JOIN (
+                      SELECT cs_idx, name, contact_number
+                        FROM csm.counsel_data_%s_guardians
+                       WHERE id IN (SELECT MIN(id) FROM csm.counsel_data_%s_guardians GROUP BY cs_idx)
+                  ) g ON g.cs_idx = cd.cs_idx
+                 WHERE cd.cs_col_19 = '입원예약'
+                 ORDER BY cd.cs_col_21 ASC, cd.cs_idx ASC
+                """.formatted(safe, safe, safe);
 
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
         List<AdmissionReservationItem> result = new ArrayList<>();
@@ -1188,7 +1193,7 @@ public class RoomBoardService {
             item.setGender(safeText(row.get("gender"), 20));
             item.setBirthDate(safeText(row.get("birth_date"), 20));
             item.setGuardianName(safeText(row.get("guardian_name"), 100));
-            item.setGuardianPhone(safeText(row.get("guardian_phone"), 100));
+            item.setGuardianPhone(decryptHexString(safeText(row.get("guardian_phone_hex"), 500)));
             item.setCounselDate(safeText(row.get("counsel_date"), 20));
             item.setCounselor(safeText(row.get("counselor"), 100));
             item.setStatus(safeText(row.get("status"), 50));

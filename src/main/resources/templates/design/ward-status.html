@@ -6,12 +6,16 @@
   <title>MediPlat · 병실현황판</title>
   <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
   <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/layout.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/components.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/tweaks.css}" />
   <link rel="stylesheet" th:href="@{/assets/css/datepicker.css}" />
+  <meta name="_csrf" th:content="${_csrf.token}" />
+  <meta name="_csrf_header" th:content="${_csrf.headerName}" />
   <style>
-    body { font-family: var(--font-sans); background: var(--bg-app, #f8f9fb); min-height: 100vh; color: var(--text-primary); }
     [x-cloak] { display: none !important; }
 
-    .ws-wrap { padding: 20px; max-width: 1440px; margin: 0 auto; }
+    .ws-wrap { padding: 20px; }
 
     /* ===== Hero ===== */
     .ws-hero {
@@ -176,36 +180,43 @@
       grid-auto-columns: 68px;
       gap: 6px;
     }
+    /* 기본 = 빈 병상 (입원 가능) → 녹색으로 강조 */
     .ws-bed-slot {
-      height: 40px;
+      height: 44px;
       border-radius: 6px;
-      border: 1px solid color-mix(in oklab, var(--brand-500) 14%, var(--border-subtle));
-      background: color-mix(in oklab, var(--brand-500) 5%, #fff);
+      border: 1px solid color-mix(in oklab, var(--brand-500) 30%, transparent);
+      background: color-mix(in oklab, var(--brand-500) 12%, #fff);
       display: flex; align-items: center; justify-content: center;
-      font-size: 11.5px; color: var(--text-secondary);
+      font-size: 11.5px; color: var(--brand-700);
+      font-weight: 600;
       position: relative;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       padding: 0 6px;
     }
+    /* 재원 중 — 흰색/중립 */
     .ws-bed-slot.is-filled {
-      background: #fff;
-      color: var(--text-primary);
-      font-weight: 600;
-      border-color: var(--border-default);
+      background: var(--gray-100);
+      border: 1px solid var(--border-default);
+      color: var(--text-secondary);
+      font-weight: 500;
     }
+    /* 입원예약 — 연한 앰버 */
     .ws-bed-slot.is-reserved {
-      background: #fef3c7;
-      border-color: #fcd34d;
-      color: #92400e;
+      background: #fef9c3;
+      border: 1px solid #fde047;
+      color: #854d0e;
+      font-weight: 500;
     }
     .ws-bed-slot__num {
       position: absolute; top: 2px; left: 4px;
       font-size: 9px; color: var(--text-tertiary); font-weight: 600;
     }
+    .ws-bed-slot.is-filled .ws-bed-slot__num { color: var(--text-tertiary); }
+    .ws-bed-slot.is-reserved .ws-bed-slot__num { color: #a16207; }
 
-    /* Select button */
+    /* (unused — kept for popup mode only) */
     .ws-select-btn {
       padding: 7px 14px;
       border-radius: 8px;
@@ -224,8 +235,20 @@
     .ws-select-btn--ghost:hover { background: color-mix(in oklab, var(--brand-500) 8%, #fff); }
   </style>
 </head>
-<body x-data="wardStatus()" x-init="init()">
-  <div class="ws-wrap">
+<body>
+<script th:src="@{/assets/js/sprite.js}"></script>
+
+<div class="app"
+     data-screen-label="Ward Status"
+     :data-sidebar="$store.app.sidebarCollapsed ? 'collapsed' : 'expanded'"
+     :data-variation="$store.app.variation"
+     x-data>
+
+  <div id="slot-sidebar"></div>
+  <div id="slot-header"></div>
+
+  <main class="main">
+  <div class="ws-wrap" x-data="wardStatus()" x-init="init()">
 
     <!-- Hero -->
     <div class="ws-hero">
@@ -234,8 +257,12 @@
         <div class="ws-hero__meta">기준일 <span x-text="now"></span></div>
       </div>
       <div class="ws-hero__actions">
-        <a th:href="@{/logout}" class="ws-hero__btn" x-show="!popupMode">로그아웃</a>
-        <button type="button" class="ws-hero__btn ws-hero__btn--solid" @click="closePage()">닫기</button>
+        <button type="button" class="ws-hero__btn" @click="location.reload()" x-show="!popupMode">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          최신 현황
+        </button>
+        <a th:href="@{/admin/room-board}" class="ws-hero__btn" x-show="!popupMode && canManage">관리 화면</a>
+        <button type="button" class="ws-hero__btn ws-hero__btn--solid" @click="closePage()" x-show="popupMode">닫기</button>
       </div>
     </div>
 
@@ -311,7 +338,6 @@
                 <th>입원 예정일</th>
                 <th>상태구분</th>
                 <th>재원환자 명단</th>
-                <th style="width:80px;">선택</th>
               </tr>
             </thead>
             <tbody>
@@ -347,14 +373,6 @@
                       </template>
                     </div>
                   </td>
-                  <td>
-                    <button type="button"
-                       class="ws-select-btn"
-                       :disabled="room.available === 0"
-                       @click="selectRoom(ward, room)">
-                      선택
-                    </button>
-                  </td>
                 </tr>
               </template>
             </tbody>
@@ -362,97 +380,111 @@
         </div>
       </section>
     </template>
-  </div>
+  </div><!-- .ws-wrap -->
+  </main>
+</div><!-- .app -->
 
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
-<script>
+<script th:inline="javascript">
+/*<![CDATA[*/
 function wardStatus() {
   const ctx = location.pathname.startsWith('/csm/') ? '/csm' : '';
-  // Build sample data
-  const mkRoom = (id, cap, occ, res, care, patients, meta = {}) => ({
-    id, capacity: cap, occupied: occ, reserved: res,
-    available: cap - occ - res,
-    occupancy: Math.round((occ / cap) * 100),
-    care, patients,
-    gender: meta.gender || '',
-    admitDate: meta.admitDate || '',
-    careType: meta.careType || '기저귀, 소소, 석션',
-  });
-  const ward1 = {
-    id: 'w1', name: '1병동',
-    rooms: [
-      mkRoom('101호', 6, 0, 0, ['기저귀','소소','석션'], []),
-      mkRoom('102호', 6, 0, 0, ['기저귀','소소','석션'], []),
-      mkRoom('103호', 5, 0, 1, ['기저귀','소소','석션'], ['입원 전 세팅'], { admitDate: '0-04', careType: '기저귀, 소소, 석션' }),
-      mkRoom('104호', 1, 0, 0, ['기저귀','소소','석션'], []),
-      mkRoom('105호', 6, 0, 0, ['기저귀','소소','석션'], []),
-      mkRoom('106호', 2, 0, 0, ['기저귀','소소','석션'], []),
-      mkRoom('107호', 1, 0, 0, ['기저귀','소소','석션'], []),
-    ],
-  };
-  const ward2 = {
-    id: 'w2', name: '2병동',
-    rooms: [
-      mkRoom('201호', 6, 4, 0, ['기저귀','석션'], ['김○○','이○○','박○○','최○○'], { gender: '남' }),
-      mkRoom('202호', 6, 6, 0, ['기저귀','소소'], ['정○○','강○○','조○○','한○○','윤○○','서○○'], { gender: '여' }),
-      mkRoom('203호', 4, 2, 1, ['기저귀'], ['김△△','이△△'], { gender: '남', admitDate: '04-28' }),
-      mkRoom('204호', 2, 1, 0, ['기저귀','석션'], ['박◇◇'], { gender: '여' }),
-      mkRoom('205호', 1, 0, 0, ['기저귀','석션'], []),
-    ],
-  };
-  const ward3 = {
-    id: 'w3', name: '3병동 (특실)',
-    rooms: [
-      mkRoom('301호', 1, 1, 0, ['1인실'], ['정◇◇'], { gender: '남' }),
-      mkRoom('302호', 1, 0, 0, ['1인실'], []),
-      mkRoom('303호', 2, 1, 0, ['2인실'], ['한○○'], { gender: '여' }),
-    ],
-  };
-  [ward1, ward2, ward3].forEach(w => {
-    w.licensed = w.rooms.reduce((s,r) => s + r.capacity, 0);
-    w.occupied = w.rooms.reduce((s,r) => s + r.occupied, 0);
-    w.available = w.rooms.reduce((s,r) => s + r.available, 0);
-    w.occupancy = Math.round((w.occupied / w.licensed) * 100);
-  });
+
+  const _board      = /*[[${board}]]*/ null;
+  const _canManage  = /*[[${canManageRoomBoard}]]*/ false;
+
+  function mapRoom(r, wi) {
+    const care = [];
+    if (r.statusDiaper) care.push('기저귀');
+    if (r.statusOxygen)  care.push('산소');
+    if (r.statusSuction) care.push('석션');
+    if (r.statusWalk)    care.push('보행');
+    const cap = r.licensedBeds || 0;
+    const occ = r.occupiedCount || 0;
+    const res = r.reservationCount || 0;
+    return {
+      id:        r.roomName    || '',
+      capacity:  cap,
+      occupied:  occ,
+      reserved:  res,
+      available: r.availableCount != null ? r.availableCount : Math.max(0, cap - occ - res),
+      occupancy: cap > 0 ? Math.round((occ / cap) * 100) : 0,
+      care,
+      patients:  r.patientSlots || [],
+      gender:    r.genderSummary || '',
+      admitDate: r.reservationNames || '',
+      careType:  r.careType || '',
+      note:      r.note || '',
+    };
+  }
+
+  function mapWard(w, idx) {
+    return {
+      id:       'w' + idx,
+      name:     w.wardName    || '',
+      licensed: w.licensedBeds  || 0,
+      occupied: w.occupiedBeds  || 0,
+      available:w.availableBeds || 0,
+      occupancy:Math.round(w.occupancyRate || 0),
+      rooms:    (w.rooms || []).map((r, ri) => mapRoom(r, ri)),
+    };
+  }
+
+  const _wards = _board ? (_board.wards || []).map(mapWard) : [];
+  const _now   = _board
+    ? ((_board.snapshotDate || '') + ' ' + (_board.snapshotTime || '')).trim()
+    : new Date().toISOString().slice(0, 16).replace('T', ' ');
 
   return {
-    wards: [ward1, ward2, ward3],
+    wards: _wards,
+    canManage: _canManage,
     popupMode: new URLSearchParams(location.search).get('popup') === '1',
-    now: new Date().toISOString().slice(0, 16).replace('T', ' '),
+    now: _now,
     filters: [
-      { key: 'diaper', label: '기저귀', on: false },
-      { key: 'tube',   label: '기저귀', on: false },
-      { key: 'oxygen', label: '산소',   on: false },
-      { key: 'suction',label: '석션',   on: false },
+      { key: 'diaper',  label: '기저귀', on: false },
+      { key: 'oxygen',  label: '산소',   on: false },
+      { key: 'suction', label: '석션',   on: false },
+      { key: 'walk',    label: '보행',   on: false },
     ],
     onlyAvailable: false,
 
     init() {},
 
     get totals() {
-      const L = this.wards.reduce((s,w) => s + w.licensed, 0);
-      const O = this.wards.reduce((s,w) => s + w.occupied, 0);
-      const A = this.wards.reduce((s,w) => s + w.available, 0);
-      return { licensed: L, occupied: O, available: A, occupancy: Math.round((O/L)*100) };
+      const L = this.wards.reduce((s, w) => s + w.licensed, 0);
+      const O = this.wards.reduce((s, w) => s + w.occupied, 0);
+      const A = this.wards.reduce((s, w) => s + w.available, 0);
+      return { licensed: L, occupied: O, available: A, occupancy: L > 0 ? Math.round((O / L) * 100) : 0 };
     },
+
     get filteredWards() {
-      if (!this.onlyAvailable) return this.wards;
-      return this.wards.map(w => ({
-        ...w,
-        rooms: w.rooms.filter(r => r.available > 0),
-      })).filter(w => w.rooms.length > 0);
+      const activeKeys = this.filters.filter(f => f.on).map(f => f.key);
+      const labelMap = { diaper: '기저귀', oxygen: '산소', suction: '석션', walk: '보행' };
+      let wards = this.wards;
+      if (activeKeys.length) {
+        wards = wards.map(w => ({
+          ...w,
+          rooms: w.rooms.filter(r => activeKeys.every(k => r.care.includes(labelMap[k]))),
+        })).filter(w => w.rooms.length > 0);
+      }
+      if (this.onlyAvailable) {
+        wards = wards.map(w => ({
+          ...w,
+          rooms: w.rooms.filter(r => r.available > 0),
+        })).filter(w => w.rooms.length > 0);
+      }
+      return wards;
     },
+
     resetFilters() {
       this.filters.forEach(f => f.on = false);
       this.onlyAvailable = false;
     },
+
     closePage() {
-      if (this.popupMode) {
-        window.close();
-        return;
-      }
+      if (this.popupMode) { window.close(); return; }
       window.location.href = ctx + '/room-board';
     },
+
     selectRoom(ward, room) {
       if (!room || room.available <= 0) return;
       const roomName = room.id || '';
@@ -471,7 +503,16 @@ function wardStatus() {
     },
   };
 }
+/*]]>*/
 </script>
+<script th:src="@{/assets/js/app.js}"></script>
 <script th:src="@{/assets/js/datepicker.js}"></script>
+<script th:src="@{/assets/js/chrome.js}" data-page="ward" th:attr="data-ctx=@{/}"></script>
+<script>
+  document.addEventListener('alpine:init', () => {
+    MPChrome.mount({ parent: '상담 업무', current: '병실현황판' });
+  });
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 </body>
 </html>

@@ -39,22 +39,22 @@
       <div class="stat-row">
         <div class="stat-card stat-card--brand">
           <div class="stat-card__label"><span class="dot"></span>전체</div>
-          <div class="stat-card__value">12</div>
-          <div class="stat-card__trend">지난 주 대비 +3건</div>
+          <div class="stat-card__value" x-text="count('all')"></div>
+          <div class="stat-card__trend" x-text="'P1 긴급 ' + rows.filter(r => r.prio == 1).length + '건'"></div>
         </div>
         <div class="stat-card stat-card--warn">
           <div class="stat-card__label"><span class="dot"></span>접수 대기</div>
-          <div class="stat-card__value">4</div>
-          <div class="stat-card__trend">우선순위 P1 2건 포함</div>
+          <div class="stat-card__value" x-text="count('receive')"></div>
+          <div class="stat-card__trend" x-text="'P1 ' + rows.filter(r => r.status === '접수' && r.prio == 1).length + '건 포함'"></div>
         </div>
         <div class="stat-card stat-card--info">
           <div class="stat-card__label"><span class="dot"></span>입원상담 변환</div>
-          <div class="stat-card__value">8</div>
-          <div class="stat-card__trend">전환율 67%</div>
+          <div class="stat-card__value" x-text="count('linked')"></div>
+          <div class="stat-card__trend" x-text="rows.length ? '전환율 ' + Math.round(count('linked') / rows.length * 100) + '%' : '전환율 —'"></div>
         </div>
         <div class="stat-card stat-card--danger">
           <div class="stat-card__label"><span class="dot"></span>취소</div>
-          <div class="stat-card__value">0</div>
+          <div class="stat-card__value" x-text="count('cancel')"></div>
           <div class="stat-card__trend">이번 주</div>
         </div>
       </div>

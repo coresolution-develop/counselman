@@ -92,7 +92,7 @@ public class RoomBoardController {
         model.addAttribute("endVar", "on");
         model.addAttribute("st", "");
         model.addAttribute("kw", "");
-        return "csm/counsel/roomBoard";
+        return "design/ward-status";
     }
 
     @GetMapping({ "room-board/return", "/room-board/return" })
@@ -406,10 +406,7 @@ public class RoomBoardController {
         model.addAttribute("info", userinfo);
         model.addAttribute("items", items);
         model.addAttribute("rooms", rooms);
-        model.addAttribute("endVar", "on");
-        model.addAttribute("st", "");
-        model.addAttribute("kw", "");
-        return "csm/counsel/admissionReservation";
+        return "design/admission-reservation";
     }
 
     private void populateCommon(Model model, String inst, Userdata userinfo) {

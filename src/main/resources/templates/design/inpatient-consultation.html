@@ -446,7 +446,7 @@
           <p class="page__subtitle">환자 상세 정보와 상담 기록을 한 화면에서 관리합니다</p>
         </div>
         <div style="display:flex;gap:8px;">
-          <button class="btn btn--outline"><svg><use href="#i-refresh"/></svg>초기화</button>
+          <button class="btn btn--outline" @click="resetCounselRecord()"><svg><use href="#i-refresh"/></svg>초기화</button>
           <button class="btn btn--outline"><svg><use href="#i-eye"/></svg>미리보기</button>
         </div>
       </div>
@@ -1100,7 +1100,7 @@
                     </div>
                     <div class="sms-apply-row">
                       <button class="sms-apply-btn is-primary" @click="applyToBody()" :disabled="sms.phraseIdx === null">본문에 넣기</button>
-                      <button class="sms-apply-btn" @click="applyToSignature()" :disabled="sms.phraseIdx === null">서명란에 넣기</button>
+                      <button class="sms-apply-btn" @click="applyToBody()" :disabled="sms.phraseIdx === null">문자입력란에 넣기</button>
                     </div>
                   </div>
                 </div>
@@ -1151,12 +1151,12 @@
                 </div>
                 <div class="sms-editor">
                   <div class="sms-editor__top">
-                    <span class="sms-editor__label">서명 및 인사말</span>
+                    <span class="sms-editor__label">서명</span>
                     <button class="sms-editor__reload" title="초기화" @click="sms.signature = ''">
                       <svg><use href="#i-refresh"/></svg>
                     </button>
                   </div>
-                  <textarea class="sig" x-model="sms.signature" placeholder="서명 및 인사말을 입력해주세요."></textarea>
+                  <textarea class="sig" x-model="sms.signature" placeholder="서명을 입력해주세요."></textarea>
                 </div>
                 <button class="sms-save-phrase" @click="savePhraseFromBody()">상용구 저장</button>
               </div>
@@ -1471,27 +1471,30 @@ function inpatientForm() {
       return d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7);
     },
 
+    refreshSmsHistory() {
+      const phones = this.sms.recipients.map(r => r.phone).filter(Boolean);
+      if (!phones.length) return;
+      const c = csrf();
+      fetch(ctx + '/sms/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', [c.header]: c.token },
+        body: JSON.stringify({ to_phone: phones }),
+      })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => {
+        this.sms.history = (data || []).map(h => ({
+          body:  h.message  || h.body  || '',
+          phone: h.to_phone || h.to    || '',
+          date:  h.sent_at  || h.date  || '',
+        }));
+      })
+      .catch(() => {});
+    },
+
     openSms(phone) {
       this.sms.recipients = phone ? [{ phone, on: true }] : [];
       this.sms.open = true;
-      const phones = this.sms.recipients.map(r => r.phone).filter(Boolean);
-      if (phones.length) {
-        const c = csrf();
-        fetch(ctx + '/sms/log', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', [c.header]: c.token },
-          body: JSON.stringify({ to_phone: phones }),
-        })
-        .then(r => r.ok ? r.json() : [])
-        .then(data => {
-          this.sms.history = (data || []).map(h => ({
-            body:  h.message  || h.body  || '',
-            phone: h.to_phone || h.to    || '',
-            date:  h.sent_at  || h.date  || '',
-          }));
-        })
-        .catch(() => {});
-      }
+      this.refreshSmsHistory();
     },
 
     closeSms() { this.sms.open = false; },
@@ -1501,6 +1504,7 @@ function inpatientForm() {
       if (!p) return;
       if (!this.sms.recipients.find(r => r.phone === p)) {
         this.sms.recipients.push({ phone: p, on: true });
+        this.refreshSmsHistory();
       }
       this.sms.newRecipient = '';
     },
@@ -1566,6 +1570,16 @@ function inpatientForm() {
       } else {
         alert('일부 전송에 실패했습니다 (' + failCount + '/' + active.length + '건)');
       }
+    },
+
+    resetCounselRecord() {
+      this.meta.method         = '';
+      this.meta.result         = '';
+      this.meta.note           = '';
+      this.meta.nonAdmitReason = '';
+      this.meta.admitDate      = '';
+      this.meta.admitTime      = '';
+      this.meta.admitRoom      = '';
     },
 
     async savePhraseFromBody() {

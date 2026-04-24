@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MediPlat · 입원예약 관리</title>
+  <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/layout.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/components.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/tweaks.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/datepicker.css}" />
+  <meta name="_csrf" th:content="${_csrf.token}" />
+  <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+  <style>
+    /* ── 입원예약 전용 스타일 ── */
+    .ar-date-input {
+      font-size: 13px;
+      padding: 5px 8px;
+      border: 1px solid var(--border-default);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--text-primary);
+      width: 130px;
+    }
+    .ar-date-input:focus { outline: none; border-color: var(--brand-500); }
+
+    .ar-room-select {
+      font-size: 13px;
+      padding: 5px 8px;
+      border: 1px solid var(--border-default);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--text-primary);
+      min-width: 130px;
+      max-width: 160px;
+    }
+    .ar-room-select:focus { outline: none; border-color: var(--brand-500); }
+
+    .ar-toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--gray-900);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      opacity: 0;
+      transition: opacity .2s, transform .2s;
+      pointer-events: none;
+      z-index: 9999;
+    }
+    .ar-toast.is-show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .ar-toast.is-error { background: var(--red-600, #dc2626); }
+    .ar-toast.is-success { background: var(--green-700, #15803d); }
+
+    .counselor-link {
+      color: var(--brand-600);
+      text-decoration: none;
+      font-size: 12px;
+    }
+    .counselor-link:hover { text-decoration: underline; }
+
+    .empty-state {
+      padding: 60px 20px;
+      text-align: center;
+      color: var(--text-tertiary);
+      font-size: 14px;
+    }
+    .empty-state svg { width: 32px; height: 32px; margin-bottom: 12px; opacity: .4; }
+  </style>
+</head>
+<body>
+<script th:src="@{/assets/js/sprite.js}"></script>
+
+<div class="app"
+     data-screen-label="Admission Reservation"
+     :data-sidebar="$store.app.sidebarCollapsed ? 'collapsed' : 'expanded'"
+     :data-variation="$store.app.variation"
+     x-data>
+
+  <div id="slot-sidebar"></div>
+  <div id="slot-header"></div>
+
+  <main class="main">
+    <div class="page" x-data="admissionPage()">
+
+      <!-- Page header -->
+      <div class="page__header">
+        <div>
+          <h1 class="page__title">입원예약 관리</h1>
+          <p class="page__subtitle">입원상담에서 예약된 환자의 병실 배정 및 입원 확정을 관리합니다</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn--outline" @click="reload()">
+            <svg><use href="#i-refresh"/></svg>새로고침
+          </button>
+        </div>
+      </div>
+
+      <!-- Stat cards -->
+      <div class="stat-row">
+        <div class="stat-card stat-card--brand">
+          <div class="stat-card__label"><span class="dot"></span>전체 예약</div>
+          <div class="stat-card__value" x-text="items.length"></div>
+          <div class="stat-card__trend">입원예약 상태</div>
+        </div>
+        <div class="stat-card stat-card--warn">
+          <div class="stat-card__label"><span class="dot"></span>병실 미배정</div>
+          <div class="stat-card__value" x-text="items.filter(i => !i.roomName).length"></div>
+          <div class="stat-card__trend">배정 필요</div>
+        </div>
+        <div class="stat-card stat-card--info">
+          <div class="stat-card__label"><span class="dot"></span>예정일 미정</div>
+          <div class="stat-card__value" x-text="items.filter(i => !i.plannedDate).length"></div>
+          <div class="stat-card__trend">날짜 확정 필요</div>
+        </div>
+        <div class="stat-card stat-card--gray">
+          <div class="stat-card__label"><span class="dot"></span>배정 완료</div>
+          <div class="stat-card__value" x-text="items.filter(i => i.roomName && i.plannedDate).length"></div>
+          <div class="stat-card__trend">병실·날짜 모두 확정</div>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="filter-pills">
+          <button class="pill" :class="{'is-active': filter==='all'}" @click="filter='all'">
+            전체 <span class="pill__count" x-text="items.length"></span>
+          </button>
+          <button class="pill" :class="{'is-active': filter==='unassigned_room'}" @click="filter='unassigned_room'">
+            병실 미배정 <span class="pill__count" x-text="items.filter(i => !i.roomName).length"></span>
+          </button>
+          <button class="pill" :class="{'is-active': filter==='unassigned_date'}" @click="filter='unassigned_date'">
+            예정일 미정 <span class="pill__count" x-text="items.filter(i => !i.plannedDate).length"></span>
+          </button>
+        </div>
+        <div class="toolbar__spacer"></div>
+        <input type="text" placeholder="환자명 검색…" x-model="search"
+               style="width:180px;height:32px;padding:0 10px;font-size:13px;border:1px solid var(--border-default);border-radius:6px;background:#fff;" />
+      </div>
+
+      <!-- Table -->
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>환자명</th>
+              <th>보호자 / 연락처</th>
+              <th>상담일</th>
+              <th>담당상담사</th>
+              <th>입원 예정일</th>
+              <th>배정 병실</th>
+              <th class="col-right">작업</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-if="filtered.length === 0">
+              <tr>
+                <td colspan="7">
+                  <div class="empty-state">
+                    <svg><use href="#i-bed"/></svg>
+                    <div>입원 예약 환자가 없습니다</div>
+                  </div>
+                </td>
+              </tr>
+            </template>
+            <template x-for="item in filtered" :key="item.csIdx">
+              <tr>
+                <!-- 환자명 -->
+                <td>
+                  <div style="font-weight:600;" x-text="item.patientName || '(이름 없음)'"></div>
+                  <div style="font-size:11px;color:var(--text-tertiary);" x-text="item.gender || ''"></div>
+                </td>
+                <!-- 보호자/연락처 -->
+                <td>
+                  <div x-text="item.guardianName || '—'"></div>
+                  <div style="font-size:11px;color:var(--text-tertiary);" x-text="item.guardianPhone || ''"></div>
+                </td>
+                <!-- 상담일 -->
+                <td class="col-num" x-text="item.counselDate || '—'"></td>
+                <!-- 담당상담사 -->
+                <td x-text="item.counselor || '—'"></td>
+                <!-- 입원 예정일 -->
+                <td>
+                  <input type="date" class="ar-date-input" x-model="item.plannedDate" />
+                </td>
+                <!-- 배정 병실 -->
+                <td>
+                  <select class="ar-room-select" x-model="item.roomName">
+                    <option value="">-- 병실 선택 --</option>
+                    <template x-for="r in rooms" :key="r.roomName">
+                      <option :value="r.roomName" x-text="r.wardName + ' ' + r.roomName"></option>
+                    </template>
+                    <!-- 현재 배정된 병실이 목록에 없을 경우 fallback -->
+                    <template x-if="item.roomName && !rooms.find(r => r.roomName === item.roomName)">
+                      <option :value="item.roomName" x-text="item.roomName + ' (현재)'"></option>
+                    </template>
+                  </select>
+                </td>
+                <!-- 작업 -->
+                <td class="col-right">
+                  <div class="row-actions" style="justify-content:flex-end;gap:4px;">
+                    <button class="btn-xs btn-xs--brand" :disabled="item._busy" @click="save(item)">저장</button>
+                    <button class="btn-xs" :disabled="item._busy" @click="confirm(item)">입원완료</button>
+                    <button class="btn-xs btn-xs--danger" :disabled="item._busy" @click="cancel(item)">예약취소</button>
+                    <a class="btn-xs" :href="counselUrl(item.csIdx)">상담기록</a>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+
+    </div><!-- .page -->
+  </main>
+
+  <!-- Toast -->
+  <div class="ar-toast" :class="{ 'is-show': toast.show, 'is-error': toast.type==='error', 'is-success': toast.type==='success' }"
+       x-text="toast.msg"></div>
+
+</div><!-- .app -->
+
+<script th:inline="javascript">
+function admissionPage() {
+  const ctx = (/*[[@{/}]]*/ '/').replace(/\/$/, '');
+  const csrf = () => ({
+    token:  document.querySelector('meta[name="_csrf"]')?.content || '',
+    header: document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN',
+  });
+
+  function postForm(url, params) {
+    const c = csrf();
+    return fetch(ctx + url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', [c.header]: c.token },
+      body: new URLSearchParams(params),
+    }).then(r => r.json());
+  }
+
+  return {
+    items:  /*[[${items}]]*/ [],
+    rooms:  /*[[${rooms}]]*/ [],
+    filter: 'all',
+    search: '',
+    toast:  { show: false, msg: '', type: 'success' },
+
+    init() {
+      this.items = this.items.map(i => ({ ...i, _busy: false }));
+    },
+
+    get filtered() {
+      let list = this.items;
+      if (this.filter === 'unassigned_room') list = list.filter(i => !i.roomName);
+      if (this.filter === 'unassigned_date') list = list.filter(i => !i.plannedDate);
+      if (this.search.trim()) {
+        const q = this.search.trim();
+        list = list.filter(i => i.patientName.includes(q) || i.counselor.includes(q));
+      }
+      return list;
+    },
+
+    showToast(msg, type = 'success') {
+      this.toast = { show: true, msg, type };
+      clearTimeout(this._toastTimer);
+      this._toastTimer = setTimeout(() => { this.toast.show = false; }, 3000);
+    },
+
+    counselUrl(csIdx) {
+      return ctx + '/design/counsel/inpatient?cs_idx=' + csIdx;
+    },
+
+    async reload() {
+      location.reload();
+    },
+
+    async save(item) {
+      item._busy = true;
+      try {
+        const res = await postForm('/api/admission-reservation/update', {
+          csIdx:       item.csIdx,
+          plannedDate: item.plannedDate,
+          roomName:    item.roomName,
+        });
+        if (res.success) {
+          this.showToast('저장되었습니다.');
+        } else {
+          this.showToast(res.message || '저장 중 오류가 발생했습니다.', 'error');
+        }
+      } catch {
+        this.showToast('서버 오류가 발생했습니다.', 'error');
+      } finally {
+        item._busy = false;
+      }
+    },
+
+    async confirm(item) {
+      if (!confirm('입원완료 처리하시겠습니까?\n이 목록에서 제거됩니다.')) return;
+      item._busy = true;
+      try {
+        const res = await postForm('/api/admission-reservation/confirm', { csIdx: item.csIdx });
+        if (res.success) {
+          this.items = this.items.filter(i => i.csIdx !== item.csIdx);
+          this.showToast('입원완료 처리되었습니다.');
+        } else {
+          this.showToast(res.message || '처리 중 오류가 발생했습니다.', 'error');
+          item._busy = false;
+        }
+      } catch {
+        this.showToast('서버 오류가 발생했습니다.', 'error');
+        item._busy = false;
+      }
+    },
+
+    async cancel(item) {
+      if (!confirm('예약을 취소하시겠습니까?')) return;
+      item._busy = true;
+      try {
+        const res = await postForm('/api/admission-reservation/cancel', {
+          csIdx: item.csIdx,
+          revertStatus: '상담중',
+        });
+        if (res.success) {
+          this.items = this.items.filter(i => i.csIdx !== item.csIdx);
+          this.showToast('예약이 취소되었습니다.');
+        } else {
+          this.showToast(res.message || '처리 중 오류가 발생했습니다.', 'error');
+          item._busy = false;
+        }
+      } catch {
+        this.showToast('서버 오류가 발생했습니다.', 'error');
+        item._busy = false;
+      }
+    },
+  };
+}
+</script>
+
+<script th:src="@{/assets/js/app.js}"></script>
+<script th:src="@{/assets/js/datepicker.js}"></script>
+<script th:src="@{/assets/js/chrome.js}" data-page="inpatient-res" th:attr="data-ctx=@{/}"></script>
+<script>
+  document.addEventListener('alpine:init', () => {
+    MPChrome.mount({ parent: '상담 업무', current: '입원예약관리' });
+  });
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</body>
+</html>

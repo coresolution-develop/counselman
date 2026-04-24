@@ -15,6 +15,7 @@
     { section: '상담 업무', items: [
       { id: 'reception',   label: '상담 접수',    icon: 'inbox',      href: '/design/counsel/intake' },
       { id: 'inpatient',   label: '입원상담',     icon: 'bed',        href: '/design/counsel/inpatient' },
+      { id: 'inpatient-res', label: '입원예약관리', icon: 'calendar', href: '/counsel/admission-reservation' },
       { id: 'ward',        label: '병실현황판',   icon: 'bed',        href: '/room-board' },
       { id: 'list',        label: '상담리스트',   icon: 'list',       href: '/design/counsel/list' },
       { id: 'notice',      label: '공지사항',     icon: 'megaphone',  href: '/design/notices' },
@@ -23,9 +24,7 @@
     ]},
     { section: '커뮤니케이션', items: [
       { id: 'message',     label: '문자관리',     icon: 'chat',       href: '/design/message' },
-      { id: 'reservation', label: '방문예약관리', icon: 'calendar',   href: '#', sub: [
-        { id: 'inpatient-res', label: '입원예약관리', href: '#' },
-      ]},
+      { id: 'reservation', label: '방문예약관리', icon: 'calendar',   href: '#' },
     ]},
     { section: '시스템', items: [
       { id: 'admin',       label: '관리자',       icon: 'shield',     href: '/design/role-management', badge: '3' },
