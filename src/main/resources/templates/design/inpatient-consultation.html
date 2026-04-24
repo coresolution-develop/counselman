@@ -323,6 +323,105 @@
     .ic-modal__body { padding: 20px; display: flex; flex-direction: column; gap: 14px; max-height: 70vh; overflow: auto; }
     .ic-modal__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
     .ic-modal__foot { padding: 14px 20px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: flex-end; gap: 8px; }
+
+    /* ===== Phone cell + send button ===== */
+    .ic-phone-cell { display: grid; grid-template-columns: 1fr auto; gap: 4px; align-items: center; }
+    .ic-phone-actions { display: inline-flex; gap: 2px; }
+    .ic-phone-actions .btn-icon { width: 28px; height: 28px; display: grid; place-items: center; background: #fff; border: 1px solid var(--border-default); border-radius: 6px; color: var(--text-secondary); cursor: pointer; transition: all .15s; }
+    .ic-phone-actions .btn-icon:disabled { opacity:.4; cursor:not-allowed; }
+    .ic-phone-actions .btn-icon:not(:disabled):hover { border-color: var(--brand-500); color: var(--brand-600); background: color-mix(in oklab, var(--brand-500) 6%, #fff); }
+    .ic-phone-actions .btn-icon svg { width: 14px; height: 14px; }
+    .ic-phone-actions .btn-icon--danger:not(:disabled):hover { border-color: #ef4444; color: #ef4444; background: color-mix(in oklab, #ef4444 6%, #fff); }
+
+    /* ===== SMS Modal ===== */
+    .sms-modal { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(15,23,42,.5); backdrop-filter: blur(4px); z-index: 1000; padding: 24px; }
+    .sms-dialog { width: min(1400px,100%); height: min(860px,calc(100vh - 48px)); background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(15,23,42,.3); display: flex; flex-direction: column; overflow: hidden; }
+    .sms-head { padding: 18px 24px; border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .sms-head__title { font-size: 17px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 10px; }
+    .sms-head__title svg { width: 18px; height: 18px; color: var(--brand-600); }
+    .sms-head__sub { font-size: 12px; color: var(--text-tertiary); margin-left: 8px; font-weight: 500; }
+    .sms-head__close { background: none; border: 0; width: 34px; height: 34px; display: grid; place-items: center; color: var(--text-tertiary); border-radius: 8px; cursor: pointer; transition: all .14s; }
+    .sms-head__close:hover { background: var(--gray-100); color: var(--text-primary); }
+    .sms-head__close svg { width: 18px; height: 18px; }
+    .sms-body { display: grid; grid-template-columns: 420px 1fr 280px; flex: 1 1 0; min-height: 0; overflow: hidden; }
+    .sms-col { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
+    .sms-col--left { background: var(--gray-50); padding: 16px; gap: 12px; border-right: 1px solid var(--border-subtle); }
+    .sms-col--center { padding: 16px; gap: 12px; display: flex; flex-direction: column; background: #fff; }
+    .sms-col--right { background: var(--gray-50); border-left: 1px solid var(--border-subtle); }
+    .sms-card { background: #fff; border: 1px solid var(--border-subtle); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; flex-shrink: 0; }
+    .sms-card__head { padding: 10px 14px; background: var(--gray-100); font-size: 12.5px; font-weight: 700; color: var(--text-primary); text-align: center; border-bottom: 1px solid var(--border-subtle); }
+    .sms-card__body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+    .sms-recipient-list { display: flex; flex-direction: column; gap: 6px; }
+    .sms-recipient-row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--gray-50); border: 1px solid var(--border-subtle); border-radius: 6px; }
+    .sms-recipient-row input[type="checkbox"] { accent-color: var(--brand-500); margin: 0; width: 14px; height: 14px; flex-shrink: 0; }
+    .sms-recipient-row .phone { flex: 1; font-size: 13px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+    .sms-recipient-row .rm { width: 22px; height: 22px; background: transparent; color: var(--text-tertiary); border: 0; border-radius: 4px; display: grid; place-items: center; cursor: pointer; transition: all .12s; }
+    .sms-recipient-row .rm:hover { background: #fee2e2; color: #ef4444; }
+    .sms-recipient-row .rm svg { width: 12px; height: 12px; }
+    .sms-recipient-add { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
+    .sms-recipient-add input { height: 32px; padding: 0 10px; border: 1px solid var(--border-default); border-radius: 6px; font-size: 12.5px; font-family: inherit; }
+    .sms-recipient-add input:focus { outline: none; border-color: var(--brand-400); box-shadow: 0 0 0 2px color-mix(in oklab,var(--brand-500) 14%,transparent); }
+    .sms-recipient-add button { width: 32px; height: 32px; background: var(--brand-500); color: #fff; border: 0; border-radius: 6px; display: grid; place-items: center; cursor: pointer; }
+    .sms-recipient-add button:hover { background: var(--brand-600); }
+    .sms-recipient-add button svg { width: 14px; height: 14px; }
+    .sms-schedule { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .sms-schedule > .toggle { grid-column: 1/-1; height: 34px; border: 1px solid var(--border-default); background: #fff; border-radius: 6px; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all .14s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    .sms-schedule > .toggle.is-on { background: var(--brand-500); color: #fff; border-color: var(--brand-500); }
+    .sms-schedule > .toggle svg { width: 13px; height: 13px; }
+    .sms-schedule .picker-row { grid-column: 1/-1; display: grid; grid-template-columns: 1fr auto; gap: 6px; }
+    .sms-schedule .hm-row { grid-column: 1/-1; display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; }
+    .sms-schedule .reset-btn { height: 34px; width: 34px; display: grid; place-items: center; background: #fff; border: 1px solid var(--border-default); border-radius: 6px; color: var(--text-tertiary); cursor: pointer; }
+    .sms-schedule .reset-btn:hover { color: var(--text-primary); border-color: var(--gray-300); }
+    .sms-schedule .reset-btn svg { width: 13px; height: 13px; }
+    .sms-picklist { display: grid; grid-template-columns: 1fr 1.3fr; min-height: 120px; border: 1px solid var(--border-subtle); border-radius: 8px; overflow: hidden; }
+    .sms-picklist__items { max-height: 140px; overflow-y: auto; padding: 6px; background: #fff; border-right: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 2px; }
+    .sms-picklist__item { display: flex; align-items: center; gap: 7px; padding: 7px 9px; border-radius: 5px; cursor: pointer; font-size: 12.5px; color: var(--text-primary); transition: background .12s; }
+    .sms-picklist__item:hover { background: var(--gray-50); }
+    .sms-picklist__item.is-sel { background: color-mix(in oklab,var(--brand-500) 10%,#fff); color: var(--brand-700); font-weight: 600; }
+    .sms-picklist__item input { accent-color: var(--brand-500); margin: 0; }
+    .sms-picklist__preview { padding: 10px 12px; font-size: 12.5px; color: var(--text-secondary); background: var(--gray-50); line-height: 1.55; overflow-y: auto; white-space: pre-line; }
+    .sms-picklist__preview.is-empty { color: var(--text-tertiary); font-style: italic; }
+    .sms-apply-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+    .sms-apply-btn { padding: 8px 10px; background: #fff; color: var(--brand-600); border: 1px solid var(--brand-400); border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .14s; }
+    .sms-apply-btn:hover { background: var(--brand-500); color: #fff; }
+    .sms-apply-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .sms-apply-btn.is-primary { background: var(--brand-500); color: #fff; border-color: var(--brand-500); }
+    .sms-apply-btn.is-primary:hover { background: var(--brand-600); }
+    .sms-editor { border: 1px solid var(--border-subtle); border-radius: 10px; display: flex; flex-direction: column; background: #fff; overflow: hidden; flex-shrink: 0; }
+    .sms-editor__top { display: flex; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border-subtle); background: var(--gray-50); }
+    .sms-editor__label { font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+    .sms-editor__bytes { margin-left: 10px; font-size: 12px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+    .sms-editor__bytes .is-lms { color: #f59e0b; font-weight: 600; }
+    .sms-editor__bytes .is-mms { color: var(--brand-600); font-weight: 600; }
+    .sms-editor__reload { margin-left: auto; background: none; border: 0; width: 26px; height: 26px; display: grid; place-items: center; color: var(--text-tertiary); border-radius: 4px; cursor: pointer; }
+    .sms-editor__reload:hover { background: var(--gray-100); color: var(--text-primary); }
+    .sms-editor__reload svg { width: 14px; height: 14px; }
+    .sms-editor textarea { width: 100%; border: 0; padding: 14px; resize: none; font-family: inherit; font-size: 13.5px; color: var(--text-primary); line-height: 1.6; min-height: 150px; }
+    .sms-editor textarea:focus { outline: none; }
+    .sms-editor textarea.sig { min-height: 96px; border-top: 1px solid var(--border-subtle); }
+    .sms-editor__attach { padding: 8px 12px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: center; background: var(--gray-50); }
+    .sms-editor__attach button { background: #fff; border: 1px solid var(--border-default); border-radius: 6px; padding: 6px 14px; font-size: 12px; color: var(--text-secondary); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-family: inherit; }
+    .sms-editor__attach button:hover { border-color: var(--brand-500); color: var(--brand-600); }
+    .sms-editor__attach svg { width: 13px; height: 13px; }
+    .sms-save-phrase { padding: 11px; background: var(--brand-500); color: #fff; border: 0; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background .14s; }
+    .sms-save-phrase:hover { background: var(--brand-600); }
+    .sms-history-head { padding: 14px 14px 8px; font-size: 12.5px; font-weight: 700; color: var(--text-primary); border-bottom: 1px solid var(--border-subtle); background: var(--gray-50); position: sticky; top: 0; z-index: 1; flex-shrink: 0; }
+    .sms-history { padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+    .sms-history__item { background: #fff; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px 12px; cursor: pointer; transition: all .14s; text-align: left; width: 100%; font-family: inherit; }
+    .sms-history__item:hover { border-color: var(--brand-400); background: color-mix(in oklab,var(--brand-500) 4%,#fff); }
+    .sms-history__body { font-size: 12.5px; color: var(--text-primary); margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.45; white-space: pre-line; }
+    .sms-history__meta { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; border-top: 1px solid var(--border-subtle); padding-top: 6px; }
+    .sms-foot { display: flex; align-items: center; padding: 14px 24px; border-top: 1px solid var(--border-subtle); background: var(--gray-50); gap: 12px; flex-shrink: 0; }
+    .sms-foot__ad { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); }
+    .sms-foot__ad input { accent-color: var(--brand-500); }
+    .sms-foot .btn-group { margin-left: auto; display: flex; gap: 8px; }
+    .sms-foot .btn { padding: 9px 22px; border-radius: 8px; font-size: 13px; font-weight: 600; border: 0; cursor: pointer; font-family: inherit; }
+    .sms-foot .btn--ghost { background: #fff; color: var(--text-secondary); border: 1px solid var(--border-default); }
+    .sms-foot .btn--ghost:hover { background: var(--gray-50); }
+    .sms-foot .btn--primary { background: var(--brand-500); color: #fff; display: inline-flex; align-items: center; gap: 6px; }
+    .sms-foot .btn--primary:hover { background: var(--brand-600); }
+    .sms-foot .btn--primary:disabled { background: var(--gray-300); cursor: not-allowed; }
+    .sms-foot .btn--primary svg { width: 14px; height: 14px; }
   </style>
 </head>
 <body>
@@ -639,12 +738,20 @@
                 <div class="ic-guardian">
                   <input type="text" class="ic-input" placeholder="보호자명" x-model="g.name" />
                   <input type="text" class="ic-input" placeholder="관계" x-model="g.rel" />
-                  <div class="ic-inline-select" style="grid-template-columns: 1fr 28px;gap:4px;">
-                    <input type="text" class="ic-input" placeholder="010-0000-0000" x-model="g.phone" />
-                    <button class="btn btn--outline" style="padding:0;justify-content:center;width:28px;height:28px;" title="제거"
-                      @click="removeGuardian(gi)" x-show="guardians.length > 1">
-                      <svg><use href="#i-x"/></svg>
-                    </button>
+                  <div class="ic-phone-cell">
+                    <input type="text" class="ic-input" placeholder="010-0000-0000"
+                      x-model="g.phone"
+                      @input="g.phone = formatPhone($event.target.value)" />
+                    <div class="ic-phone-actions">
+                      <button type="button" class="btn-icon" title="문자 전송"
+                        @click="openSms(g.phone)" :disabled="!g.phone">
+                        <svg><use href="#i-send"/></svg>
+                      </button>
+                      <button type="button" class="btn-icon btn-icon--danger" title="제거"
+                        @click="removeGuardian(gi)" x-show="guardians.length > 1">
+                        <svg><use href="#i-x"/></svg>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </template>
@@ -882,6 +989,215 @@
         </div>
       </template>
 
+      <!-- ===== SMS Send Modal ===== -->
+      <template x-teleport="body">
+        <div class="sms-modal" x-show="sms.open" x-transition.opacity x-cloak
+             @click.self="closeSms()" @keydown.escape.window="closeSms()">
+          <div class="sms-dialog" @click.stop>
+            <div class="sms-head">
+              <div class="sms-head__title">
+                <svg><use href="#i-send"/></svg>
+                문자 전송
+                <span class="sms-head__sub">보호자에게 문자 메시지를 발송합니다</span>
+              </div>
+              <button class="sms-head__close" @click="closeSms()" aria-label="닫기">
+                <svg><use href="#i-x"/></svg>
+              </button>
+            </div>
+
+            <div class="sms-body">
+              <!-- LEFT -->
+              <div class="sms-col sms-col--left">
+                <!-- 발신번호 -->
+                <div class="sms-card">
+                  <div class="sms-card__head">발신번호</div>
+                  <div class="sms-card__body">
+                    <select class="ic-input" x-model="sms.sender">
+                      <template x-if="sms.senderOptions.length === 0">
+                        <option value="">발신번호 없음</option>
+                      </template>
+                      <template x-for="opt in sms.senderOptions" :key="opt.value">
+                        <option :value="opt.value" x-text="opt.text"></option>
+                      </template>
+                    </select>
+                  </div>
+                </div>
+                <!-- 수신번호 -->
+                <div class="sms-card">
+                  <div class="sms-card__head">수신번호</div>
+                  <div class="sms-card__body">
+                    <div class="sms-recipient-list">
+                      <template x-for="(r, ri) in sms.recipients" :key="ri">
+                        <div class="sms-recipient-row">
+                          <input type="checkbox" :checked="r.on" @change="r.on = $event.target.checked" />
+                          <span class="phone" x-text="r.phone"></span>
+                          <button class="rm" title="제거" @click="sms.recipients.splice(ri,1)">
+                            <svg><use href="#i-x"/></svg>
+                          </button>
+                        </div>
+                      </template>
+                      <div x-show="sms.recipients.length === 0"
+                           style="padding:10px;text-align:center;color:var(--text-tertiary);font-size:12px;background:#fff;border-radius:6px;border:1px dashed var(--border-subtle);">
+                        수신자가 없습니다
+                      </div>
+                    </div>
+                    <div class="sms-recipient-add">
+                      <input type="text" placeholder="010-0000-0000" x-model="sms.newRecipient"
+                        @input="sms.newRecipient = formatPhone($event.target.value)"
+                        @keydown.enter.prevent="addRecipient()" />
+                      <button @click="addRecipient()" title="추가">
+                        <svg><use href="#i-plus"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <!-- 예약발송 -->
+                <div class="sms-card">
+                  <div class="sms-card__head">예약발송</div>
+                  <div class="sms-card__body">
+                    <div class="sms-schedule">
+                      <button type="button" class="toggle" :class="{ 'is-on': sms.schedule.on }"
+                              @click="sms.schedule.on = !sms.schedule.on">
+                        <svg><use href="#i-clock"/></svg>
+                        <span x-text="sms.schedule.on ? '예약발송 사용' : '즉시발송'"></span>
+                      </button>
+                      <div class="picker-row">
+                        <input type="date" class="ic-input" x-model="sms.schedule.date" :disabled="!sms.schedule.on" />
+                      </div>
+                      <div class="hm-row">
+                        <select class="ic-input" x-model="sms.schedule.hour" :disabled="!sms.schedule.on" style="font-size:12px;">
+                          <option value="">시간</option>
+                          <template x-for="h in 24" :key="h"><option :value="h-1" x-text="(h-1).toString().padStart(2,'0')+'시'"></option></template>
+                        </select>
+                        <select class="ic-input" x-model="sms.schedule.min" :disabled="!sms.schedule.on" style="font-size:12px;">
+                          <option value="">분</option>
+                          <template x-for="m in [0,10,20,30,40,50]" :key="m"><option :value="m" x-text="m.toString().padStart(2,'0')+'분'"></option></template>
+                        </select>
+                        <button type="button" class="reset-btn" title="초기화"
+                                @click="sms.schedule = { on:false, date:'', hour:'', min:'' }">
+                          <svg><use href="#i-refresh"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- 상용구 -->
+                <div class="sms-card">
+                  <div class="sms-card__head">상용구</div>
+                  <div class="sms-card__body">
+                    <div class="sms-picklist">
+                      <div class="sms-picklist__items">
+                        <template x-for="(p, pi) in sms.phrases" :key="pi">
+                          <label class="sms-picklist__item" :class="{ 'is-sel': sms.phraseIdx === pi }">
+                            <input type="radio" name="sms-phrase" :value="pi" x-model.number="sms.phraseIdx" />
+                            <span x-text="p.title"></span>
+                          </label>
+                        </template>
+                        <div x-show="sms.phrases.length === 0" style="padding:8px;font-size:12px;color:var(--text-tertiary);">등록된 상용구가 없습니다</div>
+                      </div>
+                      <div class="sms-picklist__preview" :class="{ 'is-empty': sms.phraseIdx === null }"
+                           x-text="sms.phraseIdx !== null ? sms.phrases[sms.phraseIdx]?.body : '선택한 상용구가 여기에 표시됩니다.'"></div>
+                    </div>
+                    <div class="sms-apply-row">
+                      <button class="sms-apply-btn is-primary" @click="applyToBody()" :disabled="sms.phraseIdx === null">본문에 넣기</button>
+                      <button class="sms-apply-btn" @click="applyToSignature()" :disabled="sms.phraseIdx === null">서명란에 넣기</button>
+                    </div>
+                  </div>
+                </div>
+                <!-- 서명 -->
+                <div class="sms-card">
+                  <div class="sms-card__head">서명</div>
+                  <div class="sms-card__body">
+                    <div class="sms-picklist">
+                      <div class="sms-picklist__items">
+                        <template x-for="(s, si) in sms.signatures" :key="si">
+                          <label class="sms-picklist__item" :class="{ 'is-sel': sms.sigIdx === si }">
+                            <input type="radio" name="sms-sig" :value="si" x-model.number="sms.sigIdx" />
+                            <span x-text="s.title"></span>
+                          </label>
+                        </template>
+                        <div x-show="sms.signatures.length === 0" style="padding:8px;font-size:12px;color:var(--text-tertiary);">등록된 서명이 없습니다</div>
+                      </div>
+                      <div class="sms-picklist__preview" :class="{ 'is-empty': sms.sigIdx === null }"
+                           x-text="sms.sigIdx !== null ? sms.signatures[sms.sigIdx]?.body : '선택한 서명이 여기에 표시됩니다.'"></div>
+                    </div>
+                    <div class="sms-apply-row">
+                      <button class="sms-apply-btn" @click="applySigToBody()" :disabled="sms.sigIdx === null">본문에 넣기</button>
+                      <button class="sms-apply-btn is-primary" @click="applySigToSignature()" :disabled="sms.sigIdx === null">서명란에 넣기</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- CENTER -->
+              <div class="sms-col sms-col--center">
+                <div class="sms-editor">
+                  <div class="sms-editor__top">
+                    <span class="sms-editor__label">문자입력</span>
+                    <span class="sms-editor__bytes">
+                      <span x-text="smsByteCount"></span>
+                      <span> / </span>
+                      <span :class="smsByteCount > 2000 ? 'is-mms' : smsByteCount > 90 ? 'is-lms' : ''"
+                            x-text="smsByteCount > 90 ? '2000 byte · 장문(LMS)' : '90 byte · 단문(SMS)'"></span>
+                    </span>
+                    <button class="sms-editor__reload" title="초기화" @click="sms.body = ''">
+                      <svg><use href="#i-refresh"/></svg>
+                    </button>
+                  </div>
+                  <textarea x-model="sms.body" placeholder="문자 내용을 입력해주세요."></textarea>
+                  <div class="sms-editor__attach">
+                    <button type="button"><svg><use href="#i-paperclip"/></svg>이미지 첨부 (MMS)</button>
+                  </div>
+                </div>
+                <div class="sms-editor">
+                  <div class="sms-editor__top">
+                    <span class="sms-editor__label">서명 및 인사말</span>
+                    <button class="sms-editor__reload" title="초기화" @click="sms.signature = ''">
+                      <svg><use href="#i-refresh"/></svg>
+                    </button>
+                  </div>
+                  <textarea class="sig" x-model="sms.signature" placeholder="서명 및 인사말을 입력해주세요."></textarea>
+                </div>
+                <button class="sms-save-phrase" @click="savePhraseFromBody()">상용구 저장</button>
+              </div>
+
+              <!-- RIGHT: history -->
+              <div class="sms-col sms-col--right">
+                <div class="sms-history-head">최근 전송 내역</div>
+                <div class="sms-history">
+                  <template x-if="sms.history.length === 0">
+                    <div style="padding:20px;text-align:center;font-size:12px;color:var(--text-tertiary);">내역이 없습니다</div>
+                  </template>
+                  <template x-for="(h, hi) in sms.history" :key="hi">
+                    <button type="button" class="sms-history__item" @click="sms.body = h.body">
+                      <div class="sms-history__body" x-text="h.body"></div>
+                      <div class="sms-history__meta">
+                        <span x-text="h.phone"></span>
+                        <span x-text="h.date"></span>
+                      </div>
+                    </button>
+                  </template>
+                </div>
+              </div>
+            </div>
+
+            <div class="sms-foot">
+              <label class="sms-foot__ad">
+                <input type="checkbox" x-model="sms.isAd" />
+                광고문자(080 무료수신거부)
+              </label>
+              <div class="btn-group">
+                <button class="btn btn--ghost" @click="closeSms()">닫기</button>
+                <button class="btn btn--primary" @click="sendSms()"
+                        :disabled="!sms.body || !sms.recipients.filter(r=>r.on).length">
+                  <svg><use href="#i-send"/></svg>전송
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
     </div>
   </main>
 </div>
@@ -908,6 +1224,9 @@ function inpatientForm() {
   const _dynamicValues = JSON.parse(/*[[${dynamicValueJson}]]*/ '{}');
   const _today    = /*[[${today}]]*/ '';
   const _actor    = /*[[${actor}]]*/ '';
+  const _smsSenderOptions = /*[[${smsSenderOptions}]]*/ [];
+  const _smsPhrases       = /*[[${smsPhrases}]]*/ [];
+  const _smsSignatures    = /*[[${smsSignatures}]]*/ [];
 
   return {
     loading: false,
@@ -1112,6 +1431,164 @@ function inpatientForm() {
         this.patient.id = 'P-' + data.csIdx;
         alert('저장되었습니다.');
       } finally { this.loading = false; }
+    },
+
+    // ─── SMS ───────────────────────────────────────────
+    sms: {
+      open: false,
+      sender: (_smsSenderOptions.length ? _smsSenderOptions[0].value : ''),
+      senderOptions: _smsSenderOptions,
+      recipients: [],
+      newRecipient: '',
+      schedule: { on: false, date: '', hour: '', min: '' },
+      body: '',
+      signature: '',
+      isAd: false,
+      phraseIdx: null,
+      sigIdx: null,
+      phrases: _smsPhrases,
+      signatures: _smsSignatures,
+      history: [],
+    },
+
+    get smsByteCount() {
+      const text = (this.sms.body || '') + (this.sms.signature ? '\n' + this.sms.signature : '');
+      let bytes = 0;
+      for (const ch of text) bytes += ch.charCodeAt(0) > 127 ? 2 : 1;
+      return bytes;
+    },
+
+    formatPhone(v) {
+      const d = (v || '').replace(/\D/g, '').slice(0, 11);
+      if (d.length <= 3) return d;
+      if (d.startsWith('02')) {
+        if (d.length <= 6) return d.slice(0, 2) + '-' + d.slice(2);
+        if (d.length <= 9) return d.slice(0, 2) + '-' + d.slice(2, 5) + '-' + d.slice(5);
+        return d.slice(0, 2) + '-' + d.slice(2, 6) + '-' + d.slice(6);
+      }
+      if (d.length <= 6)  return d.slice(0, 3) + '-' + d.slice(3);
+      if (d.length <= 10) return d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6);
+      return d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7);
+    },
+
+    openSms(phone) {
+      this.sms.recipients = phone ? [{ phone, on: true }] : [];
+      this.sms.open = true;
+      const phones = this.sms.recipients.map(r => r.phone).filter(Boolean);
+      if (phones.length) {
+        const c = csrf();
+        fetch(ctx + '/sms/log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', [c.header]: c.token },
+          body: JSON.stringify({ to_phone: phones }),
+        })
+        .then(r => r.ok ? r.json() : [])
+        .then(data => {
+          this.sms.history = (data || []).map(h => ({
+            body:  h.message  || h.body  || '',
+            phone: h.to_phone || h.to    || '',
+            date:  h.sent_at  || h.date  || '',
+          }));
+        })
+        .catch(() => {});
+      }
+    },
+
+    closeSms() { this.sms.open = false; },
+
+    addRecipient() {
+      const p = (this.sms.newRecipient || '').trim();
+      if (!p) return;
+      if (!this.sms.recipients.find(r => r.phone === p)) {
+        this.sms.recipients.push({ phone: p, on: true });
+      }
+      this.sms.newRecipient = '';
+    },
+
+    applyToBody() {
+      if (this.sms.phraseIdx === null) return;
+      const ph = this.sms.phrases[this.sms.phraseIdx];
+      if (ph) this.sms.body = (this.sms.body ? this.sms.body + '\n' : '') + ph.body;
+    },
+
+    applyToSignature() {
+      if (this.sms.phraseIdx === null) return;
+      const ph = this.sms.phrases[this.sms.phraseIdx];
+      if (ph) this.sms.signature = (this.sms.signature ? this.sms.signature + '\n' : '') + ph.body;
+    },
+
+    applySigToBody() {
+      if (this.sms.sigIdx === null) return;
+      const sig = this.sms.signatures[this.sms.sigIdx];
+      if (sig) this.sms.body = (this.sms.body ? this.sms.body + '\n' : '') + sig.body;
+    },
+
+    applySigToSignature() {
+      if (this.sms.sigIdx === null) return;
+      const sig = this.sms.signatures[this.sms.sigIdx];
+      if (sig) this.sms.signature = sig.body;
+    },
+
+    async sendSms() {
+      const active = this.sms.recipients.filter(r => r.on && r.phone);
+      if (!active.length || !this.sms.body) return;
+      const text = this.sms.body + (this.sms.signature ? '\n' + this.sms.signature : '');
+      let byteLen = 0;
+      for (const ch of text) byteLen += ch.charCodeAt(0) > 127 ? 2 : 1;
+      const type = byteLen > 90 ? 'lms' : 'sms';
+      const c = csrf();
+      let failCount = 0;
+      for (const r of active) {
+        const payload = {
+          type,
+          from: this.sms.sender,
+          to:   r.phone,
+          content: { [type]: { message: text } },
+        };
+        if (this.sms.schedule.on && this.sms.schedule.date) {
+          const hh = String(this.sms.schedule.hour || 0).padStart(2, '0');
+          const mm = String(this.sms.schedule.min  || 0).padStart(2, '0');
+          payload.sendtime = this.sms.schedule.date.replace(/-/g, '') + hh + mm;
+        }
+        try {
+          const res = await fetch(ctx + '/api/external/sendSMS', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', [c.header]: c.token },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          if (!res.ok || data.description !== 'success') failCount++;
+        } catch { failCount++; }
+      }
+      if (failCount === 0) {
+        alert('문자가 전송되었습니다.');
+        this.closeSms();
+      } else {
+        alert('일부 전송에 실패했습니다 (' + failCount + '/' + active.length + '건)');
+      }
+    },
+
+    async savePhraseFromBody() {
+      const body = (this.sms.body || '').trim();
+      if (!body) { alert('본문에 내용을 입력하세요.'); return; }
+      const title = prompt('상용구 제목을 입력하세요.');
+      if (!title) return;
+      const c = csrf();
+      try {
+        const res = await fetch(ctx + '/sms/phrase/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', [c.header]: c.token },
+          body: JSON.stringify({ title, body }),
+        });
+        if (res.ok) {
+          this.sms.phrases.push({ title, body });
+          alert('상용구가 저장되었습니다.');
+        } else {
+          alert('상용구 저장에 실패했습니다.');
+        }
+      } catch (e) {
+        alert('저장 중 오류가 발생했습니다: ' + e.message);
+      }
     },
   };
 }

@@ -1,40 +1,131 @@
-# 남은 작업 목록
+# MediPlat 작업 현황
 
-## [ ] 입원상담 동적 카테고리 — 라벨 클릭 시 체크박스 토글
+> 최종 업데이트: 2026-04-24
 
-### 문제
-`new.html`의 동적 카테고리 필드에서 체크박스 옆 **라벨 텍스트를 클릭해도 체크박스가 체크되지 않음**.
+---
 
-HTML 표준상 `<label for="inputId">` 와 `<input id="inputId">` 가 연결되어야 라벨 클릭이 체크박스를 토글한다.
-현재 템플릿에는 `id` / `for` 속성이 없어 라벨과 입력 요소가 연결되지 않는다.
+## ✅ 완료된 작업
 
-### 해당 파일
-`src/main/resources/templates/csm/counsel/new.html`
+### 공통
+- [x] CSRF 메타 태그 적용 (전체 design 페이지)
+- [x] Alpine.js x-teleport 기반 모달 구조 정립
 
-### 수정 방향
-동적 필드 루프 안에서 각 `<input>`에 고유 `id`를, `<label>`에 대응하는 `for`를 추가.
+### 사용자 관리 (`user-management.html` + `UserApiController.java`)
+- [x] 사용자 추가 (POST `/api/users`) — 비밀번호 AES 암호화, RBAC 역할 배정
+- [x] 사용자 수정 (PUT `/api/users/{id}`) — 역할 교체 포함
+- [x] 비밀번호 초기화 (POST `/api/users/{id}/reset-password`) — 임시 비밀번호 발급 + 클립보드 복사
+- [x] 사용자 비활성화 (DELETE `/api/users/{id}`) — 소프트 삭제
+- [x] 역할 드롭다운 DB 연동 — `GET /api/roles` 로 `role_{inst}` 테이블 데이터 출력
 
-`fieldKey`와 루프 인덱스를 조합해 고유 ID를 만든다.
+### 역할 관리 (`role-management.html`)
+- [x] 역할 목록 DB 연동 (`role_{inst}` 테이블)
+- [x] 역할 추가 / 이름 수정 / 복제
+- [x] 권한 변경사항 저장 (`role_permission_{inst}`)
+- [x] 역할에 사용자 추가 (`user_role_{inst}`)
+- [x] permission master fallback 처리 (테이블 비어있을 때 기본값)
 
-**예시 (checkbox_only)**
-```html
-<!-- 수정 전 -->
-<input type="checkbox" th:name="|${fieldKey}_checkbox|" th:value="${c2.cc_col_02}"
-       th:checked="${valueMap[fieldKey + '_checkbox'] != null}">
-<label th:text="${c2.cc_col_02}">라벨</label>
+### 입원상담 (`inpatient-consultation.html`)
+- [x] 상담자 이름 표시 — ID 대신 이름(`resolveCounselorDisplayName`)
+- [x] 전화번호 자동 하이픈 포맷 (`formatPhone`) — 010-XXXX-XXXX, 02-XXXX-XXXX 등
+- [x] 보호자 전화번호 옆 SMS 전송 버튼 추가
+- [x] SMS 전송 모달 — Mediplat 6 신규 디자인 마이그레이션 (3-column 레이아웃)
+- [x] SMS 발신번호 DB 연동 (`smsSenderOptions` ← `counsel_phone` 테이블)
+- [x] SMS 상용구 DB 연동 (`smsPhrases` ← `sms_template` 테이블)
+- [x] SMS 서명 DB 연동 (`smsSignatures` ← `card` 테이블)
+- [x] SMS 전송 백엔드 연동 (`POST /api/external/sendSMS` — Bizppurio)
+- [x] SMS/LMS 자동 판별 (90 byte 기준) + 바이트 카운터
+- [x] 최근 전송 내역 조회 (`POST /sms/log`) — 모달 오픈 시 자동 로드
+- [x] 예약발송 UI (날짜·시간 입력 → `sendtime` 파라미터 전송)
+- [x] 상용구 저장 (`POST /sms/phrase/save`)
+- [x] 동적 카테고리 체크박스/라디오 토글 연동
 
-<!-- 수정 후 -->
-<input type="checkbox"
-       th:id="|${fieldKey}_checkbox|"
-       th:name="|${fieldKey}_checkbox|"
-       th:value="${c2.cc_col_02}"
-       th:checked="${valueMap[fieldKey + '_checkbox'] != null}">
-<label th:for="|${fieldKey}_checkbox|" th:text="${c2.cc_col_02}">라벨</label>
-```
+---
 
-같은 방식으로 `radio_only`, `select_only`, `text_only`, 복합 타입(`checkbox_text`, `checkbox_select` 등) 모두 적용.
+## 🔄 진행 예정 작업
 
-### 주의사항
-- `fieldKey`는 `field_{c1Id}_{c2Id}` 형태로 이미 전역 유일 → `id` 충복 없음
-- radio 버튼은 같은 c1 그룹 내 여러 c2가 있으므로 `fieldKey` 자체를 id로 사용하면 됨
-- select / text 는 라벨이 `<span>` 으로 되어 있는 케이스도 있으니 `<span>` → `<label for="...">` 으로 교체 필요
+### 🔧 공통 / 헤더
+- [ ] 헤더 — 사용자 정보 백엔드 연동 여부 확인 (로그인한 사용자 이름·역할 표시)
+- [ ] 헤더 — 검색 기능 용도 확인 (전역 검색? 상담 검색?)
+- [ ] 모바일 반응형 — 아래 페이지 기준으로 모바일 레이아웃 구현
+  - 상담 리스트, 상담 접수, 입원상담, 병실현황판, 공지사항, 상담 통계
+
+---
+
+### 📋 상담 접수
+- [ ] 상단 요약 카드 백엔드 연동 (대기·상담중·완료·예약 건수)
+
+---
+
+### 🏥 입원상담
+- [ ] 입원서약서 페이지 연동 (버튼 클릭 → 서약서 페이지 열기/상태 저장)
+- [ ] 병실현황판 연동 (버튼 클릭 → 현황판 이동 또는 모달)
+- [ ] 초기화 버튼 기능 구현 — 상담기록 영역 (방법·결과·상담내용) 전체 초기화
+- [ ] SMS 모달 — 상용구 "서명란에 넣기" 버튼 → "문자입력란에 넣기"로 변경
+- [ ] SMS 모달 — "서명 및 인사말" 섹션 제목 → "서명"으로 변경
+- [ ] SMS 모달 — 수신번호 추가 시 최근 전송 내역 실시간 갱신 (현재는 모달 오픈 시만 로드)
+- [ ] 첨부파일 업로드 (녹음 파일, 소견서·CT·MRI·처방전 등) — 다중 업로드 지원
+- [ ] 음성 녹음 기능 실제 구현 (MediaRecorder API)
+- [ ] 음성 → 텍스트 변환 백엔드 연동 (CLOVA Speech + GPT 요약)
+
+---
+
+### 🛏️ 병실현황판
+- [ ] 기존 design HTML 파일 내용 연동 (HTML 준비됨)
+- [ ] 모바일 레이아웃 지원
+
+---
+
+### 📊 상담 리스트
+- [ ] 검색 기능 백엔드 연동 (환자명·전화번호·담당자 등)
+- [ ] 리스트 항목 설정 관리 UI — 보여줄/가릴 컬럼 선택, 좌측 고정 설정
+- [ ] 환자 정보 삭제 백엔드 연동
+- [ ] 일괄 문자 보내기 백엔드 연동
+- [ ] 상담 기록 카드 필터 (전체 / 오늘 / 미완료)
+- [ ] "상담중" 상태 오표시 수정 — 상담 진입 후 즉시 퇴장 시에도 상담중으로 남는 문제, 기본 30분 락 개념 삭제
+- [ ] 새로고침 버튼 기능 연동
+- [ ] 접수관리 버튼 연동
+
+---
+
+### 📢 공지사항
+- [ ] 탭 구현 — 전체 / 고정 / 적용 / 임시저장
+- [ ] 공지 작성·수정·삭제 기능 백엔드 연동
+
+---
+
+### 📈 상담 통계
+- [ ] 기존 통계 페이지 로직 참고하여 데이터 연동
+- [ ] 신규 디자인으로 업데이트
+
+---
+
+### 📓 상담 일지 관리
+- [ ] 백엔드 연동 (목록 조회·상세·저장·삭제)
+
+---
+
+### 💬 문자 관리
+- [ ] 예약 내역 페이지 구현
+- [ ] 발송 내역 페이지 구현
+- [ ] 상용구 관리 — 추가·수정·삭제 백엔드 연동 (현재 조회만 됨)
+
+---
+
+### 🔐 관리자 (사용자·역할 관리)
+- [ ] 역할 기반 기능 제한 실제 적용 — 역할 설정대로 메뉴·버튼 노출/숨김 처리
+- [ ] RBAC 권한 체크 미들웨어 프런트 연동
+
+---
+
+## 📝 기타 메모
+
+| 항목 | 내용 |
+|------|------|
+| SMS 전송 엔드포인트 | `POST /api/external/sendSMS` (Bizppurio) |
+| SMS 이력 조회 | `POST /sms/log` — `{ to_phone: [...] }` |
+| 역할 테이블 | `csm.role_{inst}`, `csm.role_permission_{inst}`, `csm.user_role_{inst}` |
+| 사용자 테이블 | `csm.user_info_{inst}` |
+| 상담 테이블 | `csm.counsel_data_{inst}` |
+| 동적 카테고리 | `csm.category_{inst}`, `csm.category_field_{inst}` |
+| CLOVA/GPT 연동 | 백엔드 준비됨, 프런트 연결 필요 |
+| 모바일 우선순위 | 리스트·접수·입원상담·병실현황판·공지·통계 |

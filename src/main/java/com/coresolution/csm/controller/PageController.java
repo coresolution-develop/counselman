@@ -2871,7 +2871,7 @@ public class PageController {
 
     /**
      * 상담 화면 문자 전송 API
-     * 현재 프로젝트에는 외부 문자 게이트웨이 연동 구현이 없어 명시적 실패 응답 반환
+     * 서버 설정 기반 Bizppurio 전송 후 transmission_history에 결과를 기록한다.
      */
     @PostMapping(value = {
             "api/external/sendSMS", "/api/external/sendSMS",
