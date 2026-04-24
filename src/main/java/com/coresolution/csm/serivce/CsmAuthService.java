@@ -226,6 +226,10 @@ public class CsmAuthService {
         return cs.userSelect(ud);
     }
 
+    public List<Userdata> listUsersByInst(String inst) {
+        return cs.listUsersByInst(inst);
+    }
+
     public Userdata userInfo(int us_col_01, String instCode) {
         return cs.userInfo(us_col_01, instCode);
     }

@@ -7869,7 +7869,7 @@ public class PageController {
         String inst = ensureInst(session);
         if (inst == null) return new ModelAndView("redirect:/login");
         try {
-            List<Userdata> users = csmMapper.listUsersByInst(inst);
+            List<Userdata> users = cs.listUsersByInst(inst);
             List<Map<String, Object>> list = users.stream().map(u -> {
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("id",         String.valueOf(u.getUs_col_01()));
