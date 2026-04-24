@@ -5,8 +5,11 @@ import java.util.Map;
 
 import jakarta.servlet.http.HttpSession;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,8 +24,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class UserApiController {
 
+    private static final Logger log = LoggerFactory.getLogger(UserApiController.class);
+
     private final CsmAuthService cs;
     private final AES128 aes;
+    private final JdbcTemplate jdbcTemplate;
 
     // ─────────────────────────────────────────────────
     // 사용자 추가
@@ -32,6 +38,7 @@ public class UserApiController {
     public ResponseEntity<?> createUser(@RequestBody Map<String, Object> body, HttpSession session) {
         String inst = resolveInst(session);
         if (inst == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        String safe = cs.sanitizeInstPublic(inst);
 
         String loginId  = str(body.get("loginId"));
         String password = str(body.get("password"));
@@ -49,6 +56,15 @@ public class UserApiController {
             }
         } catch (Exception ignored) {}
 
+        // roleId가 있으면 DB에서 is_system 확인해서 us_col_08 결정
+        int userAuth = 2; // 기본: 일반 사용자
+        Long roleId = toLong(body.get("roleId"));
+        if (roleId != null) {
+            userAuth = resolveUserAuth(safe, roleId);
+        } else {
+            userAuth = parseRole(str(body.get("role")));
+        }
+
         Userdata ud = new Userdata();
         ud.setUs_col_02(loginId);
         ud.setUs_col_03(aes.encrypt(password));
@@ -56,7 +72,7 @@ public class UserApiController {
         ud.setUs_col_05(str(body.get("orgName")));
         ud.setUs_col_06("");
         ud.setUs_col_07("y");
-        ud.setUs_col_08(parseRole(str(body.get("role"))));
+        ud.setUs_col_08(userAuth);
         ud.setUs_col_09(1);
         ud.setUs_col_10(str(body.get("phone")));
         ud.setUs_col_11(str(body.get("email")));
@@ -66,7 +82,14 @@ public class UserApiController {
 
         try {
             cs.userInsert(ud);
-            return ResponseEntity.ok(Map.of("ok", true));
+            long newUserId = ud.getUs_col_01(); // @Options(useGeneratedKeys = true)
+
+            // RBAC 역할 배정
+            if (roleId != null && newUserId > 0) {
+                assignRole(safe, newUserId, roleId, session);
+            }
+
+            return ResponseEntity.ok(Map.of("ok", true, "userId", newUserId));
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", "사용자 추가 실패: " + e.getMessage()));
         }
@@ -82,6 +105,7 @@ public class UserApiController {
                                         HttpSession session) {
         String inst = resolveInst(session);
         if (inst == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        String safe = cs.sanitizeInstPublic(inst);
 
         Userdata ud = cs.userInfo(id, inst);
         if (ud == null) return ResponseEntity.notFound().build();
@@ -92,10 +116,23 @@ public class UserApiController {
         ud.setUs_col_11(str(body.getOrDefault("email", ud.getUs_col_11())));
         ud.setUs_col_10(str(body.getOrDefault("phone", ud.getUs_col_10())));
         ud.setUs_col_07(str(body.getOrDefault("status","y")));
-        ud.setUs_col_08(parseRole(str(body.getOrDefault("role", roleStr(ud.getUs_col_08())))));
+
+        // roleId 기반으로 us_col_08 갱신
+        Long roleId = toLong(body.get("roleId"));
+        if (roleId != null) {
+            ud.setUs_col_08(resolveUserAuth(safe, roleId));
+        }
 
         try {
             cs.userUpdate(ud);
+
+            // RBAC 역할 교체: 기존 역할 전부 제거 후 새 역할 배정
+            if (roleId != null) {
+                jdbcTemplate.update(
+                    "DELETE FROM csm.user_role_" + safe + " WHERE user_id = ?", (long) id);
+                assignRole(safe, id, roleId, session);
+            }
+
             return ResponseEntity.ok(Map.of("ok", true));
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", "수정 실패: " + e.getMessage()));
@@ -147,6 +184,33 @@ public class UserApiController {
     }
 
     // ─────────────────── helpers ───────────────────
+
+    /** role_{inst} 에서 is_system 조회 → us_col_08 값 결정 */
+    private int resolveUserAuth(String safe, long roleId) {
+        try {
+            Integer isSystem = jdbcTemplate.queryForObject(
+                "SELECT is_system FROM csm.role_" + safe + " WHERE role_id = ?",
+                Integer.class, roleId);
+            return (isSystem != null && isSystem == 1) ? 1 : 2;
+        } catch (Exception e) {
+            log.warn("[resolveUserAuth] fallback to 2: {}", e.getMessage());
+            return 2;
+        }
+    }
+
+    /** user_role_{inst} 에 역할 배정 (INSERT IGNORE) */
+    private void assignRole(String safe, long userId, long roleId, HttpSession session) {
+        try {
+            String assignedBy = (String) session.getAttribute("username");
+            jdbcTemplate.update(
+                "INSERT IGNORE INTO csm.user_role_" + safe
+                    + " (user_id, role_id, assigned_by) VALUES (?, ?, ?)",
+                userId, roleId, assignedBy);
+        } catch (Exception e) {
+            log.warn("[assignRole] userId={} roleId={}: {}", userId, roleId, e.getMessage());
+        }
+    }
+
     private String resolveInst(HttpSession session) {
         Object v = session.getAttribute("inst");
         return v instanceof String s ? s : null;
@@ -156,19 +220,17 @@ public class UserApiController {
         return v == null ? "" : v.toString().trim();
     }
 
+    private Long toLong(Object v) {
+        if (v == null) return null;
+        try { return ((Number) v).longValue(); }
+        catch (Exception e) { return null; }
+    }
+
     private int parseRole(String role) {
         return switch (role) {
             case "super"  -> 0;
             case "admin"  -> 1;
             default       -> 2;
-        };
-    }
-
-    private String roleStr(int auth) {
-        return switch (auth) {
-            case 0 -> "super";
-            case 1 -> "admin";
-            default -> "staff";
         };
     }
 

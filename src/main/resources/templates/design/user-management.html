@@ -266,10 +266,9 @@
         </div>
         <select class="select" x-model="roleFilter" style="height:38px;">
           <option value="">전체 역할</option>
-          <option value="admin">관리자</option>
-          <option value="super">슈퍼바이저</option>
-          <option value="staff">실무진</option>
-          <option value="counsel">상담사</option>
+          <template x-for="r in dbRoles" :key="r.role_id">
+            <option :value="String(r.role_id)" x-text="r.role_name"></option>
+          </template>
         </select>
         <div class="um-search">
           <svg><use href="#i-search"/></svg>
@@ -355,6 +354,19 @@
                 <span class="um-status" :class="'um-status--' + current?.status" x-text="statusLabel(current?.status)"></span>
               </span>
             </div>
+            <div class="um-field">
+              <span class="um-field__label">역할</span>
+              <div class="um-field__value">
+                <template x-if="userRoles.length === 0">
+                  <span style="color:var(--text-tertiary)">—</span>
+                </template>
+                <div class="um-side__perms">
+                  <template x-for="r in userRoles" :key="r.role_id">
+                    <span class="um-side__perm" x-text="r.role_name"></span>
+                  </template>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="um-side__actions">
             <button class="btn btn--outline" @click="openResetPw()">
@@ -396,10 +408,11 @@
               </div>
               <div class="um-form-group">
                 <label>역할</label>
-                <select x-model="addForm.role">
-                  <option value="staff">실무진</option>
-                  <option value="admin">관리자</option>
-                  <option value="super">슈퍼바이저</option>
+                <select x-model="addForm.roleId">
+                  <option :value="null">역할 없음</option>
+                  <template x-for="r in dbRoles" :key="r.role_id">
+                    <option :value="r.role_id" x-text="r.role_name"></option>
+                  </template>
                 </select>
               </div>
             </div>
@@ -449,10 +462,11 @@
               </div>
               <div class="um-form-group">
                 <label>역할</label>
-                <select x-model="editForm.role">
-                  <option value="staff">실무진</option>
-                  <option value="admin">관리자</option>
-                  <option value="super">슈퍼바이저</option>
+                <select x-model="editForm.roleId">
+                  <option :value="null">변경 없음</option>
+                  <template x-for="r in dbRoles" :key="r.role_id">
+                    <option :value="r.role_id" x-text="r.role_name"></option>
+                  </template>
                 </select>
               </div>
             </div>
@@ -553,15 +567,20 @@ function userMgmt() {
     q: '', tab: 'all', roleFilter: '', selected: null,
     users: dbUsers,
 
+    // DB에서 로드한 역할 목록
+    dbRoles: [],
+    // 선택된 사용자의 RBAC 역할 목록
+    userRoles: [],
+
     // Add modal
     showAdd: false,
-    addForm: { name:'', loginId:'', password:'', orgName:'', dept:'', rank:'', email:'', phone:'', role:'staff' },
+    addForm: { name:'', loginId:'', password:'', orgName:'', dept:'', rank:'', email:'', phone:'', roleId: null },
     addLoading: false,
     addError: '',
 
     // Edit modal
     showEdit: false,
-    editForm: { name:'', dept:'', rank:'', email:'', phone:'', status:'y', role:'staff' },
+    editForm: { name:'', dept:'', rank:'', email:'', phone:'', status:'y', roleId: null },
     editLoading: false,
 
     // Reset PW modal
@@ -569,8 +588,30 @@ function userMgmt() {
     resetPwLoading: false,
     tempPw: null,
 
-    init() {
+    async init() {
+      await this.loadDbRoles();
       if (this.users.length) this.selected = this.users[0].id;
+      if (this.selected) await this.loadUserRoles(this.selected);
+      this.$watch('selected', async (id) => {
+        if (id) await this.loadUserRoles(id);
+        else this.userRoles = [];
+      });
+    },
+
+    // ─── DB 역할 로드 ────────────────────────────
+    async loadDbRoles() {
+      try {
+        const res = await fetch(_ctx + 'api/roles');
+        if (res.ok) this.dbRoles = await res.json();
+      } catch(e) {}
+    },
+
+    async loadUserRoles(userId) {
+      try {
+        const res = await fetch(_ctx + 'api/roles/user/' + userId);
+        if (res.ok) this.userRoles = await res.json();
+        else this.userRoles = [];
+      } catch(e) { this.userRoles = []; }
     },
 
     get current() { return this.users.find(u => u.id === this.selected) || null; },
@@ -589,7 +630,8 @@ function userMgmt() {
 
     // ─── Add user ─────────────────────────────
     openAdd() {
-      this.addForm = { name:'', loginId:'', password:'', orgName:'', dept:'', rank:'', email:'', phone:'', role:'staff' };
+      const firstRoleId = this.dbRoles.length ? this.dbRoles[0].role_id : null;
+      this.addForm = { name:'', loginId:'', password:'', orgName:'', dept:'', rank:'', email:'', phone:'', roleId: firstRoleId };
       this.addError = '';
       this.showAdd = true;
     },
@@ -618,6 +660,8 @@ function userMgmt() {
     // ─── Edit user ─────────────────────────────
     openEdit() {
       if (!this.current) return;
+      // 현재 배정된 첫 번째 역할의 role_id를 기본값으로
+      const currentRoleId = this.userRoles.length ? this.userRoles[0].role_id : null;
       this.editForm = {
         name:   this.current.name   || '',
         dept:   this.current.dept   || '',
@@ -625,7 +669,7 @@ function userMgmt() {
         email:  this.current.email  || '',
         phone:  this.current.phone  || '',
         status: this.current.status === 'active' ? 'y' : 'n',
-        role:   this.current.role   || 'staff',
+        roleId: currentRoleId,
       };
       this.showEdit = true;
     },
