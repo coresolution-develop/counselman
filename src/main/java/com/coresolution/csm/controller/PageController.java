@@ -5039,15 +5039,24 @@ public class PageController {
     }
 
     private CounselData buildCounselDataFromRequest(HttpServletRequest request, String inst) throws Exception {
+        return buildCounselDataFromRequest(request, inst, false);
+    }
+
+    private CounselData buildCounselDataFromRequest(HttpServletRequest request, String inst, boolean allowBlankPatientName) throws Exception {
         CounselData counselData = new CounselData();
         counselData.setInst(inst);
 
         String csCol01Plain = safeString(request.getParameter("cs_col_01")).trim();
         if (csCol01Plain.isEmpty()) {
-            throw new IllegalArgumentException("환자명은 필수입니다.");
+            if (!allowBlankPatientName) {
+                throw new IllegalArgumentException("환자명은 필수입니다.");
+            }
+            counselData.setCs_col_01("");
+            counselData.setCs_col_01_hash(null);
+        } else {
+            counselData.setCs_col_01(aes.encryptHexECB(csCol01Plain));
+            counselData.setCs_col_01_hash(hashSHA256(csCol01Plain));
         }
-        counselData.setCs_col_01(aes.encryptHexECB(csCol01Plain));
-        counselData.setCs_col_01_hash(hashSHA256(csCol01Plain));
 
         counselData.setCs_col_02(request.getParameter("cs_col_02"));
         counselData.setCs_col_03(request.getParameter("cs_col_03"));
@@ -6205,6 +6214,21 @@ public class PageController {
         }
         String safeInst = safeString(inst).trim();
         return safeInst.isEmpty() ? "system" : safeInst + "_system";
+    }
+
+    private String resolveCounselorDisplayName(String inst, String savedCounselor, String actorName, Userdata currentUser) {
+        String value = safeString(savedCounselor).trim();
+        if (value.isEmpty()) {
+            return actorName;
+        }
+        String currentUserId = currentUser == null ? "" : safeString(currentUser.getUs_col_02()).trim();
+        String currentUserName = currentUser == null ? "" : safeString(currentUser.getUs_col_12()).trim();
+        if (!currentUserId.isEmpty() && currentUserId.equals(value) && !currentUserName.isEmpty()) {
+            return currentUserName;
+        }
+        Userdata counselorInfo = cs.loadUserInfo(inst, value);
+        String counselorName = counselorInfo == null ? "" : safeString(counselorInfo.getUs_col_12()).trim();
+        return counselorName.isEmpty() ? value : counselorName;
     }
 
     private String resolveNoticeUserId(HttpSession session) {
@@ -7519,6 +7543,8 @@ public class PageController {
         ModelAndView mv = new ModelAndView();
         String inst = ensureInst(session);
         if (inst == null) return new ModelAndView("redirect:/login");
+        Userdata currentUser = ensureUserInfo(session, inst);
+        String actorName = resolveReservationActor(inst, session);
 
         CounselData data = null;
         List<Guardian> rawGuardians = Collections.emptyList();
@@ -7581,7 +7607,7 @@ public class PageController {
             pd.put("bc",          safeString(data.getCs_col_10()));
             pd.put("condition",   safeString(data.getCs_col_11()));
             pd.put("counselDate", safeString(data.getCs_col_16()));
-            pd.put("counselor",   safeString(data.getCs_col_17()));
+            pd.put("counselor",   resolveCounselorDisplayName(inst, safeString(data.getCs_col_17()), actorName, currentUser));
             pd.put("method",      safeString(data.getCs_col_18()));
             pd.put("result",         safeString(data.getCs_col_19()));
             pd.put("nonAdmitReason", safeString(data.getCs_col_20()));
@@ -7646,7 +7672,7 @@ public class PageController {
         mv.addObject("dynamicCategoryJson", toDynamicCategoryJson(categoryData, fieldTypeMapping));
         mv.addObject("dynamicValueJson", toJsonOrEmptyObject(valueMap));
         mv.addObject("today", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-        mv.addObject("actor", resolveReservationActor(inst, session));
+        mv.addObject("actor", actorName);
         mv.setViewName("design/inpatient-consultation");
         return mv;
     }
@@ -7658,7 +7684,7 @@ public class PageController {
         if (inst == null) return Map.of("ok", false, "error", "로그인이 필요합니다.");
         try {
             int csIdx = (int) parseLongSafely(request.getParameter("cs_idx"), 0L);
-            CounselData counselData = buildCounselDataFromRequest(request, inst);
+            CounselData counselData = buildCounselDataFromRequest(request, inst, true);
             final int savedIdx;
             if (csIdx > 0 && cs.getCounselById(inst, csIdx) != null) {
                 counselData.setCs_idx(csIdx);
@@ -7729,6 +7755,13 @@ public class PageController {
         } catch (Exception e) {
             return Map.of("ok", false);
         }
+    }
+
+    @GetMapping({ "design/ward-status", "/design/ward-status" })
+    public ModelAndView designWardStatus(HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) return new ModelAndView("redirect:/login");
+        return new ModelAndView("design/ward-status");
     }
 
     @GetMapping({ "design/notices", "/design/notices" })
@@ -7831,8 +7864,56 @@ public class PageController {
     }
 
     @GetMapping({ "design/user-management", "/design/user-management" })
-    public String designUserManagement() {
-        return "design/user-management";
+    public ModelAndView designUserManagement(HttpSession session) {
+        ModelAndView mv = new ModelAndView("design/user-management");
+        String inst = ensureInst(session);
+        if (inst == null) return new ModelAndView("redirect:/login");
+        try {
+            List<Userdata> users = csmMapper.listUsersByInst(inst);
+            List<Map<String, Object>> list = users.stream().map(u -> {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("id",         String.valueOf(u.getUs_col_01()));
+                m.put("name",       safeString(u.getUs_col_12()));
+                m.put("initial",    safeString(u.getUs_col_12()).length() > 0
+                                        ? safeString(u.getUs_col_12()).substring(0, 1) : "?");
+                m.put("employeeId", safeString(u.getUs_col_02()));
+                m.put("dept",       safeString(u.getUs_col_13()));
+                m.put("rank",       safeString(u.getUs_col_14()));
+                m.put("role",       mapUserRole(u.getUs_col_08()));
+                m.put("email",      safeString(u.getUs_col_11()));
+                m.put("phone",      safeString(u.getUs_col_10()));
+                m.put("status",     mapUserStatus(safeString(u.getUs_col_07()), u.getUs_col_09()));
+                m.put("color",      userNameToColor(safeString(u.getUs_col_12())));
+                m.put("perms",      List.of());
+                return m;
+            }).collect(Collectors.toList());
+            mv.addObject("usersJson", objectMapper.writeValueAsString(list));
+        } catch (Exception e) {
+            log.error("[design/user-management] load fail inst={}", inst, e);
+            mv.addObject("usersJson", "[]");
+        }
+        return mv;
+    }
+
+    private String mapUserRole(int auth) {
+        return switch (auth) {
+            case 0  -> "super";
+            case 1  -> "admin";
+            default -> "staff";
+        };
+    }
+
+    private String mapUserStatus(String col07, int col09) {
+        if (col09 == 2) return "off";
+        return "y".equalsIgnoreCase(col07) ? "active" : "off";
+    }
+
+    private static final String[] USER_COLORS = {
+        "#10b981","#ec4899","#f59e0b","#14b8a6","#0ea5e9","#8b5cf6","#f43f5e","#84cc16"
+    };
+    private String userNameToColor(String name) {
+        if (name == null || name.isEmpty()) return USER_COLORS[0];
+        return USER_COLORS[Math.abs(name.hashCode()) % USER_COLORS.length];
     }
 
     @GetMapping({ "design/role-management", "/design/role-management" })

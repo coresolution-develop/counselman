@@ -167,6 +167,11 @@ public interface CsmMapper {
   @ResultMap("UserdataMap")
   List<Userdata> userSelect(Userdata ud);
 
+  /** 기관의 전체 사용자 목록 (삭제 제외) */
+  @SelectProvider(type = UserSqlProvider.class, method = "listUsersByInst")
+  @ResultMap("UserdataMap")
+  List<Userdata> listUsersByInst(@Param("inst") String inst);
+
   @SelectProvider(type = UserSqlProvider.class, method = "userInfoByIdx")
   @ResultMap("UserdataMap")
   Userdata userInfo(@Param("us_col_01") int us_col_01, @Param("instCode") String instCode);
@@ -852,6 +857,15 @@ public interface CsmMapper {
           DELETE FROM csm.user_data_""" + t + """
            WHERE us_col_02 = #{username}
           """;
+    }
+
+    public static String listUsersByInst(Map<String, Object> p) {
+      String t = sanitizeInst((String) p.get("inst"));
+      return "SELECT us_col_01, us_col_02, us_col_04, us_col_05, us_col_06, " +
+             "       us_col_07, us_col_08, us_col_09, us_col_10, us_col_11, us_col_12, us_col_13, us_col_14 " +
+             "  FROM csm.user_data_" + t +
+             " WHERE us_col_09 != 2" +
+             " ORDER BY us_col_01";
     }
 
     // ✅ 여기 추가

@@ -340,24 +340,20 @@
   </main>
 </div>
 
-<script>
+<script th:inline="javascript">
+const _users = /*[[${usersJson}]]*/ '[]';
 function userMgmt() {
+  const dbUsers = (() => { try { return JSON.parse(_users); } catch(e) { return []; } })();
   return {
     q: '',
     tab: 'all',
     roleFilter: '',
-    selected: 'leesumin',
-    users: [
-      { id:'leesumin', name:'이수민', initial:'이', color:'#10b981', employeeId:'EMP-2021-0014', dept:'시스템개발팀', rank:'주임', role:'admin',   email:'dev@coresolution.kr', phone:'010-1234-5678', status:'active', lastSeen:'2026-04-23 17:42', lastIp:'192.168.0.14', perms:['사용자 관리','역할 관리','상담 접수','상담리스트','문자관리','방문예약관리'] },
-      { id:'kimjintae', name:'김진태', initial:'김', color:'#ec4899', employeeId:'EMP-2019-0042', dept:'진료부',         rank:'차장', role:'admin',   email:'jt@example.kr',       phone:'010-2345-6789', status:'active', lastSeen:'2026-04-23 13:10', lastIp:'192.168.0.22', perms:['상담 접수','상담리스트','공지사항','상담통계'] },
-      { id:'jeongmingyu', name:'정민규', initial:'정', color:'#f59e0b', employeeId:'EMP-2020-0011', dept:'원무부',         rank:'사원', role:'super',   email:'mg@example.kr',       phone:'010-3456-7890', status:'active', lastSeen:'2026-04-23 10:55', lastIp:'192.168.0.31', perms:['상담 접수','상담리스트'] },
-      { id:'kwonmihui',   name:'권미희', initial:'권', color:'#10b981', employeeId:'EMP-2020-0028', dept:'원무부',         rank:'부장', role:'super',   email:'mh@example.kr',       phone:'010-4567-8901', status:'active', lastSeen:'2026-04-22 18:30', lastIp:'192.168.0.33', perms:['상담 접수','공지사항','상담일지관리'] },
-      { id:'leesunkyung', name:'이선경', initial:'이', color:'#14b8a6', employeeId:'EMP-2022-0052', dept:'원무부',         rank:'상담간호사', role:'super', email:'sk@example.kr',  phone:'010-5678-9012', status:'active', lastSeen:'2026-04-22 16:12', lastIp:'192.168.0.39', perms:['상담 접수','상담리스트','문자관리'] },
-      { id:'choihyukbong', name:'최혁봉', initial:'최', color:'#0ea5e9', employeeId:'EMP-2023-0008', dept:'원무부',        rank:'사원', role:'super',   email:'hb@example.kr',       phone:'010-6789-0123', status:'active', lastSeen:'2026-04-22 09:44', lastIp:'192.168.0.41', perms:['상담 접수','방문예약관리'] },
-      { id:'kimhyunjung', name:'김현정', initial:'김', color:'#84cc16', employeeId:'EMP-2024-0003', dept:'상담실',         rank:'상담사', role:'counsel', email:'hj@example.kr',       phone:'010-7890-1234', status:'pause', lastSeen:'2026-04-18 11:22', lastIp:'192.168.0.52', perms:['상담리스트','문자관리'] },
-      { id:'parkjihye',   name:'박지혜', initial:'박', color:'#8b5cf6', employeeId:'EMP-2023-0021', dept:'상담실',         rank:'주임', role:'staff',   email:'jh@example.kr',       phone:'010-8901-2345', status:'off',   lastSeen:'2026-04-01 14:08', lastIp:'—',             perms:['상담리스트'] },
-      { id:'jungsoyeon',  name:'정소연', initial:'정', color:'#f43f5e', employeeId:'EMP-2022-0019', dept:'법인사무실',      rank:'과장', role:'staff',   email:'sy@example.kr',       phone:'010-9012-3456', status:'active', lastSeen:'2026-04-23 15:02', lastIp:'192.168.0.61', perms:['상담통계','상담일지관리','방문예약관리'] },
-    ],
+    selected: null,
+    users: dbUsers,
+
+    init() {
+      if (this.users.length) this.selected = this.users[0].id;
+    },
 
     get current() { return this.users.find(u => u.id === this.selected) || null; },
     get visible() {
@@ -366,11 +362,11 @@ function userMgmt() {
         if (this.tab !== 'all' && u.status !== this.tab) return false;
         if (this.roleFilter && u.role !== this.roleFilter) return false;
         if (!q) return true;
-        return (u.name + ' ' + u.email + ' ' + u.employeeId + ' ' + u.dept).toLowerCase().includes(q);
+        return (u.name + ' ' + u.email + ' ' + u.employeeId + ' ' + (u.dept||'')).toLowerCase().includes(q);
       });
     },
     roleLabel(r) {
-      return ({ admin:'관리자', super:'슈퍼바이저', staff:'실무진', counsel:'상담사' })[r] || '';
+      return ({ admin:'관리자', super:'슈퍼바이저', staff:'실무진', counsel:'상담사' })[r] || r || '';
     },
     statusLabel(s) {
       return ({ active:'사용중', pause:'일시정지', off:'사용중지' })[s] || '';
