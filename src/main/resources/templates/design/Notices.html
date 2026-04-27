@@ -10,7 +10,78 @@
   <link rel="stylesheet" th:href="@{/assets/css/components.css}" />
   <link rel="stylesheet" th:href="@{/assets/css/role-management.css}" />
   <link rel="stylesheet" th:href="@{/assets/css/tweaks.css}" />
-  <link rel="stylesheet" th:href="@{/assets/css/datepicker.css}" />
+  <style>
+    .notice-feed { display:flex; flex-direction:column; gap:8px; margin-top:4px; }
+
+    .notice-item {
+      background:#fff;
+      border:1px solid var(--border-default,#e5e7eb);
+      border-radius:8px;
+      overflow:hidden;
+    }
+    .notice-item.is-pinned {
+      border-color:var(--brand-300,#6ee7b7);
+      background:color-mix(in oklab,var(--brand-500,#10b981) 3%,#fff);
+    }
+
+    .notice-item__head {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:12px 16px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .notice-item__tags { display:flex; gap:4px; flex-shrink:0; }
+    .notice-item__title { flex:1; font-size:14px; font-weight:600; color:var(--text-primary); }
+    .notice-item__meta  { font-size:12px; color:var(--text-tertiary); white-space:nowrap; flex-shrink:0; }
+
+    .notice-item__body {
+      display:none;
+      padding:0 16px 14px;
+      font-size:13px;
+      color:var(--text-secondary);
+      line-height:1.7;
+      white-space:pre-wrap;
+      border-top:1px solid var(--border-subtle,#f0f0f0);
+    }
+    .notice-item__body.is-open { display:block; }
+
+    .notice-item__actions {
+      display:none;
+      gap:6px;
+      flex-shrink:0;
+    }
+    .notice-item__head:hover .notice-item__actions { display:flex; }
+
+    /* modal */
+    .nm-overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,.4);
+      display:flex; align-items:center; justify-content:center;
+      z-index:1000;
+    }
+    .nm-dialog {
+      background:#fff; border-radius:12px; width:560px; max-width:95vw;
+      box-shadow:0 16px 40px rgba(0,0,0,.18);
+      display:flex; flex-direction:column; gap:0;
+    }
+    .nm-dialog__head {
+      padding:20px 24px 0;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .nm-dialog__title { font-size:16px; font-weight:700; color:var(--text-primary); }
+    .nm-dialog__body  { padding:16px 24px; display:flex; flex-direction:column; gap:12px; }
+    .nm-dialog__foot  { padding:0 24px 20px; display:flex; gap:8px; justify-content:flex-end; }
+
+    .nm-label { font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:4px; display:block; }
+    .nm-input { width:100%; box-sizing:border-box; }
+    .nm-textarea {
+      width:100%; box-sizing:border-box; min-height:160px; resize:vertical;
+      padding:8px 10px; border:1px solid var(--border-default,#e5e7eb);
+      border-radius:6px; font-size:13px; line-height:1.6;
+    }
+    .nm-pin-row { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-secondary); }
+  </style>
 </head>
 <body>
 <script th:src="@{/assets/js/sprite.js}"></script>
@@ -25,75 +96,185 @@
   <div id="slot-header"></div>
 
   <main class="main">
-    <div class="page">
+    <div class="page" x-data="noticePage()">
       <div class="page__header">
         <div>
           <h1 class="page__title">공지사항</h1>
-          <p class="page__subtitle">내부 공지와 시스템 점검 안내를 모아 봅니다</p>
+          <p class="page__subtitle">내부 공지와 안내사항을 관리합니다</p>
         </div>
-        <button class="btn btn--primary"><svg><use href="#i-plus"/></svg>공지 작성</button>
+        <button x-show="canWrite" class="btn btn--primary" @click="openModal(null)">
+          <svg><use href="#i-plus"/></svg>공지 작성
+        </button>
       </div>
 
       <!-- Stats -->
       <div class="stat-row">
         <div class="stat-card stat-card--brand">
           <div class="stat-card__label"><span class="dot"></span>전체 공지</div>
-          <div class="stat-card__value">2</div>
+          <div class="stat-card__value" x-text="notices.length"></div>
         </div>
         <div class="stat-card stat-card--gray">
-          <div class="stat-card__label"><span class="dot"></span>미게시 공지</div>
-          <div class="stat-card__value">0</div>
+          <div class="stat-card__label"><span class="dot"></span>고정 공지</div>
+          <div class="stat-card__value" x-text="notices.filter(n=>n.pinned).length"></div>
         </div>
       </div>
 
       <!-- Toolbar -->
       <div class="toolbar">
         <div class="filter-pills">
-          <button class="pill is-active">전체</button>
-          <button class="pill">고정</button>
-          <button class="pill">적용 <span class="pill__count">2</span></button>
-          <button class="pill">임시저장</button>
+          <button class="pill" :class="{ 'is-active': filter === 'all' }" @click="filter='all'">전체</button>
+          <button class="pill" :class="{ 'is-active': filter === 'pinned' }" @click="filter='pinned'">고정</button>
         </div>
         <div class="toolbar__spacer"></div>
         <div class="header__search" style="height:34px; min-width:240px;">
           <svg><use href="#i-search"/></svg>
-          <input type="text" placeholder="제목 검색" />
+          <input type="text" placeholder="제목 검색" x-model="search" />
         </div>
       </div>
 
       <!-- Feed -->
       <div class="notice-feed">
-        <div class="notice-item is-pinned">
-          <div class="notice-item__head">
-            <div class="notice-item__tags">
-              <span class="tag tag--applied">적용</span>
-              <span class="tag tag--fixed">고정</span>
+        <template x-for="n in filtered" :key="n.id">
+          <div class="notice-item" :class="{ 'is-pinned': n.pinned }">
+            <div class="notice-item__head" @click="toggle(n)">
+              <div class="notice-item__tags">
+                <span x-show="n.pinned" class="tag tag--fixed">고정</span>
+              </div>
+              <span class="notice-item__title" x-text="n.title || '(제목 없음)'"></span>
+              <span class="notice-item__meta">
+                <span x-text="n.author"></span>
+                &nbsp;·&nbsp;
+                <span x-text="n.created_at"></span>
+              </span>
+              <div class="notice-item__actions" x-show="canWrite" @click.stop>
+                <button class="btn-xs" @click="openModal(n)"><svg><use href="#i-edit"/></svg>수정</button>
+                <button class="btn-xs" style="color:var(--danger-600)" @click="deleteNotice(n)"><svg><use href="#i-trash"/></svg>삭제</button>
+              </div>
             </div>
-            <span class="notice-item__title">tt</span>
-            <span class="notice-item__time">2026-04-14 17:46:48</span>
-            <button class="btn-xs"><svg><use href="#i-edit"/></svg></button>
+            <div class="notice-item__body" :class="{ 'is-open': n._open }" x-text="n.body"></div>
           </div>
-          <div class="notice-item__body">tt</div>
-        </div>
-
-        <div class="notice-item">
-          <div class="notice-item__head">
-            <div class="notice-item__tags">
-              <span class="tag tag--applied">적용</span>
-            </div>
-            <span class="notice-item__title">안녕 하세요. 4월 22일 10시에 사용교육이 있을 예정입니다.</span>
-            <span class="notice-item__time">2026-04-23 00:25:36</span>
-            <button class="btn-xs"><svg><use href="#i-edit"/></svg></button>
-          </div>
-          <div class="notice-item__body">PM 이세요 4월 22일 10시 사용교육이 있을 예정입니다.</div>
+        </template>
+        <div x-show="filtered.length === 0" style="padding:40px 0;text-align:center;color:var(--text-tertiary);font-size:14px;">
+          등록된 공지사항이 없습니다.
         </div>
       </div>
+
+      <!-- Write / Edit modal -->
+      <div class="nm-overlay" x-show="modal.open" x-cloak @click.self="modal.open=false">
+        <div class="nm-dialog" @click.stop>
+          <div class="nm-dialog__head">
+            <span class="nm-dialog__title" x-text="modal.id ? '공지 수정' : '공지 작성'"></span>
+            <button class="btn-xs" @click="modal.open=false"><svg><use href="#i-x"/></svg></button>
+          </div>
+          <div class="nm-dialog__body">
+            <div>
+              <label class="nm-label">제목</label>
+              <input class="input nm-input" type="text" placeholder="공지 제목을 입력하세요" x-model="modal.title" />
+            </div>
+            <div>
+              <label class="nm-label">내용</label>
+              <textarea class="nm-textarea" placeholder="공지 내용을 입력하세요" x-model="modal.body"></textarea>
+            </div>
+            <div class="nm-pin-row">
+              <input type="checkbox" id="nm-pin" x-model="modal.pinned" />
+              <label for="nm-pin">상단 고정</label>
+            </div>
+          </div>
+          <div class="nm-dialog__foot">
+            <button class="btn btn--ghost" @click="modal.open=false">취소</button>
+            <button class="btn btn--primary" @click="saveNotice()" :disabled="modal.saving">
+              <span x-text="modal.saving ? '저장 중…' : '저장'"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </main>
 </div>
 
+<script th:inline="javascript">
+/*<![CDATA[*/
+function noticePage() {
+  const ctx      = (/*[[@{/}]]*/ '/').replace(/\/$/, '');
+  const csrfToken = document.querySelector('meta[name="_csrf"]')?.content || '';
+  const canWrite  = /*[[${canWrite}]]*/ false;
+  const serverNotices = /*[[${notices}]]*/ [];
+
+  return {
+    ctx, canWrite,
+    notices: serverNotices.map(n => ({ ...n, pinned: n.pinned == 1 || n.pinned === true, _open: false })),
+    filter: 'all',
+    search: '',
+    modal: { open: false, id: 0, title: '', body: '', pinned: false, saving: false },
+
+    get filtered() {
+      let list = this.notices;
+      if (this.filter === 'pinned') list = list.filter(n => n.pinned);
+      if (this.search.trim()) {
+        const kw = this.search.trim().toLowerCase();
+        list = list.filter(n => (n.title || '').toLowerCase().includes(kw));
+      }
+      return list;
+    },
+
+    toggle(n) { n._open = !n._open; },
+
+    openModal(n) {
+      if (n) {
+        this.modal = { open: true, id: n.id, title: n.title, body: n.body || '', pinned: n.pinned, saving: false };
+      } else {
+        this.modal = { open: true, id: 0, title: '', body: '', pinned: false, saving: false };
+      }
+    },
+
+    async saveNotice() {
+      if (!this.modal.title.trim()) { alert('제목을 입력하세요.'); return; }
+      this.modal.saving = true;
+      try {
+        const body = new URLSearchParams({
+          id:     this.modal.id,
+          title:  this.modal.title,
+          body:   this.modal.body,
+          pinned: this.modal.pinned,
+          _csrf:  csrfToken,
+        });
+        const res  = await fetch(ctx + '/notices/save', { method: 'POST', body });
+        const data = await res.json();
+        if (data.ok) {
+          this.modal.open = false;
+          location.reload();
+        } else {
+          alert('저장 실패: ' + (data.msg || ''));
+        }
+      } catch (e) {
+        alert('저장 중 오류: ' + e.message);
+      } finally {
+        this.modal.saving = false;
+      }
+    },
+
+    async deleteNotice(n) {
+      if (!confirm('이 공지를 삭제하시겠습니까?')) return;
+      try {
+        const body = new URLSearchParams({ id: n.id, _csrf: csrfToken });
+        const res  = await fetch(ctx + '/notices/delete', { method: 'POST', body });
+        const data = await res.json();
+        if (data.ok) {
+          this.notices = this.notices.filter(x => x.id !== n.id);
+        } else {
+          alert('삭제 실패: ' + (data.msg || ''));
+        }
+      } catch (e) {
+        alert('삭제 중 오류: ' + e.message);
+      }
+    },
+  };
+}
+/*]]>*/
+</script>
+
 <script th:src="@{/assets/js/app.js}"></script>
-<script th:src="@{/assets/js/datepicker.js}"></script>
 <script th:src="@{/assets/js/chrome.js}" data-page="notice" th:attr="data-ctx=@{/}"></script>
 <script>
   document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '상담 업무', current: '공지사항' }); });

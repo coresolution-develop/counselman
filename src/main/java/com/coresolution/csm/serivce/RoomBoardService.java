@@ -2,6 +2,7 @@ package com.coresolution.csm.serivce;
 
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
+import java.sql.Statement;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -120,6 +121,27 @@ public class RoomBoardService {
                     key idx_snapshot (rbs_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """.formatted(safe));
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS csm.room_board_discharge_notice_%s (
+                    rbdn_id bigint auto_increment primary key,
+                    rbp_id bigint default null,
+                    snapshot_id bigint default null,
+                    ward_name varchar(50) default null,
+                    room_name varchar(50) not null,
+                    patient_no varchar(100) default null,
+                    patient_name varchar(100) not null,
+                    discharge_date date not null,
+                    discharge_time varchar(10) not null default 'AM',
+                    status varchar(20) not null default 'PLANNED',
+                    note varchar(1000) default null,
+                    created_at timestamp default current_timestamp,
+                    created_by varchar(100) default null,
+                    updated_at timestamp default current_timestamp on update current_timestamp,
+                    updated_by varchar(100) default null,
+                    key idx_discharge_date (discharge_date, status),
+                    key idx_room_date (room_name, discharge_date)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """.formatted(safe));
     }
 
     public List<RoomBoardRoomConfig> getRoomConfigs(String inst) {
@@ -235,6 +257,111 @@ public class RoomBoardService {
             item.setParseMessage(rs.getString("parse_message"));
             return item;
         });
+    }
+
+    public List<Map<String, Object>> listCurrentRoomBoardPatients(String inst) {
+        ensureTables(inst);
+        String safe = sanitizeInst(inst);
+        RoomBoardSnapshot snapshot = findSnapshot(safe, null);
+        if (snapshot == null || snapshot.getId() == null) {
+            return List.of();
+        }
+        String sql = """
+                SELECT rbp_id, rbs_id, ward_name, room_name, patient_no, patient_name, gender, age,
+                       admission_date, doctor_name, patient_type, memo
+                  FROM csm.room_board_patient_%s
+                 WHERE rbs_id = ?
+                 ORDER BY ward_name ASC, room_name ASC, patient_name ASC
+                """.formatted(safe);
+        return jdbcTemplate.queryForList(sql, snapshot.getId());
+    }
+
+    public List<Map<String, Object>> listDischargeNotices(String inst, String date) {
+        ensureTables(inst);
+        String safe = sanitizeInst(inst);
+        LocalDate targetDate = parseDate(date, LocalDate.now());
+        String sql = """
+                SELECT rbdn_id, rbp_id, snapshot_id, ward_name, room_name, patient_no, patient_name,
+                       DATE_FORMAT(discharge_date,'%%Y-%%m-%%d') AS discharge_date,
+                       discharge_time, status, note,
+                       DATE_FORMAT(created_at,'%%Y-%%m-%%d %%H:%%i:%%s') AS created_at,
+                       created_by,
+                       DATE_FORMAT(updated_at,'%%Y-%%m-%%d %%H:%%i:%%s') AS updated_at,
+                       updated_by
+                  FROM csm.room_board_discharge_notice_%s
+                 WHERE discharge_date = ?
+                 ORDER BY
+                       CASE status WHEN 'PLANNED' THEN 1 WHEN 'COMPLETED' THEN 2 ELSE 3 END,
+                       CASE discharge_time WHEN 'AM' THEN 1 WHEN 'PM' THEN 2 ELSE 3 END,
+                       ward_name ASC, room_name ASC, patient_name ASC
+                """.formatted(safe);
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, targetDate);
+        for (Map<String, Object> row : rows) {
+            row.put("statusLabel", dischargeStatusLabel(Objects.toString(row.get("status"), "")));
+            row.put("timeLabel", dischargeTimeLabel(Objects.toString(row.get("discharge_time"), "")));
+            row.put("availabilityLabel", dischargeAvailabilityLabel(
+                    Objects.toString(row.get("status"), ""),
+                    Objects.toString(row.get("discharge_time"), "")));
+        }
+        return rows;
+    }
+
+    @Transactional
+    public long saveDischargeNotice(
+            String inst,
+            Long rbpId,
+            String dischargeDate,
+            String dischargeTime,
+            String status,
+            String note,
+            String actor) {
+        ensureTables(inst);
+        String safe = sanitizeInst(inst);
+        LocalDate date = parseDate(dischargeDate, LocalDate.now());
+        String normalizedTime = normalizeDischargeTime(dischargeTime);
+        String normalizedStatus = normalizeDischargeStatus(status);
+        Map<String, Object> patient = findCurrentPatientForDischarge(safe, rbpId);
+        if (patient == null) {
+            throw new IllegalArgumentException("퇴원예고로 등록할 재원 환자를 선택해주세요.");
+        }
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        String sql = """
+                INSERT INTO csm.room_board_discharge_notice_%s
+                (rbp_id, snapshot_id, ward_name, room_name, patient_no, patient_name,
+                 discharge_date, discharge_time, status, note, created_by, updated_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """.formatted(safe);
+        jdbcTemplate.update(con -> {
+            java.sql.PreparedStatement ps = con.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS);
+            ps.setObject(1, patient.get("rbp_id"));
+            ps.setObject(2, patient.get("rbs_id"));
+            ps.setString(3, safeText(patient.get("ward_name"), 50));
+            ps.setString(4, normalizeRoomName(Objects.toString(patient.get("room_name"), "")));
+            ps.setString(5, safeText(patient.get("patient_no"), 100));
+            ps.setString(6, safeText(patient.get("patient_name"), 100));
+            ps.setObject(7, date);
+            ps.setString(8, normalizedTime);
+            ps.setString(9, normalizedStatus);
+            ps.setString(10, safeText(note, 1000));
+            ps.setString(11, safeText(actor, 100));
+            ps.setString(12, safeText(actor, 100));
+            return ps;
+        }, keyHolder);
+        return Objects.requireNonNull(keyHolder.getKey()).longValue();
+    }
+
+    @Transactional
+    public void updateDischargeNoticeStatus(String inst, long noticeId, String status, String actor) {
+        ensureTables(inst);
+        if (noticeId <= 0) {
+            throw new IllegalArgumentException("noticeId is required");
+        }
+        String safe = sanitizeInst(inst);
+        jdbcTemplate.update(
+                "UPDATE csm.room_board_discharge_notice_" + safe + " SET status = ?, updated_by = ? WHERE rbdn_id = ?",
+                normalizeDischargeStatus(status),
+                safeText(actor, 100),
+                noticeId);
     }
 
     public RoomBoardImportResult previewImport(String inst, String sourceType, String snapshotDate, String snapshotTime,
@@ -1192,7 +1319,7 @@ public class RoomBoardService {
             item.setPatientName(decryptHexString(safeText(row.get("patient_name_hex"), 500)));
             item.setGender(safeText(row.get("gender"), 20));
             item.setBirthDate(safeText(row.get("birth_date"), 20));
-            item.setGuardianName(safeText(row.get("guardian_name"), 100));
+            item.setGuardianName(decryptHexString(safeText(row.get("guardian_name"), 100)));
             item.setGuardianPhone(decryptHexString(safeText(row.get("guardian_phone_hex"), 500)));
             item.setCounselDate(safeText(row.get("counsel_date"), 20));
             item.setCounselor(safeText(row.get("counselor"), 100));
@@ -1265,6 +1392,59 @@ public class RoomBoardService {
                 "UPDATE csm.counsel_data_" + safe
                 + " SET cs_col_19 = ?, cs_col_38 = NULL, cs_col_21 = NULL, updated_at = NOW() WHERE cs_idx = ?",
                 status, csIdx);
+    }
+
+    private Map<String, Object> findCurrentPatientForDischarge(String safe, Long rbpId) {
+        if (rbpId == null || rbpId <= 0) {
+            return null;
+        }
+        RoomBoardSnapshot snapshot = findSnapshot(safe, null);
+        if (snapshot == null || snapshot.getId() == null) {
+            return null;
+        }
+        String sql = """
+                SELECT rbp_id, rbs_id, ward_name, room_name, patient_no, patient_name
+                  FROM csm.room_board_patient_%s
+                 WHERE rbp_id = ? AND rbs_id = ?
+                 LIMIT 1
+                """.formatted(safe);
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, rbpId, snapshot.getId());
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    private String normalizeDischargeTime(String value) {
+        String raw = value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+        return "PM".equals(raw) ? "PM" : "AM";
+    }
+
+    private String dischargeTimeLabel(String value) {
+        return "PM".equalsIgnoreCase(value) ? "오후" : "오전";
+    }
+
+    private String normalizeDischargeStatus(String value) {
+        String raw = value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+        if ("COMPLETED".equals(raw) || "CANCELLED".equals(raw)) {
+            return raw;
+        }
+        return "PLANNED";
+    }
+
+    private String dischargeStatusLabel(String value) {
+        return switch (normalizeDischargeStatus(value)) {
+            case "COMPLETED" -> "퇴원완료";
+            case "CANCELLED" -> "취소";
+            default -> "퇴원예정";
+        };
+    }
+
+    private String dischargeAvailabilityLabel(String status, String dischargeTime) {
+        if ("CANCELLED".equalsIgnoreCase(status)) {
+            return "병상 변동 없음";
+        }
+        if ("COMPLETED".equalsIgnoreCase(status)) {
+            return "입원 가능";
+        }
+        return "AM".equalsIgnoreCase(dischargeTime) ? "오후 입원 가능" : "익일 입원 권장";
     }
 
     private long toLong(Object o) {

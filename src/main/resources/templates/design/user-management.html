@@ -226,15 +226,19 @@
         </div>
       </div>
 
-      <!-- Admin sub-tabs (Users / Roles) -->
+      <!-- Admin sub-tabs -->
       <div class="tabs" role="tablist">
         <button class="tab is-active" role="tab" aria-selected="true">
           <svg><use href="#i-users"/></svg>
           사용자 관리
         </button>
-        <a class="tab" th:href="@{/design/role-management}" role="tab">
+        <a class="tab" th:href="@{/roles}" role="tab">
           <svg><use href="#i-shield"/></svg>
           역할 관리
+        </a>
+        <a class="tab" th:href="@{/admin/room-board}" role="tab">
+          <svg><use href="#i-bed"/></svg>
+          병실현황판 관리
         </a>
       </div>
 
@@ -715,7 +719,7 @@ function userMgmt() {
 <script th:src="@{/assets/js/datepicker.js}"></script>
 <script th:src="@{/assets/js/chrome.js}" data-page="admin" th:attr="data-ctx=@{/}"></script>
 <script>
-  document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '시스템', current: '사용자 관리' }); });
+  document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '관리자', current: '사용자 관리' }); });
 </script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 </body>

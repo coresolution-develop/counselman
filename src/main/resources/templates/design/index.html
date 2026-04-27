@@ -19,11 +19,15 @@
   <h1>MediPlat 디자인 프리뷰</h1>
   <p class="hint">Claude Design 핸드오프 번들 — 점진 이식 작업용 미리보기입니다.</p>
   <div class="grid">
-    <a class="card" href="/design/counsel/list">상담리스트<small>/design/counsel/list</small></a>
-    <a class="card" href="/design/counsel/intake">상담 접수<small>/design/counsel/intake</small></a>
-    <a class="card" href="/design/notices">공지사항<small>/design/notices</small></a>
-    <a class="card" href="/design/message">문자관리<small>/design/message</small></a>
-    <a class="card" href="/design/role-management">역할 관리<small>/design/role-management</small></a>
+    <a class="card" th:href="@{/counsel/list}">상담리스트<small>/counsel/list</small></a>
+    <a class="card" th:href="@{/counsel/intake}">상담 접수<small>/counsel/intake</small></a>
+    <a class="card" th:href="@{/counsel/inpatient}">입원상담<small>/counsel/inpatient</small></a>
+    <a class="card" th:href="@{/counsel/log-settings}">상담일지 관리<small>/counsel/log-settings</small></a>
+    <a class="card" th:href="@{/notices}">공지사항<small>/notices</small></a>
+    <a class="card" th:href="@{/message}">문자관리<small>/message</small></a>
+    <a class="card" th:href="@{/users}">사용자 관리<small>/users</small></a>
+    <a class="card" th:href="@{/roles}">역할 관리<small>/roles</small></a>
+    <a class="card" th:href="@{/ward-status}">병실현황판(디자인)<small>/ward-status</small></a>
   </div>
 </body>
 </html>

@@ -189,14 +189,12 @@
                 </td>
                 <!-- 배정 병실 -->
                 <td>
-                  <select class="ar-room-select" x-model="item.roomName">
-                    <option value="">-- 병실 선택 --</option>
-                    <template x-for="r in rooms" :key="r.roomName">
-                      <option :value="r.roomName" x-text="r.wardName + ' ' + r.roomName"></option>
-                    </template>
-                    <!-- 현재 배정된 병실이 목록에 없을 경우 fallback -->
-                    <template x-if="item.roomName && !rooms.find(r => r.roomName === item.roomName)">
-                      <option :value="item.roomName" x-text="item.roomName + ' (현재)'"></option>
+                  <select class="ar-room-select" @change="item.roomName = $event.target.value">
+                    <option value="" :selected="!item.roomName">-- 병실 선택 --</option>
+                    <template x-for="r in roomOptions(item)" :key="r.roomName">
+                      <option :value="r.roomName"
+                              :selected="item.roomName === r.roomName"
+                              x-text="r.wardName ? r.wardName + ' ' + r.roomName : r.roomName"></option>
                     </template>
                   </select>
                 </td>
@@ -250,6 +248,14 @@ function admissionPage() {
 
     init() {
       this.items = this.items.map(i => ({ ...i, _busy: false }));
+    },
+
+    roomOptions(item) {
+      const base = this.rooms.slice();
+      if (item.roomName && !base.find(r => r.roomName === item.roomName)) {
+        base.unshift({ wardName: '', roomName: item.roomName });
+      }
+      return base;
     },
 
     get filtered() {

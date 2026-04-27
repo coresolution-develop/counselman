@@ -830,6 +830,19 @@ public class CsmAuthService {
         return normalized;
     }
 
+    public List<String> getUserRoleNames(String inst, int userId) {
+        try {
+            String safe = sanitizeInstPublic(inst);
+            return jdbcTemplate.queryForList(
+                "SELECT r.role_name FROM csm.user_role_" + safe + " ur"
+                + " JOIN csm.role_" + safe + " r ON r.role_id = ur.role_id"
+                + " WHERE ur.user_id = ? ORDER BY r.is_system DESC, r.role_id ASC",
+                String.class, userId);
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
     public List<String> getCounselStatusOptions(String inst) {
         return getDistinctCounselColumnValues(inst, "cs_col_19");
     }
@@ -1730,6 +1743,18 @@ public class CsmAuthService {
                     reservationId);
         } catch (Exception e) {
             log.warn("[reservation] touchOpenedAt fail inst={}, id={}, err={}", safe, reservationId, e.toString());
+        }
+    }
+
+    public void clearOpenedAt(String inst, long reservationId) {
+        if (reservationId <= 0) return;
+        String safe = sanitizeInst(inst);
+        try {
+            jdbcTemplate.update(
+                    "UPDATE csm.counsel_reservation_" + safe + " SET opened_at = NULL WHERE id = ?",
+                    reservationId);
+        } catch (Exception e) {
+            log.warn("[reservation] clearOpenedAt fail inst={}, id={}, err={}", safe, reservationId, e.toString());
         }
     }
 
@@ -2999,6 +3024,67 @@ public class CsmAuthService {
         String safe = sanitizeInst(inst);
         String sql = "DELETE FROM csm.counsel_data_" + safe + " WHERE cs_idx = ?";
         return jdbcTemplate.update(sql, csIdx);
+    }
+
+    // ── Institution notice (inst_notice_{inst}) ─────────────────────────────
+
+    private void ensureInstNoticeTable(String safe) {
+        jdbcTemplate.execute(
+            "CREATE TABLE IF NOT EXISTS csm.inst_notice_" + safe + " ("
+            + "id         BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,"
+            + "title      VARCHAR(300) NOT NULL DEFAULT '',"
+            + "body       TEXT,"
+            + "pinned     TINYINT(1)   NOT NULL DEFAULT 0,"
+            + "author     VARCHAR(100) NOT NULL DEFAULT '',"
+            + "created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            + "updated_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+            + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    }
+
+    public List<Map<String, Object>> listInstNotices(String inst) {
+        String safe = sanitizeInst(inst);
+        ensureInstNoticeTable(safe);
+        return jdbcTemplate.queryForList(
+            "SELECT id, title, body, pinned, author,"
+            + " DATE_FORMAT(created_at,'%Y-%m-%d %H:%i') AS created_at,"
+            + " DATE_FORMAT(updated_at,'%Y-%m-%d %H:%i') AS updated_at"
+            + " FROM csm.inst_notice_" + safe
+            + " ORDER BY pinned DESC, id DESC LIMIT 500");
+    }
+
+    public long saveInstNotice(String inst, long id, String title, String body, boolean pinned, String author) {
+        String safe = sanitizeInst(inst);
+        ensureInstNoticeTable(safe);
+        String safeTitle  = safeText(title,  300);
+        String safeBody   = safeText(body,  20000);
+        String safeAuthor = safeText(author, 100);
+        if (id > 0) {
+            jdbcTemplate.update(
+                "UPDATE csm.inst_notice_" + safe
+                + " SET title=?, body=?, pinned=?, author=?, updated_at=NOW() WHERE id=?",
+                safeTitle, safeBody, pinned ? 1 : 0, safeAuthor, id);
+            return id;
+        }
+        KeyHolder kh = new GeneratedKeyHolder();
+        jdbcTemplate.update(conn -> {
+            PreparedStatement ps = conn.prepareStatement(
+                "INSERT INTO csm.inst_notice_" + safe + " (title,body,pinned,author) VALUES (?,?,?,?)",
+                Statement.RETURN_GENERATED_KEYS);
+            ps.setString(1, safeTitle);
+            ps.setString(2, safeBody);
+            ps.setInt(3, pinned ? 1 : 0);
+            ps.setString(4, safeAuthor);
+            return ps;
+        }, kh);
+        Number key = kh.getKey();
+        return key == null ? 0L : key.longValue();
+    }
+
+    public int deleteInstNotice(String inst, long id) {
+        String safe = sanitizeInst(inst);
+        ensureInstNoticeTable(safe);
+        if (id <= 0) return 0;
+        return jdbcTemplate.update("DELETE FROM csm.inst_notice_" + safe + " WHERE id=?", id);
     }
 
 }

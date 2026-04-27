@@ -466,7 +466,7 @@
             <!-- Top patient strip -->
             <div class="ic-top">
               <div class="ic-field ic-field--wide">
-                <label class="ic-field__label">환자명 <span class="req">*</span></label>
+                <label class="ic-field__label">환자명</label>
                 <input type="text" class="ic-input" placeholder="홍길동" x-model="patient.name" />
               </div>
               <div class="ic-field">
@@ -825,10 +825,10 @@
               병실 선택
             </div>
             <div class="ic-room__btns">
-              <a th:href="@{#}" class="ic-room__btn ic-room__btn--primary" style="text-decoration:none;">
+              <button type="button" class="ic-room__btn ic-room__btn--primary" @click="openRoomBoard()">
                 <svg><use href="#i-list"/></svg> 병실현황판 보기
-              </a>
-              <button class="ic-room__btn ic-room__btn--ghost" x-text="selectedBed ? selectedBed : '선택된 병상 없음'"></button>
+              </button>
+              <button class="ic-room__btn ic-room__btn--ghost" x-text="meta.admitRoom || '선택된 병상 없음'"></button>
             </div>
           </div>
 
@@ -942,6 +942,11 @@
       <!-- Footer actions -->
       <div class="ic-footer">
         <span class="spacer">자동저장 · 14:23 · <span style="color: var(--success, #10b981);">●</span> 저장됨</span>
+        <label class="ic-toggle" style="margin-right:4px;">
+          <span class="ic-switch" :class="{ 'is-on': stayOnPage }"
+                @click="stayOnPage=!stayOnPage; localStorage.setItem('ic_stay_on_page', stayOnPage)"></span>
+          <span style="font-size:12px;color:var(--text-secondary);" x-text="stayOnPage ? '저장 후 이 페이지 유지' : '저장 후 목록으로'"></span>
+        </label>
         <button class="btn btn--outline"><svg><use href="#i-download"/></svg>일지 출력</button>
         <button class="btn btn--outline"><svg><use href="#i-download"/></svg>입원서식 출력</button>
         <button class="btn btn--primary" @click="save()" :disabled="loading"><svg><use href="#i-check"/></svg><span x-text="loading ? '저장 중...' : '환자정보 저장'"></span></button>
@@ -1279,7 +1284,7 @@ function inpatientForm() {
       nonAdmitReason: _pd.nonAdmitReason || '',
       admitDate:      _pd.admitDate      || '',
       admitTime:      '',
-      admitRoom:      _pd.room           || '',
+      admitRoom:      _pd.room           || new URLSearchParams(location.search).get('bed') || '',
       note:           _pd.note           || '',
     },
 
@@ -1294,7 +1299,7 @@ function inpatientForm() {
     },
     removeGuardian(i) { this.guardians.splice(i, 1); },
 
-    selectedBed: new URLSearchParams(location.search).get('bed') || '',
+    stayOnPage: localStorage.getItem('ic_stay_on_page') !== 'false',
     agreementStatus: localStorage.getItem('mp_agreement_status') || 'pending',
     agreementLabel() {
       return { pending: '미작성', progress: '작성중', done: '작성완료' }[this.agreementStatus] || '미작성';
@@ -1364,14 +1369,34 @@ function inpatientForm() {
     init() {
       const rid = this.meta.reservationId;
       if (rid > 0) {
-        const beat = () => fetch(ctx + '/design/counsel/inpatient/heartbeat?reservationId=' + rid).catch(() => {});
+        const beat = () => fetch(ctx + '/counsel/inpatient/heartbeat?reservationId=' + rid).catch(() => {});
         this._hbTimer = setInterval(beat, 3 * 60 * 1000);
-        window.addEventListener('beforeunload', () => clearInterval(this._hbTimer));
+        const releaseBody = new URLSearchParams({
+          reservationId: rid,
+          _csrf: document.querySelector('meta[name="_csrf"]')?.content || '',
+        });
+        window.addEventListener('pagehide', () => {
+          clearInterval(this._hbTimer);
+          navigator.sendBeacon(ctx + '/counsel/inpatient/release', releaseBody);
+        });
       }
+      window.addEventListener('message', (e) => {
+        if (e.origin !== location.origin) return;
+        if (e.data?.type === 'csm-room-board-select') {
+          this.meta.admitRoom = e.data.roomName || '';
+        }
+      });
+    },
+
+    openRoomBoard() {
+      const w = 1200, h = 800;
+      const l = Math.max(0, (screen.width  - w) / 2);
+      const t = Math.max(0, (screen.height - h) / 2);
+      window.open(ctx + '/room-board?popup=1', 'csmRoomBoard',
+        `width=${w},height=${h},left=${l},top=${t},resizable=yes,scrollbars=yes`);
     },
 
     async save() {
-      if (!this.patient.name.trim()) { alert('환자명을 입력하세요.'); return; }
       const c = csrf();
       const body = new URLSearchParams({
         cs_idx:        this.meta.csIdx,
@@ -1420,7 +1445,7 @@ function inpatientForm() {
       this.appendDynamicFields(body);
       this.loading = true;
       try {
-        const res  = await fetch(ctx + '/design/counsel/inpatient/save', {
+        const res  = await fetch(ctx + '/counsel/inpatient/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded', [c.header]: c.token },
           body,
@@ -1429,6 +1454,10 @@ function inpatientForm() {
         if (!data.ok) { alert(data.error || '저장 실패'); return; }
         this.meta.csIdx = data.csIdx;
         this.patient.id = 'P-' + data.csIdx;
+        if (!this.stayOnPage) {
+          location.href = ctx + '/counsel/list';
+          return;
+        }
         alert('저장되었습니다.');
       } finally { this.loading = false; }
     },

@@ -216,7 +216,17 @@
     .ws-bed-slot.is-filled .ws-bed-slot__num { color: var(--text-tertiary); }
     .ws-bed-slot.is-reserved .ws-bed-slot__num { color: #a16207; }
 
-    /* (unused — kept for popup mode only) */
+    /* ===== Popup mode: skip chrome, fill full window ===== */
+    html.ws-popup #slot-sidebar,
+    html.ws-popup #slot-header { display: none !important; }
+    html.ws-popup .main {
+      position: fixed !important;
+      inset: 0 !important;
+      padding: 24px 32px 48px !important;
+      overflow-y: auto !important;
+      background: var(--bg-main, #f5f7fa) !important;
+    }
+
     .ws-select-btn {
       padding: 7px 14px;
       border-radius: 8px;
@@ -236,6 +246,7 @@
   </style>
 </head>
 <body>
+<script>if (new URLSearchParams(location.search).get('popup') === '1') document.documentElement.classList.add('ws-popup');</script>
 <script th:src="@{/assets/js/sprite.js}"></script>
 
 <div class="app"
@@ -262,6 +273,10 @@
           최신 현황
         </button>
         <a th:href="@{/admin/room-board}" class="ws-hero__btn" x-show="!popupMode && canManage">관리 화면</a>
+        <button type="button" class="ws-hero__btn" @click="location.reload()" x-show="popupMode">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          새로고침
+        </button>
         <button type="button" class="ws-hero__btn ws-hero__btn--solid" @click="closePage()" x-show="popupMode">닫기</button>
       </div>
     </div>
@@ -338,6 +353,7 @@
                 <th>입원 예정일</th>
                 <th>상태구분</th>
                 <th>재원환자 명단</th>
+                <th x-show="popupMode">선택</th>
               </tr>
             </thead>
             <tbody>
@@ -373,6 +389,14 @@
                       </template>
                     </div>
                   </td>
+                  <td x-show="popupMode">
+                    <button class="ws-select-btn"
+                            :disabled="room.available === 0"
+                            :class="{ 'ws-select-btn--ghost': room.available === 0 }"
+                            @click="selectRoom(ward, room)">
+                      <span x-text="room.available === 0 ? '만실' : '선택'"></span>
+                    </button>
+                  </td>
                 </tr>
               </template>
             </tbody>
@@ -385,14 +409,13 @@
 </div><!-- .app -->
 
 <script th:inline="javascript">
-/*<![CDATA[*/
 function wardStatus() {
   const ctx = location.pathname.startsWith('/csm/') ? '/csm' : '';
 
-  const _board      = /*[[${board}]]*/ null;
-  const _canManage  = /*[[${canManageRoomBoard}]]*/ false;
+  const _board     = /*[[${board}]]*/ null;
+  const _canManage = /*[[${canManageRoomBoard}]]*/ false;
 
-  function mapRoom(r, wi) {
+  function mapRoom(r) {
     const care = [];
     if (r.statusDiaper) care.push('기저귀');
     if (r.statusOxygen)  care.push('산소');
@@ -409,7 +432,7 @@ function wardStatus() {
       available: r.availableCount != null ? r.availableCount : Math.max(0, cap - occ - res),
       occupancy: cap > 0 ? Math.round((occ / cap) * 100) : 0,
       care,
-      patients:  r.patientSlots || [],
+      patients:  (r.patientSlots || []).map(s => s === '-' ? '' : s),
       gender:    r.genderSummary || '',
       admitDate: r.reservationNames || '',
       careType:  r.careType || '',
@@ -425,7 +448,7 @@ function wardStatus() {
       occupied: w.occupiedBeds  || 0,
       available:w.availableBeds || 0,
       occupancy:Math.round(w.occupancyRate || 0),
-      rooms:    (w.rooms || []).map((r, ri) => mapRoom(r, ri)),
+      rooms:    (w.rooms || []).map(mapRoom),
     };
   }
 
@@ -488,14 +511,12 @@ function wardStatus() {
     selectRoom(ward, room) {
       if (!room || room.available <= 0) return;
       const roomName = room.id || '';
-      const bedName = roomName ? `${roomName}-${room.occupied + room.reserved + 1}bed` : '';
       try {
         if (window.opener && !window.opener.closed) {
           window.opener.postMessage({
             type: 'csm-room-board-select',
             wardName: ward?.name || '',
             roomName,
-            bedName,
           }, window.location.origin);
         }
       } catch (_) {}
@@ -510,7 +531,9 @@ function wardStatus() {
 <script th:src="@{/assets/js/chrome.js}" data-page="ward" th:attr="data-ctx=@{/}"></script>
 <script>
   document.addEventListener('alpine:init', () => {
-    MPChrome.mount({ parent: '상담 업무', current: '병실현황판' });
+    if (new URLSearchParams(location.search).get('popup') !== '1') {
+      MPChrome.mount({ parent: '상담 업무', current: '병실현황판' });
+    }
   });
 </script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>

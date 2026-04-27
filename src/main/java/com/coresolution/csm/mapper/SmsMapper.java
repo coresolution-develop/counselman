@@ -85,9 +85,9 @@ public interface SmsMapper {
 
     @Insert("""
             INSERT INTO csm.transmission_history_${inst}
-                (contents, from_phone, to_phone, status, response, refkey, created_at, send_type)
+                (contents, from_phone, to_phone, status, response, refkey, created_at, send_type, reserve_time)
             VALUES
-                (#{contents}, #{fromPhone}, #{toPhone}, #{status}, #{responseString}, #{refkey}, NOW(), #{sendType})
+                (#{contents}, #{fromPhone}, #{toPhone}, #{status}, #{responseString}, #{refkey}, NOW(), #{sendType}, #{reserveTime})
             """)
     int insertTransmissionHistory(
             @Param("inst") String inst,
@@ -97,7 +97,8 @@ public interface SmsMapper {
             @Param("status") String status,
             @Param("responseString") String responseString,
             @Param("refkey") String refkey,
-            @Param("sendType") String sendType);
+            @Param("sendType") String sendType,
+            @Param("reserveTime") java.time.LocalDateTime reserveTime);
 
     @Select("""
             <script>

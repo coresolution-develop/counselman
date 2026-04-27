@@ -4,6 +4,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.coresolution.csm.vo.AdmissionReservationItem;
 
@@ -50,6 +54,7 @@ public class RoomBoardController {
     private final CsmAuthService cs;
     private final MediplatSsoService mediplatSsoService;
     private final SmsService ss;
+    private final ObjectMapper objectMapper;
 
     @GetMapping({ "room-board", "/room-board" })
     public String roomBoard(
@@ -83,7 +88,13 @@ public class RoomBoardController {
                     "병실현황판 기능이 비활성화되었습니다.");
         }
         populateCommon(model, inst, userinfo);
-        model.addAttribute("board", roomBoardService.getBoard(inst, snapshotDate));
+        var board = roomBoardService.getBoard(inst, snapshotDate);
+        model.addAttribute("board", board);
+        try {
+            model.addAttribute("boardJson", objectMapper.writeValueAsString(board));
+        } catch (JsonProcessingException e) {
+            model.addAttribute("boardJson", "{}");
+        }
         model.addAttribute("canManageRoomBoard", canManageRoomBoard(userinfo));
         model.addAttribute("popupMode", popup == 1);
         model.addAttribute("selectedPatientName", safeString(patientName));
@@ -101,6 +112,92 @@ public class RoomBoardController {
         new SecurityContextLogoutHandler().logout(request, response, auth);
         SecurityContextHolder.clearContext();
         return "redirect:" + resolveMediplatRedirectUrl();
+    }
+
+    @GetMapping({ "room-board/discharge-notice", "/room-board/discharge-notice" })
+    public String dischargeNotice(
+            @RequestParam(value = "date", required = false) String date,
+            Model model,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return "redirect:/login";
+        }
+        if (!isRoomBoardEnabled(inst)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "병실현황판 기능이 비활성화되었습니다.");
+        }
+        Userdata userinfo = ensureUserInfo(session, inst);
+        populateCommon(model, inst, userinfo);
+        String targetDate = safeString(date);
+        if (targetDate.isBlank()) {
+            targetDate = java.time.LocalDate.now().toString();
+        }
+        List<Map<String, Object>> notices = roomBoardService.listDischargeNotices(inst, targetDate);
+        model.addAttribute("targetDate", targetDate);
+        model.addAttribute("notices", notices);
+        model.addAttribute("currentPatients", roomBoardService.listCurrentRoomBoardPatients(inst));
+        model.addAttribute("plannedCount", notices.stream().filter(n -> "PLANNED".equals(String.valueOf(n.get("status")))).count());
+        model.addAttribute("completedCount", notices.stream().filter(n -> "COMPLETED".equals(String.valueOf(n.get("status")))).count());
+        model.addAttribute("afternoonAvailableCount", notices.stream().filter(n -> "오후 입원 가능".equals(String.valueOf(n.get("availabilityLabel")))).count());
+        model.addAttribute("canManageRoomBoard", canManageRoomBoard(userinfo));
+        return "design/discharge-notice";
+    }
+
+    @PostMapping({ "room-board/discharge-notice/save", "/room-board/discharge-notice/save" })
+    public String saveDischargeNotice(
+            @RequestParam("rbpId") Long rbpId,
+            @RequestParam("dischargeDate") String dischargeDate,
+            @RequestParam(value = "dischargeTime", defaultValue = "AM") String dischargeTime,
+            @RequestParam(value = "status", defaultValue = "PLANNED") String status,
+            @RequestParam(value = "note", defaultValue = "") String note,
+            HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return "redirect:/login";
+        }
+        Userdata userinfo = ensureUserInfo(session, inst);
+        if (!isRoomBoardEnabled(inst) || !canManageRoomBoard(userinfo)) {
+            return "redirect:/room-board/discharge-notice";
+        }
+        try {
+            roomBoardService.saveDischargeNotice(
+                    inst,
+                    rbpId,
+                    dischargeDate,
+                    dischargeTime,
+                    status,
+                    note,
+                    userinfo == null ? "" : userinfo.getUs_col_02());
+        } catch (Exception e) {
+            log.warn("[room-board] discharge notice save fail inst={}, err={}", inst, e.toString());
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        redirectAttributes.addAttribute("date", dischargeDate);
+        return "redirect:/room-board/discharge-notice";
+    }
+
+    @PostMapping({ "room-board/discharge-notice/status", "/room-board/discharge-notice/status" })
+    public String updateDischargeNoticeStatus(
+            @RequestParam("noticeId") long noticeId,
+            @RequestParam("status") String status,
+            @RequestParam("date") String date,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return "redirect:/login";
+        }
+        Userdata userinfo = ensureUserInfo(session, inst);
+        if (isRoomBoardEnabled(inst) && canManageRoomBoard(userinfo)) {
+            roomBoardService.updateDischargeNoticeStatus(
+                    inst,
+                    noticeId,
+                    status,
+                    userinfo == null ? "" : userinfo.getUs_col_02());
+        }
+        return "redirect:/room-board/discharge-notice?date=" + safeString(date);
     }
 
     @GetMapping({ "admin/room-board", "/admin/room-board" })
@@ -125,7 +222,7 @@ public class RoomBoardController {
         model.addAttribute("endVar", "on");
         model.addAttribute("st", "");
         model.addAttribute("kw", "");
-        return "csm/admin/roomBoardAdmin";
+        return "design/room-board-admin";
     }
 
     @PostMapping({ "admin/room-board/room/save", "/admin/room-board/room/save" })

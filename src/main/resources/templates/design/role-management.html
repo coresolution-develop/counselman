@@ -100,7 +100,7 @@
 
       <!-- Tabs -->
       <div class="tabs" role="tablist">
-        <a class="tab" th:href="@{/design/user-management}" role="tab">
+        <a class="tab" th:href="@{/users}" role="tab">
           <svg><use href="#i-users"/></svg>
           사용자 관리
         </a>
@@ -108,6 +108,10 @@
           <svg><use href="#i-shield"/></svg>
           역할 관리
         </button>
+        <a class="tab" th:href="@{/admin/room-board}" role="tab">
+          <svg><use href="#i-bed"/></svg>
+          병실현황판 관리
+        </a>
       </div>
 
       <!-- Loading skeleton -->
@@ -476,7 +480,7 @@
     users: 'users', user: 'users',
     roles: 'key', role: 'key',
     statistics: 'chart', stats: 'chart',
-    reception: 'inbox', reservation: 'calendar',
+    reception: 'inbox', reservation: 'calendar', discharge: 'calendar',
     hospitalization: 'bed',
     records: 'notebook',
   };
@@ -578,11 +582,11 @@
             { id: 'list',             name: '상담 리스트',   desc: '전체 상담 이력 조회',    icon: 'list' },
             { id: 'records',          name: '상담일지 관리', desc: '상담 일지 작성 · 수정',  icon: 'notebook' },
             { id: 'statistics',       name: '상담 통계',     desc: '상담 KPI 및 리포트',     icon: 'chart' },
+            { id: 'discharge',        name: '퇴원예고',      desc: '퇴원예고 및 병상 회전 조회', icon: 'calendar' },
           ]},
           { id: 'comms', label: '커뮤니케이션', items: [
             { id: 'notice',      name: '공지사항',     desc: '내부 공지 작성 · 조회',   icon: 'megaphone' },
             { id: 'message',     name: '문자관리',     desc: '문자 발송 · 템플릿',      icon: 'chat' },
-            { id: 'reservation', name: '방문예약관리', desc: '방문 예약 생성 · 조회',   icon: 'calendar' },
           ]},
           { id: 'admin', label: '시스템 관리', items: [
             { id: 'admin',       name: '관리자',       desc: '관리자 전용 메뉴 접근',        icon: 'shield' },

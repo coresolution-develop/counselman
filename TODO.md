@@ -1,6 +1,6 @@
 # MediPlat 작업 현황
 
-> 최종 업데이트: 2026-04-25
+> 최종 업데이트: 2026-04-27
 
 ---
 
@@ -9,6 +9,9 @@
 ### 공통
 - [x] CSRF 메타 태그 적용 (전체 design 페이지)
 - [x] Alpine.js x-teleport 기반 모달 구조 정립
+- [x] **`/design/*` URL 정리** — 디자인 페이지를 운영 URL로 승격 (`/counsel/*`, `/notices`, `/message`, `/ward-status`, `/users`, `/roles`)
+- [x] 로그인 → `/csm/counsel/list?page=1&perPageNum=10&comment=`로 디자인 페이지 진입
+- [x] 기존 `/design/*` URL은 301 redirect로 유지 (북마크 호환)
 
 ### 사용자 관리 (`user-management.html` + `UserApiController.java`)
 - [x] 사용자 추가 (POST `/api/users`) — 비밀번호 AES 암호화, RBAC 역할 배정

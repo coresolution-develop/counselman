@@ -85,7 +85,7 @@ public class LoginController {
             // (선택) 프론트에서 그대로 따라가도록 redirect URL도 같이 내려주기
             String redirect = "core".equalsIgnoreCase(normalizedInst)
                     ? request.getContextPath() + "/core/admin"
-                    : request.getContextPath() + "/counsel/list";
+                    : request.getContextPath() + "/counsel/list?page=1&perPageNum=10&comment=";
             return ResponseEntity.ok(Map.of("result", "1", "message", "로그인 성공", "redirect", redirect));
         } catch (AuthenticationException ex) {
             return ResponseEntity.status(401)

@@ -20,9 +20,12 @@ import java.net.http.HttpResponse;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.text.SimpleDateFormat;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -1529,61 +1532,69 @@ public class PageController {
                 end);
 
         List<CounselData> cslist = cs.searchCounselData(cri);
+        if (cslist == null) cslist = Collections.emptyList();
         int totalCnt = cs.CounselListCnt(cri);
         postProcessDecryptAndMask(cslist, inst, cri.getSearchType(), cri.getKeyword());
-        List<CounselReservation> reservedCounselReservations = cs.listCounselReservations(inst, "RESERVED", 200);
-        if (reservedCounselReservations != null) {
-            reservedCounselReservations.sort(Comparator
+
+        List<CounselReservation> reservations = cs.listCounselReservations(inst, "RESERVED", 200);
+        if (reservations != null) {
+            reservations.sort(Comparator
                     .comparing((CounselReservation r) -> r == null || r.getPriority() == null ? 99 : r.getPriority())
                     .thenComparing(r -> r == null ? "" : safeString(r.getReserved_at()))
                     .thenComparing(r -> r == null || r.getId() == null ? Long.MAX_VALUE : r.getId()));
         }
 
-        Set<String> hiddenListColumns = getHiddenListColumns();
-        List<Map<String, Object>> orderItems = normalizeDynamicOrderItemComments(
-                inst,
-                filterListSettingItems(cs.getOrderItems(inst), hiddenListColumns));
-        List<Map<String, Object>> innerContentItems = buildListSettingInnerContentItems(inst, orderItems,
-                hiddenListColumns);
+        List<Map<String, Object>> queueItems = (reservations == null
+                ? Collections.<CounselReservation>emptyList() : reservations).stream()
+                .filter(Objects::nonNull)
+                .map(r -> {
+                    Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("id", r.getId());
+                    m.put("prio", r.getPriority() != null ? r.getPriority() : 9);
+                    m.put("name", safeString(r.getPatient_name()));
+                    m.put("phone", safeString(r.getPatient_phone()));
+                    m.put("time", safeString(r.getReserved_at()));
+                    m.put("note", safeString(r.getCall_summary()));
+                    m.put("beingWorkedOn", isBeingWorkedOn(r.getOpened_at()));
+                    return m;
+                })
+                .collect(Collectors.toList());
 
-        mv.addObject("orderItems", orderItems != null ? orderItems : Collections.emptyList());
-        mv.addObject("innerContentItems", innerContentItems != null ? innerContentItems : Collections.emptyList());
-        Paging pageMaker = new Paging();
-        pageMaker.setCri(cri); // 내부에서 calculatePaging() 한 번 호출
-        pageMaker.setTotalCount(totalCnt); // 다시 계산
-        mv.addObject("pageMaker", pageMaker);
-        mv.addObject("cri", cri);
+        final List<CounselData> finalCslist = cslist;
+        List<Map<String, Object>> recordItems = finalCslist.stream()
+                .filter(Objects::nonNull)
+                .map(r -> {
+                    Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("id", r.getCs_idx());
+                    m.put("date", safeString(r.getCs_col_16()));
+                    m.put("patient", safeString(r.getCs_col_01()));
+                    m.put("phone", safeString(r.getCs_col_15()));
+                    m.put("route", safeString(r.getCs_col_08_text()));
+                    m.put("contact", safeString(r.getCs_col_34()));
+                    m.put("guardian", safeString(r.getCs_col_13()));
+                    m.put("rel", safeString(r.getCs_col_14()));
+                    m.put("status", safeString(r.getCs_col_19()));
+                    m.put("statusType", designStatusType(r.getCs_col_19()));
+                    m.put("counselor", safeString(r.getCs_col_17()));
+                    m.put("lead", safeString(r.getCs_col_09()));
+                    List<String> tags = r.getEntries() == null ? Collections.emptyList()
+                            : r.getEntries().stream()
+                                    .filter(Objects::nonNull)
+                                    .map(CounselDataEntry::getValue)
+                                    .filter(v -> v != null && !v.isBlank())
+                                    .collect(Collectors.toList());
+                    m.put("tags", tags);
+                    return m;
+                })
+                .collect(Collectors.toList());
+
+        mv.addObject("queueItems", queueItems);
+        mv.addObject("recordItems", recordItems);
         mv.addObject("cnt", totalCnt);
-        mv.addObject("cslist", cslist);
+        mv.addObject("cri", cri);
         mv.addObject("statusOptions", cs.getCounselStatusOptions(inst));
         mv.addObject("pathTypeOptions", cs.getCounselPathTypeOptions(inst));
-        // 발신번호 (일괄 문자 보내기용)
-        Counsel_phone cpList = new Counsel_phone();
-        cpList.setInst(inst);
-        List<Counsel_phone> phoneListForBulk = cs.selectPhone(cpList);
-        List<Map<String, String>> phOptList = phoneListForBulk == null ? Collections.emptyList()
-                : phoneListForBulk.stream()
-                        .filter(Objects::nonNull)
-                        .map(p -> {
-                            String num = Optional.ofNullable(p.getPhone_num()).map(String::trim).orElse("");
-                            String name = Optional.ofNullable(p.getPhone_name()).map(String::trim).orElse("");
-                            if (num.isEmpty() || "null".equalsIgnoreCase(num)) return null;
-                            if (name.isEmpty() || "null".equalsIgnoreCase(name)) name = "미지정";
-                            Map<String, String> m = new java.util.LinkedHashMap<>();
-                            m.put("value", num);
-                            m.put("text", "(" + name + ") " + num);
-                            return m;
-                        })
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toList());
-        mv.addObject("phOptions", phOptList);
-        mv.addObject("reservedCounselReservations",
-                reservedCounselReservations != null ? reservedCounselReservations : Collections.emptyList());
-        boolean mobile = isMobile(req);
-        if (!mobile) {
-            mv.addObject("headerMode", "list");
-        }
-        mv.setViewName(mobile ? "csm/counsel/list_m" : "csm/counsel/list");
+        mv.setViewName("design/consultation-list");
         return mv;
     }
 
@@ -2917,6 +2928,7 @@ public class PageController {
         }
 
         try {
+            LocalDateTime reserveTime = resolveSmsReserveTime(payload.get("sendtime"));
             Map<String, Object> resp = externalSmsGatewayService.send(payload);
             String desc = Optional.ofNullable(resp.get("description")).map(String::valueOf).orElse("");
             boolean success = "success".equalsIgnoreCase(desc);
@@ -2929,7 +2941,8 @@ public class PageController {
                     success ? "SUCCESS" : "FAILURE",
                     String.valueOf(resp.getOrDefault("_raw", resp.toString())),
                     requestRefkey,
-                    type);
+                    type,
+                    reserveTime);
 
             HttpStatus status = success ? HttpStatus.OK : HttpStatus.BAD_GATEWAY;
             return ResponseEntity.status(status).body(resp);
@@ -2944,7 +2957,8 @@ public class PageController {
                         "FAILURE",
                         e.getMessage(),
                         requestRefkey,
-                        type);
+                        type,
+                        resolveSmsReserveTime(payload.get("sendtime")));
             } catch (Exception historyEx) {
                 log.error("[api/external/sendSMS] history insert fail inst={}", inst, historyEx);
             }
@@ -3070,7 +3084,7 @@ public class PageController {
     }
 
 
-    @GetMapping(value = { "rate", "/rate", "rate/", "/rate/" }, produces = "text/html")
+    @GetMapping(value = { "rate", "/rate", "rate/", "/rate/", "message/rate", "/message/rate" }, produces = "text/html")
     public String ratePage(Model model, HttpSession session) {
         String inst = ensureInst(session);
         if (inst == null) {
@@ -3111,6 +3125,7 @@ public class PageController {
         double lmsTotalThisMonth = lmsThisMonth * lmsPrice;
         double mmsTotalThisMonth = mmsThisMonth * mmsPrice;
         double thisMonthTotal = smsTotalThisMonth + lmsTotalThisMonth + mmsTotalThisMonth;
+        List<Map<String, Object>> monthlyBilling = buildMonthlyBillingRows(monthlyUsage, smsPrice, lmsPrice, mmsPrice);
 
         model.addAttribute("thisMonthUsage", thisMonthUsage);
         model.addAttribute("lastMonthUsage", lastMonthUsage);
@@ -3124,6 +3139,7 @@ public class PageController {
         model.addAttribute("mmsTotalThisMonth", mmsTotalThisMonth);
         model.addAttribute("thisMonthTotal", thisMonthTotal);
         model.addAttribute("monthlyUsage", monthlyUsage);
+        model.addAttribute("monthlyBilling", monthlyBilling);
         model.addAttribute("smsPrice", smsPrice);
         model.addAttribute("lmsPrice", lmsPrice);
         model.addAttribute("mmsPrice", mmsPrice);
@@ -3137,7 +3153,7 @@ public class PageController {
         model.addAttribute("list", usage);
         model.addAttribute("data", iddata);
 
-        return "csm/sms/rate";
+        return "design/rate-management";
     }
 
     @GetMapping(value = { "monthlyUsage", "/monthlyUsage" })
@@ -6399,6 +6415,77 @@ public class PageController {
         return normalizedInst + ts + rnd;
     }
 
+    private LocalDateTime resolveSmsReserveTime(Object sendtime) {
+        if (sendtime == null || String.valueOf(sendtime).isBlank()) {
+            return null;
+        }
+        try {
+            long epochSeconds = Long.parseLong(String.valueOf(sendtime));
+            Instant scheduledAt = Instant.ofEpochSecond(epochSeconds);
+            if (!scheduledAt.isAfter(Instant.now().plusSeconds(60))) {
+                return null;
+            }
+            return LocalDateTime.ofInstant(scheduledAt, ZoneId.systemDefault());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private Criteria templateCountCriteria(String inst) {
+        Criteria cri = new Criteria();
+        cri.setInst(inst);
+        cri.setKeyword("");
+        return cri;
+    }
+
+    private List<Map<String, Object>> buildMonthlyBillingRows(
+            List<Map<String, Object>> monthlyUsage,
+            double smsPrice,
+            double lmsPrice,
+            double mmsPrice) {
+        if (monthlyUsage == null || monthlyUsage.isEmpty()) {
+            return Collections.emptyList();
+        }
+        NumberFormat won = NumberFormat.getNumberInstance(Locale.KOREA);
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (Map<String, Object> row : monthlyUsage) {
+            int sms = numberToInt(row.get("sms"));
+            int lms = numberToInt(row.get("lms"));
+            int mms = numberToInt(row.get("mms"));
+            double smsTotal = sms * smsPrice;
+            double lmsTotal = lms * lmsPrice;
+            double mmsTotal = mms * mmsPrice;
+            double total = smsTotal + lmsTotal + mmsTotal;
+
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put("month", Objects.toString(row.get("month"), ""));
+            out.put("sms", sms);
+            out.put("lms", lms);
+            out.put("mms", mms);
+            out.put("smsPrice", smsPrice);
+            out.put("lmsPrice", lmsPrice);
+            out.put("mmsPrice", mmsPrice);
+            out.put("smsTotal", smsTotal);
+            out.put("lmsTotal", lmsTotal);
+            out.put("mmsTotal", mmsTotal);
+            out.put("total", total);
+            out.put("totalText", won.format(Math.round(total)) + "원");
+            rows.add(out);
+        }
+        return rows;
+    }
+
+    private int numberToInt(Object value) {
+        if (value instanceof Number n) {
+            return n.intValue();
+        }
+        try {
+            return Integer.parseInt(Objects.toString(value, "0"));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
     private double parseDouble(String value) {
         if (value == null || value.isBlank()) {
             return 0.0;
@@ -7334,91 +7421,76 @@ public class PageController {
         return "design/index";
     }
 
+    // Legacy /design/* URL redirects → canonical paths.
+    private static ModelAndView legacyDesignRedirect(String canonical, HttpServletRequest request) {
+        String qs = request.getQueryString();
+        return new ModelAndView("redirect:" + canonical + (qs != null && !qs.isBlank() ? "?" + qs : ""));
+    }
+
     @GetMapping(value = { "design/counsel/list", "/design/counsel/list" })
-    public ModelAndView designCounselList(
-            HttpSession session, HttpServletRequest req, Criteria cri,
-            @RequestParam(value = "dateRange", defaultValue = "") String dateRange,
-            @RequestParam(value = "startDate", defaultValue = "") String startDate,
-            @RequestParam(value = "endDate", defaultValue = "") String endDate,
-            @RequestParam(value = "status", defaultValue = "all") String status,
-            @RequestParam(value = "pathType", defaultValue = "all") String pathType,
-            @RequestParam(value = "searchType", defaultValue = "") String searchType,
-            @RequestParam(value = "keyword", defaultValue = "") String keyword,
-            @RequestParam(value = "end", defaultValue = "on") String end,
-            @RequestParam(value = "page", defaultValue = "1") int page,
-            @RequestParam(value = "perPageNum", defaultValue = "30") int perPageNum) {
+    public ModelAndView legacyDesignCounselList(HttpServletRequest request) {
+        return legacyDesignRedirect("/counsel/list", request);
+    }
 
-        ModelAndView mv = new ModelAndView();
-        String inst = ensureInst(session);
-        if (inst == null)
-            return new ModelAndView("redirect:/login");
+    @GetMapping(value = { "design/counsel/intake", "/design/counsel/intake" })
+    public ModelAndView legacyDesignCounselIntake(HttpServletRequest request) {
+        return legacyDesignRedirect("/counsel/intake", request);
+    }
 
-        bindCriteria(cri, inst, page, perPageNum, dateRange, startDate, endDate, status, pathType, searchType, keyword, end);
+    @GetMapping(value = { "design/counsel/inpatient", "/design/counsel/inpatient" })
+    public ModelAndView legacyDesignCounselInpatient(HttpServletRequest request) {
+        return legacyDesignRedirect("/counsel/inpatient", request);
+    }
 
-        List<CounselData> cslist = cs.searchCounselData(cri);
-        if (cslist == null) cslist = Collections.emptyList();
-        int totalCnt = cs.CounselListCnt(cri);
-        postProcessDecryptAndMask(cslist, inst, cri.getSearchType(), cri.getKeyword());
+    @GetMapping(value = { "design/counsel/log-settings", "/design/counsel/log-settings" })
+    public ModelAndView legacyDesignCounselLogSettings(HttpServletRequest request) {
+        return legacyDesignRedirect("/counsel/log-settings", request);
+    }
 
-        List<CounselReservation> reservations = cs.listCounselReservations(inst, "RESERVED", 200);
-        if (reservations != null) {
-            reservations.sort(Comparator
-                    .comparing((CounselReservation r) -> r == null || r.getPriority() == null ? 99 : r.getPriority())
-                    .thenComparing(r -> r == null ? "" : safeString(r.getReserved_at()))
-                    .thenComparing(r -> r == null || r.getId() == null ? Long.MAX_VALUE : r.getId()));
+    @GetMapping(value = { "design/notices", "/design/notices" })
+    public ModelAndView legacyDesignNotices(HttpServletRequest request) {
+        return legacyDesignRedirect("/notices", request);
+    }
+
+    @GetMapping(value = { "design/message", "/design/message" })
+    public ModelAndView legacyDesignMessage(HttpServletRequest request) {
+        return legacyDesignRedirect("/message", request);
+    }
+
+    @GetMapping(value = { "design/ward-status", "/design/ward-status" })
+    public ModelAndView legacyDesignWardStatus(HttpServletRequest request) {
+        return legacyDesignRedirect("/ward-status", request);
+    }
+
+    @GetMapping(value = { "design/user-management", "/design/user-management" })
+    public ModelAndView legacyDesignUserManagement(HttpServletRequest request) {
+        return legacyDesignRedirect("/users", request);
+    }
+
+    @GetMapping(value = { "design/role-management", "/design/role-management" })
+    public ModelAndView legacyDesignRoleManagement(HttpServletRequest request) {
+        return legacyDesignRedirect("/roles", request);
+    }
+
+    @GetMapping("api/me")
+    @ResponseBody
+    public Map<String, String> getMe(HttpSession session) {
+        Userdata u = session != null ? (Userdata) session.getAttribute("userInfo") : null;
+        if (u == null) return Map.of();
+        String inst = (String) session.getAttribute("inst");
+        String instname = (String) session.getAttribute("instname");
+        if (instname == null || instname.isBlank()) instname = safeString(u.getUs_col_05());
+        String role = "";
+        if (inst != null) {
+            List<String> roleNames = cs.getUserRoleNames(inst, u.getUs_col_01());
+            role = String.join(", ", roleNames);
         }
-
-        List<Map<String, Object>> queueItems = (reservations == null
-                ? Collections.<CounselReservation>emptyList() : reservations).stream()
-                .filter(Objects::nonNull)
-                .map(r -> {
-                    Map<String, Object> m = new java.util.LinkedHashMap<>();
-                    m.put("id", r.getId());
-                    m.put("prio", r.getPriority() != null ? r.getPriority() : 9);
-                    m.put("name", safeString(r.getPatient_name()));
-                    m.put("phone", safeString(r.getPatient_phone()));
-                    m.put("time", safeString(r.getReserved_at()));
-                    m.put("beingWorkedOn", isBeingWorkedOn(r.getOpened_at()));
-                    return m;
-                })
-                .collect(Collectors.toList());
-
-        final List<CounselData> finalCslist = cslist;
-        List<Map<String, Object>> recordItems = finalCslist.stream()
-                .filter(Objects::nonNull)
-                .map(r -> {
-                    Map<String, Object> m = new java.util.LinkedHashMap<>();
-                    m.put("id", r.getCs_idx());
-                    m.put("date", safeString(r.getCs_col_16()));
-                    m.put("patient", safeString(r.getCs_col_01()));
-                    m.put("phone", safeString(r.getCs_col_15()));
-                    m.put("route", safeString(r.getCs_col_08_text()));
-                    m.put("contact", safeString(r.getCs_col_34()));
-                    m.put("guardian", safeString(r.getCs_col_13()));
-                    m.put("rel", safeString(r.getCs_col_14()));
-                    m.put("status", safeString(r.getCs_col_19()));
-                    m.put("statusType", designStatusType(r.getCs_col_19()));
-                    m.put("counselor", safeString(r.getCs_col_17()));
-                    m.put("lead", safeString(r.getCs_col_09()));
-                    List<String> tags = r.getEntries() == null ? Collections.emptyList()
-                            : r.getEntries().stream()
-                                    .filter(Objects::nonNull)
-                                    .map(CounselDataEntry::getValue)
-                                    .filter(v -> v != null && !v.isBlank())
-                                    .collect(Collectors.toList());
-                    m.put("tags", tags);
-                    return m;
-                })
-                .collect(Collectors.toList());
-
-        mv.addObject("queueItems", queueItems);
-        mv.addObject("recordItems", recordItems);
-        mv.addObject("cnt", totalCnt);
-        mv.addObject("cri", cri);
-        mv.addObject("statusOptions", cs.getCounselStatusOptions(inst));
-        mv.addObject("pathTypeOptions", cs.getCounselPathTypeOptions(inst));
-        mv.setViewName("design/consultation-list");
-        return mv;
+        return Map.of(
+            "name",     safeString(u.getUs_col_12()),
+            "id",       safeString(u.getUs_col_02()),
+            "instname", instname,
+            "role",     role
+        );
     }
 
     private static String designStatusType(String status) {
@@ -7428,7 +7500,7 @@ public class PageController {
         return "";
     }
 
-    @GetMapping({ "design/counsel/intake", "/design/counsel/intake" })
+    @GetMapping({ "counsel/intake", "/counsel/intake" })
     public ModelAndView designCounselIntake(
             @RequestParam(value = "reservationId", required = false) Long reservationId,
             HttpSession session) {
@@ -7474,7 +7546,7 @@ public class PageController {
         return mv;
     }
 
-    @PostMapping({ "design/counsel/intake/save", "/design/counsel/intake/save" })
+    @PostMapping({ "counsel/intake/save", "/counsel/intake/save" })
     @ResponseBody
     public Map<String, Object> designCounselIntakeSave(
             @RequestParam(value = "id", required = false) Long id,
@@ -7516,7 +7588,7 @@ public class PageController {
         }
     }
 
-    @PostMapping({ "design/counsel/intake/status", "/design/counsel/intake/status" })
+    @PostMapping({ "counsel/intake/status", "/counsel/intake/status" })
     @ResponseBody
     public Map<String, Object> designCounselIntakeStatus(
             @RequestParam("reservationId") Long reservationId,
@@ -7535,7 +7607,7 @@ public class PageController {
         }
     }
 
-    @GetMapping({ "design/counsel/inpatient", "/design/counsel/inpatient" })
+    @GetMapping({ "counsel/inpatient", "/counsel/inpatient" })
     public ModelAndView designCounselInpatient(
             @RequestParam(value = "cs_idx", required = false) Integer csIdx,
             @RequestParam(value = "reservationId", required = false) Long reservationId,
@@ -7721,7 +7793,7 @@ public class PageController {
         return mv;
     }
 
-    @PostMapping({ "design/counsel/inpatient/save", "/design/counsel/inpatient/save" })
+    @PostMapping({ "counsel/inpatient/save", "/counsel/inpatient/save" })
     @ResponseBody
     public Map<String, Object> designCounselInpatientSave(HttpServletRequest request, HttpSession session) {
         String inst = ensureInst(session);
@@ -7786,7 +7858,7 @@ public class PageController {
         }
     }
 
-    @GetMapping({ "design/counsel/inpatient/heartbeat", "/design/counsel/inpatient/heartbeat" })
+    @GetMapping({ "counsel/inpatient/heartbeat", "/counsel/inpatient/heartbeat" })
     @ResponseBody
     public Map<String, Object> designCounselInpatientHeartbeat(
             @RequestParam("reservationId") Long reservationId,
@@ -7801,24 +7873,132 @@ public class PageController {
         }
     }
 
-    @GetMapping({ "design/ward-status", "/design/ward-status" })
+    @PostMapping({ "counsel/inpatient/release", "/counsel/inpatient/release" })
+    @ResponseBody
+    public Map<String, Object> designCounselInpatientRelease(
+            @RequestParam("reservationId") Long reservationId,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) return Map.of("ok", false);
+        try {
+            if (reservationId > 0) cs.clearOpenedAt(inst, reservationId);
+            return Map.of("ok", true);
+        } catch (Exception e) {
+            return Map.of("ok", false);
+        }
+    }
+
+    @GetMapping({ "ward-status", "/ward-status" })
     public ModelAndView designWardStatus(HttpSession session) {
         String inst = ensureInst(session);
         if (inst == null) return new ModelAndView("redirect:/login");
         return new ModelAndView("design/ward-status");
     }
 
-    @GetMapping({ "design/notices", "/design/notices" })
-    public String designNotices() {
+    @GetMapping({ "notices", "/notices" })
+    public String designNotices(Model model, HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) return "redirect:/login";
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean canWrite = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_INST_ADMIN".equals(a.getAuthority())
+                            || "ROLE_PLATFORM_ADMIN".equals(a.getAuthority()));
+
+        List<Map<String, Object>> notices = cs.listInstNotices(inst);
+        long pinnedCount = notices.stream()
+                .filter(n -> Integer.valueOf(1).equals(n.get("pinned")))
+                .count();
+
+        Userdata info = ensureUserInfo(session, inst);
+        model.addAttribute("info", info);
+        model.addAttribute("notices", notices);
+        model.addAttribute("noticeCount", notices.size());
+        model.addAttribute("pinnedCount", pinnedCount);
+        model.addAttribute("canWrite", canWrite);
         return "design/notices";
     }
 
-    @GetMapping({ "design/message", "/design/message" })
-    public String designMessage() {
+    @PostMapping({ "notices/save", "/notices/save" })
+    @ResponseBody
+    @PreAuthorize("hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
+    public Map<String, Object> designNoticesSave(
+            HttpSession session,
+            @RequestParam(value = "id", defaultValue = "0") long id,
+            @RequestParam("title") String title,
+            @RequestParam(value = "body", defaultValue = "") String body,
+            @RequestParam(value = "pinned", defaultValue = "false") boolean pinned) {
+        String inst = ensureInst(session);
+        if (inst == null) return Map.of("ok", false, "msg", "세션 만료");
+        Userdata info = ensureUserInfo(session, inst);
+        String author = info != null ? safeString(info.getUs_col_12()) : "";
+        try {
+            long saved = cs.saveInstNotice(inst, id, title, body, pinned, author);
+            return Map.of("ok", true, "id", saved);
+        } catch (Exception e) {
+            return Map.of("ok", false, "msg", e.getMessage());
+        }
+    }
+
+    @PostMapping({ "notices/delete", "/notices/delete" })
+    @ResponseBody
+    @PreAuthorize("hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
+    public Map<String, Object> designNoticesDelete(
+            HttpSession session,
+            @RequestParam("id") long id) {
+        String inst = ensureInst(session);
+        if (inst == null) return Map.of("ok", false, "msg", "세션 만료");
+        try {
+            cs.deleteInstNotice(inst, id);
+            return Map.of("ok", true);
+        } catch (Exception e) {
+            return Map.of("ok", false, "msg", e.getMessage());
+        }
+    }
+
+    @GetMapping({ "message", "/message", "message/sent", "/message/sent", "message/reservations", "/message/reservations" })
+    public String designMessage(
+            HttpServletRequest request,
+            HttpSession session,
+            Model model,
+            @RequestParam(value = "keyword", defaultValue = "") String keyword,
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "perPageNum", defaultValue = "20") int perPageNum) {
+        String inst = ensureInst(session);
+        if (inst == null) return "redirect:/login";
+
+        String uri = request.getRequestURI();
+        String mode = uri != null && uri.contains("/message/sent")
+                ? "sent"
+                : (uri != null && uri.contains("/message/reservations") ? "reserved" : "template");
+
+        Criteria cri = new Criteria();
+        cri.setInst(inst);
+        cri.setPage(Math.max(page, 1));
+        cri.setPerPageNum(Math.max(perPageNum, 1));
+        cri.setKeyword(keyword);
+
+        int totalCount = 0;
+        if ("template".equals(mode)) {
+            cri.setKeyword(keyword);
+            totalCount = ss.SelectTemplateCnt(cri);
+            model.addAttribute("smsTemplates", Optional.ofNullable(ss.SelectTemplate(cri)).orElseGet(Collections::emptyList));
+        } else {
+            cri.setType(mode);
+            totalCount = ss.smsCnt(cri);
+            model.addAttribute("smsHistory", Optional.ofNullable(ss.selectTransmissionHistory(cri)).orElseGet(Collections::emptyList));
+        }
+
+        model.addAttribute("messageMode", mode);
+        model.addAttribute("keyword", keyword);
+        model.addAttribute("totalCount", totalCount);
+        model.addAttribute("sentCount", ss.countTransmissionHistoryByType(inst, "sent"));
+        model.addAttribute("reservedCount", ss.countTransmissionHistoryByType(inst, "reserved"));
+        model.addAttribute("templateCount", ss.SelectTemplateCnt(templateCountCriteria(inst)));
         return "design/message-management";
     }
 
-    @GetMapping({ "design/counsel/log-settings", "/design/counsel/log-settings" })
+    @GetMapping({ "counsel/log-settings", "/counsel/log-settings" })
     public ModelAndView designCounselLogSettings(HttpSession session) {
         ModelAndView mv = new ModelAndView("design/consultation-log-settings");
         String inst = ensureInst(session);
@@ -7832,7 +8012,7 @@ public class PageController {
         return mv;
     }
 
-    @PostMapping({ "design/counsel/log-settings/save", "/design/counsel/log-settings/save" })
+    @PostMapping({ "counsel/log-settings/save", "/counsel/log-settings/save" })
     @ResponseBody
     public Map<String, Object> designCounselLogSettingsSave(
             @RequestBody List<Map<String, Object>> items,
@@ -7907,7 +8087,7 @@ public class PageController {
         }
     }
 
-    @GetMapping({ "design/user-management", "/design/user-management" })
+    @GetMapping({ "users", "/users" })
     public ModelAndView designUserManagement(HttpSession session) {
         ModelAndView mv = new ModelAndView("design/user-management");
         String inst = ensureInst(session);
@@ -7960,7 +8140,7 @@ public class PageController {
         return USER_COLORS[Math.abs(name.hashCode()) % USER_COLORS.length];
     }
 
-    @GetMapping({ "design/role-management", "/design/role-management" })
+    @GetMapping({ "roles", "/roles" })
     public String designRoleManagement() {
         return "design/role-management";
     }

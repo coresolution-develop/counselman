@@ -11,6 +11,13 @@
   <link rel="stylesheet" th:href="@{/assets/css/role-management.css}" />
   <link rel="stylesheet" th:href="@{/assets/css/tweaks.css}" />
   <link rel="stylesheet" th:href="@{/assets/css/datepicker.css}" />
+  <style>
+    .message-table .message-body { max-width: 460px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .message-empty { padding: 46px 20px; text-align: center; color: var(--text-tertiary); font-size: 13px; }
+    .message-status--success { background: #ecfdf5; color: #047857; }
+    .message-status--progress { background: #eff6ff; color: #1d4ed8; }
+    .message-status--fail { background: #fef2f2; color: #b91c1c; }
+  </style>
 </head>
 <body>
 <script th:src="@{/assets/js/sprite.js}"></script>
@@ -29,87 +36,128 @@
 
       <div class="page__header">
         <div>
-          <h1 class="page__title">상용구 관리</h1>
-          <p class="page__subtitle">자주 사용하는 문자 템플릿을 등록하고 관리합니다</p>
+          <h1 class="page__title" th:text="${messageMode == 'sent' ? '발송내역' : (messageMode == 'reserved' ? '예약내역' : '상용구 관리')}">문자관리</h1>
+          <p class="page__subtitle"
+             th:text="${messageMode == 'sent' ? '즉시 발송된 문자 내역을 확인합니다' : (messageMode == 'reserved' ? '예약 발송으로 접수된 문자 내역을 확인합니다' : '자주 사용하는 문자 템플릿을 등록하고 관리합니다')}">
+            문자 내역을 확인합니다
+          </p>
         </div>
       </div>
 
-      <!-- Sub-breadcrumb tabs -->
       <div class="tabs">
-        <button class="tab">
+        <a class="tab" th:classappend="${messageMode == 'sent'} ? ' is-active' : ''" th:href="@{/message/sent}">
           <svg><use href="#i-send"/></svg>
           발송내역
-        </button>
-        <button class="tab">
+        </a>
+        <a class="tab" th:classappend="${messageMode == 'reserved'} ? ' is-active' : ''" th:href="@{/message/reservations}">
           <svg><use href="#i-clock"/></svg>
           예약내역
-        </button>
-        <button class="tab is-active">
+        </a>
+        <a class="tab" th:classappend="${messageMode == 'template'} ? ' is-active' : ''" th:href="@{/message}">
           <svg><use href="#i-chat"/></svg>
           상용구 관리
-        </button>
+        </a>
+        <a class="tab" th:href="@{/message/rate}">
+          <svg><use href="#i-chart"/></svg>
+          요금관리
+        </a>
       </div>
 
-      <!-- Stats -->
       <div class="stat-row">
         <div class="stat-card stat-card--brand">
-          <div class="stat-card__label"><span class="dot"></span>등록된 상용구</div>
-          <div class="stat-card__value">1</div>
-          <div class="stat-card__trend">마지막 수정 4월 3일</div>
+          <div class="stat-card__label"><span class="dot"></span>발송내역</div>
+          <div class="stat-card__value" th:text="${sentCount != null ? sentCount : 0}">0</div>
+          <div class="stat-card__trend">예약 발송 제외</div>
         </div>
         <div class="stat-card stat-card--info">
-          <div class="stat-card__label"><span class="dot"></span>이번 달 사용</div>
-          <div class="stat-card__value">24</div>
-          <div class="stat-card__trend">발송 시 템플릿 삽입</div>
+          <div class="stat-card__label"><span class="dot"></span>예약내역</div>
+          <div class="stat-card__value" th:text="${reservedCount != null ? reservedCount : 0}">0</div>
+          <div class="stat-card__trend">예약 시간이 저장된 문자</div>
+        </div>
+        <div class="stat-card stat-card--gray">
+          <div class="stat-card__label"><span class="dot"></span>상용구</div>
+          <div class="stat-card__value" th:text="${templateCount != null ? templateCount : 0}">0</div>
+          <div class="stat-card__trend">등록된 문자 템플릿</div>
         </div>
       </div>
 
-      <!-- Toolbar -->
-      <div class="toolbar">
+      <form class="toolbar" method="get">
         <div class="header__search" style="height:34px; min-width:280px;">
           <svg><use href="#i-search"/></svg>
-          <input type="text" placeholder="상용구명 · 내용 검색" />
+          <input type="text"
+                 name="keyword"
+                 th:value="${keyword}"
+                 th:placeholder="${messageMode == 'template' ? '상용구명 · 내용 검색' : '발신번호 · 수신번호 · 내용 검색'}" />
         </div>
+        <button type="submit" class="btn btn--outline"><svg><use href="#i-search"/></svg>검색</button>
         <div class="toolbar__spacer"></div>
-        <button class="btn btn--outline"><svg><use href="#i-download"/></svg>엑셀 내보내기</button>
-      </div>
+        <button type="button" class="btn btn--outline"><svg><use href="#i-download"/></svg>엑셀 내보내기</button>
+      </form>
 
-      <!-- Template list -->
-      <div class="msg-card">
+      <div th:if="${messageMode == 'template'}" class="msg-card">
         <div class="msg-card__header">
           <div>생성일자</div>
           <div>상용구명</div>
           <div>상용구 내용</div>
         </div>
 
-        <div class="msg-row">
+        <div class="msg-row" th:each="t : ${smsTemplates}" th:attr="data-id=${t.id}">
           <div class="msg-row__date">
             <span class="dot"></span>
             <div>
-              2026-04-03<br/>
-              <span style="color: var(--text-tertiary); font-size:11px;">17:11:34</span>
+              <span th:text="${t.created_at != null ? #dates.format(t.created_at, 'yyyy-MM-dd') : '-'}">2026-04-03</span><br/>
+              <span style="color: var(--text-tertiary); font-size:11px;"
+                    th:text="${t.created_at != null ? #dates.format(t.created_at, 'HH:mm:ss') : ''}">17:11:34</span>
             </div>
           </div>
           <div>
             <div class="msg-row__name">
-              사예인사
-              <span class="subtitle">대기 · admin 생성</span>
+              <span th:text="${t.title}">상용구명</span>
+              <span class="subtitle">문자 템플릿</span>
             </div>
           </div>
-          <div class="msg-row__body">소사항가족요양병원입니다.
-
-2025년 새해 복많이 받으세요.
-올한해도 명이하게 보내시고 소사항가족요양병원 사랑해주세요.
-
-테스트 중입니다.</div>
+          <div class="msg-row__body" th:text="${t.template}">상용구 내용</div>
         </div>
+        <div class="message-empty" th:if="${#lists.isEmpty(smsTemplates)}">등록된 상용구가 없습니다.</div>
       </div>
 
-      <!-- Footer -->
-      <div class="footer-bar">
-        <button class="btn btn--ghost" disabled style="opacity:.5;"><svg><use href="#i-trash"/></svg>삭제</button>
-        <button class="btn btn--outline"><svg><use href="#i-edit"/></svg>수정</button>
-        <button class="btn btn--primary"><svg><use href="#i-plus"/></svg>추가</button>
+      <div th:if="${messageMode != 'template'}" class="table-wrap">
+        <table class="table message-table">
+          <thead>
+          <tr>
+            <th>발송일자</th>
+            <th th:if="${messageMode == 'reserved'}">예약일자</th>
+            <th>발신번호</th>
+            <th>수신번호</th>
+            <th>유형</th>
+            <th>상태</th>
+            <th>문자내용</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="h : ${smsHistory}"
+              th:with="statusText=${h.status == null ? '' : h.status}"
+              th:attr="data-id=${h.id}">
+            <td class="col-num" th:text="${h.created_at != null ? #temporals.format(h.created_at, 'yyyy-MM-dd HH:mm:ss') : '-'}">2026-04-03 17:11:34</td>
+            <td class="col-num" th:if="${messageMode == 'reserved'}" th:text="${h.reserve_time != null ? #temporals.format(h.reserve_time, 'yyyy-MM-dd HH:mm:ss') : '-'}">2026-04-03 18:00:00</td>
+            <td th:text="${h.from_phone}">01000000000</td>
+            <td th:text="${h.to_phone}">01000000000</td>
+            <td th:text="${h.send_type != null ? #strings.toUpperCase(h.send_type) : '-'}">SMS</td>
+            <td>
+              <span class="status"
+                    th:classappend="${#strings.contains(statusText, '실패') or statusText == 'FAILURE' ? ' message-status--fail' : (#strings.contains(statusText, '전송중') ? ' message-status--progress' : ' message-status--success')}"
+                    th:text="${statusText == 'SUCCESS' ? '접수완료' : statusText}">접수완료</span>
+            </td>
+            <td><div class="message-body" th:text="${h.contents}">문자 내용</div></td>
+          </tr>
+          </tbody>
+        </table>
+        <div class="message-empty" th:if="${#lists.isEmpty(smsHistory)}"
+             th:text="${messageMode == 'reserved' ? '예약 발송 내역이 없습니다.' : '발송 내역이 없습니다.'}">내역이 없습니다.</div>
+      </div>
+
+      <div class="footer-bar" th:if="${messageMode == 'template'}">
+        <a class="btn btn--outline" th:href="@{/smsSetting(page=1,perPageNum=10)}"><svg><use href="#i-edit"/></svg>상용구 관리</a>
       </div>
 
     </div>
@@ -120,7 +168,7 @@
 <script th:src="@{/assets/js/datepicker.js}"></script>
 <script th:src="@{/assets/js/chrome.js}" data-page="message" th:attr="data-ctx=@{/}"></script>
 <script>
-  document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '커뮤니케이션', current: '문자관리 · 상용구' }); });
+  document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '커뮤니케이션', current: '문자관리' }); });
 </script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 </body>

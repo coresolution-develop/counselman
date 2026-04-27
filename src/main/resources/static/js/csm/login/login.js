@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', function() {
 					if (response.redirect) {
 						location.href = response.redirect;
 					} else {
-						location.href= "/csm/counsel/list?page=1&perPageNum=10&comment=";
+						location.href = "/csm/counsel/list?page=1&perPageNum=10&comment=";
 					}
 				} else {
 					$('#result').html(response.message);

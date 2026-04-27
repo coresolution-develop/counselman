@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="_csrf" th:content="${_csrf.token}" />
+  <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+  <title>MediPlat · 병실현황판 관리</title>
+  <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/layout.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/components.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/tweaks.css}" />
+  <style>
+    [x-cloak] { display: none !important; }
+
+    .rb-card {
+      background: #fff;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .rb-card-title { font-size: 15px; font-weight: 700; color: var(--text-primary); margin: 0 0 16px; }
+    .rb-card-hero {
+      background: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-500) 100%);
+      border-color: transparent;
+      color: #fff;
+    }
+    .rb-inline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .rb-hero-title { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+    .rb-hero-sub { font-size: 13px; opacity: .8; margin-top: 6px; line-height: 1.5; }
+
+    .rb-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    @media (max-width: 1200px) { .rb-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 768px)  { .rb-grid { grid-template-columns: 1fr; } }
+
+    .rb-field { display: flex; flex-direction: column; gap: 5px; }
+    .rb-field label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+    .rb-field input, .rb-field select, .rb-field textarea {
+      width: 100%; border: 1px solid var(--border-default); border-radius: var(--radius-md);
+      padding: 9px 12px; font-size: 13px; background: #fff; transition: border-color .15s, box-shadow .15s;
+      box-sizing: border-box;
+    }
+    .rb-field input:focus, .rb-field select:focus, .rb-field textarea:focus {
+      outline: none; border-color: var(--brand-500);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-500) 12%, transparent);
+    }
+    .rb-field textarea { min-height: 130px; resize: vertical; }
+
+    .rb-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .rb-btn {
+      border: none; border-radius: var(--radius-md);
+      padding: 9px 16px; font-size: 13px; font-weight: 600;
+      cursor: pointer; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 6px;
+      transition: all .14s;
+    }
+    .rb-btn-primary { background: var(--brand-500); color: #fff; }
+    .rb-btn-primary:hover { background: var(--brand-600); }
+    .rb-btn-ghost { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.3); }
+    .rb-btn-ghost:hover { background: rgba(255,255,255,.25); }
+    .rb-btn-light { background: var(--gray-100); color: var(--text-secondary); border: 1px solid var(--border-default); }
+    .rb-btn-light:hover { background: var(--gray-200); }
+    .rb-btn-danger { background: #fff3f1; color: #b42318; border: 1px solid #f3c7c2; }
+    .rb-btn-danger:hover { background: #ffe4e1; }
+
+    .rb-split { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 16px; align-items: start; }
+    @media (max-width: 1024px) { .rb-split { grid-template-columns: 1fr; } }
+
+    .rb-table-wrap { overflow: auto; border: 1px solid var(--border-default); border-radius: var(--radius-lg); margin-top: 16px; }
+    .rb-table { width: 100%; border-collapse: collapse; min-width: 900px; }
+    .rb-table thead th {
+      background: var(--gray-50); font-size: 11px; font-weight: 600; color: var(--text-tertiary);
+      text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border-default);
+      text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; position: sticky; top: 0;
+    }
+    .rb-table tbody td { padding: 12px 12px; border-bottom: 1px solid var(--border-subtle); font-size: 13px; color: var(--text-primary); }
+    .rb-table tbody tr:hover td { background: color-mix(in oklab, var(--brand-500) 3%, #fff); }
+    .rb-table tbody tr.rb-row-selected td { background: color-mix(in oklab, var(--brand-500) 8%, #fff); }
+
+    .rb-preview { max-height: 280px; overflow: auto; border: 1px solid var(--border-default); border-radius: var(--radius-md); margin-top: 12px; }
+    .rb-preview table { width: 100%; border-collapse: collapse; }
+    .rb-preview thead th { background: var(--gray-50); font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border-default); }
+    .rb-preview tbody td { font-size: 12px; border-bottom: 1px solid var(--border-subtle); padding: 7px 10px; }
+
+    .rb-note { color: var(--text-tertiary); font-size: 12px; margin-top: 8px; line-height: 1.6; }
+    .rb-divider { border: none; border-top: 1px solid var(--border-subtle); margin: 20px 0; }
+  </style>
+</head>
+<body>
+<script th:src="@{/assets/js/sprite.js}"></script>
+
+<div class="app"
+     data-screen-label="Room Board Admin"
+     :data-sidebar="$store.app.sidebarCollapsed ? 'collapsed' : 'expanded'"
+     :data-variation="$store.app.variation"
+     x-data>
+
+  <div id="slot-sidebar"></div>
+  <div id="slot-header"></div>
+
+  <main class="main">
+    <div class="page">
+
+      <!-- Page header -->
+      <div class="page__header">
+        <div>
+          <h1 class="page__title">관리자 설정</h1>
+          <p class="page__subtitle">사용자, 역할, 병실현황판을 한 곳에서 관리합니다</p>
+        </div>
+      </div>
+
+      <!-- Admin sub-tabs -->
+      <div class="tabs" role="tablist">
+        <a class="tab" th:href="@{/users}" role="tab">
+          <svg><use href="#i-users"/></svg>
+          사용자 관리
+        </a>
+        <a class="tab" th:href="@{/roles}" role="tab">
+          <svg><use href="#i-shield"/></svg>
+          역할 관리
+        </a>
+        <button class="tab is-active" role="tab" aria-selected="true">
+          <svg><use href="#i-bed"/></svg>
+          병실현황판 관리
+        </button>
+      </div>
+
+      <!-- Hero -->
+      <div class="rb-card rb-card-hero">
+        <div class="rb-inline" style="justify-content:space-between;">
+          <div>
+            <div class="rb-hero-title">병실현황판 관리</div>
+            <p class="rb-hero-sub">병실 기준정보 설정, EMR 데이터 가져오기, 업로드 이력을 한 화면에서 관리합니다.</p>
+          </div>
+          <a th:href="@{/room-board}" class="rb-btn rb-btn-ghost">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+            현황판 보기
+          </a>
+        </div>
+      </div>
+
+      <!-- EMR 데이터 가져오기 -->
+      <div class="rb-card">
+        <h2 class="rb-card-title">EMR 데이터 가져오기</h2>
+        <div class="rb-grid">
+          <div class="rb-field">
+            <label for="sourceType">원본 유형</label>
+            <select id="sourceType">
+              <option value="EXCEL_DETAIL">재원환자상세조회 엑셀</option>
+              <option value="CLICKSOFT">클릭소프트 병실현황판</option>
+              <option value="ROOM_SLOT">병실 슬롯 원본 데이터</option>
+            </select>
+          </div>
+          <div class="rb-field">
+            <label for="snapshotDate">기준일</label>
+            <input id="snapshotDate" type="date" />
+          </div>
+          <div class="rb-field">
+            <label for="snapshotTime">기준시간</label>
+            <input id="snapshotTime" type="time" />
+          </div>
+          <div class="rb-field">
+            <label>&nbsp;</label>
+            <div class="rb-actions" style="margin-top:0;">
+              <button type="button" id="previewImportBtn" class="rb-btn rb-btn-light">미리보기</button>
+              <button type="button" id="saveImportBtn" class="rb-btn rb-btn-primary">가져오기 저장</button>
+            </div>
+          </div>
+        </div>
+        <div class="rb-field" style="margin-top:12px;">
+          <label for="rawText">붙여넣기 데이터</label>
+          <textarea id="rawText" placeholder="EMR에서 복사한 데이터를 그대로 붙여넣으세요."></textarea>
+        </div>
+        <p id="importMessage" class="rb-note"></p>
+        <div class="rb-preview" id="previewWrap" style="display:none;">
+          <table>
+            <thead>
+              <tr>
+                <th>병동</th><th>병실</th><th>환자번호</th><th>환자명</th>
+                <th>성별</th><th>나이</th><th>입원일자</th><th>의사</th><th>유형</th><th>메모</th>
+              </tr>
+            </thead>
+            <tbody id="previewBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 병실 기준정보 설정 -->
+      <div class="rb-card">
+        <h2 class="rb-card-title">병실 기준정보 설정</h2>
+        <div class="rb-split">
+          <div>
+            <div class="rb-field">
+              <label for="roomConfigRawText">기준정보 일괄 붙여넣기</label>
+              <textarea id="roomConfigRawText" placeholder="시트에서 병동~참고내용 영역을 전체 복사해서 그대로 붙여넣으세요. 헤더와 빈 행은 자동으로 무시합니다."></textarea>
+            </div>
+            <div class="rb-actions">
+              <button type="button" id="previewRoomConfigPasteBtn" class="rb-btn rb-btn-light">미리보기</button>
+              <button type="button" id="saveRoomConfigPasteBtn" class="rb-btn rb-btn-primary">일괄 저장</button>
+            </div>
+            <p class="rb-note">같은 병실과 같은 기간의 기존 병실 기준정보는 재붙여넣기 시 갱신됩니다.</p>
+            <p id="roomConfigPasteMessage" class="rb-note"></p>
+          </div>
+          <div class="rb-preview" id="roomConfigPreviewWrap" style="display:none;margin-top:0;">
+            <table>
+              <thead>
+                <tr>
+                  <th>병동</th><th>병실</th><th>기간</th><th>병상수</th>
+                  <th>간병형태</th><th>상태구분</th><th>간병비용</th><th>참고내용</th>
+                </tr>
+              </thead>
+              <tbody id="roomConfigPreviewBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <hr class="rb-divider" />
+        <p class="rb-card-title" style="font-size:13px;margin-bottom:14px;">개별 병실 추가 · 수정</p>
+        <p class="rb-note" style="margin-top:0;margin-bottom:14px;">아래 목록에서 행을 클릭하면 수정 폼에 자동으로 불러옵니다.</p>
+
+        <form th:action="@{/admin/room-board/room/save}" method="post" id="roomConfigForm">
+          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+          <input type="hidden" name="id" id="roomConfigId" />
+          <div class="rb-grid">
+            <div class="rb-field">
+              <label for="wardName">병동</label>
+              <input type="text" name="wardName" id="wardName" required />
+            </div>
+            <div class="rb-field">
+              <label for="roomName">병실</label>
+              <input type="text" name="roomName" id="roomName" required />
+            </div>
+            <div class="rb-field">
+              <label for="startDate">개시일자</label>
+              <input type="date" name="startDate" id="startDate" required />
+            </div>
+            <div class="rb-field">
+              <label for="endDate">종료일자</label>
+              <input type="date" name="endDate" id="endDate" required />
+            </div>
+            <div class="rb-field">
+              <label for="licensedBeds">허가병상수</label>
+              <input type="number" name="licensedBeds" id="licensedBeds" min="1" required />
+            </div>
+            <div class="rb-field">
+              <label for="careType">간병형태</label>
+              <input type="text" name="careType" id="careType" placeholder="예: 기저귀, 산소" />
+            </div>
+            <div class="rb-field">
+              <label for="nursingCost">간병비용</label>
+              <input type="text" name="nursingCost" id="nursingCost" />
+            </div>
+            <div class="rb-field">
+              <label for="useYn">유효여부</label>
+              <select name="useYn" id="useYn">
+                <option value="Y">유효</option>
+                <option value="N">종료</option>
+              </select>
+            </div>
+            <div class="rb-field">
+              <label for="statusWalk">거동</label>
+              <select name="statusWalk" id="statusWalk">
+                <option value="N">미사용</option>
+                <option value="Y">사용</option>
+              </select>
+            </div>
+            <div class="rb-field">
+              <label for="statusDiaper">기저귀</label>
+              <select name="statusDiaper" id="statusDiaper">
+                <option value="N">미사용</option>
+                <option value="Y">사용</option>
+              </select>
+            </div>
+            <div class="rb-field">
+              <label for="statusOxygen">산소</label>
+              <select name="statusOxygen" id="statusOxygen">
+                <option value="N">미사용</option>
+                <option value="Y">사용</option>
+              </select>
+            </div>
+            <div class="rb-field">
+              <label for="statusSuction">석션</label>
+              <select name="statusSuction" id="statusSuction">
+                <option value="N">미사용</option>
+                <option value="Y">사용</option>
+              </select>
+            </div>
+          </div>
+          <div class="rb-field" style="margin-top:12px;">
+            <label for="note">참고내용</label>
+            <textarea name="note" id="note"></textarea>
+          </div>
+          <div class="rb-actions">
+            <button type="submit" class="rb-btn rb-btn-primary">저장</button>
+            <button type="button" class="rb-btn rb-btn-light" id="resetFormBtn">새로 입력</button>
+          </div>
+        </form>
+
+        <div class="rb-table-wrap">
+          <table class="rb-table" id="roomConfigTable">
+            <thead>
+              <tr>
+                <th>병동</th><th>병실</th><th>기간</th><th>병상수</th>
+                <th>간병형태</th><th>상태구분</th><th>비용</th><th>참고</th><th>유효</th><th>처리</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:if="${#lists.isEmpty(roomConfigs)}">
+                <td colspan="10" style="text-align:center;color:var(--text-tertiary);padding:24px;">등록된 병실 기준정보가 없습니다.</td>
+              </tr>
+              <tr th:each="item : ${roomConfigs}" class="room-config-row"
+                  th:attr="data-id=${item.id},data-ward-name=${item.wardName},data-room-name=${item.roomName},
+                           data-start-date=${item.startDate},data-end-date=${item.endDate},data-licensed-beds=${item.licensedBeds},
+                           data-care-type=${item.careType},data-status-walk=${item.statusWalk},data-status-diaper=${item.statusDiaper},
+                           data-status-oxygen=${item.statusOxygen},data-status-suction=${item.statusSuction},
+                           data-nursing-cost=${item.nursingCost},data-note=${item.note},data-use-yn=${item.useYn}"
+                  style="cursor:pointer;">
+                <td th:text="${item.wardName}"></td>
+                <td th:text="${item.roomName}"></td>
+                <td th:text="${item.startDate + ' ~ ' + item.endDate}"></td>
+                <td th:text="${item.licensedBeds}"></td>
+                <td th:text="${item.careType}"></td>
+                <td th:text="${item.statusLabel}"></td>
+                <td th:text="${item.nursingCost}"></td>
+                <td th:text="${item.note}"></td>
+                <td th:text="${item.useYn == 'Y' ? '유효' : '종료'}"></td>
+                <td>
+                  <form th:action="@{/admin/room-board/room/delete}" method="post"
+                        onsubmit="return confirm('삭제하시겠습니까?');" onclick="event.stopPropagation();">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                    <input type="hidden" name="id" th:value="${item.id}" />
+                    <button type="submit" class="rb-btn rb-btn-danger" style="padding:6px 10px;font-size:12px;">삭제</button>
+                  </form>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 업로드 이력 -->
+      <div class="rb-card">
+        <h2 class="rb-card-title">업로드 이력</h2>
+        <div class="rb-table-wrap" style="margin-top:0;">
+          <table class="rb-table">
+            <thead>
+              <tr>
+                <th>기준일</th><th>기준시간</th><th>원본유형</th>
+                <th>업로드 사용자</th><th>업로드시각</th><th>상태</th><th>메시지</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:if="${#lists.isEmpty(snapshotHistory)}">
+                <td colspan="7" style="text-align:center;color:var(--text-tertiary);padding:24px;">업로드 이력이 없습니다.</td>
+              </tr>
+              <tr th:each="snap : ${snapshotHistory}">
+                <td th:text="${snap.snapshotDate}"></td>
+                <td th:text="${snap.snapshotTime}"></td>
+                <td th:text="${snap.sourceType}"></td>
+                <td th:text="${snap.uploadedBy}"></td>
+                <td th:text="${snap.uploadedAt}"></td>
+                <td th:text="${snap.parseStatus}"></td>
+                <td th:text="${snap.parseMessage}"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div><!-- .app -->
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const ctx = location.pathname.startsWith('/csm/') ? '/csm' : '';
+  const csrfToken  = document.querySelector('meta[name="_csrf"]')?.getAttribute('content') || '';
+  const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') || '';
+  const headers = { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' };
+  if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+
+  // ─── 날짜·시간 기본값 ───────────────────────────────────────────
+  const setNow = () => {
+    const now  = new Date();
+    const yyyy = now.getFullYear();
+    const mm   = String(now.getMonth() + 1).padStart(2, '0');
+    const dd   = String(now.getDate()).padStart(2, '0');
+    const hh   = String(now.getHours()).padStart(2, '0');
+    const mi   = String(now.getMinutes()).padStart(2, '0');
+    const sd = document.getElementById('snapshotDate');
+    const st = document.getElementById('snapshotTime');
+    if (sd && !sd.value) sd.value = `${yyyy}-${mm}-${dd}`;
+    if (st && !st.value) st.value = `${hh}:${mi}`;
+    const startDate = document.getElementById('startDate');
+    const endDate   = document.getElementById('endDate');
+    if (startDate && !startDate.value) startDate.value = `${yyyy}-${mm}-${dd}`;
+    if (endDate   && !endDate.value)   endDate.value   = '9999-12-31';
+  };
+  setNow();
+
+  // ─── 병실 기준정보 행 클릭 → 폼 채우기 ─────────────────────────
+  const form = document.getElementById('roomConfigForm');
+  document.querySelectorAll('.room-config-row').forEach(row => {
+    row.addEventListener('click', () => {
+      document.querySelectorAll('.room-config-row').forEach(r => r.classList.remove('rb-row-selected'));
+      row.classList.add('rb-row-selected');
+      const d = row.dataset;
+      form.querySelector('#roomConfigId').value      = d.id          || '';
+      form.querySelector('#wardName').value          = d.wardName    || '';
+      form.querySelector('#roomName').value          = d.roomName    || '';
+      form.querySelector('#startDate').value         = d.startDate   || '';
+      form.querySelector('#endDate').value           = d.endDate     || '';
+      form.querySelector('#licensedBeds').value      = d.licensedBeds|| '';
+      form.querySelector('#careType').value          = d.careType    || '';
+      form.querySelector('#statusWalk').value        = d.statusWalk  || 'N';
+      form.querySelector('#statusDiaper').value      = d.statusDiaper|| 'N';
+      form.querySelector('#statusOxygen').value      = d.statusOxygen|| 'N';
+      form.querySelector('#statusSuction').value     = d.statusSuction|| 'N';
+      form.querySelector('#nursingCost').value       = d.nursingCost || '';
+      form.querySelector('#note').value              = d.note        || '';
+      form.querySelector('#useYn').value             = d.useYn       || 'Y';
+      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  document.getElementById('resetFormBtn')?.addEventListener('click', () => {
+    form.reset();
+    form.querySelector('#roomConfigId').value = '';
+    document.querySelectorAll('.room-config-row').forEach(r => r.classList.remove('rb-row-selected'));
+    setNow();
+  });
+
+  // ─── EMR 가져오기 ────────────────────────────────────────────────
+  const buildPayload = () => new URLSearchParams({
+    sourceType:   document.getElementById('sourceType')?.value   || 'EXCEL_DETAIL',
+    snapshotDate: document.getElementById('snapshotDate')?.value || '',
+    snapshotTime: document.getElementById('snapshotTime')?.value || '',
+    rawText:      document.getElementById('rawText')?.value      || '',
+  });
+
+  const previewWrap = document.getElementById('previewWrap');
+  const previewBody = document.getElementById('previewBody');
+  const importMsg   = document.getElementById('importMessage');
+
+  const renderPreview = (data) => {
+    previewBody.innerHTML = '';
+    const rows = Array.isArray(data.rows) ? data.rows : [];
+    if (!rows.length) {
+      previewWrap.style.display = 'none';
+      importMsg.textContent = data.message || '미리보기 데이터가 없습니다.';
+      return;
+    }
+    rows.forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${r.wardName||''}</td><td>${r.roomName||''}</td><td>${r.patientNo||''}</td>
+        <td>${r.patientName||''}</td><td>${r.gender||''}</td><td>${r.age||''}</td>
+        <td>${r.admissionDate||''}</td><td>${r.doctorName||''}</td><td>${r.patientType||''}</td><td>${r.memo||''}</td>`;
+      previewBody.appendChild(tr);
+    });
+    previewWrap.style.display = '';
+    importMsg.textContent = `${data.message || '미리보기 완료'} / 인식 ${data.parsedCount || 0}건`;
+  };
+
+  document.getElementById('previewImportBtn')?.addEventListener('click', async () => {
+    const raw = document.getElementById('rawText')?.value?.trim();
+    if (!raw) { alert('붙여넣기 데이터를 입력해 주세요.'); return; }
+    const res  = await fetch(ctx + '/admin/room-board/import/preview', { method: 'POST', headers, body: buildPayload().toString() });
+    const data = await res.json();
+    if (!res.ok) { alert(data.message || '미리보기에 실패했습니다.'); return; }
+    renderPreview(data);
+  });
+
+  document.getElementById('saveImportBtn')?.addEventListener('click', async () => {
+    const raw = document.getElementById('rawText')?.value?.trim();
+    if (!raw) { alert('붙여넣기 데이터를 입력해 주세요.'); return; }
+    if (!confirm('현재 붙여넣기 데이터를 저장하시겠습니까?')) return;
+    const res  = await fetch(ctx + '/admin/room-board/import/save', { method: 'POST', headers, body: buildPayload().toString() });
+    const data = await res.json();
+    if (!res.ok) { alert(data.message || '가져오기에 실패했습니다.'); return; }
+    alert(`가져오기 완료: ${data.parsedCount || 0}건`);
+    location.reload();
+  });
+
+  // ─── 병실 기준정보 일괄 붙여넣기 ────────────────────────────────
+  const rcPreviewWrap = document.getElementById('roomConfigPreviewWrap');
+  const rcPreviewBody = document.getElementById('roomConfigPreviewBody');
+  const rcMsg         = document.getElementById('roomConfigPasteMessage');
+
+  const buildRcPayload = () => new URLSearchParams({ rawText: document.getElementById('roomConfigRawText')?.value || '' });
+
+  const renderRcPreview = (data) => {
+    rcPreviewBody.innerHTML = '';
+    const rows = Array.isArray(data.rows) ? data.rows : [];
+    if (!rows.length) {
+      rcPreviewWrap.style.display = 'none';
+      rcMsg.textContent = data.message || '미리보기 데이터가 없습니다.';
+      return;
+    }
+    rows.forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${r.wardName||''}</td><td>${r.roomName||''}</td>
+        <td>${r.startDate||''} ~ ${r.endDate||''}</td><td>${r.licensedBeds||''}</td>
+        <td>${r.careType||''}</td><td>${r.statusLabel||''}</td><td>${r.nursingCost||''}</td><td>${r.note||''}</td>`;
+      rcPreviewBody.appendChild(tr);
+    });
+    rcPreviewWrap.style.display = '';
+    rcMsg.textContent = `${data.message || '미리보기 완료'} / 인식 ${data.parsedCount || 0}건`;
+  };
+
+  document.getElementById('previewRoomConfigPasteBtn')?.addEventListener('click', async () => {
+    if (!document.getElementById('roomConfigRawText')?.value?.trim()) { alert('병실 기준정보 붙여넣기 데이터를 입력해 주세요.'); return; }
+    const res  = await fetch(ctx + '/admin/room-board/room-config/preview', { method: 'POST', headers, body: buildRcPayload().toString() });
+    const data = await res.json();
+    if (!res.ok) { alert(data.message || '병실 기준정보 미리보기에 실패했습니다.'); return; }
+    renderRcPreview(data);
+  });
+
+  document.getElementById('saveRoomConfigPasteBtn')?.addEventListener('click', async () => {
+    if (!document.getElementById('roomConfigRawText')?.value?.trim()) { alert('병실 기준정보 붙여넣기 데이터를 입력해 주세요.'); return; }
+    if (!confirm('현재 병실 기준정보 붙여넣기 데이터를 저장하시겠습니까?')) return;
+    const res  = await fetch(ctx + '/admin/room-board/room-config/save', { method: 'POST', headers, body: buildRcPayload().toString() });
+    const data = await res.json();
+    if (!res.ok) { alert(data.message || '병실 기준정보 일괄 저장에 실패했습니다.'); return; }
+    alert(`병실 기준정보 저장 완료: ${data.parsedCount || 0}건`);
+    location.reload();
+  });
+});
+</script>
+
+<script th:src="@{/assets/js/app.js}"></script>
+<script th:src="@{/assets/js/chrome.js}" data-page="admin" th:attr="data-ctx=@{/}"></script>
+<script>
+  document.addEventListener('alpine:init', () => {
+    MPChrome.mount({ parent: '관리자', current: '병실현황판 관리' });
+  });
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</body>
+</html>

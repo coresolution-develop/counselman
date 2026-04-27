@@ -892,7 +892,7 @@ function logSettings() {
       }));
       const c = csrf();
       try {
-        const res = await fetch(ctx + '/design/counsel/log-settings/save', {
+        const res = await fetch(ctx + '/counsel/log-settings/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', [c.header]: c.token },
           body: JSON.stringify(payload),

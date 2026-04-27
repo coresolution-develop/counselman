@@ -3,6 +3,7 @@ package com.coresolution.csm.serivce;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.time.LocalDateTime;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -57,7 +58,20 @@ public class SmsService {
             String responseString,
             String refkey,
             String sendType) {
-        return mapper.insertTransmissionHistory(inst, contents, fromPhone, toPhone, status, responseString, refkey, sendType);
+        return insertTransmissionHistory(inst, contents, fromPhone, toPhone, status, responseString, refkey, sendType, null);
+    }
+
+    public int insertTransmissionHistory(
+            String inst,
+            String contents,
+            String fromPhone,
+            String toPhone,
+            String status,
+            String responseString,
+            String refkey,
+            String sendType,
+            LocalDateTime reserveTime) {
+        return mapper.insertTransmissionHistory(inst, contents, fromPhone, toPhone, status, responseString, refkey, sendType, reserveTime);
     }
 
     public List<Map<String, Object>> getSmsLogs(String inst, List<String> toPhones) {
@@ -79,12 +93,14 @@ public class SmsService {
                 .append("FROM csm.transmission_history_").append(t).append(" WHERE 1=1 ");
 
         if (cri.getFail() == null || cri.getFail().isBlank()) {
-            sql.append(" AND status = 'SUCCESS' ");
+            sql.append(" AND status IN ('SUCCESS', '전송완료', '전송중') ");
         }
+        appendHistoryTypeFilter(sql, cri);
         if (cri.getKeyword() != null && !cri.getKeyword().isBlank()) {
-            sql.append(" AND to_phone LIKE ? ");
+            sql.append(" AND (to_phone LIKE ? OR from_phone LIKE ? OR contents LIKE ?) ");
             return jdbcTemplate.queryForList(sql + " ORDER BY created_at DESC LIMIT ?, ? ",
-                    "%" + cri.getKeyword() + "%", cri.getPageStart(), cri.getPerPageNum());
+                    "%" + cri.getKeyword() + "%", "%" + cri.getKeyword() + "%", "%" + cri.getKeyword() + "%",
+                    cri.getPageStart(), cri.getPerPageNum());
         }
         sql.append(" ORDER BY created_at DESC LIMIT ?, ? ");
         return jdbcTemplate.queryForList(sql.toString(), cri.getPageStart(), cri.getPerPageNum());
@@ -94,13 +110,25 @@ public class SmsService {
         String t = safeInst(cri.getInst());
         StringBuilder sql = new StringBuilder()
                 .append("SELECT COUNT(*) FROM csm.transmission_history_").append(t).append(" WHERE 1=1 ");
+        if (cri.getFail() == null || cri.getFail().isBlank()) {
+            sql.append(" AND status IN ('SUCCESS', '전송완료', '전송중') ");
+        }
+        appendHistoryTypeFilter(sql, cri);
         if (cri.getKeyword() != null && !cri.getKeyword().isBlank()) {
-            sql.append(" AND to_phone LIKE ? ");
-            Integer n = jdbcTemplate.queryForObject(sql.toString(), Integer.class, "%" + cri.getKeyword() + "%");
+            sql.append(" AND (to_phone LIKE ? OR from_phone LIKE ? OR contents LIKE ?) ");
+            Integer n = jdbcTemplate.queryForObject(sql.toString(), Integer.class,
+                    "%" + cri.getKeyword() + "%", "%" + cri.getKeyword() + "%", "%" + cri.getKeyword() + "%");
             return n == null ? 0 : n;
         }
         Integer n = jdbcTemplate.queryForObject(sql.toString(), Integer.class);
         return n == null ? 0 : n;
+    }
+
+    public int countTransmissionHistoryByType(String inst, String type) {
+        Criteria cri = new Criteria();
+        cri.setInst(inst);
+        cri.setType(type);
+        return smsCnt(cri);
     }
 
     public Map<String, Integer> getSendTypeUsage(String inst) {
@@ -180,5 +208,14 @@ public class SmsService {
             throw new IllegalArgumentException("Invalid inst: " + inst);
         }
         return normalized;
+    }
+
+    private void appendHistoryTypeFilter(StringBuilder sql, Criteria cri) {
+        String type = cri.getType() == null ? "" : cri.getType().trim().toLowerCase();
+        if ("reserved".equals(type)) {
+            sql.append(" AND reserve_time IS NOT NULL ");
+        } else if ("sent".equals(type)) {
+            sql.append(" AND reserve_time IS NULL ");
+        }
     }
 }

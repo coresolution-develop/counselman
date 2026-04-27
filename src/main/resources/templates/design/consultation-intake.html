@@ -115,7 +115,7 @@
           <div class="side-form__title" x-text="form.editId ? '상담 접수 수정' : '상담 접수 등록'"></div>
           <div class="side-form__grid">
             <div class="field full">
-              <label class="field__label">환자명 <span class="req">*</span></label>
+              <label class="field__label">환자명</label>
               <input type="text" class="input" placeholder="홍길동" x-model="form.name" />
             </div>
             <div class="field">
@@ -183,6 +183,12 @@ function intakePage() {
   function blankForm() {
     return { editId: null, name:'', phone:'', guardian:'', prio:'3', status:'접수', time: nowLocal(), note:'', inquiry:'' };
   }
+  function formatPhone(v) {
+    const d = (v || '').replace(/\D/g, '');
+    if (d.length === 11) return d.slice(0,3) + '-' + d.slice(3,7) + '-' + d.slice(7);
+    if (d.length === 10) return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
+    return v || '';
+  }
   function postForm(url, params) {
     const c = csrf();
     return fetch(ctx + url, {
@@ -215,9 +221,9 @@ function intakePage() {
     },
 
     async save() {
-      if (!this.form.name.trim()) { alert('환자명을 입력하세요.'); return; }
       this.loading = true;
       try {
+        this.form.phone = formatPhone(this.form.phone);
         const params = {
           patientName:  this.form.name,
           patientPhone: this.form.phone,
@@ -228,7 +234,7 @@ function intakePage() {
           status:       this.form.status,
         };
         if (this.form.editId) params.id = this.form.editId;
-        const data = await postForm('/design/counsel/intake/save', params);
+        const data = await postForm('/counsel/intake/save', params);
         if (!data.ok) { alert(data.error || '저장 실패'); return; }
         if (this.form.editId) {
           const r = this.rows.find(r => r.id === this.form.editId);
@@ -250,7 +256,7 @@ function intakePage() {
 
     async cancelRow(id) {
       if (!confirm('취소하시겠습니까?')) return;
-      const data = await postForm('/design/counsel/intake/status', { reservationId: id, status: 'CANCELLED' });
+      const data = await postForm('/counsel/intake/status', { reservationId: id, status: 'CANCELLED' });
       if (!data.ok) { alert(data.error || '취소 실패'); return; }
       const r = this.rows.find(r => r.id === id);
       if (r) { r.status = '취소'; r.statusType = 'cancel'; r.link = ''; }
@@ -258,7 +264,7 @@ function intakePage() {
 
     async linkRow(id) {
       if (!confirm('입원상담으로 이관하시겠습니까?')) return;
-      const data = await postForm('/design/counsel/intake/status', { reservationId: id, status: 'COMPLETED' });
+      const data = await postForm('/counsel/intake/status', { reservationId: id, status: 'COMPLETED' });
       if (!data.ok) { alert(data.error || '이관 실패'); return; }
       const r = this.rows.find(r => r.id === id);
       if (r) { r.status = '입원상담 연계'; r.statusType = 'done'; r.link = '입원상담'; }

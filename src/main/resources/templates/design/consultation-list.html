@@ -40,7 +40,7 @@
       </div>
 
       <!-- Search bar -->
-      <form class="search-bar" th:action="@{/design/counsel/list}" method="get">
+      <form class="search-bar" th:action="@{/counsel/list}" method="get">
         <select class="select" name="dateRange">
           <option value="all"    th:selected="${cri != null and cri.dateRange == 'all'}">전체기간</option>
           <option value="10"     th:selected="${cri == null or cri.dateRange == '10' or cri.dateRange == ''}">최근 10일</option>
@@ -85,21 +85,30 @@
         <template x-for="(q, i) in queue" :key="q.id">
           <div class="queue-card" style="cursor:pointer;"
                :style="q.beingWorkedOn ? 'border-color: var(--brand-400); background: color-mix(in oklab, var(--brand-500) 4%, #fff);' : ''"
-               @click="window.location.href = ctx + '/design/counsel/inpatient?reservationId=' + q.id">
+               @click="window.location.href = ctx + '/counsel/inpatient?reservationId=' + q.id">
+            <!-- 헤더: 우선순위 + 이름 + 상담중 뱃지 -->
             <div class="queue-card__head">
               <span class="prio" :class="'prio--' + q.prio" x-text="'P' + q.prio"></span>
-              <span class="queue-card__name" x-text="q.name"></span>
+              <span class="queue-card__name" x-text="q.name || '(이름 없음)'"></span>
               <span x-show="q.beingWorkedOn"
                 style="margin-left:auto;font-size:10px;font-weight:700;color:var(--brand-600);
                        background:color-mix(in oklab,var(--brand-500) 12%,#fff);
                        border:1px solid color-mix(in oklab,var(--brand-500) 30%,transparent);
                        padding:2px 6px;border-radius:999px;animation:pulse-soft 2s infinite;">상담중</span>
             </div>
-            <div class="queue-card__phone" x-text="q.phone"></div>
+            <!-- 연락처: 없으면 placeholder로 높이 유지 -->
+            <div class="queue-card__phone">
+              <span x-show="q.phone" x-text="q.phone"></span>
+              <span x-show="!q.phone" style="color:var(--text-tertiary);font-style:italic;">연락처 없음</span>
+            </div>
+            <!-- 접수 시각 -->
             <div class="queue-card__time" x-text="q.time"></div>
+            <!-- 메모/문의내용 -->
+            <div x-show="q.note" class="queue-card__note" x-text="q.note"></div>
+            <!-- 액션 -->
             <div class="queue-card__actions">
               <button class="btn-xs btn-xs--brand" style="flex:1;justify-content:center;"
-                @click.stop="window.location.href = ctx + '/design/counsel/intake?reservationId=' + q.id">상세보기</button>
+                @click.stop="window.location.href = ctx + '/counsel/intake?reservationId=' + q.id">상세보기</button>
             </div>
           </div>
         </template>
@@ -130,7 +139,7 @@
           <tbody>
             <template x-for="r in records" :key="r.id">
               <tr :class="{ 'is-selected': r.selected }" style="cursor:pointer;"
-                  @dblclick="window.location.href = ctx + '/design/counsel/inpatient?cs_idx=' + r.id">
+                  @dblclick="window.location.href = ctx + '/counsel/inpatient?cs_idx=' + r.id">
                 <td><input type="checkbox" :checked="r.selected" /></td>
                 <td class="col-num" x-text="r.date"></td>
                 <td>
@@ -164,8 +173,8 @@
       <div class="footer-bar">
         <button class="btn btn--ghost">환자정보삭제</button>
         <button class="btn btn--outline"><svg><use href="#i-send"/></svg>일괄 문자 보내기</button>
-        <a th:href="@{/design/counsel/inpatient}" class="btn btn--outline">상담 접수</a>
-        <a th:href="@{/design/counsel/intake}" class="btn btn--primary"><svg><use href="#i-plus"/></svg>신규상담</a>
+        <a th:href="@{/counsel/inpatient}" class="btn btn--outline">상담 접수</a>
+        <a th:href="@{/counsel/intake}" class="btn btn--primary"><svg><use href="#i-plus"/></svg>신규상담</a>
       </div>
 
     </div>
