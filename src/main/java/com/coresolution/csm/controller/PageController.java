@@ -1512,7 +1512,7 @@ public class PageController {
     // }
     @GetMapping(value = "counsel/list", params = "!requestType", produces = "text/html")
     public ModelAndView getCounselListView(
-            ModelAndView mv, HttpSession session, HttpServletRequest req, Criteria cri,
+            HttpSession session, HttpServletRequest req, Criteria cri,
             @RequestParam(value = "dateRange", defaultValue = "") String dateRange,
             @RequestParam(value = "startDate", defaultValue = "") String startDate,
             @RequestParam(value = "endDate", defaultValue = "") String endDate,
@@ -1524,6 +1524,7 @@ public class PageController {
             @RequestParam(value = "page", defaultValue = "1") int page,
             @RequestParam(value = "perPageNum", defaultValue = "30") int perPageNum) {
 
+        ModelAndView mv = new ModelAndView();
         String inst = ensureInst(session);
         if (inst == null)
             return new ModelAndView("redirect:/login");
@@ -1560,40 +1561,36 @@ public class PageController {
                 })
                 .collect(Collectors.toList());
 
-        final List<CounselData> finalCslist = cslist;
-        List<Map<String, Object>> recordItems = finalCslist.stream()
-                .filter(Objects::nonNull)
-                .map(r -> {
-                    Map<String, Object> m = new java.util.LinkedHashMap<>();
-                    m.put("id", r.getCs_idx());
-                    m.put("date", safeString(r.getCs_col_16()));
-                    m.put("patient", safeString(r.getCs_col_01()));
-                    m.put("phone", safeString(r.getCs_col_15()));
-                    m.put("route", safeString(r.getCs_col_08_text()));
-                    m.put("contact", safeString(r.getCs_col_34()));
-                    m.put("guardian", safeString(r.getCs_col_13()));
-                    m.put("rel", safeString(r.getCs_col_14()));
-                    m.put("status", safeString(r.getCs_col_19()));
-                    m.put("statusType", designStatusType(r.getCs_col_19()));
-                    m.put("counselor", safeString(r.getCs_col_17()));
-                    m.put("lead", safeString(r.getCs_col_09()));
-                    List<String> tags = r.getEntries() == null ? Collections.emptyList()
-                            : r.getEntries().stream()
-                                    .filter(Objects::nonNull)
-                                    .map(CounselDataEntry::getValue)
-                                    .filter(v -> v != null && !v.isBlank())
-                                    .collect(Collectors.toList());
-                    m.put("tags", tags);
+        Set<String> hiddenListColumns = getHiddenListColumns();
+        List<Map<String, Object>> orderItems = normalizeDynamicOrderItemComments(
+                inst, filterListSettingItems(cs.getOrderItems(inst), hiddenListColumns));
+        List<Map<String, Object>> innerContentItems = buildListSettingInnerContentItems(
+                inst, orderItems, hiddenListColumns);
+        List<Map<String, Object>> recordItems = toRowMaps(cslist, orderItems, inst);
+
+        Counsel_phone cp = new Counsel_phone();
+        cp.setInst(inst);
+        List<Map<String, String>> phOptions = Optional.ofNullable(cs.selectPhone(cp)).orElse(Collections.emptyList())
+                .stream().filter(Objects::nonNull)
+                .map(p -> {
+                    String num = safeString(p.getPhone_num()).trim();
+                    if (num.isEmpty()) return null;
+                    String name = safeString(p.getPhone_name()).trim();
+                    Map<String, String> m = new java.util.LinkedHashMap<>();
+                    m.put("value", num);
+                    m.put("text", "(" + (name.isEmpty() ? "미지정" : name) + ") " + num);
                     return m;
-                })
-                .collect(Collectors.toList());
+                }).filter(Objects::nonNull).collect(Collectors.toList());
 
         mv.addObject("queueItems", queueItems);
         mv.addObject("recordItems", recordItems);
+        mv.addObject("orderItems", orderItems != null ? orderItems : List.of());
+        mv.addObject("innerContentItems", innerContentItems != null ? innerContentItems : List.of());
         mv.addObject("cnt", totalCnt);
         mv.addObject("cri", cri);
         mv.addObject("statusOptions", cs.getCounselStatusOptions(inst));
         mv.addObject("pathTypeOptions", cs.getCounselPathTypeOptions(inst));
+        mv.addObject("phOptions", phOptions);
         mv.setViewName("design/consultation-list");
         return mv;
     }
@@ -4122,17 +4119,21 @@ public class PageController {
                     .orElse(Collections.emptyList())
                     .stream()
                     .filter(Objects::nonNull)
+                    .filter(item -> item.getColumn() != null && !item.getColumn().isBlank())
                     .filter(item -> !isHiddenListColumn(item.getColumn(), hiddenListColumns))
                     .toList();
 
-            // 프론트에서 이미 turn/viewYn 세팅해옴: 그대로 저장
-            counselListService.replaceAll(inst, filteredItems); // 배치로 한번에
+            log.info("[ListSetting] inst={} received={} filteredItems={}", inst,
+                    orderedItems == null ? 0 : orderedItems.size(), filteredItems.size());
 
-            return ResponseEntity.ok("Order saved successfully");
+            counselListService.replaceAllLoop(inst, filteredItems);
+
+            log.info("[ListSetting] saved OK inst={}", inst);
+            return ResponseEntity.ok("OK:" + filteredItems.size());
         } catch (Exception e) {
-            log.error("ListSetting save error", e);
+            log.error("[ListSetting] save error inst={}", inst, e);
             return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to save order");
+                    .body("ERR: " + e.getMessage());
         }
     }
 
@@ -6508,8 +6509,14 @@ public class PageController {
         cri.setPage(page);
         cri.setPerPageNum(perPageNum);
         cri.setDateRange(nullToEmpty(dateRange));
-        cri.setStartDate(normalizeDateParam(startDate));
-        cri.setEndDate(normalizeDateParam(endDate));
+        // custom 선택 시에만 startDate/endDate 사용 — 90일 등 preset이어도 폼에 이전 날짜가 남아있을 수 있어 무시
+        if ("custom".equals(nullToEmpty(dateRange).trim())) {
+            cri.setStartDate(normalizeDateParam(startDate));
+            cri.setEndDate(normalizeDateParam(endDate));
+        } else {
+            cri.setStartDate("");
+            cri.setEndDate("");
+        }
         cri.setStatus(normalizeListFilterParam(status));
         cri.setPathType(normalizeListFilterParam(pathType));
         cri.setSearchType(nullToEmpty(searchType));
@@ -7269,6 +7276,7 @@ public class PageController {
         out.add("created_at");
         out.add("updated_at");
         out.add("cs_col_35");
+        out.add("__log_settings__");
 
         String raw = safeString(counselListHiddenColumnsRaw);
         if (!raw.isBlank()) {
@@ -7444,7 +7452,7 @@ public class PageController {
 
     @GetMapping(value = { "design/counsel/log-settings", "/design/counsel/log-settings" })
     public ModelAndView legacyDesignCounselLogSettings(HttpServletRequest request) {
-        return legacyDesignRedirect("/counsel/log-settings", request);
+        return legacyDesignRedirect("/admin/counsel/log-settings", request);
     }
 
     @GetMapping(value = { "design/notices", "/design/notices" })
@@ -7999,6 +8007,11 @@ public class PageController {
     }
 
     @GetMapping({ "counsel/log-settings", "/counsel/log-settings" })
+    public ModelAndView legacyCounselLogSettings(HttpServletRequest request) {
+        return legacyDesignRedirect("/admin/counsel/log-settings", request);
+    }
+
+    @GetMapping({ "admin/counsel/log-settings", "/admin/counsel/log-settings" })
     public ModelAndView designCounselLogSettings(HttpSession session) {
         ModelAndView mv = new ModelAndView("design/consultation-log-settings");
         String inst = ensureInst(session);
@@ -8012,7 +8025,10 @@ public class PageController {
         return mv;
     }
 
-    @PostMapping({ "counsel/log-settings/save", "/counsel/log-settings/save" })
+    @PostMapping({
+            "admin/counsel/log-settings/save", "/admin/counsel/log-settings/save",
+            "counsel/log-settings/save", "/counsel/log-settings/save"
+    })
     @ResponseBody
     public Map<String, Object> designCounselLogSettingsSave(
             @RequestBody List<Map<String, Object>> items,

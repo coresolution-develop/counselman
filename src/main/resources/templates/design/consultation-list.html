@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="_csrf"        th:content="${_csrf.token}" />
+  <meta name="_csrf_header" th:content="${_csrf.headerName}" />
   <title>MediPlat · 상담리스트</title>
   <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
   <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
@@ -16,6 +18,93 @@
       0%, 100% { opacity: 1; }
       50%       { opacity: .55; }
     }
+    /* 일괄 SMS 모달 */
+    .bulk-sms-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      display: flex; align-items: center; justify-content: center; z-index: 9000;
+    }
+    .bulk-sms-modal {
+      background: #fff; border-radius: 12px; width: 480px; max-width: 95vw;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18); display: flex; flex-direction: column;
+    }
+    .bulk-sms-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--border-default, #e5e7eb);
+    }
+    .bulk-sms-title { font-weight: 700; font-size: 16px; }
+    .bulk-sms-close { background: none; border: none; font-size: 18px; cursor: pointer; color: #6b7280; }
+    .bulk-sms-body  { padding: 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; max-height: 60vh; }
+    .bulk-sms-section { display: flex; flex-direction: column; gap: 6px; }
+    .bulk-sms-label { font-size: 13px; font-weight: 600; color: #374151; }
+    .bulk-sms-label-row { display: flex; align-items: center; justify-content: space-between; }
+    .bulk-sms-select { height: 34px; border: 1px solid #d1d5db; border-radius: 6px; padding: 0 8px; font-size: 14px; }
+    .bulk-sms-recipients { display: flex; flex-direction: column; gap: 4px; max-height: 160px; overflow-y: auto;
+      border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px; }
+    .bulk-recipient-row { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+    .bulk-recv-name  { font-weight: 600; color: #111827; }
+    .bulk-recv-phone { color: #6b7280; }
+    .bulk-no-phone   { font-size: 13px; color: #9ca3af; text-align: center; padding: 12px 0; }
+    .bulk-sms-textarea { width: 100%; box-sizing: border-box; height: 100px; border: 1px solid #d1d5db;
+      border-radius: 6px; padding: 8px; font-size: 14px; resize: vertical; }
+    .bulk-sms-bytecount { font-size: 12px; color: #6b7280; }
+    .bulk-sms-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px;
+      border-top: 1px solid #e5e7eb; }
+    .bulk-sms-cancel-btn { padding: 7px 18px; border-radius: 6px; border: 1px solid #d1d5db;
+      background: #fff; cursor: pointer; font-size: 14px; }
+    .bulk-sms-send-btn { padding: 7px 18px; border-radius: 6px; border: none;
+      background: var(--brand-500, #3b82f6); color: #fff; cursor: pointer; font-size: 14px; font-weight: 600; }
+    .bulk-sms-send-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+    /* ── 항목 설정 모달 ── */
+    .col-settings-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      display: flex; align-items: center; justify-content: center; z-index: 9100;
+    }
+    .col-settings-modal {
+      background: #fff; border-radius: 12px; width: 420px; max-width: 96vw;
+      max-height: 85vh; display: flex; flex-direction: column;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18);
+    }
+    .col-settings-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--border-default, #e5e7eb);
+      font-weight: 700; font-size: 15px;
+    }
+    .col-settings-header button {
+      background: none; border: none; font-size: 18px; cursor: pointer; color: #6b7280;
+    }
+    .col-settings-body {
+      display: flex; flex-direction: column; gap: 12px;
+      padding: 16px 20px; overflow-y: auto; flex: 1;
+    }
+    .col-settings-side { display: flex; flex-direction: column; gap: 6px; }
+    .col-settings-side-label {
+      font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .col-settings-list {
+      min-height: 80px; border: 1px solid #e5e7eb; border-radius: 8px;
+      padding: 6px; list-style: none; margin: 0;
+      display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start;
+    }
+    #visibleCols { border-color: #b2d9be; background: #f7fdf9; }
+    .col-settings-item {
+      padding: 6px 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 999px;
+      font-size: 13px; cursor: grab; user-select: none; transition: background .1s, border-color .1s;
+      white-space: nowrap;
+    }
+    .col-settings-item:hover { background: #f0f9f4; border-color: #b2d9be; }
+    #visibleCols .col-settings-item { background: #eaf7ef; border-color: #a8d5b8; }
+    #visibleCols .col-settings-item:hover { background: #d4eedd; }
+    .col-settings-item.sortable-ghost { opacity: 0.4; background: #dff0e8; }
+    .col-settings-hint {
+      font-size: 11px; color: #9ca3af; margin-top: 2px;
+    }
+    .col-settings-footer {
+      display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .col-settings-footer .btn--ghost { margin-right: auto; }
   </style>
 </head>
 <body>
@@ -41,16 +130,18 @@
 
       <!-- Search bar -->
       <form class="search-bar" th:action="@{/counsel/list}" method="get">
-        <select class="select" name="dateRange">
+        <select class="select" name="dateRange" id="dateRangeSelect">
           <option value="all"    th:selected="${cri != null and cri.dateRange == 'all'}">전체기간</option>
           <option value="10"     th:selected="${cri == null or cri.dateRange == '10' or cri.dateRange == ''}">최근 10일</option>
           <option value="30"     th:selected="${cri != null and cri.dateRange == '30'}">최근 30일</option>
           <option value="90"     th:selected="${cri != null and cri.dateRange == '90'}">최근 90일</option>
           <option value="custom" th:selected="${cri != null and cri.dateRange == 'custom'}">직접 선택</option>
         </select>
-        <input type="date" class="input" name="startDate" th:value="${cri != null ? cri.startDate : ''}" />
+        <input type="date" class="input" id="startDateInput" name="startDate"
+               th:value="${cri != null and cri.dateRange == 'custom' ? cri.startDate : ''}" />
         <span class="search-bar__to">—</span>
-        <input type="date" class="input" name="endDate" th:value="${cri != null ? cri.endDate : ''}" />
+        <input type="date" class="input" id="endDateInput" name="endDate"
+               th:value="${cri != null and cri.dateRange == 'custom' ? cri.endDate : ''}" />
         <select class="select" name="status">
           <option value="all" th:selected="${cri == null or #strings.isEmpty(cri.status) or cri.status == 'all'}">전체 상태</option>
           <option th:each="s : ${statusOptions}" th:value="${s}" th:text="${s}"
@@ -61,9 +152,16 @@
           <option th:each="p : ${pathTypeOptions}" th:value="${p}" th:text="${p}"
                   th:selected="${cri != null and cri.pathType == p}"></option>
         </select>
-        <input type="text" class="input" name="keyword"
+        <select class="select" name="searchType" id="searchTypeSelect">
+          <option value="patient"   th:selected="${cri == null or #strings.isEmpty(cri.searchType) or cri.searchType == 'patient'}">환자명</option>
+          <option value="guardian"  th:selected="${cri != null and cri.searchType == 'guardian'}">보호자명</option>
+          <option value="phone"     th:selected="${cri != null and cri.searchType == 'phone'}">전화번호</option>
+          <option value="counselor" th:selected="${cri != null and cri.searchType == 'counselor'}">상담자</option>
+          <option value="content"   th:selected="${cri != null and cri.searchType == 'content'}">상담내용</option>
+        </select>
+        <input type="text" class="input" name="keyword" id="keywordInput"
                th:value="${cri != null ? cri.keyword : ''}"
-               placeholder="환자명, 보호자명, 전화번호, 상담내용 검색" />
+               placeholder="검색어를 입력하세요" />
         <label class="search-bar__check">
           <input type="checkbox" name="end" value="on"
                  th:checked="${cri == null or cri.end == 'on'}" />완료 합계 포함
@@ -86,7 +184,6 @@
           <div class="queue-card" style="cursor:pointer;"
                :style="q.beingWorkedOn ? 'border-color: var(--brand-400); background: color-mix(in oklab, var(--brand-500) 4%, #fff);' : ''"
                @click="window.location.href = ctx + '/counsel/inpatient?reservationId=' + q.id">
-            <!-- 헤더: 우선순위 + 이름 + 상담중 뱃지 -->
             <div class="queue-card__head">
               <span class="prio" :class="'prio--' + q.prio" x-text="'P' + q.prio"></span>
               <span class="queue-card__name" x-text="q.name || '(이름 없음)'"></span>
@@ -96,16 +193,12 @@
                        border:1px solid color-mix(in oklab,var(--brand-500) 30%,transparent);
                        padding:2px 6px;border-radius:999px;animation:pulse-soft 2s infinite;">상담중</span>
             </div>
-            <!-- 연락처: 없으면 placeholder로 높이 유지 -->
             <div class="queue-card__phone">
               <span x-show="q.phone" x-text="q.phone"></span>
               <span x-show="!q.phone" style="color:var(--text-tertiary);font-style:italic;">연락처 없음</span>
             </div>
-            <!-- 접수 시각 -->
             <div class="queue-card__time" x-text="q.time"></div>
-            <!-- 메모/문의내용 -->
             <div x-show="q.note" class="queue-card__note" x-text="q.note"></div>
-            <!-- 액션 -->
             <div class="queue-card__actions">
               <button class="btn-xs btn-xs--brand" style="flex:1;justify-content:center;"
                 @click.stop="window.location.href = ctx + '/counsel/intake?reservationId=' + q.id">상세보기</button>
@@ -117,52 +210,48 @@
       <!-- Records table -->
       <div class="section-head">
         <span class="section-head__title">상담 기록 목록</span>
-        <span class="section-head__hint" th:text="${cnt} + '건'" x-text="records.length + '건'"></span>
+        <span class="section-head__hint" x-text="filtered.length + '건'"></span>
         <div style="flex:1"></div>
         <div class="filter-pills">
-          <button class="pill is-active">전체 <span class="pill__count">12</span></button>
-          <button class="pill">오늘</button>
-          <button class="pill">미완료</button>
+          <button class="pill" :class="{ 'is-active': activeFilter === 'all' }" @click="setFilter('all')">
+            전체 <span class="pill__count" x-text="allRecords.length"></span>
+          </button>
+          <button class="pill" :class="{ 'is-active': activeFilter === 'today' }" @click="setFilter('today')">
+            오늘 <span class="pill__count" x-text="todayCount"></span>
+          </button>
+          <button class="pill" :class="{ 'is-active': activeFilter === 'incomplete' }" @click="setFilter('incomplete')">
+            미완료 <span class="pill__count" x-text="incompleteCount"></span>
+          </button>
         </div>
+        <button class="btn-xs" @click="settingsOpen = true" title="리스트 항목 설정" style="margin-left:8px;">
+          <svg width="14" height="14"><use href="#i-settings"/></svg>항목 설정
+        </button>
       </div>
 
       <div class="table-wrap">
         <table class="table">
           <thead>
             <tr>
-              <th class="col-check"><input type="checkbox" /></th>
-              <th>상담일</th><th>환자명</th><th>잠재고객</th><th>보호자전화번호</th>
-              <th>상담유입경로</th><th>연락처</th><th>보호자명</th><th class="col-center">관계</th>
-              <th>상담결과</th><th>상담자</th><th>상병명</th>
+              <th class="col-check">
+                <input type="checkbox" :checked="allChecked" @change="toggleAll($event.target.checked)" />
+              </th>
+              <th th:each="col : ${orderItems}"
+                  th:attr="data-col=${col['column_name'] != null ? col['column_name'] : col['coulmn']}"
+                  th:text="${col['column_comment'] != null and not #strings.isEmpty(col['column_comment']) ? col['column_comment'] : (col['column_name'] != null ? col['column_name'] : col['coulmn'])}">
+              </th>
             </tr>
           </thead>
           <tbody>
-            <template x-for="r in records" :key="r.id">
-              <tr :class="{ 'is-selected': r.selected }" style="cursor:pointer;"
-                  @dblclick="window.location.href = ctx + '/counsel/inpatient?cs_idx=' + r.id">
-                <td><input type="checkbox" :checked="r.selected" /></td>
-                <td class="col-num" x-text="r.date"></td>
-                <td>
-                  <div class="av">
-                    <span x-text="r.patient"></span>
-                    <template x-if="r.tag"><span class="av__circle" :style="{ background: r.tagColor }" x-text="r.tag"></span></template>
-                  </div>
+            <template x-for="r in filtered" :key="r.cs_idx">
+              <tr :class="{ 'is-selected': selectedIds.has(r.cs_idx) }" style="cursor:pointer;"
+                  @dblclick="window.location.href = ctx + '/counsel/inpatient?cs_idx=' + r.cs_idx">
+                <td @click.stop>
+                  <input type="checkbox" :checked="selectedIds.has(r.cs_idx)"
+                         @change="toggleRow(r.cs_idx)" />
                 </td>
-                <td>
-                  <template x-if="r.lead"><span class="av__circle" :style="{ background: r.leadColor, width:'18px', height:'18px', fontSize:'9px' }" x-text="r.lead"></span></template>
-                </td>
-                <td class="col-num" x-text="r.phone"></td>
-                <td x-text="r.route || '—'"></td>
-                <td x-text="r.contact || '—'"></td>
-                <td x-text="r.guardian || '—'"></td>
-                <td class="col-center" x-text="r.rel || '—'"></td>
-                <td><span class="status" :class="'status--' + r.statusType" x-text="r.status"></span></td>
-                <td x-text="r.counselor"></td>
-                <td>
-                  <template x-for="(t, i) in (r.tags || [])" :key="i">
-                    <span class="tag-chip" x-text="t"></span>
-                  </template>
-                </td>
+                <template x-for="col in columns" :key="col.column_name || col.coulmn">
+                  <td x-html="renderCell(r, col.column_name || col.coulmn)"></td>
+                </template>
               </tr>
             </template>
           </tbody>
@@ -171,25 +260,428 @@
 
       <!-- Footer bar -->
       <div class="footer-bar">
-        <button class="btn btn--ghost">환자정보삭제</button>
-        <button class="btn btn--outline"><svg><use href="#i-send"/></svg>일괄 문자 보내기</button>
+        <button class="btn btn--ghost" @click="deleteSelected()">환자정보삭제</button>
+        <button class="btn btn--outline" @click="openBulkSms()">
+          <svg><use href="#i-send"/></svg>일괄 문자 보내기
+        </button>
         <a th:href="@{/counsel/inpatient}" class="btn btn--outline">상담 접수</a>
         <a th:href="@{/counsel/intake}" class="btn btn--primary"><svg><use href="#i-plus"/></svg>신규상담</a>
       </div>
 
-    </div>
+      <!-- 일괄 문자 보내기 모달 -->
+      <div class="bulk-sms-overlay" x-show="bulkSmsOpen" x-cloak @click.self="bulkSmsOpen = false">
+        <div class="bulk-sms-modal" @click.stop>
+          <div class="bulk-sms-header">
+            <span class="bulk-sms-title">일괄 문자 보내기</span>
+            <button type="button" class="bulk-sms-close" @click="bulkSmsOpen = false">✕</button>
+          </div>
+          <div class="bulk-sms-body">
+            <div class="bulk-sms-section">
+              <label class="bulk-sms-label">발신번호</label>
+              <select class="bulk-sms-select" x-model="bulkFrom">
+                <option value="">발신번호 선택</option>
+                <template x-for="opt in phOptions" :key="opt.value">
+                  <option :value="opt.value" x-text="opt.text"></option>
+                </template>
+              </select>
+            </div>
+            <div class="bulk-sms-section">
+              <div class="bulk-sms-label-row">
+                <label class="bulk-sms-label">수신자</label>
+                <label style="font-size:12px;cursor:pointer;">
+                  <input type="checkbox" x-model="bulkSelectAll" @change="toggleBulkAll($event.target.checked)" /> 전체 선택
+                </label>
+              </div>
+              <div class="bulk-sms-recipients">
+                <template x-if="bulkRecipients.length === 0">
+                  <p class="bulk-no-phone">선택한 행에 보호자 연락처가 없습니다.</p>
+                </template>
+                <template x-for="(r, i) in bulkRecipients" :key="i">
+                  <label class="bulk-recipient-row">
+                    <input type="checkbox" x-model="r.checked" />
+                    <span class="bulk-recv-name" x-text="r.name"></span>
+                    <span class="bulk-recv-phone" x-text="r.phone"></span>
+                  </label>
+                </template>
+              </div>
+            </div>
+            <div class="bulk-sms-section">
+              <label class="bulk-sms-label">메시지</label>
+              <textarea class="bulk-sms-textarea" x-model="bulkMsg" @input="updateBulkBytes()"
+                        placeholder="문자 내용을 입력하세요."></textarea>
+              <div class="bulk-sms-bytecount">
+                <span x-text="bulkByteInfo" :style="bulkOverLimit ? 'color:red' : ''"></span>
+              </div>
+            </div>
+          </div>
+          <div class="bulk-sms-footer">
+            <button type="button" class="bulk-sms-cancel-btn" @click="bulkSmsOpen = false">취소</button>
+            <button type="button" class="bulk-sms-send-btn" :disabled="bulkSending" @click="sendBulkSms()">
+              <span x-text="bulkSending ? '전송중...' : '전송'"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 항목 설정 모달 ── -->
+      <div class="col-settings-overlay" x-show="settingsOpen" x-cloak @click.self="settingsOpen = false">
+        <div class="col-settings-modal" @click.stop>
+          <div class="col-settings-header">
+            <span>리스트 항목 설정</span>
+            <button type="button" @click="settingsOpen = false">✕</button>
+          </div>
+          <div class="col-settings-body">
+            <div class="col-settings-side">
+              <div class="col-settings-side-label">보여질 항목</div>
+              <p class="col-settings-hint">클릭하면 아래로 이동합니다. 드래그로 순서를 바꿀 수 있습니다.</p>
+              <ul id="visibleCols" class="col-settings-list">
+                <li th:each="col : ${orderItems}"
+                    th:attr="data-column=${col['column_name'] != null ? col['column_name'] : col['coulmn']},
+                             data-comment=${col['column_comment'] != null and not #strings.isEmpty(col['column_comment']) ? col['column_comment'] : (col['column_name'] != null ? col['column_name'] : col['coulmn'])}"
+                    class="col-settings-item" draggable="true"
+                    th:text="${col['column_comment'] != null and not #strings.isEmpty(col['column_comment']) ? col['column_comment'] : (col['column_name'] != null ? col['column_name'] : col['coulmn'])}">
+                </li>
+              </ul>
+            </div>
+            <div class="col-settings-side">
+              <div class="col-settings-side-label">가려질 항목</div>
+              <p class="col-settings-hint">클릭하면 위로 이동합니다.</p>
+              <ul id="hiddenCols" class="col-settings-list">
+                <li th:each="col : ${innerContentItems}"
+                    th:attr="data-column=${col['column_name'] != null ? col['column_name'] : col['coulmn']},
+                             data-comment=${col['column_comment'] != null and not #strings.isEmpty(col['column_comment']) ? col['column_comment'] : (col['column_name'] != null ? col['column_name'] : col['coulmn'])}"
+                    class="col-settings-item" draggable="true"
+                    th:text="${col['column_comment'] != null and not #strings.isEmpty(col['column_comment']) ? col['column_comment'] : (col['column_name'] != null ? col['column_name'] : col['coulmn'])}">
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="col-settings-footer">
+            <button type="button" class="btn btn--ghost" @click="moveAllToHidden()">모두 비우기</button>
+            <button type="button" class="btn btn--outline" @click="settingsOpen = false">닫기</button>
+            <button type="button" class="btn btn--primary" @click="saveSettings()">저장</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- .page -->
   </main>
 </div>
 
 <script th:inline="javascript">
+/*<![CDATA[*/
 function listPage() {
-  const ctx = (/*[[@{/}]]*/ '/').replace(/\/$/, '');
+  const ctx     = (/*[[@{/}]]*/ '/').replace(/\/$/, '');
+  const records = /*[[${recordItems}]]*/ [];
+  const phOpts  = /*[[${phOptions}]]*/ [];
+  const columns = /*[[${orderItems}]]*/ [];
+  const today   = new Date().toISOString().slice(0, 10);
+
+  // ── 유틸 ──
+  function esc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+  const STATUS_MAP = {
+    '입원완료':'admitted','입원예약':'reserved','접수':'receive',
+    '진행중':'progress','완료':'done','취소':'cancel','상담중':'progress','미완료':'pending'
+  };
+  const LEAD_COLOR = { A:'#e74c3c', B:'#e67e22', C:'#3498db' };
+
+  function renderStatusBadge(v) {
+    const s = String(v || '').trim();
+    if (!s) return '';
+    return `<span class="status status--${STATUS_MAP[s] || 'pending'}">${esc(s)}</span>`;
+  }
+  function renderLeadBadge(v) {
+    const r = String(v || '').trim().toUpperCase();
+    if (!['A','B','C'].includes(r)) return '';
+    return `<span class="av__circle" style="background:${LEAD_COLOR[r]};width:18px;height:18px;font-size:9px;">${r}</span>`;
+  }
+
   return {
     ctx,
-    queue:   /*[[${queueItems}]]*/ [],
-    records: /*[[${recordItems}]]*/ [],
+    queue:        /*[[${queueItems}]]*/ [],
+    allRecords:   records,
+    filtered:     records,
+    activeFilter: 'all',
+    selectedIds:  new Set(),
+    columns,
+    phOptions:    phOpts,
+
+    // pill 카운트
+    get todayCount()      { return this.allRecords.filter(r => (r['cs_col_16'] || '').slice(0,10) === today).length; },
+    get incompleteCount() { return this.allRecords.filter(r => String(r['cs_col_19'] || '') !== '입원완료').length; },
+
+    get allChecked() {
+      return this.filtered.length > 0 && this.filtered.every(r => this.selectedIds.has(r.cs_idx));
+    },
+
+    setFilter(f) {
+      this.activeFilter = f;
+      if (f === 'today')           this.filtered = this.allRecords.filter(r => (r['cs_col_16'] || '').slice(0,10) === today);
+      else if (f === 'incomplete') this.filtered = this.allRecords.filter(r => String(r['cs_col_19'] || '') !== '입원완료');
+      else                         this.filtered = this.allRecords;
+      this.selectedIds = new Set();
+    },
+
+    toggleRow(id) {
+      const next = new Set(this.selectedIds);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      this.selectedIds = next;
+    },
+
+    toggleAll(checked) {
+      this.selectedIds = checked ? new Set(this.filtered.map(r => r.cs_idx)) : new Set();
+    },
+
+    // ── 셀 렌더링 ──
+    renderCell(r, colName) {
+      if (!colName) return '';
+      const clean = colName.replace(/\[\]$/, '');
+      // 상태 배지
+      if (clean === 'cs_col_19') return renderStatusBadge(r[colName] ?? r[clean]);
+      // 잠재고객 배지
+      if (clean === 'cs_col_09') return renderLeadBadge(r[colName] ?? r[clean]);
+      // 환자명 + 잠재고객 배지
+      if (clean === 'cs_col_01') {
+        const name = esc(r[colName] ?? r[clean] ?? '');
+        const lead = renderLeadBadge(r['cs_col_09']);
+        return `<div class="av"><span>${name}</span>${lead}</div>`;
+      }
+      // 보호자 배열 컬럼
+      const gs = Array.isArray(r.guardians) ? r.guardians : [];
+      if (clean === 'cs_col_13') return gs.map(g => `<p>${esc(g.name || '')}</p>`).join('') || esc(r[colName] ?? '');
+      if (clean === 'cs_col_14') return gs.map(g => `<p>${esc(g.relationship || '')}</p>`).join('') || esc(r[colName] ?? '');
+      if (clean === 'cs_col_15') return gs.map(g => `<p>${esc(g.contact_number || '')}</p>`).join('') || esc(r[colName] ?? '');
+      // 상병명 (배열)
+      if (clean === 'cs_col_11') {
+        const val = r[colName] ?? r[clean];
+        if (Array.isArray(val)) return val.map(v => `<span class="tag-chip">${esc(v)}</span>`).join('');
+        return esc(val ?? '');
+      }
+      // 기본
+      const val = r[colName] ?? r[clean];
+      if (val == null || val === '') return '—';
+      if (Array.isArray(val)) return val.map(v => esc(String(v))).join(', ');
+      return esc(String(val));
+    },
+
+    // ── 환자정보 삭제 ──
+    async deleteSelected() {
+      if (this.selectedIds.size === 0) { alert('삭제할 항목을 선택해주세요.'); return; }
+      if (!confirm(`${this.selectedIds.size}건을 삭제합니다. 복구가 불가능합니다. 계속하시겠습니까?`)) return;
+      const csrf       = document.querySelector('meta[name="_csrf"]')?.content || '';
+      const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+      const ids = Array.from(this.selectedIds);
+      const results = await Promise.all(ids.map(id =>
+        fetch(ctx + '/counsel/delete/' + id, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', [csrfHeader]: csrf },
+          credentials: 'same-origin'
+        }).then(r => r.ok ? r.json() : Promise.reject())
+          .then(res => ({ id, ok: res.result === '1' }))
+          .catch(() => ({ id, ok: false }))
+      ));
+      const failed = results.filter(r => !r.ok).length;
+      if (failed === 0) {
+        alert(`${ids.length}건 삭제 완료`);
+      } else {
+        alert(`삭제 완료: ${ids.length - failed}건, 실패: ${failed}건`);
+      }
+      window.location.reload();
+    },
+
+    // ── 일괄 문자 ──
+    bulkSmsOpen:    false,
+    bulkFrom:       '',
+    bulkMsg:        '',
+    bulkByteInfo:   '0 / 90 byte (SMS)',
+    bulkOverLimit:  false,
+    bulkSending:    false,
+    bulkSelectAll:  true,
+    bulkRecipients: [],
+
+    openBulkSms() {
+      if (this.selectedIds.size === 0) { alert('문자를 보낼 대상을 선택해주세요.'); return; }
+      this.bulkRecipients = [];
+      this.filtered.filter(r => this.selectedIds.has(r.cs_idx)).forEach(r => {
+        const name = r['cs_col_01'] || '';
+        const gs   = Array.isArray(r.guardians) ? r.guardians : [];
+        if (gs.length > 0) {
+          gs.forEach(g => {
+            const phone = (g.contact_number || '').trim();
+            if (phone) this.bulkRecipients.push({ name, phone, checked: true });
+          });
+        } else {
+          const phone = String(r['cs_col_15'] || '').trim();
+          if (phone) this.bulkRecipients.push({ name, phone, checked: true });
+        }
+      });
+      this.bulkSelectAll = true;
+      this.bulkMsg = '';
+      this.updateBulkBytes();
+      this.bulkSmsOpen = true;
+    },
+
+    toggleBulkAll(checked) { this.bulkRecipients.forEach(r => { r.checked = checked; }); },
+
+    calcBytes(text) {
+      let b = 0;
+      for (let i = 0; i < text.length; i++) b += text.charCodeAt(i) > 127 ? 2 : 1;
+      return b;
+    },
+
+    updateBulkBytes() {
+      const bytes = this.calcBytes(this.bulkMsg);
+      const max   = bytes > 90 ? 2000 : 90;
+      const type  = bytes > 90 ? 'LMS' : 'SMS';
+      this.bulkByteInfo  = `${bytes} / ${max} byte (${type})`;
+      this.bulkOverLimit = bytes > max;
+    },
+
+    async sendBulkSms() {
+      if (!this.bulkFrom) { alert('발신번호를 선택해주세요.'); return; }
+      const msg = this.bulkMsg.trim();
+      if (!msg) { alert('메시지를 입력해주세요.'); return; }
+      const targets = this.bulkRecipients.filter(r => r.checked);
+      if (targets.length === 0) { alert('수신자를 선택해주세요.'); return; }
+      if (this.bulkOverLimit) { alert('메시지 최대 byte를 초과했습니다.'); return; }
+
+      this.bulkSending = true;
+      const csrf       = document.querySelector('meta[name="_csrf"]')?.content || '';
+      const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+      const now  = new Date();
+      const pad  = n => String(n).padStart(2, '0');
+      const base = now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate())
+                 + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds());
+      const bytes    = this.calcBytes(msg);
+      const sendType = bytes > 90 ? 'lms' : 'sms';
+
+      const results = await Promise.all(targets.map((t, i) => {
+        const payload = {
+          refkey: base + String(i).padStart(3, '0'),
+          type:   sendType,
+          from:   this.bulkFrom,
+          to:     t.phone.replace(/-/g, ''),
+          content: sendType === 'lms'
+            ? { lms: { subject: msg.substring(0, 20), message: msg } }
+            : { sms: { message: msg } }
+        };
+        return fetch(ctx + '/api/external/sendSMS', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', [csrfHeader]: csrf },
+          body: JSON.stringify(payload),
+          credentials: 'same-origin'
+        }).then(r => r.json()).then(res => ({ ok: res?.description === 'success' }))
+          .catch(() => ({ ok: false }));
+      }));
+
+      this.bulkSending = false;
+      const failed = results.filter(r => !r.ok).length;
+      if (failed === 0) {
+        alert(`${targets.length}건 전송 완료`);
+        this.bulkSmsOpen = false;
+      } else {
+        alert(`전송 완료: ${results.length - failed}건\n실패: ${failed}건`);
+      }
+    },
+
+    // ── 항목 설정 모달 ──
+    settingsOpen: false,
+
+    moveAllToHidden() {
+      const hidden  = document.getElementById('hiddenCols');
+      const visible = document.getElementById('visibleCols');
+      if (!hidden || !visible) return;
+      while (visible.firstChild) hidden.appendChild(visible.firstChild);
+    },
+
+    async saveSettings() {
+      const visible = document.getElementById('visibleCols');
+      const hidden  = document.getElementById('hiddenCols');
+      if (!visible || !hidden) return;
+
+      const data = [];
+      Array.from(visible.children).forEach((li, idx) => {
+        const col = li.getAttribute('data-column');
+        if (!col || col === 'null') return;
+        data.push({
+          column:  col,
+          comment: li.getAttribute('data-comment') || '',
+          turn:    idx + 1,
+          viewYn:  'y'
+        });
+      });
+      Array.from(hidden.children).forEach(li => {
+        const col = li.getAttribute('data-column');
+        if (!col || col === 'null') return;
+        data.push({
+          column:  col,
+          comment: li.getAttribute('data-comment') || '',
+          turn:    null,
+          viewYn:  'n'
+        });
+      });
+
+      const csrf       = document.querySelector('meta[name="_csrf"]')?.content || '';
+      const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+
+      try {
+        console.log('[ListSetting] sending', data.length, 'items:', data.map(d => d.column + '(' + d.viewYn + ')'));
+        const res = await fetch(this.ctx + '/counsel/ListSetting', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', [csrfHeader]: csrf },
+          credentials: 'same-origin',
+          redirect: 'error',
+          body: JSON.stringify(data)
+        });
+        const body = await res.text().catch(() => '');
+        console.log('[ListSetting] response', res.status, body);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${body}`);
+        }
+        window.location.reload();
+      } catch (e) {
+        console.error('ListSetting error:', e);
+        if (e instanceof TypeError) {
+          alert('세션이 만료되었거나 네트워크 오류가 발생했습니다. 페이지를 새로 고침 합니다.');
+          window.location.reload();
+        } else {
+          alert('설정 저장 중 오류가 발생했습니다: ' + e.message);
+        }
+      }
+    }
   };
 }
+/*]]>*/
+</script>
+
+<script>
+  // dateRange 변경 시 날짜 입력 초기화 (custom 아닌 경우)
+  document.getElementById('dateRangeSelect')?.addEventListener('change', function () {
+    if (this.value !== 'custom') {
+      document.getElementById('startDateInput').value = '';
+      document.getElementById('endDateInput').value   = '';
+    }
+  });
+
+  // searchType 변경 시 placeholder 업데이트
+  const placeholders = {
+    patient:   '환자명을 입력하세요',
+    guardian:  '보호자명을 입력하세요',
+    phone:     '전화번호를 입력하세요 (뒤 4자리도 가능)',
+    counselor: '상담자명을 입력하세요',
+    content:   '상담내용 키워드를 입력하세요'
+  };
+  const searchTypeEl = document.getElementById('searchTypeSelect');
+  const keywordEl    = document.getElementById('keywordInput');
+  function syncPlaceholder() {
+    if (keywordEl && searchTypeEl) keywordEl.placeholder = placeholders[searchTypeEl.value] || '검색어를 입력하세요';
+  }
+  searchTypeEl?.addEventListener('change', syncPlaceholder);
+  syncPlaceholder();
 </script>
 
 <script th:src="@{/assets/js/app.js}"></script>
@@ -197,6 +689,31 @@ function listPage() {
 <script th:src="@{/assets/js/chrome.js}" data-page="list" th:attr="data-ctx=@{/}"></script>
 <script>
   document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '상담 업무', current: '상담리스트' }); });
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var visibleEl = document.getElementById('visibleCols');
+    var hiddenEl  = document.getElementById('hiddenCols');
+    if (!visibleEl || !hiddenEl) return;
+
+    // 클릭으로 이동 (Sortable 로드 여부와 무관하게 항상 동작)
+    visibleEl.addEventListener('click', function (e) {
+      var li = e.target.closest('.col-settings-item');
+      if (li) hiddenEl.appendChild(li);
+    });
+    hiddenEl.addEventListener('click', function (e) {
+      var li = e.target.closest('.col-settings-item');
+      if (li) visibleEl.appendChild(li);
+    });
+
+    // 드래그 (Sortable이 로드된 경우에만)
+    if (typeof Sortable !== 'undefined') {
+      var shared = { group: { name: 'cols', pull: true, put: true }, animation: 150, ghostClass: 'sortable-ghost' };
+      new Sortable(visibleEl, shared);
+      new Sortable(hiddenEl, shared);
+    }
+  });
 </script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 </body>

@@ -51,7 +51,7 @@ public interface CsmListMapper {
 
         public static String deleteAll(Map<String, Object> params, ProviderContext ctx) {
             String inst = (String) params.get("inst");
-            return "DELETE FROM csm.counsel_list_" + s(inst);
+            return "DELETE FROM csm.counsel_list_" + s(inst) + " WHERE coulmn != '__LOG_SETTINGS__'";
         }
 
         public static String insertOne(Map<String, Object> params, ProviderContext ctx) {
