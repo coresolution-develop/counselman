@@ -785,6 +785,21 @@ if (clean.length !== data.length) {
     if (!sd) console.error('Initial #scrollDetector not found');
   })();
 
+  // 검색 타입 변경 시 placeholder 업데이트
+  const searchTypePlaceholder = {
+    patient:   '환자명을 입력하세요',
+    guardian:  '보호자명을 입력하세요',
+    phone:     '전화번호를 입력하세요 (뒤 4자리도 가능)',
+    counselor: '상담자명을 입력하세요',
+    content:   '상담내용 키워드를 입력하세요'
+  };
+  function updateKeywordPlaceholder() {
+    const type = $('#searchType').val();
+    $('#keywordInput').attr('placeholder', searchTypePlaceholder[type] || '검색어를 입력하세요');
+  }
+  $('#searchType').on('change', updateKeywordPlaceholder);
+  updateKeywordPlaceholder();
+
   // 검색 버튼
   $('#searchBtn').click(function (event) {
     event.preventDefault();

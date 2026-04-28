@@ -111,8 +111,13 @@
 
             <!-- ── 검색/필터 바 (헤더에서 이동) ── -->
             <form id="searchForm" class="csm-search-bar" th:action="@{/counsel/list}" method="get">
-                <input type="hidden" name="searchType" id="searchType"
-                       th:value="${cri == null or #strings.isEmpty(cri.searchType) ? 'patient' : cri.searchType}">
+                <select name="searchType" id="searchType" style="min-width:100px;">
+                    <option value="patient"   th:selected="${cri == null or #strings.isEmpty(cri.searchType) or cri.searchType == 'patient'}">환자명</option>
+                    <option value="guardian"  th:selected="${cri != null and cri.searchType == 'guardian'}">보호자명</option>
+                    <option value="phone"     th:selected="${cri != null and cri.searchType == 'phone'}">전화번호</option>
+                    <option value="counselor" th:selected="${cri != null and cri.searchType == 'counselor'}">상담자</option>
+                    <option value="content"   th:selected="${cri != null and cri.searchType == 'content'}">상담내용</option>
+                </select>
 
                 <!-- 기간 선택 -->
                 <select name="dateRange" id="dateRange" style="min-width:96px;">
@@ -178,7 +183,7 @@
                 <!-- 키워드 -->
                 <input id="keywordInput" name="keyword" type="text" class="csm-kw-input"
                        th:value="${cri != null ? cri.keyword : ''}"
-                       placeholder="환자명, 보호자명, 전화번호, 상담내용 검색">
+                       placeholder="검색어를 입력하세요">
 
                 <!-- 완료 항목 포함 -->
                 <label class="csm-search-bar__check">
