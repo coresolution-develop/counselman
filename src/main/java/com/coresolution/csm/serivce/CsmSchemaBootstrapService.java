@@ -166,6 +166,15 @@ public class CsmSchemaBootstrapService {
                     sort_order int DEFAULT 0
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """);
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS csm.user_nav_order (
+                    inst       varchar(20)  NOT NULL,
+                    username   varchar(100) NOT NULL,
+                    nav_key    varchar(64)  NOT NULL,
+                    sort_order int          NOT NULL DEFAULT 0,
+                    PRIMARY KEY (inst, username, nav_key)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """);
         seedMenuMaster();
         seedPermissionMaster();
     }
@@ -182,7 +191,7 @@ public class CsmSchemaBootstrapService {
             {"counsel_list",        "상담리스트",   "/counsel/list",        30},
             {"notice",              "공지사항",     "/notice",              40},
             {"stats",               "상담통계",     "/stats",               50},
-            {"counsel_log",         "상담일지관리", "/counsel/log",         60},
+            {"counsel_log",         "상담일지관리", "/admin/counsel/log-settings", 60},
             {"sms",                 "문자관리",     "/sms",                 70},
             {"room_board",          "병실현황판",   "/room-board",          80},
             {"admission",           "입원예약관리", "/admission-reservation", 90},

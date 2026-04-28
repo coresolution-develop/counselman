@@ -219,6 +219,21 @@ public interface CsmMapper {
   @ResultMap("InstdataMap")
   Instdata coreInstFindByCode(@Param("id_col_03") String id_col_03);
 
+  // --- 네비게이션 순서 ---
+  @Select("SELECT nav_key, sort_order FROM csm.user_nav_order WHERE inst=#{inst} AND username=#{username} ORDER BY sort_order")
+  List<Map<String, Object>> getUserNavOrder(@Param("inst") String inst, @Param("username") String username);
+
+  @Insert("""
+      INSERT INTO csm.user_nav_order (inst, username, nav_key, sort_order)
+      VALUES (#{inst}, #{username}, #{navKey}, #{sortOrder})
+      ON DUPLICATE KEY UPDATE sort_order = VALUES(sort_order)
+      """)
+  void upsertNavOrder(@Param("inst") String inst, @Param("username") String username,
+                      @Param("navKey") String navKey, @Param("sortOrder") int sortOrder);
+
+  @Delete("DELETE FROM csm.user_nav_order WHERE inst=#{inst} AND username=#{username}")
+  void deleteUserNavOrder(@Param("inst") String inst, @Param("username") String username);
+
   @Select("""
       SELECT id_col_03
       FROM csm.inst_data_cs
