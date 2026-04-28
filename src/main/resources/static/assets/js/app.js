@@ -42,7 +42,6 @@ document.addEventListener('alpine:init', () => {
         { id: 'reception', name: '상담 접수', desc: '신규 상담 접수 및 배정', icon: 'inbox' },
         { id: 'hospitalization', name: '입원 상담', desc: '입원 관련 상담 관리', icon: 'bed' },
         { id: 'list', name: '상담 리스트', desc: '전체 상담 이력 조회', icon: 'list' },
-        { id: 'records', name: '상담일지 관리', desc: '상담 일지 작성 · 수정', icon: 'notebook' },
         { id: 'statistics', name: '상담 통계', desc: '상담 KPI 및 리포트', icon: 'chart' },
       ]},
       { id: 'comms', label: '커뮤니케이션', items: [
@@ -52,6 +51,7 @@ document.addEventListener('alpine:init', () => {
       ]},
       { id: 'admin', label: '시스템 관리', items: [
         { id: 'admin', name: '관리자', desc: '관리자 전용 메뉴 접근', icon: 'shield' },
+        { id: 'records', name: '상담일지 관리', desc: '상담 일지 항목 설정', icon: 'notebook' },
         { id: 'institution', name: '기관 관리', desc: '소속 기관 정보 관리', icon: 'building' },
         { id: 'users', name: '사용자 관리', desc: '계정 생성 · 삭제 · 역할 배정', icon: 'users' },
         { id: 'roles', name: '역할 관리', desc: '권한 역할 생성 · 수정', icon: 'key' },

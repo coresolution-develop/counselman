@@ -777,7 +777,7 @@
 <script th:src="@{/assets/js/chrome.js}" data-page="records" th:attr="data-ctx=@{/}"></script>
 <script th:src="@{/assets/js/datepicker.js}"></script>
 <script>
-  document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '상담 업무', current: '상담일지관리' }); });
+  document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '관리자', current: '상담일지관리' }); });
 </script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 
@@ -892,7 +892,7 @@ function logSettings() {
       }));
       const c = csrf();
       try {
-        const res = await fetch(ctx + '/counsel/log-settings/save', {
+        const res = await fetch(ctx + '/admin/counsel/log-settings/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', [c.header]: c.token },
           body: JSON.stringify(payload),

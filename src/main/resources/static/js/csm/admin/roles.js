@@ -81,9 +81,9 @@ document.addEventListener('alpine:init', () => {
     get permGroups() {
       const items = this._menuItems;
       return [
-        { id: 'consult', label: '상담 업무',    keys: ['counsel_reservation','counsel_write','counsel_list','counsel_log','stats'] },
+        { id: 'consult', label: '상담 업무',    keys: ['counsel_reservation','counsel_write','counsel_list','stats'] },
         { id: 'comms',   label: '커뮤니케이션', keys: ['notice','sms','room_board','admission'] },
-        { id: 'admin',   label: '시스템 관리',  keys: ['__admin_USER','__admin_ROLE','__admin_SYS'] },
+        { id: 'admin',   label: '시스템 관리',  keys: ['__admin_USER','__admin_ROLE','counsel_log','__admin_SYS'] },
       ].map(cat => ({ ...cat, items: cat.keys.map(k => items.get(k)).filter(Boolean) }));
     },
 
