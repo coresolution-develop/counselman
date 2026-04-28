@@ -480,6 +480,8 @@ public class RoomBoardService {
         Map<String, List<Map<String, Object>>> patientsByRoom = patients.stream()
                 .collect(Collectors.groupingBy(row -> normalizeRoomName(String.valueOf(row.get("room_name")))));
         Map<String, List<String>> reservationNamesByRoom = loadReservationNamesByRoom(safe, baseDate);
+        LocalDate dischargeNoticeDate = snapshotDate == null || snapshotDate.isBlank() ? LocalDate.now() : baseDate;
+        Map<String, List<Map<String, Object>>> dischargeNoticesByRoom = loadDischargeNoticesByRoom(safe, dischargeNoticeDate);
 
         Map<String, RoomBoardWardView> wardMap = new LinkedHashMap<>();
         int totalLicensed = 0;
@@ -491,9 +493,15 @@ public class RoomBoardService {
             String roomName = normalizeRoomName(config.getRoomName());
             List<Map<String, Object>> roomPatients = patientsByRoom.getOrDefault(roomName, List.of());
             List<String> reservationNames = reservationNamesByRoom.getOrDefault(roomName, List.of());
+            List<Map<String, Object>> roomDischargeNotices = dischargeNoticesByRoom.getOrDefault(roomName, List.of());
             int occupiedCount = roomPatients.size();
             int licensedBeds = config.getLicensedBeds() == null ? 0 : config.getLicensedBeds();
             int availableCount = Math.max(licensedBeds - occupiedCount - reservationNames.size(), 0);
+            long afternoonAvailableCount = roomDischargeNotices.stream()
+                    .filter(row -> "오후 입원 가능".equals(dischargeAvailabilityLabel(
+                            Objects.toString(row.get("status"), ""),
+                            Objects.toString(row.get("discharge_time"), ""))))
+                    .count();
 
             RoomBoardRoomView room = new RoomBoardRoomView();
             room.setWardName(wardName);
@@ -513,6 +521,13 @@ public class RoomBoardService {
             room.setGenderSummary(buildGenderSummary(roomPatients));
             room.setReservationNames(String.join(", ", reservationNames));
             room.setPatientSlots(buildPatientSlots(roomPatients, reservationNames, Math.max(licensedBeds, 8)));
+            room.setDischargeNoticeCount(roomDischargeNotices.size());
+            room.setAfternoonAvailableCount((int) afternoonAvailableCount);
+            room.setDischargePatientNames(roomDischargeNotices.stream()
+                    .map(row -> safeText(row.get("patient_name"), 100) + " " + dischargeTimeLabel(Objects.toString(row.get("discharge_time"), "")))
+                    .collect(Collectors.joining(", ")));
+            room.setDischargeSlotLabels(buildDischargeSlotLabels(roomPatients, reservationNames, roomDischargeNotices, Math.max(licensedBeds, 8)));
+            room.setDischargeSlotAvailability(buildDischargeSlotAvailability(roomPatients, reservationNames, roomDischargeNotices, Math.max(licensedBeds, 8)));
 
             RoomBoardWardView ward = wardMap.computeIfAbsent(wardName, key -> {
                 RoomBoardWardView item = new RoomBoardWardView();
@@ -588,12 +603,26 @@ public class RoomBoardService {
     private List<Map<String, Object>> loadSnapshotPatients(String inst, Long snapshotId) {
         String safe = sanitizeInst(inst);
         String sql = """
-                SELECT room_name, ward_name, patient_name, gender
+                SELECT rbp_id, patient_no, room_name, ward_name, patient_name, gender
                   FROM csm.room_board_patient_%s
                  WHERE rbs_id = ?
                  ORDER BY room_name ASC, patient_name ASC
                 """.formatted(safe);
         return jdbcTemplate.queryForList(sql, snapshotId);
+    }
+
+    private Map<String, List<Map<String, Object>>> loadDischargeNoticesByRoom(String inst, LocalDate date) {
+        String safe = sanitizeInst(inst);
+        String sql = """
+                SELECT rbdn_id, rbp_id, snapshot_id, ward_name, room_name, patient_no, patient_name,
+                       discharge_time, status, note
+                  FROM csm.room_board_discharge_notice_%s
+                 WHERE discharge_date = ?
+                   AND status <> 'CANCELLED'
+                 ORDER BY room_name ASC, patient_name ASC
+                """.formatted(safe);
+        return jdbcTemplate.queryForList(sql, date).stream()
+                .collect(Collectors.groupingBy(row -> normalizeRoomName(Objects.toString(row.get("room_name"), ""))));
     }
 
     private List<RoomBoardRoomConfig> getActiveRoomConfigs(String inst, LocalDate baseDate) {
@@ -683,6 +712,79 @@ public class RoomBoardService {
             slots.add("-");
         }
         return slots;
+    }
+
+    private List<String> buildDischargeSlotLabels(
+            List<Map<String, Object>> roomPatients,
+            List<String> reservationNames,
+            List<Map<String, Object>> dischargeNotices,
+            int size) {
+        Map<String, Map<String, Object>> byPatientKey = indexDischargeNotices(dischargeNotices);
+        List<String> labels = new ArrayList<>();
+        for (Map<String, Object> patient : roomPatients) {
+            Map<String, Object> notice = byPatientKey.get(dischargePatientKey(patient));
+            labels.add(notice == null ? "" : dischargeTimeLabel(Objects.toString(notice.get("discharge_time"), "")) + "퇴원");
+        }
+        appendEmptyLabels(labels, reservationNames, size);
+        return labels;
+    }
+
+    private List<String> buildDischargeSlotAvailability(
+            List<Map<String, Object>> roomPatients,
+            List<String> reservationNames,
+            List<Map<String, Object>> dischargeNotices,
+            int size) {
+        Map<String, Map<String, Object>> byPatientKey = indexDischargeNotices(dischargeNotices);
+        List<String> labels = new ArrayList<>();
+        for (Map<String, Object> patient : roomPatients) {
+            Map<String, Object> notice = byPatientKey.get(dischargePatientKey(patient));
+            labels.add(notice == null ? "" : dischargeAvailabilityLabel(
+                    Objects.toString(notice.get("status"), ""),
+                    Objects.toString(notice.get("discharge_time"), "")));
+        }
+        appendEmptyLabels(labels, reservationNames, size);
+        return labels;
+    }
+
+    private void appendEmptyLabels(List<String> labels, List<String> reservationNames, int size) {
+        if (reservationNames != null) {
+            for (int i = 0; i < reservationNames.size(); i++) {
+                labels.add("");
+            }
+        }
+        while (labels.size() < size) {
+            labels.add("");
+        }
+        if (labels.size() > size) {
+            labels.subList(size, labels.size()).clear();
+        }
+    }
+
+    private Map<String, Map<String, Object>> indexDischargeNotices(List<Map<String, Object>> dischargeNotices) {
+        Map<String, Map<String, Object>> out = new HashMap<>();
+        if (dischargeNotices == null) {
+            return out;
+        }
+        for (Map<String, Object> notice : dischargeNotices) {
+            String key = dischargePatientKey(notice);
+            if (!key.isBlank()) {
+                out.putIfAbsent(key, notice);
+            }
+        }
+        return out;
+    }
+
+    private String dischargePatientKey(Map<String, Object> row) {
+        String rbpId = Objects.toString(row.get("rbp_id"), "").trim();
+        if (!rbpId.isBlank()) {
+            return "id:" + rbpId;
+        }
+        String patientNo = safeText(row.get("patient_no"), 100);
+        if (!patientNo.isBlank()) {
+            return "no:" + patientNo;
+        }
+        return "name:" + normalizeRoomName(Objects.toString(row.get("room_name"), ""))
+                + ":" + safeText(row.get("patient_name"), 100);
     }
 
     private String buildGenderSummary(List<Map<String, Object>> roomPatients) {

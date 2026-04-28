@@ -177,23 +177,23 @@
     .ws-beds {
       display: grid;
       grid-auto-flow: column;
-      grid-auto-columns: 68px;
-      gap: 6px;
+      grid-auto-columns: 86px;
+      gap: 8px;
     }
     /* 기본 = 빈 병상 (입원 가능) → 녹색으로 강조 */
     .ws-bed-slot {
-      height: 44px;
-      border-radius: 6px;
+      height: 56px;
+      border-radius: 8px;
       border: 1px solid color-mix(in oklab, var(--brand-500) 30%, transparent);
       background: color-mix(in oklab, var(--brand-500) 12%, #fff);
       display: flex; align-items: center; justify-content: center;
-      font-size: 11.5px; color: var(--brand-700);
+      font-size: 12px; color: var(--brand-700);
       font-weight: 600;
       position: relative;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      padding: 0 6px;
+      padding: 0 8px;
     }
     /* 재원 중 — 흰색/중립 */
     .ws-bed-slot.is-filled {
@@ -210,11 +210,62 @@
       font-weight: 500;
     }
     .ws-bed-slot__num {
-      position: absolute; top: 2px; left: 4px;
-      font-size: 9px; color: var(--text-tertiary); font-weight: 600;
+      position: absolute; top: 4px; left: 6px;
+      font-size: 10px; color: var(--text-tertiary); font-weight: 700;
     }
     .ws-bed-slot.is-filled .ws-bed-slot__num { color: var(--text-tertiary); }
     .ws-bed-slot.is-reserved .ws-bed-slot__num { color: #a16207; }
+    .ws-bed-slot.has-discharge {
+      background: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%);
+      border: 2px solid #10b981;
+      color: #065f46;
+      align-items: stretch;
+      justify-content: center;
+      flex-direction: column;
+      gap: 4px;
+      padding: 13px 6px 5px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.65);
+    }
+    .ws-bed-slot__name {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: block;
+      text-align: center;
+      line-height: 1.1;
+    }
+    .ws-discharge-mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-height: 17px;
+      padding: 2px 5px;
+      border-radius: 999px;
+      background: #047857;
+      font-size: 10px;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+    .ws-discharge-summary {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 5px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #ecfdf5;
+      color: #047857;
+      border: 1px solid #a7f3d0;
+      font-size: 10.5px;
+      font-weight: 800;
+    }
 
     /* ===== Popup mode: skip chrome, fill full window ===== */
     html.ws-popup #slot-sidebar,
@@ -303,6 +354,16 @@
         <div class="ws-stat__value"><span x-text="totals.occupancy"></span>%</div>
         <div class="ws-stat__sub">재원 / 허가</div>
       </div>
+      <div class="ws-stat is-highlight">
+        <div class="ws-stat__label">퇴원예고</div>
+        <div class="ws-stat__value" x-text="totals.discharge"></div>
+        <div class="ws-stat__sub">기준일 등록</div>
+      </div>
+      <div class="ws-stat is-warn">
+        <div class="ws-stat__label">오후 입원 가능</div>
+        <div class="ws-stat__value" x-text="totals.afternoon"></div>
+        <div class="ws-stat__sub">오전 퇴원 예정 병상</div>
+      </div>
     </div>
 
     <!-- Filters -->
@@ -334,6 +395,8 @@
             <span>허가병상 <b x-text="ward.licensed"></b></span>
             <span>재원환자 <b x-text="ward.occupied"></b></span>
             <span>입원 가능 <b class="ws-available" x-text="ward.available"></b></span>
+            <span>퇴원예고 <b x-text="ward.discharge"></b></span>
+            <span>오후가능 <b class="ws-available" x-text="ward.afternoon"></b></span>
             <span>가동률 <b x-text="ward.occupancy + '%'"></b></span>
           </div>
         </div>
@@ -364,6 +427,7 @@
                       <span x-text="room.id"></span>
                     </span>
                     <span class="ws-bed__sub" style="display:block;margin-top:3px;padding-left:4px;color:var(--text-tertiary);font-size:11px;" x-text="'(' + room.capacity + '인실)'"></span>
+                    <span class="ws-discharge-summary" x-show="room.discharge > 0" x-text="'퇴원 ' + room.discharge + ' · 오후가능 ' + room.afternoon"></span>
                   </td>
                   <td x-text="room.capacity + '병실'"></td>
                   <td x-text="room.gender || '—'"></td>
@@ -382,9 +446,13 @@
                     <div class="ws-beds">
                       <template x-for="i in room.capacity" :key="i">
                         <div class="ws-bed-slot"
-                             :class="{ 'is-filled': room.patients[i-1], 'is-reserved': !room.patients[i-1] && i <= room.occupied + room.reserved }">
+                             :class="{ 'is-filled': room.patients[i-1], 'is-reserved': !room.patients[i-1] && i <= room.occupied + room.reserved, 'has-discharge': room.dischargeLabels[i-1] }">
                           <span class="ws-bed-slot__num" x-text="i"></span>
-                          <span x-text="room.patients[i-1] || ''"></span>
+                          <span class="ws-bed-slot__name" x-text="room.patients[i-1] || ''"></span>
+                          <span class="ws-discharge-mark"
+                                x-show="room.dischargeLabels[i-1]"
+                                :title="dischargeTooltip(room.dischargeLabels[i-1], room.dischargeAvailability[i-1])"
+                                x-text="room.dischargeLabels[i-1]"></span>
                         </div>
                       </template>
                     </div>
@@ -437,6 +505,11 @@ function wardStatus() {
       admitDate: r.reservationNames || '',
       careType:  r.careType || '',
       note:      r.note || '',
+      discharge: r.dischargeNoticeCount || 0,
+      afternoon: r.afternoonAvailableCount || 0,
+      dischargeNames: r.dischargePatientNames || '',
+      dischargeLabels: r.dischargeSlotLabels || [],
+      dischargeAvailability: r.dischargeSlotAvailability || [],
     };
   }
 
@@ -449,6 +522,8 @@ function wardStatus() {
       available:w.availableBeds || 0,
       occupancy:Math.round(w.occupancyRate || 0),
       rooms:    (w.rooms || []).map(mapRoom),
+      get discharge() { return this.rooms.reduce((s, r) => s + (r.discharge || 0), 0); },
+      get afternoon() { return this.rooms.reduce((s, r) => s + (r.afternoon || 0), 0); },
     };
   }
 
@@ -476,7 +551,9 @@ function wardStatus() {
       const L = this.wards.reduce((s, w) => s + w.licensed, 0);
       const O = this.wards.reduce((s, w) => s + w.occupied, 0);
       const A = this.wards.reduce((s, w) => s + w.available, 0);
-      return { licensed: L, occupied: O, available: A, occupancy: L > 0 ? Math.round((O / L) * 100) : 0 };
+      const D = this.wards.reduce((s, w) => s + w.discharge, 0);
+      const P = this.wards.reduce((s, w) => s + w.afternoon, 0);
+      return { licensed: L, occupied: O, available: A, occupancy: L > 0 ? Math.round((O / L) * 100) : 0, discharge: D, afternoon: P };
     },
 
     get filteredWards() {
@@ -501,6 +578,11 @@ function wardStatus() {
     resetFilters() {
       this.filters.forEach(f => f.on = false);
       this.onlyAvailable = false;
+    },
+
+    dischargeTooltip(label, availability) {
+      if (!label) return '';
+      return availability ? label + ' · ' + availability : label;
     },
 
     closePage() {

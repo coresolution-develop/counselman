@@ -18,10 +18,15 @@ public class RoomBoardRoomView {
     private String careType;
     private String reservationNames;
     private String statusLabel;
+    private Integer dischargeNoticeCount;
+    private Integer afternoonAvailableCount;
+    private String dischargePatientNames;
     private boolean statusWalk;
     private boolean statusDiaper;
     private boolean statusOxygen;
     private boolean statusSuction;
     private String note;
     private List<String> patientSlots = new ArrayList<>();
+    private List<String> dischargeSlotLabels = new ArrayList<>();
+    private List<String> dischargeSlotAvailability = new ArrayList<>();
 }
