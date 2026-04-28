@@ -1,0 +1,12 @@
+{
+  "triggers": {
+    "design": {
+      "lastTriggeredAt": "2026-04-28T02:57:16.414Z",
+      "count": 1
+    },
+    "review": {
+      "lastTriggeredAt": "2026-04-28T03:04:26.704Z",
+      "count": 1
+    }
+  }
+}
