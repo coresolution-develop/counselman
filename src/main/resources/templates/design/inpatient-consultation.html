@@ -771,14 +771,6 @@
                 </div>
               </div>
 
-              <!-- 상담내용 (간단) -->
-              <div class="ic-row">
-                <div class="ic-row__label">상담내용</div>
-                <div class="ic-row__body">
-                  <input type="text" class="ic-input" placeholder="상담 개요를 간단히 입력하세요" x-model="meta.note" />
-                </div>
-              </div>
-
               <!-- 현상태 (textarea) -->
               <div class="ic-row">
                 <div class="ic-row__label">현상태</div>
@@ -1030,7 +1022,6 @@
 
       <!-- Footer actions -->
       <div class="ic-footer">
-        <span class="spacer">자동저장 · 14:23 · <span style="color: var(--success, #10b981);">●</span> 저장됨</span>
         <label class="ic-toggle" style="margin-right:4px;">
           <span class="ic-switch" :class="{ 'is-on': stayOnPage }"
                 @click="stayOnPage=!stayOnPage; localStorage.setItem('ic_stay_on_page', stayOnPage)"></span>
