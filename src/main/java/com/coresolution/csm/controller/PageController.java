@@ -8495,7 +8495,8 @@ public class PageController {
                     value.put("id", "ls_val_" + itemIdx + "_" + valIdx);
                     value.put("name", valName);
                     value.put("fieldKey", fieldKey);
-                    value.put("kind", safeString((String) srcVal.get("kind")));
+                    Object rawKind = srcVal.get("kind");
+                    value.put("kind", rawKind instanceof List ? rawKind : safeString((String) rawKind));
 
                     List<String> options = new ArrayList<>();
                     List<Map<String, Object>> srcOptions = (List<Map<String, Object>>) srcVal.get("options");

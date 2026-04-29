@@ -408,6 +408,21 @@
       border-bottom: 2px solid #fff;
       transform: rotate(-45deg) translateY(-1px);
     }
+    .cm-kind.is-locked { opacity: .45; cursor: not-allowed; }
+    .cm-kind.is-locked input[type="checkbox"] { cursor: not-allowed; }
+    .cm-kind-lock-hint {
+      grid-column: 1 / -1;
+      margin-top: 6px;
+      font-size: 11.5px;
+      color: var(--text-tertiary);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .cm-kind-lock-hint::before {
+      content: '🔒';
+      font-size: 11px;
+    }
 
     /* current-kind readonly card (edit mode) */
     .cm-currentkind {
@@ -517,7 +532,7 @@
             항목을 선택하면 우측에서 설정값을 관리할 수 있습니다
           </div>
           <div class="cls-list" x-ref="itemList">
-            <template x-for="(it, ix) in items" :key="it.id">
+            <template x-for="(it, ix) in items" :key="renderKey + '-' + it.id">
               <div class="cls-item"
                    :data-id="it.id"
                    :class="{ 'is-selected': selectedItemId === it.id, 'is-checked': it.checked }"
@@ -563,7 +578,7 @@
             <span x-show="!selectedItem">좌측에서 상담항목을 먼저 선택하세요</span>
           </div>
           <div class="cls-list" x-ref="valueList">
-            <template x-for="(v, vi) in values" :key="v.id">
+            <template x-for="(v, vi) in values" :key="renderKey + '-' + v.id">
               <div class="cls-item"
                    :data-id="v.id"
                    :class="{ 'is-selected': selectedValueId === v.id, 'is-checked': v.checked }"
@@ -599,21 +614,21 @@
           <div class="cls-col__head">
             <div class="cls-col__title">
               Select Box 설정값
-              <span x-show="selectedValue && selectedValue.kind === 'select'" style="font-weight:500;color:var(--text-tertiary);font-size:12px;margin-left:6px;">
+              <span x-show="selectedValue && kindHasSelect(selectedValue.kind)" style="font-weight:500;color:var(--text-tertiary);font-size:12px;margin-left:6px;">
                 · <span x-text="selectedValue?.name"></span>
               </span>
             </div>
-            <div class="cls-col__meta" x-show="selectedValue && selectedValue.kind === 'select'">
+            <div class="cls-col__meta" x-show="selectedValue && kindHasSelect(selectedValue.kind)">
               <span x-text="options.length"></span>개
             </div>
           </div>
           <div class="cls-col__hint">
             <svg><use href="#i-info"/></svg>
-            <span x-show="selectedValue && selectedValue.kind === 'select'">Select Box에 표시될 옵션 목록입니다</span>
-            <span x-show="!selectedValue || selectedValue.kind !== 'select'">Select Box 타입의 설정값 선택 시 활성화됩니다</span>
+            <span x-show="selectedValue && kindHasSelect(selectedValue.kind)">Select Box에 표시될 옵션 목록입니다</span>
+            <span x-show="!selectedValue || !kindHasSelect(selectedValue.kind)">Select Box 타입의 설정값 선택 시 활성화됩니다</span>
           </div>
           <div class="cls-list" x-ref="optionList">
-            <template x-for="(o, oi) in options" :key="o.id">
+            <template x-for="(o, oi) in options" :key="renderKey + '-' + o.id">
               <div class="cls-item"
                    :data-id="o.id"
                    :class="{ 'is-checked': o.checked }">
@@ -629,8 +644,8 @@
                 </button>
               </div>
             </template>
-            <div class="cls-list__empty" x-show="selectedValue?.kind === 'select' && options.length === 0">옵션이 없습니다</div>
-            <div class="cls-list__empty" x-show="!selectedValue || selectedValue.kind !== 'select'">
+            <div class="cls-list__empty" x-show="kindHasSelect(selectedValue?.kind) && options.length === 0">옵션이 없습니다</div>
+            <div class="cls-list__empty" x-show="!selectedValue || !kindHasSelect(selectedValue.kind)">
               Select Box 타입을 선택하세요
             </div>
           </div>
@@ -638,7 +653,7 @@
             <button class="cls-btn cls-btn--delete" :disabled="!hasCheckedOptions" @click="deleteCheckedOptions()">
               <svg><use href="#i-minus"/></svg>삭제
             </button>
-            <button class="cls-btn cls-btn--add" :disabled="!selectedValue || selectedValue.kind !== 'select'" @click="openAddOption()">
+            <button class="cls-btn cls-btn--add" :disabled="!selectedValue || !kindHasSelect(selectedValue.kind)" @click="openAddOption()">
               <svg><use href="#i-plus"/></svg>추가
             </button>
           </div>
@@ -671,7 +686,7 @@
               <div class="cm-field">
                 <label class="cm-field__label">상담항목명</label>
                 <input type="text" class="cm-field__input" x-model="form.name"
-                       placeholder="분류 이름 입력" x-ref="firstInput" />
+                       placeholder="분류 이름 입력" x-ref="itemInput" />
               </div>
             </div>
             <div class="cm-foot">
@@ -697,32 +712,37 @@
               <div class="cm-field">
                 <label class="cm-field__label">설정값명</label>
                 <input type="text" class="cm-field__input" x-model="form.name"
-                       placeholder="설정값 이름 입력" x-ref="firstInput" />
+                       placeholder="설정값 이름 입력" x-ref="valueInput" />
               </div>
 
-              <!-- ADD: kind checkboxes -->
+              <!-- ADD: kind checkboxes (checkbox↔radio 상호 배타, 나머지 자유 조합) -->
               <div class="cm-field" x-show="modalMode === 'add'">
                 <div class="cm-kinds">
-                  <label class="cm-kind">
-                    <input type="checkbox" :checked="form.kind === 'checkbox'"
-                           @change="form.kind = $event.target.checked ? 'checkbox' : null" />
+                  <label class="cm-kind" :class="{ 'is-locked': lockedKind !== null }">
+                    <input type="checkbox" :checked="form.kind.includes('checkbox')"
+                           :disabled="lockedKind !== null"
+                           @change="toggleKind('checkbox', $event.target.checked)" />
                     Checkbox
                   </label>
-                  <label class="cm-kind">
-                    <input type="checkbox" :checked="form.kind === 'radio'"
-                           @change="form.kind = $event.target.checked ? 'radio' : null" />
+                  <label class="cm-kind" :class="{ 'is-locked': lockedKind !== null }">
+                    <input type="checkbox" :checked="form.kind.includes('radio')"
+                           :disabled="lockedKind !== null"
+                           @change="toggleKind('radio', $event.target.checked)" />
                     Radio Box
                   </label>
                   <label class="cm-kind">
-                    <input type="checkbox" :checked="form.kind === 'select'"
-                           @change="form.kind = $event.target.checked ? 'select' : null" />
+                    <input type="checkbox" :checked="form.kind.includes('select')"
+                           @change="toggleKind('select', $event.target.checked)" />
                     Select Box
                   </label>
                   <label class="cm-kind">
-                    <input type="checkbox" :checked="form.kind === 'text'"
-                           @change="form.kind = $event.target.checked ? 'text' : null" />
+                    <input type="checkbox" :checked="form.kind.includes('text')"
+                           @change="toggleKind('text', $event.target.checked)" />
                     Text Box
                   </label>
+                </div>
+                <div class="cm-kind-lock-hint" x-show="lockedKind !== null"
+                     x-text="lockedKind === 'checkbox' ? '이 항목은 체크박스 타입으로 고정됩니다.' : '이 항목은 라디오박스 타입으로 고정됩니다.'">
                 </div>
               </div>
 
@@ -735,7 +755,7 @@
             </div>
             <div class="cm-foot">
               <button class="cm-btn cm-btn--primary" @click="saveValue()"
-                      :disabled="!form.name.trim() || (modalMode==='add' && !form.kind)">확인</button>
+                      :disabled="!form.name.trim() || (modalMode==='add' && !form.kind.length)">확인</button>
               <button class="cm-btn cm-btn--cancel" @click="closeModal()">취소</button>
             </div>
             <div class="cm-credit">Copyright by Coresolution</div>
@@ -757,7 +777,7 @@
               <div class="cm-field">
                 <label class="cm-field__label">Select Box 설정값</label>
                 <input type="text" class="cm-field__input" x-model="form.name"
-                       placeholder="옵션 입력 (콤마로 구분)" x-ref="firstInput" />
+                       placeholder="옵션 입력 (콤마로 구분)" x-ref="optionInput" />
               </div>
             </div>
             <div class="cm-foot">
@@ -798,6 +818,7 @@ function logSettings() {
     focusCol: 'items',
     toast: '',
     toastTimer: null,
+    renderKey: 0,
 
     // data
     items: [
@@ -853,7 +874,7 @@ function logSettings() {
     modal: null, // 'item' | 'value' | 'option' | null
     modalMode: 'add', // 'add' | 'edit'
     editingId: null,
-    form: { name: '', kind: null },
+    form: { name: '', kind: [] },
 
     init() {
       // Load from server-saved JSON
@@ -914,41 +935,50 @@ function logSettings() {
 
       const mkSortable = (el, handleSel, onEnd) => Sortable.create(el, {
         handle: handleSel,
-        animation: 180,
+        draggable: '[data-id]',
+        animation: 150,
         ghostClass: 'cls-ghost',
         chosenClass: 'cls-chosen',
         dragClass: 'cls-drag',
-        forceFallback: true,
         onEnd,
       });
 
       if (this.$refs.itemList) {
         this._sortables.item = mkSortable(this.$refs.itemList, '.js-handle-item', (ev) => {
-          this.reorderArray(this.items, ev.oldIndex, ev.newIndex);
-          this.saveAll();
+          this.items = this.reordered(this.items, ev.oldIndex, ev.newIndex);
+          this.finishDragReorder();
         });
       }
       if (this.$refs.valueList) {
         this._sortables.value = mkSortable(this.$refs.valueList, '.js-handle-value', (ev) => {
           if (!this.selectedItem) return;
-          this.reorderArray(this.selectedItem._values, ev.oldIndex, ev.newIndex);
-          this.saveAll();
+          this.selectedItem._values = this.reordered(this.selectedItem._values, ev.oldIndex, ev.newIndex);
+          this.finishDragReorder();
         });
       }
       if (this.$refs.optionList) {
         this._sortables.option = mkSortable(this.$refs.optionList, '.js-handle-option', (ev) => {
-          if (!this.selectedValue || this.selectedValue.kind !== 'select') return;
-          this.reorderArray(this.selectedValue._options, ev.oldIndex, ev.newIndex);
-          this.saveAll();
+          if (!this.selectedValue || !this.kindHasSelect(this.selectedValue.kind)) return;
+          this.selectedValue._options = this.reordered(this.selectedValue._options, ev.oldIndex, ev.newIndex);
+          this.finishDragReorder();
         });
       }
     },
-    reorderArray(arr, oldIndex, newIndex) {
-      if (oldIndex === newIndex || oldIndex == null || newIndex == null) return;
-      const [moved] = arr.splice(oldIndex, 1);
-      arr.splice(newIndex, 0, moved);
+    reordered(arr, oldIndex, newIndex) {
+      if (oldIndex === newIndex || oldIndex == null || newIndex == null) return arr;
+      if (oldIndex < 0 || newIndex < 0 || oldIndex >= arr.length || newIndex >= arr.length) return arr;
+      const next = [...arr];
+      const [moved] = next.splice(oldIndex, 1);
+      next.splice(newIndex, 0, moved);
+      return next;
     },
-
+    finishDragReorder() {
+      this.renderKey++;
+      this.$nextTick(() => {
+        this.mountSortables();
+        this.saveAll();
+      });
+    },
     // ===== Derived =====
     get selectedItem() { return this.items.find(i => i.id === this.selectedItemId) || null; },
     get selectedValue() {
@@ -958,20 +988,44 @@ function logSettings() {
     get values() { return this.selectedItem ? this.selectedItem._values : []; },
     get options() {
       const v = this.selectedValue;
-      return (v && v.kind === 'select') ? (v._options || []) : [];
+      return (v && this.kindHasSelect(v.kind)) ? (v._options || []) : [];
     },
     get hasCheckedItems()   { return this.items.some(i => i.checked); },
     get hasCheckedValues()  { return this.values.some(v => v.checked); },
     get hasCheckedOptions() { return this.options.some(o => o.checked); },
-
-    kindLabel(k) {
-      return k === 'checkbox' ? '체크박스'
-           : k === 'radio'    ? '라디오박스'
-           : k === 'select'   ? '셀렉트박스'
-           : k === 'text'     ? '텍스트박스'
-           : '—';
+    get lockedKind() {
+      if (!this.selectedItem) return null;
+      for (const v of this.selectedItem._values) {
+        const k = Array.isArray(v.kind) ? v.kind : (v.kind ? [v.kind] : []);
+        if (k.includes('checkbox')) return 'checkbox';
+        if (k.includes('radio'))    return 'radio';
+      }
+      return null;
     },
-    kindClass(k) { return { 'is-checkbox': k==='checkbox', 'is-radio': k==='radio', 'is-select': k==='select', 'is-text': k==='text' }; },
+
+    kindHasSelect(k) {
+      return Array.isArray(k) ? k.includes('select') : k === 'select';
+    },
+    toggleKind(type, on) {
+      if ((type === 'checkbox' || type === 'radio') && this.lockedKind !== null) return;
+      if (on) {
+        if (type === 'checkbox') this.form.kind = this.form.kind.filter(k => k !== 'radio');
+        if (type === 'radio')    this.form.kind = this.form.kind.filter(k => k !== 'checkbox');
+        if (!this.form.kind.includes(type)) this.form.kind.push(type);
+      } else {
+        this.form.kind = this.form.kind.filter(k => k !== type);
+      }
+    },
+    kindLabel(k) {
+      const arr = Array.isArray(k) ? k : (k ? [k] : []);
+      if (!arr.length) return '—';
+      const map = { checkbox: '체크박스', radio: '라디오박스', select: '셀렉트박스', text: '텍스트박스' };
+      return arr.map(t => map[t] || t).join('+');
+    },
+    kindClass(k) {
+      const arr = Array.isArray(k) ? k : (k ? [k] : []);
+      return { 'is-checkbox': arr.includes('checkbox'), 'is-radio': arr.includes('radio'), 'is-select': arr.includes('select'), 'is-text': arr.includes('text') };
+    },
 
     // ===== Selection =====
     selectItem(id) {
@@ -988,39 +1042,40 @@ function logSettings() {
     // ===== Modal open handlers =====
     openAddItem() {
       this.modal = 'item'; this.modalMode = 'add'; this.editingId = null;
-      this.form = { name: '', kind: null };
-      this.$nextTick(() => this.$refs.firstInput?.focus());
+      this.form = { name: '', kind: [] };
+      setTimeout(() => this.$refs.itemInput?.focus(), 80);
     },
     openEditItem(it) {
       this.modal = 'item'; this.modalMode = 'edit'; this.editingId = it.id;
-      this.form = { name: it.name, kind: null };
-      this.$nextTick(() => this.$refs.firstInput?.focus());
+      this.form = { name: it.name, kind: [] };
+      setTimeout(() => this.$refs.itemInput?.focus(), 80);
     },
     openAddValue() {
       if (!this.selectedItem) return;
       this.modal = 'value'; this.modalMode = 'add'; this.editingId = null;
-      this.form = { name: '', kind: null };
-      this.$nextTick(() => this.$refs.firstInput?.focus());
+      const locked = this.lockedKind;
+      this.form = { name: '', kind: locked ? [locked] : [] };
+      setTimeout(() => this.$refs.valueInput?.focus(), 80);
     },
     openEditValue(v) {
       this.modal = 'value'; this.modalMode = 'edit'; this.editingId = v.id;
-      this.form = { name: v.name, kind: v.kind };
-      this.$nextTick(() => this.$refs.firstInput?.focus());
+      this.form = { name: v.name, kind: Array.isArray(v.kind) ? v.kind : (v.kind ? [v.kind] : []) };
+      setTimeout(() => this.$refs.valueInput?.focus(), 80);
     },
     openAddOption() {
-      if (!this.selectedValue || this.selectedValue.kind !== 'select') return;
+      if (!this.selectedValue || !this.kindHasSelect(this.selectedValue.kind)) return;
       this.modal = 'option'; this.modalMode = 'add'; this.editingId = null;
-      this.form = { name: '', kind: null };
-      this.$nextTick(() => this.$refs.firstInput?.focus());
+      this.form = { name: '', kind: [] };
+      setTimeout(() => this.$refs.optionInput?.focus(), 80);
     },
     openEditOption(o) {
       this.modal = 'option'; this.modalMode = 'edit'; this.editingId = o.id;
-      this.form = { name: o.name, kind: null };
-      this.$nextTick(() => this.$refs.firstInput?.focus());
+      this.form = { name: o.name, kind: [] };
+      setTimeout(() => this.$refs.optionInput?.focus(), 80);
     },
     closeModal() {
       this.modal = null; this.editingId = null;
-      this.form = { name: '', kind: null };
+      this.form = { name: '', kind: [] };
     },
 
     // ===== Save handlers =====
@@ -1043,7 +1098,7 @@ function logSettings() {
       const n = this.form.name.trim();
       if (!n || !this.selectedItem) return;
       if (this.modalMode === 'add') {
-        if (!this.form.kind) return;
+        if (!this.form.kind.length) return;
         const nid = uid();
         this.selectedItem._values.push({ id: nid, name: n, kind: this.form.kind, checked: false, _options: [] });
         this.selectedValueId = nid;
@@ -1056,7 +1111,7 @@ function logSettings() {
     },
     saveOption() {
       const n = this.form.name.trim();
-      if (!n || !this.selectedValue || this.selectedValue.kind !== 'select') return;
+      if (!n || !this.selectedValue || !this.kindHasSelect(this.selectedValue.kind)) return;
       if (this.modalMode === 'add') {
         const names = n.split(',').map(s => s.trim()).filter(Boolean);
         names.forEach(name => this.selectedValue._options.push({ id: uid(), name, checked: false }));
@@ -1094,7 +1149,7 @@ function logSettings() {
       this.$nextTick(() => { this.mountSortables(); this.saveAll(); });
     },
     deleteCheckedOptions() {
-      if (!this.selectedValue || this.selectedValue.kind !== 'select') return;
+      if (!this.selectedValue || !this.kindHasSelect(this.selectedValue.kind)) return;
       const toKeep = this.selectedValue._options.filter(o => !o.checked);
       const removed = this.selectedValue._options.length - toKeep.length;
       if (!removed) return;
