@@ -65,9 +65,11 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -187,6 +189,27 @@ public class PageController {
     private String counselListHiddenColumnsRaw;
     private static final String DEFAULT_ADMISSION_PLEDGE_TEXT = "본인은 입원 연계 및 상담을 위해 제공한 정보가 병원 입원 진행에 활용되는 것에 동의합니다. "
             + "또한 상담 과정에서 안내받은 내용을 확인하였으며, 안내된 절차에 따라 성실히 협조할 것을 서약합니다.";
+    static final String DEFAULT_PLEDGE_TEMPLATE_CONTENT =
+            "<p>&nbsp;본인(환자의 주보호자)은 귀 의료기관에서 제시한 제반 규칙을 준수함은 물론, 치료와 퇴원 등 의사 및 간호사(또는 직원)의 정당한 지시에 따르며, 아래의 내용을 읽고 서약 및 동의합니다.</p>"
+            + "<p><span style=\"color: rgb(248, 123, 12);\">1. 입원 기간 중 예기치 않은 사고(골절, 타박상, 개방성 상처 등)나 응급상황 시 본원에서 치료할 수 없는 상태이거나 의료진 판단으로 응급처치 가능한 병원으로 전원을 요구할 수 있으며 또한 환자 및 보호자가 원할 경우 담당의사와 상의 후 타 병원으로 전원 할 수 있습니다.</span></p>"
+            + "<p><span style=\"color: rgb(248, 123, 12);\">2. 노인은 골다공증, 피부의 약화로 쉽게 골절 또는 멍이 들 수 있으므로 의료기관의 정당한 진료지침이나 교육에 반하는 무단 외출·외박 등으로 인하여 발생하는 환자의 손해에 대한 책임은 원칙적으로 모두 환자에게 있습니다.</span></p>"
+            + "<p>3. 진료 상 발생하는 모든 문제에 대하여 분쟁이 생겼을 때에는 『의료사고 피해구제 및 의료분쟁 조정 등에 관한 법률』에 의한 한국 의료분쟁조정중재원에 그 조정을 신청할 수 있음에 동의합니다.</p>"
+            + "<p>4. 입원기간 동안 발생하는 진료비는 귀 의료기관에서 정하는 납부기한 내에 납부(연대보증인이 있는 경우에는 환자와 연대보증인이 연대하여 납부)하겠으며, 정당한 이유 없이 체납될 때에는 채권확보를 위한 법적조치에 이의가 없고, 만일 본건을 기초로 의료분쟁 등으로 소송을 제기할 경우 관할법원의 민사소송법에 따릅니다.</p>"
+            + "<p>5. 입원기간 중에 환자 및 보호자가 귀 의료기관의 비품이나 기물을 고의 또는 과실로 파괴, 망실, 훼손한 때에는 이를 변상(현물, 현금)합니다.</p>"
+            + "<p><span style=\"color: rgb(248, 123, 12);\">6. 입원기간 중 환자 또는 보호자 등이 소지 중인 현금, 기타 귀중품 및 개인소지품(완전틀니, 부분틀니 포함, 안경, 보청기등)은 귀 의료기관이 지정한 보관 장소가 있는 경우에는 보관 장소에 보관하고, 보관 장소가 따로 없는 경우에는 귀 의료기관이 지정한 직원에게 보관을 의뢰합니다. 이를 이행치 아니하여 분실 및 훼손되어 발생한 손해에 대하여는 귀 의료기관은 책임이 없습니다.</span></p>"
+            + "<p>7. 개인정보 수집 및 활용 동의</p>"
+            + "<p>본원은 진료 등을 위해 아래와 같은 최소한의 개인정보를 수집함. 진료를 위한 필요정보는 의료법에 따라 별도의 동의 없이 수집되며, 동의를 하지 않더라도 진료에는 불이익이 없음.</p>"
+            + "<p>(1) 개인정보 수집항목 : (필수항목) 성명, 주소, 전화번호, 주민등록번호, 보험정보</p>"
+            + "<p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(선택항목) 이메일, 문자메세지 서비스 수신 동의여부</p>"
+            + "<p>(2) 개인정보 수집방법 : 진료 목적은 별도로 받지 않으며, 진료목적 외는 서면으로 수집</p>"
+            + "<p>(3) 개인정보의 수집 및 이용목적 : 진단/검진 예약, 조회 및 진료를 위한 본인 확인 절차 등</p>"
+            + "<p>(4) 개인정보의 보유 및 이용기간 : 개인정보의 수집목적 또는 제공받은 목적이 달성될 때 파기</p>"
+            + "<p><br></p>"
+            + "<p><strong><span style=\"font-size: 1.2em; color: rgb(48, 48, 48);\">※ 환자본인, 주보호자 및 부보호자에 대한 안내</span></strong></p>"
+            + "<p>1. 주보호자는 환자의 입원과 전원, 퇴원 등의 절차상 동의인 이며, 환자 상태의 급격한 변화, 낙상 등의 안전사고, 사망 등 환자입원생활에 관련된 사항에 대해 <strong>일차적 연락대상</strong>이며 타보호자는 <strong>상담이 제한</strong>됩니다. 주보호자 변경 시에는 주보호자변경요청서를 통해서만 가능합니다.</p>"
+            + "<p>2. 주보호자 및 부보호자는 환자의 입원비용과 기타 제반 비용 발생 시 매월 <strong>정산의 책임</strong>을 지게 되며(보증채무최고액:30,000,000원 보증기간:3년), 2개월 미납시 본원은 퇴원권유 할 수 있습니다.</p>"
+            + "<p>3. 주보호자는 환자의 입원기록 외 사본 발급 및 제증명 발급의 주체가 되며, 수혈동의서, 신체 보호대 동의서, 심폐소생술거부동의서, 낙상관련설명안내서, 병원비 등의 규정상 동의절차가 필요한 경우 <strong>서명 대상자</strong>가 됩니다.</p>"
+            + "<p>4. 입원생활에 관련 법적 분쟁 발생 시 원칙적으로 환자 본인이 의료기관의 소송 상대방이 되며, 불가피할 경우 주보호자가 <strong>법적 대리인</strong>이 됩니다.</p>";
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newBuilder().build();
     @Autowired
@@ -1537,29 +1560,7 @@ public class PageController {
         int totalCnt = cs.CounselListCnt(cri);
         postProcessDecryptAndMask(cslist, inst, cri.getSearchType(), cri.getKeyword());
 
-        List<CounselReservation> reservations = cs.listCounselReservations(inst, "RESERVED", 200);
-        if (reservations != null) {
-            reservations.sort(Comparator
-                    .comparing((CounselReservation r) -> r == null || r.getPriority() == null ? 99 : r.getPriority())
-                    .thenComparing(r -> r == null ? "" : safeString(r.getReserved_at()))
-                    .thenComparing(r -> r == null || r.getId() == null ? Long.MAX_VALUE : r.getId()));
-        }
-
-        List<Map<String, Object>> queueItems = (reservations == null
-                ? Collections.<CounselReservation>emptyList() : reservations).stream()
-                .filter(Objects::nonNull)
-                .map(r -> {
-                    Map<String, Object> m = new java.util.LinkedHashMap<>();
-                    m.put("id", r.getId());
-                    m.put("prio", r.getPriority() != null ? r.getPriority() : 9);
-                    m.put("name", safeString(r.getPatient_name()));
-                    m.put("phone", safeString(r.getPatient_phone()));
-                    m.put("time", safeString(r.getReserved_at()));
-                    m.put("note", safeString(r.getCall_summary()));
-                    m.put("beingWorkedOn", isBeingWorkedOn(r.getOpened_at()));
-                    return m;
-                })
-                .collect(Collectors.toList());
+        List<Map<String, Object>> queueItems = listCounselReservationQueueItems(inst);
 
         Set<String> hiddenListColumns = getHiddenListColumns();
         List<Map<String, Object>> orderItems = normalizeDynamicOrderItemComments(
@@ -1669,6 +1670,20 @@ public class PageController {
         log.warn("[JSON] /counsel/list EXIT rows={} (from={} nulls={}) hasMore={} orderItems.size={}",
                 rows.size(), before, nulls, hasMore, (orderItems != null ? orderItems.size() : -1));
         log.warn("[JSON] sample row0 = {}", rows.isEmpty() ? null : rows.get(0));
+        return body;
+    }
+
+    @GetMapping(value = "counsel/list/reservations", params = "requestType=json", produces = "application/json;charset=UTF-8")
+    @ResponseBody
+    public Map<String, Object> getCounselReservationQueueJson(HttpSession session, HttpServletRequest request) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return Map.of("success", false, "redirect", loginRedirectPath(request));
+        }
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("success", true);
+        body.put("queueItems", listCounselReservationQueueItems(inst));
         return body;
     }
 
@@ -2177,7 +2192,7 @@ public class PageController {
         model.addAttribute("firstMonth", firstMonth);
         model.addAttribute("lastYear", lastYear);
         model.addAttribute("lastMonth", lastMonth);
-        return "csm/counsel/chart";
+        return "design/consultation-stats";
     }
 
     @ResponseBody
@@ -5572,6 +5587,7 @@ public class PageController {
             @RequestParam(value = "csIdx", required = false) Integer csIdxParam,
             @RequestParam(value = "draftKey", required = false) String draftKey,
             @RequestParam(value = "returnUrl", required = false) String returnUrl,
+            @RequestParam(value = "standalone", defaultValue = "false") boolean standalone,
             @RequestParam(value = "patientName", required = false) String patientName,
             @RequestParam(value = "gender", required = false) String gender,
             @RequestParam(value = "birth", required = false) String birth,
@@ -5588,24 +5604,320 @@ public class PageController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "입원서약서 기능이 비활성화되었습니다.");
         }
 
-        int csIdx = csIdxParam == null ? 0 : Math.max(0, csIdxParam);
-        Map<String, Object> admissionPledge = csIdx > 0
+        int csIdx = csIdxParam == null ? 0 : csIdxParam;
+        if (csIdx == 0 && standalone) {
+            csIdx = cs.nextStandaloneAdmissionPledgeCsIdx(inst);
+            if (csIdx == 0) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "입원서약서 문서번호를 생성하지 못했습니다.");
+            }
+        }
+        Map<String, Object> admissionPledge = csIdx != 0
                 ? Optional.ofNullable(cs.getAdmissionPledge(inst, csIdx)).orElse(Collections.emptyMap())
                 : Collections.emptyMap();
+
+        String storedPatientName = safeObjectString(admissionPledge.get("patient_name"));
+        String storedPatientPhone = safeObjectString(admissionPledge.get("patient_phone"));
+        String storedPatientBirth = safeObjectString(admissionPledge.get("patient_birth"));
+        String storedChartNo = safeObjectString(admissionPledge.get("chart_no"));
+        String storedRoom = safeObjectString(admissionPledge.get("room"));
 
         model.addAttribute("inst", inst);
         model.addAttribute("csIdx", csIdx);
         model.addAttribute("draftKey", safeString(draftKey).trim());
         model.addAttribute("returnUrl", normalizeInternalReturnUrl(returnUrl));
-        model.addAttribute("patientName", safeString(patientName).trim());
+        model.addAttribute("patientName", !storedPatientName.isBlank() ? storedPatientName : safeString(patientName).trim());
         model.addAttribute("gender", safeString(gender).trim());
-        model.addAttribute("birth", safeString(birth).trim());
-        model.addAttribute("chartNo", safeString(chartNo).trim());
-        model.addAttribute("room", safeString(room).trim());
-        model.addAttribute("phone", safeString(phone).trim());
+        model.addAttribute("birth", !storedPatientBirth.isBlank() ? storedPatientBirth : safeString(birth).trim());
+        model.addAttribute("chartNo", !storedChartNo.isBlank() ? storedChartNo : safeString(chartNo).trim());
+        model.addAttribute("room", !storedRoom.isBlank() ? storedRoom : safeString(room).trim());
+        model.addAttribute("phone", !storedPatientPhone.isBlank() ? storedPatientPhone : safeString(phone).trim());
+        String savedPledgeText = safeObjectString(admissionPledge.get("pledge_text"));
+        String activeTemplate = cs.getActivePledgeTemplateContent(inst);
+        String pledgeTemplateContent = !savedPledgeText.isBlank()
+                ? savedPledgeText
+                : (activeTemplate != null && !activeTemplate.isBlank() ? activeTemplate : DEFAULT_PLEDGE_TEMPLATE_CONTENT);
         model.addAttribute("defaultAdmissionPledgeText", DEFAULT_ADMISSION_PLEDGE_TEXT);
+        model.addAttribute("pledgeTemplateContent", pledgeTemplateContent);
         model.addAttribute("admissionPledge", admissionPledge);
         return "csm/counsel/admissionPledge";
+    }
+
+    @PostMapping({ "/api/admission-pledge/save", "api/admission-pledge/save" })
+    @ResponseBody
+    public Map<String, Object> apiAdmissionPledgeSave(
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) return Map.of("ok", false, "error", "로그인이 필요합니다.");
+
+        int csIdx;
+        try { csIdx = ((Number) body.getOrDefault("cs_idx", 0)).intValue(); }
+        catch (ClassCastException e) { csIdx = 0; }
+        if (csIdx == 0) return Map.of("ok", false, "error", "cs_idx가 필요합니다.");
+
+        java.util.function.Function<String, String> str =
+            k -> String.valueOf(body.getOrDefault(k, "")).trim();
+        java.util.function.Function<String, String> yn =
+            k -> "Y".equalsIgnoreCase(str.apply(k)) ? "Y" : "N";
+
+        String signatureData = normalizeSignatureData(str.apply("signature_data"));
+        String pageInkData   = normalizePageInkData(str.apply("page_ink_data"));
+
+        Map<String, Object> pledge = new HashMap<>();
+        pledge.put("patient_name",          str.apply("patient_name"));
+        pledge.put("patient_phone",         str.apply("patient_phone"));
+        pledge.put("patient_birth",         str.apply("patient_birth"));
+        pledge.put("room",                  str.apply("room"));
+        pledge.put("chart_no",              str.apply("chart_no"));
+        pledge.put("agreed_yn",             yn.apply("agreed_yn"));
+        pledge.put("signer_name",           str.apply("signer_name"));
+        pledge.put("signer_relation",       str.apply("signer_relation"));
+        pledge.put("guardian_name",         str.apply("guardian_name"));
+        pledge.put("guardian_relation",     str.apply("guardian_relation"));
+        pledge.put("guardian_addr",         str.apply("guardian_addr"));
+        pledge.put("guardian_phone",        str.apply("guardian_phone"));
+        pledge.put("guardian_cost_yn",      yn.apply("guardian_cost_yn"));
+        pledge.put("sub_guardian_name",     str.apply("sub_guardian_name"));
+        pledge.put("sub_guardian_relation", str.apply("sub_guardian_relation"));
+        pledge.put("sub_guardian_addr",     str.apply("sub_guardian_addr"));
+        pledge.put("sub_guardian_phone",    str.apply("sub_guardian_phone"));
+        pledge.put("sub_guardian_cost_yn",  yn.apply("sub_guardian_cost_yn"));
+        pledge.put("signed_at",             str.apply("signed_at"));
+        pledge.put("pledge_text",           str.apply("pledge_text"));
+        pledge.put("signature_data",        signatureData);
+        pledge.put("page_ink_data",         pageInkData);
+        cs.upsertAdmissionPledge(inst, csIdx, pledge);
+        return Map.of("ok", true, "csIdx", csIdx);
+    }
+
+    @GetMapping(value = { "api/pledge-templates", "/api/pledge-templates" }, produces = "application/json;charset=UTF-8")
+    @ResponseBody
+    public Map<String, Object> apiListPledgeTemplates(HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) return Map.of("ok", false, "error", "로그인이 필요합니다.");
+        return Map.of("ok", true, "templates", cs.listPledgeTemplates(inst),
+                "defaultContent", DEFAULT_PLEDGE_TEMPLATE_CONTENT);
+    }
+
+    @PostMapping(value = { "api/pledge-templates", "/api/pledge-templates" }, produces = "application/json;charset=UTF-8")
+    @ResponseBody
+    public Map<String, Object> apiSavePledgeTemplate(
+            @RequestBody Map<String, Object> body, HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) return Map.of("ok", false, "error", "로그인이 필요합니다.");
+
+        Long id = null;
+        Object idRaw = body.get("id");
+        if (idRaw instanceof Number) id = ((Number) idRaw).longValue();
+        String name = safeObjectString(body.get("name"));
+        String content = safeObjectString(body.get("content"));
+        boolean activate = Boolean.TRUE.equals(body.get("activate"))
+                || "true".equalsIgnoreCase(safeObjectString(body.get("activate")));
+
+        if (content.isBlank()) return Map.of("ok", false, "error", "내용이 비어 있습니다.");
+        long savedId = cs.savePledgeTemplate(inst, id, name, content, activate);
+        if (savedId == 0) return Map.of("ok", false, "error", "저장에 실패했습니다.");
+        return Map.of("ok", true, "id", savedId);
+    }
+
+    @DeleteMapping(value = { "api/pledge-templates/{id}", "/api/pledge-templates/{id}" }, produces = "application/json;charset=UTF-8")
+    @ResponseBody
+    public Map<String, Object> apiDeletePledgeTemplate(
+            @PathVariable("id") long id, HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) return Map.of("ok", false, "error", "로그인이 필요합니다.");
+        return cs.deletePledgeTemplate(inst, id)
+                ? Map.of("ok", true)
+                : Map.of("ok", false, "error", "삭제할 항목을 찾지 못했습니다.");
+    }
+
+    @PutMapping(value = { "api/pledge-templates/{id}/activate", "/api/pledge-templates/{id}/activate" }, produces = "application/json;charset=UTF-8")
+    @ResponseBody
+    public Map<String, Object> apiActivatePledgeTemplate(
+            @PathVariable("id") long id, HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) return Map.of("ok", false, "error", "로그인이 필요합니다.");
+        return cs.activatePledgeTemplate(inst, id)
+                ? Map.of("ok", true)
+                : Map.of("ok", false, "error", "활성화할 항목을 찾지 못했습니다.");
+    }
+
+    @PostMapping(value = { "api/pledge-templates/deactivate-all", "/api/pledge-templates/deactivate-all" }, produces = "application/json;charset=UTF-8")
+    @ResponseBody
+    public Map<String, Object> apiDeactivateAllPledgeTemplates(HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) return Map.of("ok", false, "error", "로그인이 필요합니다.");
+        cs.deactivateAllPledgeTemplates(inst);
+        return Map.of("ok", true);
+    }
+
+    @GetMapping({ "documents", "/documents" })
+    public ModelAndView documentManagementPage(
+            @RequestParam(value = "q", defaultValue = "") String keyword,
+            HttpSession session) {
+        ModelAndView mv = new ModelAndView();
+        String inst = ensureInst(session);
+        if (inst == null) return new ModelAndView("redirect:/login");
+        if (!isModuleEnabled(inst, ModuleFeatureService.FEATURE_ADMISSION_PLEDGE)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "입원서약서 기능이 비활성화되었습니다.");
+        }
+
+        mv.addObject("rows", buildAdmissionPledgeDocumentRows(inst, keyword, 500));
+        mv.addObject("keyword", safeString(keyword).trim());
+        mv.addObject("pledgeTemplates", cs.listPledgeTemplates(inst));
+        mv.addObject("defaultPledgeTemplateContent", DEFAULT_PLEDGE_TEMPLATE_CONTENT);
+        mv.setViewName("design/document-management");
+        return mv;
+    }
+
+    @GetMapping(value = { "api/documents/admission-pledges", "/api/documents/admission-pledges" }, produces = "application/json;charset=UTF-8")
+    @ResponseBody
+    public Map<String, Object> apiAdmissionPledgeDocuments(
+            @RequestParam(value = "q", defaultValue = "") String keyword,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) return Map.of("ok", false, "error", "로그인이 필요합니다.");
+        if (!isModuleEnabled(inst, ModuleFeatureService.FEATURE_ADMISSION_PLEDGE)) {
+            return Map.of("ok", false, "error", "입원서약서 기능이 비활성화되었습니다.");
+        }
+        return Map.of("ok", true, "rows", buildAdmissionPledgeDocumentRows(inst, keyword, 300));
+    }
+
+    @PostMapping(value = { "api/documents/admission-pledges/link", "/api/documents/admission-pledges/link" }, produces = "application/json;charset=UTF-8")
+    @ResponseBody
+    public Map<String, Object> apiLinkAdmissionPledge(
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) return Map.of("ok", false, "error", "로그인이 필요합니다.");
+        if (!isModuleEnabled(inst, ModuleFeatureService.FEATURE_ADMISSION_PLEDGE)) {
+            return Map.of("ok", false, "error", "입원서약서 기능이 비활성화되었습니다.");
+        }
+
+        int sourceCsIdx = parseIntBody(body.get("sourceCsIdx"));
+        int targetCsIdx = parseIntBody(body.get("targetCsIdx"));
+        boolean replaceExisting = Boolean.TRUE.equals(body.get("replaceExisting"))
+                || "true".equalsIgnoreCase(safeObjectString(body.get("replaceExisting")));
+        if (sourceCsIdx == 0 || targetCsIdx <= 0) {
+            return Map.of("ok", false, "error", "연결할 서약서와 현재 상담번호가 필요합니다.");
+        }
+
+        int updated = cs.linkAdmissionPledgeToCounsel(inst, sourceCsIdx, targetCsIdx, replaceExisting);
+        if (updated == -2) {
+            return Map.of("ok", false, "code", "TARGET_EXISTS", "error", "현재 상담에 이미 연결된 입원서약서가 있습니다.");
+        }
+        if (updated <= 0) {
+            return Map.of("ok", false, "error", "입원서약서를 연결하지 못했습니다.");
+        }
+        return Map.of("ok", true);
+    }
+
+    private List<Map<String, Object>> buildAdmissionPledgeDocumentRows(String inst, String keyword, int limit) {
+        String q = safeString(keyword).trim().toLowerCase(Locale.ROOT);
+        List<Map<String, Object>> rawRows = Optional.ofNullable(cs.listAdmissionPledgeDocuments(inst, limit))
+                .orElse(Collections.emptyList());
+        List<Map<String, Object>> rows = new ArrayList<>();
+
+        for (Map<String, Object> raw : rawRows) {
+            if (raw == null) continue;
+            int csIdx = parseIntBody(raw.get("cs_idx"));
+            String patientName = safeObjectString(raw.get("cs_col_01"));
+            if (isLikelyHex(patientName)) {
+                try {
+                    String decrypted = mysqlAesDecryptHexToUtf8(patientName, aesKey);
+                    if (decrypted != null) patientName = decrypted;
+                } catch (Exception ignore) {
+                    patientName = "";
+                }
+            }
+            if (patientName.isBlank()) {
+                patientName = safeObjectString(raw.get("patient_name"));
+            }
+
+            List<Guardian> guardians = Optional.ofNullable(cs.getGuardiansById(inst, csIdx))
+                    .orElse(Collections.emptyList());
+            String guardianName = safeObjectString(raw.get("guardian_name"));
+            String guardianPhone = safeObjectString(raw.get("guardian_phone"));
+            if (!guardians.isEmpty()) {
+                Guardian first = guardians.stream().filter(Objects::nonNull).findFirst().orElse(null);
+                if (first != null) {
+                    guardianName = safeString(first.getName()).trim().isEmpty() ? guardianName : safeString(first.getName()).trim();
+                    guardianPhone = safeString(first.getContact_number()).trim().isEmpty() ? guardianPhone : safeString(first.getContact_number()).trim();
+                }
+            }
+            if (isLikelyHex(guardianName)) {
+                try {
+                    String decrypted = mysqlAesDecryptHexToUtf8(guardianName, aesKey);
+                    if (decrypted != null) guardianName = decrypted;
+                } catch (Exception ignore) {
+                    guardianName = "";
+                }
+            }
+            if (isLikelyHex(guardianPhone)) {
+                try {
+                    String decrypted = mysqlAesDecryptHexToUtf8(guardianPhone, aesKey);
+                    if (decrypted != null) guardianPhone = decrypted;
+                } catch (Exception ignore) {
+                    guardianPhone = "";
+                }
+            }
+
+            String signerName = safeObjectString(raw.get("signer_name"));
+            String signedAt = safeObjectString(raw.get("signed_at"));
+            String updatedAt = safeObjectString(raw.get("updated_at"));
+            String createdAt = safeObjectString(raw.get("created_at"));
+            String searchBlob = String.join(" ",
+                    String.valueOf(csIdx),
+                    patientName,
+                    guardianName,
+                    guardianPhone,
+                    signerName,
+                    safeObjectString(raw.get("patient_phone")),
+                    safeObjectString(raw.get("patient_birth")),
+                    safeObjectString(raw.get("chart_no")),
+                    safeObjectString(raw.get("room")),
+                    safeObjectString(raw.get("cs_col_03")),
+                    safeObjectString(raw.get("cs_col_16")),
+                    safeObjectString(raw.get("cs_col_17")),
+                    safeObjectString(raw.get("cs_col_19"))).toLowerCase(Locale.ROOT);
+            if (!q.isEmpty() && !searchBlob.contains(q)) {
+                continue;
+            }
+
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("csIdx", csIdx);
+            row.put("linked", csIdx > 0);
+            row.put("documentType", "입원서약서");
+            row.put("patientName", patientName);
+            String birth = safeObjectString(raw.get("cs_col_03"));
+            row.put("birth", !birth.isBlank() ? birth : safeObjectString(raw.get("patient_birth")));
+            row.put("guardianName", guardianName);
+            row.put("guardianPhone", guardianPhone);
+            row.put("signerName", signerName);
+            row.put("signedAt", signedAt);
+            row.put("updatedAt", !updatedAt.isBlank() ? updatedAt : createdAt);
+            row.put("counselDate", safeObjectString(raw.get("cs_col_16")));
+            row.put("counselor", safeObjectString(raw.get("cs_col_17")));
+            row.put("status", "Y".equalsIgnoreCase(safeObjectString(raw.get("signed_yn"))) ? "서명완료" : "작성중");
+            row.put("counselResult", safeObjectString(raw.get("cs_col_19")));
+            rows.add(row);
+        }
+        return rows;
+    }
+
+    private int parseIntBody(Object value) {
+        if (value == null) return 0;
+        if (value instanceof Number number) return number.intValue();
+        try {
+            return Integer.parseInt(String.valueOf(value).trim());
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private String safeObjectString(Object value) {
+        if (value == null) return "";
+        return String.valueOf(value).trim();
     }
 
     /** 신규 페이지 (빈 폼) */
@@ -6186,6 +6498,31 @@ public class PageController {
         }
         out.put("all", out.get("reserved") + out.get("completed") + out.get("cancelled"));
         return out;
+    }
+
+    private List<Map<String, Object>> listCounselReservationQueueItems(String inst) {
+        List<CounselReservation> reservations = cs.listCounselReservations(inst, "RESERVED", 200);
+        if (reservations != null) {
+            reservations.sort(Comparator
+                    .comparing((CounselReservation r) -> r == null || r.getPriority() == null ? 99 : r.getPriority())
+                    .thenComparing(r -> r == null ? "" : safeString(r.getReserved_at()))
+                    .thenComparing(r -> r == null || r.getId() == null ? Long.MAX_VALUE : r.getId()));
+        }
+
+        return (reservations == null ? Collections.<CounselReservation>emptyList() : reservations).stream()
+                .filter(Objects::nonNull)
+                .map(r -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("id", r.getId());
+                    m.put("prio", r.getPriority() != null ? r.getPriority() : 9);
+                    m.put("name", safeString(r.getPatient_name()));
+                    m.put("phone", safeString(r.getPatient_phone()));
+                    m.put("time", safeString(r.getReserved_at()));
+                    m.put("note", safeString(r.getCall_summary()));
+                    m.put("beingWorkedOn", isBeingWorkedOn(r.getOpened_at()));
+                    return m;
+                })
+                .collect(Collectors.toList());
     }
 
     private String toDateTimeLocalValue(String raw) {
@@ -7501,6 +7838,16 @@ public class PageController {
         );
     }
 
+    @GetMapping({"api/notices-popup", "/api/notices-popup"})
+    @ResponseBody
+    public List<Map<String, Object>> getNoticesPopup(HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) return List.of();
+        List<Map<String, Object>> notices = cs.listInstNotices(inst);
+        if (notices == null) return List.of();
+        return notices;
+    }
+
     private static String designStatusType(String status) {
         if (status == null || status.isBlank()) return "";
         if (status.contains("완료") || status.contains("예약")) return "done";
@@ -7785,18 +8132,36 @@ public class PageController {
             return hm;
         }).collect(Collectors.toList());
 
+        int pdCsIdx = data != null ? data.getCs_idx() : 0;
+        boolean pledgeExists = pdCsIdx > 0 && !cs.getAdmissionPledge(inst, pdCsIdx).isEmpty();
+
         mv.addObject("pd", pd);
         mv.addObject("guardianList", guardianList);
         mv.addObject("historyList", historyList);
+        mv.addObject("pledgeExists", pledgeExists);
         mv.addObject("statusOptions", cs.getCounselStatusOptions(inst));
         mv.addObject("pathTypeOptions", cs.getCounselPathTypeOptions(inst));
-        mv.addObject("dynamicCategoryJson", toDynamicCategoryJson(categoryData, fieldTypeMapping));
+        String logSettingsJson = counselListService.getLogSettings(inst);
+        String dynamicCatJson;
+        if (logSettingsJson != null && !logSettingsJson.isBlank() && !logSettingsJson.equals("[]")) {
+            dynamicCatJson = toLogSettingsDynamicJson(logSettingsJson);
+        } else {
+            dynamicCatJson = toDynamicCategoryJson(categoryData, fieldTypeMapping);
+        }
+        mv.addObject("dynamicCategoryJson", dynamicCatJson);
         mv.addObject("dynamicValueJson", toJsonOrEmptyObject(valueMap));
         mv.addObject("smsSenderOptions", phOptions);
         mv.addObject("smsPhrases", smsPhrases);
         mv.addObject("smsSignatures", smsSignatures);
         mv.addObject("today", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
         mv.addObject("actor", actorName);
+        Map<String, Boolean> featureStates = moduleFeatureService.getFeatureStateMap(inst);
+        mv.addObject("moduleCounselAudioEnabled",
+                Boolean.TRUE.equals(featureStates.get(ModuleFeatureService.FEATURE_COUNSEL_AUDIO)));
+        mv.addObject("moduleCounselFileEnabled",
+                Boolean.TRUE.equals(featureStates.get(ModuleFeatureService.FEATURE_COUNSEL_FILE)));
+        mv.addObject("clovaSpeechConfigured", isClovaSpeechConfigured());
+        mv.addObject("openAiConfigured", isOpenAiConfigured());
         mv.setViewName("design/inpatient-consultation");
         return mv;
     }
@@ -7830,6 +8195,12 @@ public class PageController {
                             cs.insertGuardian(inst, g);
                     }
                     saveCounselLogSnapshot(inst, csIdx, request);
+                    if (isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_AUDIO)) {
+                        bindPendingCounselAudio(inst, csIdx, request);
+                    }
+                    if (isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_FILE)) {
+                        bindPendingCounselFiles(inst, csIdx, request);
+                    }
                     long rid = parseLongSafely(request.getParameter("reservation_id"), 0L);
                     if (rid > 0) cs.linkReservationToCounsel(inst, rid, csIdx, resolveReservationActor(inst, session));
                 });
@@ -7848,6 +8219,12 @@ public class PageController {
                             cs.insertGuardian(inst, g);
                     }
                     saveCounselLogSnapshot(inst, idx, request);
+                    if (isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_AUDIO)) {
+                        bindPendingCounselAudio(inst, idx, request);
+                    }
+                    if (isModuleEnabled(inst, ModuleFeatureService.FEATURE_COUNSEL_FILE)) {
+                        bindPendingCounselFiles(inst, idx, request);
+                    }
                     long rid = parseLongSafely(request.getParameter("reservation_id"), 0L);
                     if (rid > 0) cs.linkReservationToCounsel(inst, rid, idx, resolveReservationActor(inst, session));
                     return idx;
@@ -8094,6 +8471,63 @@ public class PageController {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private String toLogSettingsDynamicJson(String logSettingsJson) {
+        try {
+            List<Map<String, Object>> source = objectMapper.readValue(logSettingsJson, List.class);
+            List<Map<String, Object>> rows = new ArrayList<>();
+            int itemIdx = 0;
+            for (Map<String, Object> srcItem : Optional.ofNullable(source).orElse(Collections.emptyList())) {
+                if (srcItem == null) continue;
+                String itemName = safeString((String) srcItem.get("name"));
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("id", "ls_item_" + itemIdx);
+                item.put("name", itemName);
+
+                List<Map<String, Object>> values = new ArrayList<>();
+                List<Map<String, Object>> srcValues = (List<Map<String, Object>>) srcItem.get("values");
+                int valIdx = 0;
+                for (Map<String, Object> srcVal : Optional.ofNullable(srcValues).orElse(Collections.emptyList())) {
+                    if (srcVal == null) continue;
+                    String valName = safeString((String) srcVal.get("name"));
+                    String fieldKey = "ls_" + slugify(itemName) + "_" + slugify(valName);
+                    Map<String, Object> value = new LinkedHashMap<>();
+                    value.put("id", "ls_val_" + itemIdx + "_" + valIdx);
+                    value.put("name", valName);
+                    value.put("fieldKey", fieldKey);
+                    value.put("kind", safeString((String) srcVal.get("kind")));
+
+                    List<String> options = new ArrayList<>();
+                    List<Map<String, Object>> srcOptions = (List<Map<String, Object>>) srcVal.get("options");
+                    for (Map<String, Object> opt : Optional.ofNullable(srcOptions).orElse(Collections.emptyList())) {
+                        if (opt == null) continue;
+                        String optName = safeString((String) opt.get("name")).trim();
+                        if (!optName.isBlank()) options.add(optName);
+                    }
+                    value.put("options", options);
+                    values.add(value);
+                    valIdx++;
+                }
+                item.put("values", values);
+                rows.add(item);
+                itemIdx++;
+            }
+            return objectMapper.writeValueAsString(rows);
+        } catch (Exception e) {
+            log.warn("[design/inpatient] log-settings dynamic json fail: {}", e.toString());
+            return "[]";
+        }
+    }
+
+    private String slugify(String name) {
+        if (name == null) return "";
+        return name.trim().toLowerCase()
+                .replaceAll("[\\s]+", "_")
+                .replaceAll("[^a-z0-9_\\uAC00-\\uD7A3\\u3040-\\u30FF\\u4E00-\\u9FFF]", "")
+                .replaceAll("_+", "_")
+                .replaceAll("^_|_$", "");
+    }
+
     private String toJsonOrEmptyObject(Map<String, String> valueMap) {
         try {
             return objectMapper.writeValueAsString(Optional.ofNullable(valueMap).orElse(Collections.emptyMap()));
@@ -8159,6 +8593,18 @@ public class PageController {
     @GetMapping({ "roles", "/roles" })
     public String designRoleManagement() {
         return "design/role-management";
+    }
+
+    @GetMapping(value = { "design/access-management", "/design/access-management" })
+    public ModelAndView legacyDesignAccessManagement(HttpServletRequest request) {
+        return legacyDesignRedirect("/access", request);
+    }
+
+    @GetMapping({ "access", "/access" })
+    public ModelAndView designAccessManagement(HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) return new ModelAndView("redirect:/login");
+        return new ModelAndView("design/access-management");
     }
 
     private static String nullToEmpty(String s) {

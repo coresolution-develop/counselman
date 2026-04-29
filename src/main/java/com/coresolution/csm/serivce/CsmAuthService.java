@@ -393,6 +393,11 @@ public class CsmAuthService {
                 "CREATE TABLE IF NOT EXISTS csm.counsel_admission_pledge_" + safe + " ("
                         + "id bigint auto_increment primary key,"
                         + "cs_idx int not null,"
+                        + "patient_name varchar(100) default null,"
+                        + "patient_phone varchar(50) default null,"
+                        + "patient_birth varchar(50) default null,"
+                        + "room varchar(100) default null,"
+                        + "chart_no varchar(100) default null,"
                         + "agreed_yn char(1) not null default 'N',"
                         + "signer_name varchar(100) default null,"
                         + "signer_relation varchar(50) default null,"
@@ -437,7 +442,7 @@ public class CsmAuthService {
                 "CREATE TABLE IF NOT EXISTS csm.counsel_list_" + safe + " ("
                         + "idx int auto_increment primary key,"
                         + "coulmn varchar(50) default null,"
-                        + "comment varchar(50) default null,"
+                        + "comment TEXT default null,"
                         + "turn int default null,"
                         + "view_yn varchar(5) not null default 'y'"
                         + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
@@ -707,6 +712,12 @@ public class CsmAuthService {
 
         List<String> missingColumns = new ArrayList<>();
         String admissionPledgeTable = "counsel_admission_pledge_" + safe;
+        for (String columnName : List.of("patient_name", "patient_phone", "patient_birth", "room", "chart_no")) {
+            if (!missingTables.contains(admissionPledgeTable)
+                    && !columnExistsInCsm(admissionPledgeTable, columnName)) {
+                missingColumns.add(admissionPledgeTable + "." + columnName);
+            }
+        }
         if (!missingTables.contains(admissionPledgeTable)
                 && !columnExistsInCsm(admissionPledgeTable, "page_ink_data")) {
             missingColumns.add(admissionPledgeTable + ".page_ink_data");
@@ -843,8 +854,16 @@ public class CsmAuthService {
         }
     }
 
+    private static final List<String> STANDARD_STATUS_OPTIONS =
+            List.of("상담중", "입원예약", "입원완료", "입원안함");
+
     public List<String> getCounselStatusOptions(String inst) {
-        return getDistinctCounselColumnValues(inst, "cs_col_19");
+        List<String> fromDb = getDistinctCounselColumnValues(inst, "cs_col_19");
+        List<String> result = new ArrayList<>(STANDARD_STATUS_OPTIONS);
+        for (String v : fromDb) {
+            if (!result.contains(v)) result.add(v);
+        }
+        return result;
     }
 
     public List<String> getCounselPathTypeOptions(String inst) {
@@ -1392,13 +1411,14 @@ public class CsmAuthService {
     }
 
     public Map<String, Object> getAdmissionPledge(String inst, int csIdx) {
-        if (csIdx <= 0) {
+        if (csIdx == 0) {
             return Collections.emptyMap();
         }
         String safe = sanitizeInst(inst);
         ensureAdmissionPledgeTable(safe);
 
-        String sql = "SELECT cs_idx, agreed_yn, signer_name, signer_relation, "
+        String sql = "SELECT cs_idx, patient_name, patient_phone, patient_birth, room, chart_no, "
+                + "agreed_yn, signer_name, signer_relation, "
                 + "guardian_name, guardian_relation, guardian_addr, guardian_phone, guardian_cost_yn, "
                 + "sub_guardian_name, sub_guardian_relation, sub_guardian_addr, sub_guardian_phone, sub_guardian_cost_yn, "
                 + "signed_at, pledge_text, signature_data, page_ink_data "
@@ -1417,6 +1437,11 @@ public class CsmAuthService {
         Map<String, Object> row = rows.get(0);
         Map<String, Object> out = new HashMap<>();
         out.put("cs_idx", csIdx);
+        out.put("patient_name", safeText(row.get("patient_name"), 100));
+        out.put("patient_phone", safeText(row.get("patient_phone"), 50));
+        out.put("patient_birth", safeText(row.get("patient_birth"), 50));
+        out.put("room", safeText(row.get("room"), 100));
+        out.put("chart_no", safeText(row.get("chart_no"), 100));
         out.put("agreed_yn", normalizeYn(row.get("agreed_yn")));
         out.put("signer_name", safeText(row.get("signer_name"), 100));
         out.put("signer_relation", safeText(row.get("signer_relation"), 50));
@@ -1438,12 +1463,17 @@ public class CsmAuthService {
     }
 
     public int upsertAdmissionPledge(String inst, int csIdx, Map<String, Object> pledge) {
-        if (csIdx <= 0) {
+        if (csIdx == 0) {
             return 0;
         }
         String safe = sanitizeInst(inst);
         ensureAdmissionPledgeTable(safe);
 
+        String patientName = safeText(pledge == null ? null : pledge.get("patient_name"), 100);
+        String patientPhone = safeText(pledge == null ? null : pledge.get("patient_phone"), 50);
+        String patientBirth = safeText(pledge == null ? null : pledge.get("patient_birth"), 50);
+        String room = safeText(pledge == null ? null : pledge.get("room"), 100);
+        String chartNo = safeText(pledge == null ? null : pledge.get("chart_no"), 100);
         String agreedYn = normalizeYn(pledge == null ? null : pledge.get("agreed_yn"));
         String signerName = safeText(pledge == null ? null : pledge.get("signer_name"), 100);
         String signerRelation = safeText(pledge == null ? null : pledge.get("signer_relation"), 50);
@@ -1465,12 +1495,18 @@ public class CsmAuthService {
         pageInkData = normalizePngData(pageInkData, 3_000_000);
 
         String sql = "INSERT INTO csm.counsel_admission_pledge_" + safe
-                + " (cs_idx, agreed_yn, signer_name, signer_relation, "
+                + " (cs_idx, patient_name, patient_phone, patient_birth, room, chart_no, "
+                + "agreed_yn, signer_name, signer_relation, "
                 + "guardian_name, guardian_relation, guardian_addr, guardian_phone, guardian_cost_yn, "
                 + "sub_guardian_name, sub_guardian_relation, sub_guardian_addr, sub_guardian_phone, sub_guardian_cost_yn, "
                 + "signed_at, pledge_text, signature_data, page_ink_data) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
                 + "ON DUPLICATE KEY UPDATE "
+                + "patient_name = VALUES(patient_name), "
+                + "patient_phone = VALUES(patient_phone), "
+                + "patient_birth = VALUES(patient_birth), "
+                + "room = VALUES(room), "
+                + "chart_no = VALUES(chart_no), "
                 + "agreed_yn = VALUES(agreed_yn), "
                 + "signer_name = VALUES(signer_name), "
                 + "signer_relation = VALUES(signer_relation), "
@@ -1489,7 +1525,8 @@ public class CsmAuthService {
                 + "signature_data = VALUES(signature_data), "
                 + "page_ink_data = VALUES(page_ink_data)";
         try {
-            return jdbcTemplate.update(sql, csIdx, agreedYn, signerName, signerRelation,
+            return jdbcTemplate.update(sql, csIdx, patientName, patientPhone, patientBirth, room, chartNo,
+                    agreedYn, signerName, signerRelation,
                     guardianName, guardianRelation, guardianAddr, guardianPhone, guardianCostYn,
                     subGuardianName, subGuardianRelation, subGuardianAddr, subGuardianPhone, subGuardianCostYn,
                     signedAt, pledgeText, signatureData, pageInkData);
@@ -1500,7 +1537,7 @@ public class CsmAuthService {
     }
 
     public int deleteAdmissionPledge(String inst, int csIdx) {
-        if (csIdx <= 0) {
+        if (csIdx == 0) {
             return 0;
         }
         String safe = sanitizeInst(inst);
@@ -1512,6 +1549,86 @@ public class CsmAuthService {
             log.warn("[admission-pledge] delete fail inst={}, cs_idx={}, err={}", safe, csIdx, e.toString());
             return 0;
         }
+    }
+
+    public List<Map<String, Object>> listAdmissionPledgeDocuments(String inst, int limit) {
+        String safe = sanitizeInst(inst);
+        ensureAdmissionPledgeTable(safe);
+        int safeLimit = Math.max(1, Math.min(limit, 1000));
+        String sql = "SELECT p.cs_idx, p.patient_name, p.patient_phone, p.patient_birth, p.room, p.chart_no, "
+                + "p.agreed_yn, p.signer_name, p.signer_relation, "
+                + "p.guardian_name, p.guardian_phone, p.signed_at, p.created_at, p.updated_at, "
+                + "CASE WHEN p.signature_data IS NOT NULL AND LENGTH(p.signature_data) > 0 THEN 'Y' ELSE 'N' END AS signed_yn, "
+                + "CASE WHEN p.page_ink_data IS NOT NULL AND LENGTH(p.page_ink_data) > 0 THEN 'Y' ELSE 'N' END AS ink_yn, "
+                + "d.cs_col_01, d.cs_col_03, d.cs_col_16, d.cs_col_17, d.cs_col_19, d.cs_col_21 "
+                + "FROM csm.counsel_admission_pledge_" + safe + " p "
+                + "LEFT JOIN csm.counsel_data_" + safe + " d ON d.cs_idx = p.cs_idx "
+                + "ORDER BY COALESCE(p.updated_at, p.created_at) DESC "
+                + "LIMIT ?";
+        try {
+            return jdbcTemplate.queryForList(sql, safeLimit);
+        } catch (Exception e) {
+            log.warn("[admission-pledge] list documents fail inst={}, err={}", safe, e.toString());
+            return Collections.emptyList();
+        }
+    }
+
+    @Transactional
+    public int linkAdmissionPledgeToCounsel(String inst, int sourceCsIdx, int targetCsIdx, boolean replaceExisting) {
+        if (sourceCsIdx == 0 || targetCsIdx <= 0) {
+            return 0;
+        }
+        if (sourceCsIdx == targetCsIdx) {
+            return 1;
+        }
+        String safe = sanitizeInst(inst);
+        ensureAdmissionPledgeTable(safe);
+        String table = "csm.counsel_admission_pledge_" + safe;
+
+        Integer sourceCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM " + table + " WHERE cs_idx = ?",
+                Integer.class,
+                sourceCsIdx);
+        if (sourceCount == null || sourceCount == 0) {
+            return 0;
+        }
+
+        Integer targetCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM " + table + " WHERE cs_idx = ?",
+                Integer.class,
+                targetCsIdx);
+        if (targetCount != null && targetCount > 0) {
+            if (!replaceExisting) {
+                return -2;
+            }
+            jdbcTemplate.update("DELETE FROM " + table + " WHERE cs_idx = ?", targetCsIdx);
+        }
+
+        return jdbcTemplate.update(
+                "UPDATE " + table + " SET cs_idx = ? WHERE cs_idx = ?",
+                targetCsIdx,
+                sourceCsIdx);
+    }
+
+    public int nextStandaloneAdmissionPledgeCsIdx(String inst) {
+        String safe = sanitizeInst(inst);
+        ensureAdmissionPledgeTable(safe);
+        String table = "csm.counsel_admission_pledge_" + safe;
+        int candidate = -1;
+        for (int attempt = 0; attempt < 10; attempt++) {
+            try {
+                Integer minCsIdx = jdbcTemplate.queryForObject(
+                        "SELECT COALESCE(MIN(cs_idx), 0) FROM " + table + " WHERE cs_idx < 0",
+                        Integer.class);
+                candidate = minCsIdx == null || minCsIdx >= 0 ? -1 : minCsIdx - 1;
+                jdbcTemplate.update("INSERT INTO " + table + " (cs_idx) VALUES (?)", candidate);
+                return candidate;
+            } catch (Exception e) {
+                log.warn("[admission-pledge] reserve standalone key retry inst={}, cs_idx={}, err={}",
+                        safe, candidate, e.toString());
+            }
+        }
+        return 0;
     }
 
     public List<CounselReservation> listCounselReservations(String inst, String status, int limit) {
@@ -2253,6 +2370,11 @@ public class CsmAuthService {
         String sql = "CREATE TABLE IF NOT EXISTS csm.counsel_admission_pledge_" + safeInst + " ("
                 + "id bigint auto_increment primary key,"
                 + "cs_idx int not null,"
+                + "patient_name varchar(100) default null,"
+                + "patient_phone varchar(50) default null,"
+                + "patient_birth varchar(50) default null,"
+                + "room varchar(100) default null,"
+                + "chart_no varchar(100) default null,"
                 + "agreed_yn char(1) not null default 'N',"
                 + "signer_name varchar(100) default null,"
                 + "signer_relation varchar(50) default null,"
@@ -2283,6 +2405,26 @@ public class CsmAuthService {
     }
 
     private void ensureAdmissionPledgeColumns(String safeInst) {
+        ensureAdmissionPledgeColumn(
+                safeInst,
+                "patient_name",
+                "ALTER TABLE csm.counsel_admission_pledge_" + safeInst + " ADD COLUMN patient_name varchar(100) default null");
+        ensureAdmissionPledgeColumn(
+                safeInst,
+                "patient_phone",
+                "ALTER TABLE csm.counsel_admission_pledge_" + safeInst + " ADD COLUMN patient_phone varchar(50) default null");
+        ensureAdmissionPledgeColumn(
+                safeInst,
+                "patient_birth",
+                "ALTER TABLE csm.counsel_admission_pledge_" + safeInst + " ADD COLUMN patient_birth varchar(50) default null");
+        ensureAdmissionPledgeColumn(
+                safeInst,
+                "room",
+                "ALTER TABLE csm.counsel_admission_pledge_" + safeInst + " ADD COLUMN room varchar(100) default null");
+        ensureAdmissionPledgeColumn(
+                safeInst,
+                "chart_no",
+                "ALTER TABLE csm.counsel_admission_pledge_" + safeInst + " ADD COLUMN chart_no varchar(100) default null");
         ensureAdmissionPledgeColumn(
                 safeInst,
                 "page_ink_data",
@@ -3085,6 +3227,135 @@ public class CsmAuthService {
         ensureInstNoticeTable(safe);
         if (id <= 0) return 0;
         return jdbcTemplate.update("DELETE FROM csm.inst_notice_" + safe + " WHERE id=?", id);
+    }
+
+    // ── Pledge Template ──────────────────────────────────────────────
+
+    private void ensurePledgeTemplateTable(String safeInst) {
+        String sql = "CREATE TABLE IF NOT EXISTS csm.counsel_pledge_template_" + safeInst + " ("
+                + "id bigint auto_increment primary key,"
+                + "template_name varchar(100) not null default '사용자 정의',"
+                + "content longtext not null,"
+                + "is_active char(1) not null default 'N',"
+                + "created_at timestamp default current_timestamp,"
+                + "updated_at timestamp default current_timestamp on update current_timestamp"
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        try {
+            jdbcTemplate.execute(sql);
+        } catch (Exception e) {
+            log.warn("[pledge-template] ensure table fail inst={}, err={}", safeInst, e.toString());
+        }
+    }
+
+    public List<Map<String, Object>> listPledgeTemplates(String inst) {
+        String safe = sanitizeInst(inst);
+        ensurePledgeTemplateTable(safe);
+        try {
+            return jdbcTemplate.queryForList(
+                    "SELECT id, template_name, content, is_active, created_at FROM csm.counsel_pledge_template_" + safe
+                    + " ORDER BY id ASC");
+        } catch (Exception e) {
+            log.warn("[pledge-template] list fail inst={}, err={}", safe, e.toString());
+            return Collections.emptyList();
+        }
+    }
+
+    public String getActivePledgeTemplateContent(String inst) {
+        String safe = sanitizeInst(inst);
+        ensurePledgeTemplateTable(safe);
+        try {
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                    "SELECT content FROM csm.counsel_pledge_template_" + safe
+                    + " WHERE is_active='Y' ORDER BY id DESC LIMIT 1");
+            if (rows.isEmpty()) return null;
+            Object c = rows.get(0).get("content");
+            return c == null ? null : String.valueOf(c);
+        } catch (Exception e) {
+            log.warn("[pledge-template] get active fail inst={}, err={}", safe, e.toString());
+            return null;
+        }
+    }
+
+    public long savePledgeTemplate(String inst, Long id, String name, String content, boolean activate) {
+        String safe = sanitizeInst(inst);
+        ensurePledgeTemplateTable(safe);
+        String safeName = name == null || name.isBlank() ? "사용자 정의" : name.trim().substring(0, Math.min(name.trim().length(), 100));
+        String safeContent = content == null ? "" : content;
+
+        try {
+            if (activate) {
+                jdbcTemplate.update("UPDATE csm.counsel_pledge_template_" + safe + " SET is_active='N'");
+            }
+
+            if (id != null && id > 0) {
+                if (activate) {
+                    jdbcTemplate.update(
+                            "UPDATE csm.counsel_pledge_template_" + safe
+                            + " SET template_name=?, content=?, is_active='Y' WHERE id=?",
+                            safeName, safeContent, id);
+                } else {
+                    jdbcTemplate.update(
+                            "UPDATE csm.counsel_pledge_template_" + safe
+                            + " SET template_name=?, content=? WHERE id=?",
+                            safeName, safeContent, id);
+                }
+                return id;
+            }
+
+            KeyHolder kh = new GeneratedKeyHolder();
+            String isActive = activate ? "Y" : "N";
+            jdbcTemplate.update(con -> {
+                java.sql.PreparedStatement ps = con.prepareStatement(
+                        "INSERT INTO csm.counsel_pledge_template_" + safe
+                        + " (template_name, content, is_active) VALUES (?,?,?)",
+                        java.sql.Statement.RETURN_GENERATED_KEYS);
+                ps.setString(1, safeName);
+                ps.setString(2, safeContent);
+                ps.setString(3, isActive);
+                return ps;
+            }, kh);
+            Number key = kh.getKey();
+            return key == null ? 0L : key.longValue();
+        } catch (Exception e) {
+            log.warn("[pledge-template] save fail inst={}, err={}", safe, e.toString());
+            return 0L;
+        }
+    }
+
+    public boolean deletePledgeTemplate(String inst, long id) {
+        if (id <= 0) return false;
+        String safe = sanitizeInst(inst);
+        ensurePledgeTemplateTable(safe);
+        try {
+            return jdbcTemplate.update("DELETE FROM csm.counsel_pledge_template_" + safe + " WHERE id=?", id) > 0;
+        } catch (Exception e) {
+            log.warn("[pledge-template] delete fail inst={}, id={}, err={}", safe, id, e.toString());
+            return false;
+        }
+    }
+
+    public boolean activatePledgeTemplate(String inst, long id) {
+        if (id <= 0) return false;
+        String safe = sanitizeInst(inst);
+        ensurePledgeTemplateTable(safe);
+        try {
+            jdbcTemplate.update("UPDATE csm.counsel_pledge_template_" + safe + " SET is_active='N'");
+            return jdbcTemplate.update(
+                    "UPDATE csm.counsel_pledge_template_" + safe + " SET is_active='Y' WHERE id=?", id) > 0;
+        } catch (Exception e) {
+            log.warn("[pledge-template] activate fail inst={}, id={}, err={}", safe, id, e.toString());
+            return false;
+        }
+    }
+
+    public void deactivateAllPledgeTemplates(String inst) {
+        String safe = sanitizeInst(inst);
+        ensurePledgeTemplateTable(safe);
+        try {
+            jdbcTemplate.update("UPDATE csm.counsel_pledge_template_" + safe + " SET is_active='N'");
+        } catch (Exception e) {
+            log.warn("[pledge-template] deactivate-all fail inst={}, err={}", safe, e.toString());
+        }
     }
 
 }

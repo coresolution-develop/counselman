@@ -65,7 +65,11 @@ public class SecurityConfig {
                                                 new AntPathRequestMatcher("/api/external/SMSRequest", "POST"),
                                                 new AntPathRequestMatcher("/csm/api/external/SMSRequest", "POST"),
                                                 new AntPathRequestMatcher("/api/roles/**"),
-                                                new AntPathRequestMatcher("/csm/api/roles/**")))
+                                                new AntPathRequestMatcher("/csm/api/roles/**"),
+                                                new AntPathRequestMatcher("/api/access/**"),
+                                                new AntPathRequestMatcher("/csm/api/access/**"),
+                                                new AntPathRequestMatcher("/counsel/ListSetting", "POST"),
+                                                new AntPathRequestMatcher("/csm/counsel/ListSetting", "POST")))
                                 .exceptionHandling(ex -> ex
                                                 .defaultAuthenticationEntryPointFor(
                                                                 new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),

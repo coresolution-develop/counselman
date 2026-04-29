@@ -5,11 +5,11 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.coresolution.csm.mapper.CsmListMapper;
-import com.coresolution.csm.mapper.CsmMapper;
 import com.coresolution.csm.vo.OrderedItem;
 
 import lombok.RequiredArgsConstructor;
@@ -20,6 +20,9 @@ public class CounselListService {
 
     @Autowired
     private CsmListMapper mapper;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private static final Logger logger = LoggerFactory.getLogger(CounselListService.class);
 
@@ -37,6 +40,7 @@ public class CounselListService {
 
     @Transactional
     public void saveLogSettings(String inst, String json) {
+        ensureCommentColumnText(inst);
         mapper.deleteLogSettings(inst);
         mapper.insertLogSettings(inst, json);
     }
@@ -49,6 +53,21 @@ public class CounselListService {
             for (OrderedItem it : items) {
                 mapper.insertOne(inst, it);
             }
+        }
+    }
+
+    private void ensureCommentColumnText(String inst) {
+        String safe = inst.replaceAll("[^a-zA-Z0-9_]", "_");
+        try {
+            Integer maxLen = jdbcTemplate.queryForObject(
+                "SELECT CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS " +
+                "WHERE TABLE_SCHEMA = 'csm' AND TABLE_NAME = ? AND COLUMN_NAME = 'comment' AND DATA_TYPE = 'varchar'",
+                Integer.class, "counsel_list_" + safe);
+            if (maxLen != null) {
+                jdbcTemplate.execute("ALTER TABLE csm.counsel_list_" + safe + " MODIFY COLUMN comment TEXT");
+            }
+        } catch (Exception e) {
+            logger.warn("[CounselListService] comment column migration skipped: {}", e.getMessage());
         }
     }
 }

@@ -777,9 +777,10 @@
 <script th:src="@{/assets/js/chrome.js}" data-page="records" th:attr="data-ctx=@{/}"></script>
 <script th:src="@{/assets/js/datepicker.js}"></script>
 <script>
-  document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '관리자', current: '상담일지관리' }); });
+  document.addEventListener('turbo:load', () => { MPChrome.mount({ parent: '관리자', current: '상담일지관리' }); }, { once: true });
 </script>
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<script data-turbo-eval="false" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js"></script>
+<script data-turbo-eval="false" defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 
 <script th:inline="javascript">
 function logSettings() {
@@ -1031,14 +1032,12 @@ function logSettings() {
         this.items.push({ id: nid, name: n, checked: false, _values: [] });
         this.selectedItemId = nid;
         this.selectedValueId = null;
-        this.showToast('상담항목이 추가되었습니다');
       } else {
         const it = this.items.find(i => i.id === this.editingId);
         if (it) it.name = n;
-        this.showToast('상담항목이 수정되었습니다');
       }
       this.closeModal();
-      this.$nextTick(() => this.mountSortables());
+      this.$nextTick(() => { this.mountSortables(); this.saveAll(); });
     },
     saveValue() {
       const n = this.form.name.trim();
@@ -1048,30 +1047,25 @@ function logSettings() {
         const nid = uid();
         this.selectedItem._values.push({ id: nid, name: n, kind: this.form.kind, checked: false, _options: [] });
         this.selectedValueId = nid;
-        this.showToast('설정값이 추가되었습니다');
       } else {
         const v = this.selectedItem._values.find(x => x.id === this.editingId);
         if (v) v.name = n;
-        this.showToast('설정값이 수정되었습니다');
       }
       this.closeModal();
-      this.$nextTick(() => this.mountSortables());
+      this.$nextTick(() => { this.mountSortables(); this.saveAll(); });
     },
     saveOption() {
       const n = this.form.name.trim();
       if (!n || !this.selectedValue || this.selectedValue.kind !== 'select') return;
       if (this.modalMode === 'add') {
-        // support comma-split input
         const names = n.split(',').map(s => s.trim()).filter(Boolean);
         names.forEach(name => this.selectedValue._options.push({ id: uid(), name, checked: false }));
-        this.showToast(`${names.length}개 옵션이 추가되었습니다`);
       } else {
         const o = this.selectedValue._options.find(x => x.id === this.editingId);
         if (o) o.name = n;
-        this.showToast('옵션이 수정되었습니다');
       }
       this.closeModal();
-      this.$nextTick(() => this.mountSortables());
+      this.$nextTick(() => { this.mountSortables(); this.saveAll(); });
     },
 
     // ===== Delete =====
@@ -1085,7 +1079,7 @@ function logSettings() {
         this.selectedValueId = this.items[0]?._values?.[0]?.id || null;
       }
       this.showToast(`${removed}개 항목이 삭제되었습니다`);
-      this.$nextTick(() => this.mountSortables());
+      this.$nextTick(() => { this.mountSortables(); this.saveAll(); });
     },
     deleteCheckedValues() {
       if (!this.selectedItem) return;
@@ -1097,7 +1091,7 @@ function logSettings() {
         this.selectedValueId = toKeep[0]?.id || null;
       }
       this.showToast(`${removed}개 설정값이 삭제되었습니다`);
-      this.$nextTick(() => this.mountSortables());
+      this.$nextTick(() => { this.mountSortables(); this.saveAll(); });
     },
     deleteCheckedOptions() {
       if (!this.selectedValue || this.selectedValue.kind !== 'select') return;
@@ -1106,7 +1100,7 @@ function logSettings() {
       if (!removed) return;
       this.selectedValue._options = toKeep;
       this.showToast(`${removed}개 옵션이 삭제되었습니다`);
-      this.$nextTick(() => this.mountSortables());
+      this.$nextTick(() => { this.mountSortables(); this.saveAll(); });
     },
 
     // ===== Toast =====
