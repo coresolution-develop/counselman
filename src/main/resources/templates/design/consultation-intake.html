@@ -288,8 +288,9 @@ function intakePage() {
 <script th:src="@{/assets/js/datepicker.js}"></script>
 <script th:src="@{/assets/js/chrome.js}" data-page="reception" th:attr="data-ctx=@{/}"></script>
 <script>
-  document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '상담 업무', current: '상담 접수' }); });
+  document.addEventListener('turbo:load', () => { MPChrome.mount({ parent: '상담 업무', current: '상담 접수' }); }, { once: true });
 </script>
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<script data-turbo-eval="false" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js"></script>
+<script data-turbo-eval="false" defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 </body>
 </html>

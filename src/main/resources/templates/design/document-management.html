@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="_csrf" th:content="${_csrf.token}" />
+  <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+  <title>MediPlat · 서류관리</title>
+  <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/layout.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/components.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/role-management.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/tweaks.css}" />
+  <style>
+    [x-cloak] { display: none !important; }
+
+    /* ── 탭 ── */
+    .doc-tabs {
+      display: flex;
+      border-bottom: 2px solid var(--border-default);
+      margin-bottom: 20px;
+    }
+    .doc-tab {
+      padding: 10px 24px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      background: none;
+      transition: color .15s, border-color .15s;
+    }
+    .doc-tab.is-active { color: var(--brand); border-bottom-color: var(--brand); }
+    .doc-tab:hover:not(.is-active) { color: var(--text-primary); }
+
+    /* ── 서약서 목록 ── */
+    .doc-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .doc-toolbar .input { min-width: 280px; }
+    .doc-summary {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+      color: var(--text-secondary); font-size: 13px;
+    }
+    .doc-table-wrap { background: var(--surface); border: 1px solid var(--border-default); overflow: auto; }
+    .doc-table th, .doc-table td { white-space: nowrap; vertical-align: middle; }
+    .doc-patient { display: flex; flex-direction: column; gap: 2px; }
+    .doc-patient strong { color: var(--text-primary); font-size: 13px; }
+    .doc-patient span { color: var(--text-tertiary); font-size: 11px; }
+    .doc-empty {
+      padding: 48px 16px; text-align: center; color: var(--text-tertiary);
+      background: var(--surface); border: 1px dashed var(--border-default);
+    }
+
+    /* ── 템플릿 관리 ── */
+    .tpl-layout { display: grid; grid-template-columns: 260px 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 800px) { .tpl-layout { grid-template-columns: 1fr; } }
+
+    .tpl-sidebar { display: flex; flex-direction: column; gap: 10px; }
+    .tpl-section-title {
+      font-size: 11px; font-weight: 600; color: var(--text-tertiary);
+      text-transform: uppercase; letter-spacing: .06em; margin-top: 4px;
+    }
+    .tpl-preset-btn {
+      display: block; width: 100%; text-align: left;
+      padding: 9px 12px; border: 1px solid var(--border-default);
+      border-radius: 6px; background: var(--surface);
+      font-size: 13px; color: var(--text-primary); cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .tpl-preset-btn:hover { border-color: var(--brand); background: var(--surface-raised); }
+    .tpl-preset-btn.is-muted { color: var(--text-tertiary); }
+
+    .tpl-saved-list { display: flex; flex-direction: column; gap: 6px; }
+    .tpl-saved-item {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 10px; border: 1px solid var(--border-default);
+      border-radius: 6px; background: var(--surface); font-size: 13px;
+    }
+    .tpl-saved-item.is-active { border-color: var(--brand); }
+    .tpl-saved-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tpl-active-badge {
+      font-size: 10px; padding: 1px 5px; border-radius: 4px;
+      background: var(--brand); color: #fff; flex-shrink: 0;
+    }
+
+    .tpl-editor-panel { display: flex; flex-direction: column; gap: 12px; }
+    .tpl-name-row { display: flex; align-items: center; gap: 8px; }
+    .tpl-name-row .input { flex: 1; }
+    .tpl-tools {
+      display: flex; flex-wrap: wrap; gap: 6px; padding: 8px;
+      border: 1px solid var(--border-default); border-bottom: 0;
+      border-radius: 6px 6px 0 0; background: var(--surface);
+    }
+    .tpl-tool-btn {
+      height: 30px; padding: 0 10px; border: 1px solid var(--border-default);
+      border-radius: 5px; background: #fff; font-size: 12px; cursor: pointer;
+    }
+    .tpl-tool-btn:hover { border-color: var(--brand); color: var(--brand); }
+    .tpl-tool-select,
+    .tpl-tool-color {
+      height: 30px;
+      border: 1px solid var(--border-default);
+      border-radius: 5px;
+      background: #fff;
+      font-size: 12px;
+    }
+    .tpl-tool-select { padding: 0 8px; }
+    .tpl-tool-color { width: 36px; padding: 2px; }
+    .tpl-canvas-wrap {
+      border: 1px solid var(--border-default);
+      border-radius: 0 0 6px 6px;
+      overflow: auto;
+      background: #f3f4f6;
+      padding: 18px;
+      max-height: 72vh;
+    }
+    .doc-free-layout {
+      position: relative;
+      width: 966px;
+      min-height: 1040px;
+      margin: 0 auto;
+      background: #fff;
+      color: #222;
+      box-shadow: 0 1px 8px rgba(15, 23, 42, .12);
+      font-size: 14pt;
+      line-height: 1.45;
+    }
+    .doc-free-element {
+      position: absolute;
+      min-width: 24px;
+      min-height: 22px;
+      padding: 4px;
+      cursor: move;
+      user-select: none;
+    }
+    .doc-free-element.is-selected {
+      outline: 2px solid #2563eb;
+      outline-offset: 1px;
+      z-index: 20;
+    }
+    .doc-free-element [contenteditable="true"] {
+      cursor: text;
+      user-select: text;
+      outline: none;
+    }
+    .doc-resize-handle {
+      position: absolute;
+      right: -6px;
+      bottom: -6px;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #2563eb;
+      background: #fff;
+      cursor: nwse-resize;
+      display: none;
+    }
+    .doc-free-element.is-selected .doc-resize-handle { display: block; }
+    .doc-el-text { width: 100%; height: 100%; white-space: pre-wrap; word-break: keep-all; }
+    .doc-el-box {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #fff;
+    }
+    .doc-el-sign {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid #222;
+      font-weight: 600;
+    }
+    .doc-el-sign::after { content: " (서명)"; font-weight: 400; margin-left: 4px; }
+    .doc-el-check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      height: 100%;
+    }
+    .doc-el-check::before {
+      content: "";
+      width: 18px;
+      height: 18px;
+      border: 1px solid #a8b7e8;
+      border-radius: 5px;
+      flex: 0 0 auto;
+    }
+    .doc-free-table {
+      width: 100%;
+      height: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      background: #fff;
+    }
+    .doc-free-table th,
+    .doc-free-table td {
+      border: 1px solid #c7c7c7;
+      padding: 8px 10px;
+      vertical-align: middle;
+      word-break: keep-all;
+    }
+    .doc-free-table th { background: #fafafa; font-weight: 600; text-align: center; }
+    .doc-free-input {
+      display: inline-block;
+      min-width: 120px;
+      height: 28px;
+      background: #fff;
+      vertical-align: middle;
+    }
+    .tpl-save-row { display: flex; justify-content: flex-end; gap: 8px; align-items: center; }
+    .tpl-hint { font-size: 12px; color: var(--text-tertiary); flex: 1; }
+
+    .tpl-toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: #fff; border: 1px solid var(--border-default);
+      border-radius: 8px; padding: 12px 18px; font-size: 13px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.12); z-index: 9999;
+    }
+    .tpl-toast.is-success { border-color: #10b981; color: #065f46; }
+    .tpl-toast.is-error   { border-color: #ef4444; color: #991b1b; }
+  </style>
+</head>
+<body>
+<script th:src="@{/assets/js/sprite.js}"></script>
+
+<div class="app"
+     data-screen-label="Document Management"
+     :data-sidebar="$store.app.sidebarCollapsed ? 'collapsed' : 'expanded'"
+     :data-variation="$store.app.variation"
+     x-data>
+  <div id="slot-sidebar"></div>
+  <div id="slot-header"></div>
+
+  <main class="main">
+    <div class="page" x-data="docPageState()">
+      <div class="page__header">
+        <div>
+          <h1 class="page__title">서류관리</h1>
+          <p class="page__subtitle">입원서약서와 상담 문서의 작성 상태를 확인하고 연결합니다</p>
+        </div>
+        <button class="btn btn--primary" @click="openNewPledge()">
+          <svg><use href="#i-edit"/></svg> 입원서약서 작성
+        </button>
+      </div>
+
+      <!-- ── 탭 + 탭 패널 ── -->
+      <div id="docPage">
+
+        <div class="doc-tabs">
+          <button class="doc-tab" :class="{ 'is-active': tab === 'list' }" @click="tab = 'list'">서약서 목록</button>
+          <button class="doc-tab" :class="{ 'is-active': tab === 'template' }" @click="switchToTemplate()">템플릿 관리</button>
+        </div>
+
+        <!-- 서약서 목록 -->
+        <div x-show="tab === 'list'" x-cloak>
+          <form class="doc-toolbar" th:action="@{/documents}" method="get">
+            <input class="input" type="text" name="q" th:value="${keyword}" placeholder="환자명, 보호자명, 연락처, 상담번호 검색" />
+            <button class="btn btn--primary" type="submit"><svg><use href="#i-search"/></svg>검색</button>
+            <a class="btn btn--outline" th:href="@{/documents}">초기화</a>
+          </form>
+
+          <div class="doc-summary">
+            <span class="badge badge--brand">입원서약서</span>
+            <span th:text="${#lists.size(rows)} + '건'">0건</span>
+            <span th:if="${keyword != null and !#strings.isEmpty(keyword)}" th:text="'검색어: ' + ${keyword}"></span>
+          </div>
+
+          <div class="doc-table-wrap" th:if="${rows != null and !#lists.isEmpty(rows)}">
+            <table class="table doc-table">
+              <thead>
+                <tr>
+                  <th>문서</th>
+                  <th>환자</th>
+                  <th>보호자/연락처</th>
+                  <th>상태</th>
+                  <th>서명일</th>
+                  <th>최근 수정</th>
+                  <th>상담자</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr th:each="row : ${rows}">
+                  <td><span class="badge badge--gray" th:text="${row.documentType}">입원서약서</span></td>
+                  <td>
+                    <div class="doc-patient">
+                      <strong th:text="${#strings.isEmpty(row.patientName) ? '(이름 없음)' : row.patientName}">환자명</strong>
+                      <span th:if="${row.linked}"
+                            th:text="${'상담번호 ' + row.csIdx + (#strings.isEmpty(row.birth) ? '' : ' · ' + row.birth)}">상담번호</span>
+                      <span th:unless="${row.linked}"
+                            th:text="${'미연결 문서' + (#strings.isEmpty(row.birth) ? '' : ' · ' + row.birth)}">미연결 문서</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="doc-patient">
+                      <strong th:text="${#strings.isEmpty(row.guardianName) ? '-' : row.guardianName}">보호자</strong>
+                      <span th:text="${#strings.isEmpty(row.guardianPhone) ? '-' : row.guardianPhone}">연락처</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="status"
+                          th:classappend="${row.status == '서명완료' ? ' status--done' : ' status--pending'}"
+                          th:text="${row.status}">상태</span>
+                  </td>
+                  <td th:text="${#strings.isEmpty(row.signedAt) ? '-' : row.signedAt}">-</td>
+                  <td th:text="${#strings.isEmpty(row.updatedAt) ? '-' : row.updatedAt}">-</td>
+                  <td th:text="${#strings.isEmpty(row.counselor) ? '-' : row.counselor}">-</td>
+                  <td>
+                    <a class="btn-xs btn-xs--brand"
+                       th:href="@{/counsel/admission-pledge(csIdx=${row.csIdx}, returnUrl=${'/documents'})}">열기</a>
+                    <a class="btn-xs"
+                       th:if="${row.linked}"
+                       th:href="@{/counsel/inpatient(cs_idx=${row.csIdx})}">상담 보기</a>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="doc-empty" th:if="${rows == null or #lists.isEmpty(rows)}">
+            조건에 맞는 입원서약서가 없습니다.
+          </div>
+        </div>
+
+        <!-- 템플릿 관리 -->
+        <div x-show="tab === 'template'" x-cloak>
+          <div class="tpl-layout">
+
+            <!-- 왼쪽 사이드바 -->
+            <div class="tpl-sidebar">
+              <p class="tpl-section-title">프리셋</p>
+              <button class="tpl-preset-btn" @click="loadPreset()">📋 표준 서약서 (기본)</button>
+
+              <p class="tpl-section-title">저장된 템플릿</p>
+              <div class="tpl-saved-list">
+                <p class="tpl-hint" x-show="templates.length === 0">저장된 템플릿이 없습니다.</p>
+                <template x-for="t in templates" :key="t.id">
+                  <div class="tpl-saved-item" :class="{ 'is-active': String(t.is_active) === 'Y' }">
+                    <span class="tpl-saved-name" x-text="t.template_name"></span>
+                    <span class="tpl-active-badge" x-show="String(t.is_active) === 'Y'">사용중</span>
+                    <button class="btn-xs btn-xs--brand" @click="editTemplate(t)" title="이 템플릿 편집">편집</button>
+                    <button class="btn-xs" @click="activateTemplate(t.id)"
+                            x-show="String(t.is_active) !== 'Y'" title="이 템플릿 적용">적용</button>
+                    <button class="btn-xs btn-xs--danger" @click="deleteTemplate(t.id)" title="삭제">삭제</button>
+                  </div>
+                </template>
+              </div>
+
+              <div x-show="templates.some(t => String(t.is_active) === 'Y')" style="margin-top:4px;">
+                <button class="tpl-preset-btn is-muted" @click="deactivateAll()">↩ 기본값으로 초기화</button>
+              </div>
+            </div>
+
+            <!-- 오른쪽 에디터 -->
+            <div class="tpl-editor-panel">
+              <div class="tpl-name-row">
+                <input class="input" type="text" x-model="editingName"
+                       placeholder="템플릿 이름 (예: 2025년 개정판)" maxlength="100" />
+              </div>
+
+              <div class="tpl-tools" role="toolbar" aria-label="서약서 템플릿 도구">
+                <button type="button" class="tpl-tool-btn" @click.stop.prevent="addText()">텍스트</button>
+                <button type="button" class="tpl-tool-btn" @click.stop.prevent="addInputBox()">입력칸</button>
+                <button type="button" class="tpl-tool-btn" @click.stop.prevent="addCheckbox()">체크박스</button>
+                <button type="button" class="tpl-tool-btn" @click.stop.prevent="addSignature()">서명영역</button>
+                <button type="button" class="tpl-tool-btn" @click.stop.prevent="addGuardianBlock('primary')">주보호자 표</button>
+                <button type="button" class="tpl-tool-btn" @click.stop.prevent="addGuardianBlock('secondary')">부보호자 표</button>
+                <button type="button" class="tpl-tool-btn" @click.stop.prevent="addReasonBlock()">동의사유 표</button>
+                <select class="tpl-tool-select" x-model="fontSize" @change="applySelectedStyle()">
+                  <option value="11pt">11pt</option>
+                  <option value="12pt">12pt</option>
+                  <option value="14pt">14pt</option>
+                  <option value="16pt">16pt</option>
+                  <option value="18pt">18pt</option>
+                  <option value="22pt">22pt</option>
+                </select>
+                <input class="tpl-tool-color" type="color" x-model="fontColor" @input="applySelectedStyle()" title="글자 색상" />
+                <button type="button" class="tpl-tool-btn" @click.stop.prevent="applySelectedStyle()">스타일 적용</button>
+                <button type="button" class="tpl-tool-btn" @click.stop.prevent="deleteSelected()">선택삭제</button>
+              </div>
+              <div class="tpl-canvas-wrap">
+                <div id="pledgeDesignerCanvas"
+                     class="doc-free-layout"
+                     aria-label="입원서약서 템플릿 배치 캔버스"></div>
+              </div>
+
+              <div class="tpl-save-row">
+                <p class="tpl-hint">요소를 끌어서 위치를 바꾸고, 선택 후 우하단 핸들로 크기를 조절하세요. 텍스트는 더블클릭해서 수정합니다.</p>
+                <button class="btn btn--outline" @click="saveAsNew()">새 템플릿으로 저장</button>
+                <button class="btn btn--primary" :disabled="saving" @click="saveTemplate()">
+                  <span x-show="saving">저장 중…</span>
+                  <span x-show="!saving" x-text="editingId ? '수정 후 적용' : '저장 및 적용'"></span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 토스트 알림 -->
+          <div class="tpl-toast" x-show="toast.visible" x-transition
+               :class="toast.ok ? 'is-success' : 'is-error'"
+               x-text="toast.message">
+          </div>
+        </div>
+
+      </div><!-- /#docPage -->
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+  var _pledgeTemplates = /*[[${pledgeTemplates}]]*/ [];
+  var _defaultPledgeTemplateContent = /*[[${defaultPledgeTemplateContent}]]*/ '';
+</script>
+<script th:src="@{/assets/js/app.js}"></script>
+<script th:src="@{/assets/js/chrome.js}" data-page="documents" th:attr="data-ctx=@{/}"></script>
+<script>
+  document.addEventListener('turbo:load', () => { MPChrome.mount({ parent: '상담 업무', current: '서류관리' }); }, { once: true });
+</script>
+<script data-turbo-eval="false" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<script>
+function docPageState() {
+  return {
+    tab: location.hash === '#template' ? 'template' : 'list',
+    templates: Array.isArray(_pledgeTemplates) ? _pledgeTemplates : [],
+    editingId: null,
+    editingName: '',
+    saving: false,
+    designer: null,
+    selectedEl: null,
+    dragState: null,
+    fontSize: '14pt',
+    fontColor: '#222222',
+    lastCreateKey: '',
+    lastCreateAt: 0,
+    _editorReady: false,
+    toast: { visible: false, ok: true, message: '' },
+
+    init() {
+      this.$watch('tab', val => {
+        if (val === 'template') this.$nextTick(() => this._initEditor());
+      });
+      if (this.tab === 'template') {
+        this.$nextTick(() => this._initEditor());
+      }
+      window.addEventListener('message', (e) => {
+        if (e.data?.type === 'csm-admission-pledge') {
+          window.location.reload();
+        }
+      });
+    },
+
+    openNewPledge() {
+      var ctx = this._ctx();
+      var url = ctx + '/counsel/admission-pledge?standalone=true';
+      var popup = window.open(url, 'csmAdmissionPledge',
+        'width=1400,height=920,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no');
+      if (!popup) {
+        window.location.href = url + '&returnUrl=' + encodeURIComponent('/documents');
+      }
+    },
+
+    switchToTemplate() {
+      history.replaceState(null, '', '#template');
+      this.tab = 'template';
+    },
+
+    _ctx() {
+      return (document.querySelector('[data-ctx]')?.dataset.ctx || '/').replace(/\/$/, '');
+    },
+
+    _csrf() {
+      return document.querySelector('meta[name="_csrf"]')?.content || '';
+    },
+
+    _csrfHeader() {
+      return document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+    },
+
+    _initEditor() {
+      if (this._editorReady) return;
+      var el = document.getElementById('pledgeDesignerCanvas');
+      if (!el) return;
+
+      this.designer = el;
+      var active = this.templates.find(t => String(t.is_active) === 'Y');
+      if (active) {
+        this.editingId = active.id;
+        this.editingName = active.template_name || '';
+        this._loadDesignerContent(el, active.content || '');
+      } else {
+        this._loadDesignerContent(el, _defaultPledgeTemplateContent || '');
+      }
+      this._bindDesignerEvents();
+      this._editorReady = true;
+    },
+
+    loadPreset() {
+      if (!this.designer) return;
+      if (!confirm('현재 편집 중인 내용을 표준 서약서 내용으로 교체할까요?')) return;
+      this._loadDesignerContent(this.designer, _defaultPledgeTemplateContent || '');
+      this.editingId = null;
+      this.editingName = '표준 서약서';
+    },
+
+    editTemplate(t) {
+      this.editingId = t.id;
+      this.editingName = t.template_name || '';
+      if (this.designer) {
+        this._loadDesignerContent(this.designer, t.content || '');
+      }
+    },
+
+    saveAsNew() {
+      this.editingId = null;
+      this.saveTemplate();
+    },
+
+    async saveTemplate() {
+      if (!this.designer) return;
+      var content = this._serializeDesigner();
+      if (!content || !this.designer.textContent.trim()) {
+        this.showToast(false, '내용을 입력해 주세요.');
+        return;
+      }
+      this.saving = true;
+      try {
+        var payload = {
+          id: this.editingId || null,
+          name: this.editingName.trim() || '사용자 정의',
+          content,
+          activate: true
+        };
+        var res = await fetch(this._ctx() + '/api/pledge-templates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', [this._csrfHeader()]: this._csrf() },
+          credentials: 'same-origin',
+          body: JSON.stringify(payload)
+        });
+        var data = await res.json();
+        if (data.ok) {
+          this.editingId = data.id;
+          await this._reloadTemplates();
+          this.showToast(true, '저장되었습니다. 서약서에 즉시 적용됩니다.');
+        } else {
+          this.showToast(false, data.error || '저장 실패');
+        }
+      } catch {
+        this.showToast(false, '서버 오류가 발생했습니다.');
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    async activateTemplate(id) {
+      try {
+        var res = await fetch(this._ctx() + '/api/pledge-templates/' + id + '/activate', {
+          method: 'PUT',
+          headers: { [this._csrfHeader()]: this._csrf() },
+          credentials: 'same-origin'
+        });
+        var data = await res.json();
+        if (data.ok) {
+          await this._reloadTemplates();
+          this.showToast(true, '서약서 템플릿이 적용되었습니다.');
+        } else {
+          this.showToast(false, data.error || '적용 실패');
+        }
+      } catch {
+        this.showToast(false, '서버 오류가 발생했습니다.');
+      }
+    },
+
+    async deactivateAll() {
+      if (!confirm('모든 커스텀 템플릿을 비활성화하고 기본 서약서 내용을 사용할까요?')) return;
+      try {
+        await fetch(this._ctx() + '/api/pledge-templates/deactivate-all', {
+          method: 'POST',
+          headers: { [this._csrfHeader()]: this._csrf() },
+          credentials: 'same-origin'
+        });
+        await this._reloadTemplates();
+        this.showToast(true, '기본값으로 초기화되었습니다.');
+      } catch {
+        this.showToast(false, '서버 오류가 발생했습니다.');
+      }
+    },
+
+    async deleteTemplate(id) {
+      if (!confirm('이 템플릿을 삭제할까요?')) return;
+      try {
+        var res = await fetch(this._ctx() + '/api/pledge-templates/' + id, {
+          method: 'DELETE',
+          headers: { [this._csrfHeader()]: this._csrf() },
+          credentials: 'same-origin'
+        });
+        var data = await res.json();
+        if (data.ok) {
+          if (this.editingId === id) this.editingId = null;
+          await this._reloadTemplates();
+          this.showToast(true, '삭제되었습니다.');
+        } else {
+          this.showToast(false, data.error || '삭제 실패');
+        }
+      } catch {
+        this.showToast(false, '서버 오류가 발생했습니다.');
+      }
+    },
+
+    async _reloadTemplates() {
+      try {
+        var res = await fetch(this._ctx() + '/api/pledge-templates', {
+          credentials: 'same-origin',
+          headers: { [this._csrfHeader()]: this._csrf() }
+        });
+        var data = await res.json();
+        if (data.ok) this.templates = data.templates || [];
+      } catch {}
+    },
+
+    showToast(ok, message) {
+      this.toast = { visible: true, ok, message };
+      setTimeout(() => { this.toast.visible = false; }, 3000);
+    },
+
+    _loadDesignerContent(canvas, content) {
+      this._selectElement(null);
+      canvas.innerHTML = '';
+      var html = String(content || '').trim();
+      var parsed = document.createElement('div');
+      parsed.innerHTML = html;
+      var layout = parsed.querySelector('.doc-free-layout');
+      if (layout) {
+        Array.from(layout.children).forEach(child => canvas.appendChild(child.cloneNode(true)));
+        this._normalizeDesignerChildren(canvas);
+        return;
+      }
+      this._addElement('text', 24, 24, 900, 620, html || '서약서 내용을 입력하세요.');
+    },
+
+    _bindDesignerEvents() {
+      if (!this.designer || this.designer.dataset.bound === 'Y') return;
+      this.designer.dataset.bound = 'Y';
+      this.designer.addEventListener('pointerdown', (event) => this._onDesignerPointerDown(event));
+      window.addEventListener('pointermove', (event) => this._onDesignerPointerMove(event));
+      window.addEventListener('pointerup', () => this._onDesignerPointerUp());
+      this.designer.addEventListener('dblclick', (event) => {
+        var editable = event.target.closest('[data-editable="true"]');
+        if (editable) editable.focus();
+      });
+    },
+
+    _onDesignerPointerDown(event) {
+      if (!this.designer) return;
+      var element = event.target.closest('.doc-free-element');
+      if (!element || !this.designer.contains(element)) {
+        this._selectElement(null);
+        return;
+      }
+      this._selectElement(element);
+      var rect = element.getBoundingClientRect();
+      var canvasRect = this.designer.getBoundingClientRect();
+      this.dragState = {
+        el: element,
+        mode: event.target.classList.contains('doc-resize-handle') ? 'resize' : 'move',
+        startX: event.clientX,
+        startY: event.clientY,
+        left: rect.left - canvasRect.left + this.designer.scrollLeft,
+        top: rect.top - canvasRect.top + this.designer.scrollTop,
+        width: rect.width,
+        height: rect.height
+      };
+      if (!event.target.closest('[contenteditable="true"]')) {
+        event.preventDefault();
+      }
+    },
+
+    _onDesignerPointerMove(event) {
+      if (!this.dragState || !this.designer) return;
+      var dx = event.clientX - this.dragState.startX;
+      var dy = event.clientY - this.dragState.startY;
+      var el = this.dragState.el;
+      if (this.dragState.mode === 'resize') {
+        var width = Math.max(32, this.dragState.width + dx);
+        var height = Math.max(24, this.dragState.height + dy);
+        el.style.width = Math.round(width) + 'px';
+        el.style.height = Math.round(height) + 'px';
+        return;
+      }
+      var maxLeft = Math.max(0, this.designer.clientWidth - el.offsetWidth);
+      var left = Math.max(0, Math.min(maxLeft, this.dragState.left + dx));
+      var top = Math.max(0, this.dragState.top + dy);
+      el.style.left = Math.round(left) + 'px';
+      el.style.top = Math.round(top) + 'px';
+      this._ensureCanvasHeight(el);
+    },
+
+    _onDesignerPointerUp() {
+      this.dragState = null;
+    },
+
+    _selectElement(element) {
+      if (this.selectedEl) this.selectedEl.classList.remove('is-selected');
+      this.selectedEl = element;
+      if (this.selectedEl) this.selectedEl.classList.add('is-selected');
+      if (this.selectedEl) {
+        this.fontSize = this.selectedEl.style.fontSize || this.fontSize || '14pt';
+        this.fontColor = this._rgbToHex(this.selectedEl.style.color) || this.fontColor || '#222222';
+      }
+    },
+
+    _ensureCanvasHeight(el) {
+      if (!this.designer || !el) return;
+      var bottom = el.offsetTop + el.offsetHeight + 48;
+      if (bottom > this.designer.offsetHeight) {
+        this.designer.style.minHeight = bottom + 'px';
+      }
+    },
+
+    _addElement(type, left, top, width, height, innerHtml) {
+      if (!this.designer) return null;
+      if (this._isDuplicateCreate(type)) return null;
+      var el = document.createElement('div');
+      el.className = 'doc-free-element';
+      el.dataset.type = type;
+      el.style.left = Math.round(left) + 'px';
+      el.style.top = Math.round(top) + 'px';
+      el.style.width = Math.round(width) + 'px';
+      el.style.height = Math.round(height) + 'px';
+      el.style.fontSize = this.fontSize || '14pt';
+      el.style.color = this.fontColor || '#222222';
+      el.innerHTML = innerHtml + '<span class="doc-resize-handle" aria-hidden="true"></span>';
+      this.designer.appendChild(el);
+      this._makeEditable(el);
+      this._selectElement(el);
+      this._ensureCanvasHeight(el);
+      return el;
+    },
+
+    _normalizeDesignerChildren(canvas) {
+      Array.from(canvas.querySelectorAll('.doc-free-element')).forEach((el) => {
+        if (!el.querySelector('.doc-resize-handle')) {
+          var handle = document.createElement('span');
+          handle.className = 'doc-resize-handle';
+          handle.setAttribute('aria-hidden', 'true');
+          el.appendChild(handle);
+        }
+        this._makeEditable(el);
+        el.classList.remove('is-selected');
+      });
+    },
+
+    _makeEditable(root) {
+      root.querySelectorAll('.doc-el-text, .doc-el-check span, .doc-el-sign span, .doc-free-table th, .doc-free-table td')
+        .forEach((el) => {
+          if (el.querySelector('.doc-free-input')) return;
+          el.dataset.editable = 'true';
+          el.setAttribute('contenteditable', 'true');
+        });
+    },
+
+    _isDuplicateCreate(key) {
+      if (!key) return false;
+      var now = Date.now();
+      if (this.lastCreateKey === key && now - this.lastCreateAt < 180) {
+        return true;
+      }
+      this.lastCreateKey = key;
+      this.lastCreateAt = now;
+      return false;
+    },
+
+    _rgbToHex(value) {
+      var color = String(value || '').trim();
+      if (/^#[0-9a-f]{6}$/i.test(color)) return color;
+      var match = color.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/i);
+      if (!match) return '';
+      return '#' + [match[1], match[2], match[3]]
+        .map(v => Math.max(0, Math.min(255, Number(v))).toString(16).padStart(2, '0'))
+        .join('');
+    },
+
+    applySelectedStyle() {
+      if (!this.selectedEl) {
+        this.showToast(false, '스타일을 적용할 요소를 선택해 주세요.');
+        return;
+      }
+      this.selectedEl.style.fontSize = this.fontSize || '14pt';
+      this.selectedEl.style.color = this.fontColor || '#222222';
+    },
+
+    _serializeDesigner() {
+      if (!this.designer) return '';
+      var clone = this.designer.cloneNode(true);
+      clone.removeAttribute('id');
+      clone.removeAttribute('aria-label');
+      clone.removeAttribute('data-bound');
+      clone.className = 'doc-free-layout';
+      clone.querySelectorAll('.is-selected').forEach(el => el.classList.remove('is-selected'));
+      clone.querySelectorAll('.doc-resize-handle').forEach(el => el.remove());
+      clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+      clone.querySelectorAll('[data-editable]').forEach(el => el.removeAttribute('data-editable'));
+      return clone.outerHTML;
+    },
+
+    _escapeHtml(value) {
+      return String(value || '').replace(/[&<>"']/g, function (ch) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+      });
+    },
+
+    addText() {
+      this._addElement('text', 32, 32, 360, 56,
+        '<div class="doc-el-text" data-editable="true" contenteditable="true">텍스트를 입력하세요.</div>');
+    },
+
+    addInputBox() {
+      this._addElement('input', 240, 92, 260, 32, '<div class="doc-el-box"></div>');
+    },
+
+    addCheckbox() {
+      this._addElement('checkbox', 48, 172, 260, 36,
+        '<div class="doc-el-check"><span data-editable="true" contenteditable="true">체크 항목</span></div>');
+    },
+
+    addSignature() {
+      var label = prompt('서명자 표시명을 입력하세요.', '보호자');
+      if (label == null) return;
+      this._addElement('signature', 720, 92, 160, 54,
+        '<div class="doc-el-sign"><span data-editable="true" contenteditable="true">' + this._escapeHtml(label || '서명자') + '</span></div>');
+    },
+
+    addGuardianBlock(kind) {
+      var title = kind === 'secondary' ? '부보호자' : '주보호자';
+      this._addElement('guardian-table', 24, kind === 'secondary' ? 250 : 48, 918, 168,
+        '<table class="doc-free-table"><tbody>'
+        + '<tr><th rowspan="3" style="width:48px;">' + title.split('').join('<br>') + '</th><th style="width:118px;">성명</th><td><span class="doc-free-input"></span></td><td style="width:380px;">(관계 : <span class="doc-free-input" style="width:150px;"></span> )</td><td style="width:84px;">(서 명)</td></tr>'
+        + '<tr><th>주소</th><td colspan="3"><span class="doc-free-input" style="width:640px;"></span></td></tr>'
+        + '<tr><th>휴대폰 번호</th><td><span class="doc-free-input"></span></td><td colspan="2"><span class="doc-el-check"><span>비용안내</span></span></td></tr>'
+        + '</tbody></table>');
+    },
+
+    addReasonBlock() {
+      this._addElement('reason-table', 24, 456, 918, 194,
+        '<table class="doc-free-table"><tbody>'
+        + '<tr><th colspan="3" style="height:56px; text-align:left;">환자가 아닌 보호자의 동의사유</th></tr>'
+        + '<tr><td><span class="doc-el-check"><span>환자의 신체적 정신적 장애로<br>의사결정 불가</span></span></td><td><span class="doc-el-check"><span>환자위임</span></span></td><td><span class="doc-el-check"><span>응급 상황</span></span></td></tr>'
+        + '<tr><td><span class="doc-el-check"><span>내용 설명 시 환자의 심신에 중대한<br>영향 우려</span></span></td><td><span class="doc-el-check"><span>미성년자</span></span></td><td></td></tr>'
+        + '</tbody></table>');
+    },
+
+    deleteSelected() {
+      if (!this.selectedEl) return;
+      this.selectedEl.remove();
+      this.selectedEl = null;
+    }
+  };
+}
+</script>
+</body>
+</html>

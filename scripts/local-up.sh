@@ -58,13 +58,15 @@ ensure_java17() {
   export PATH="${JAVA_HOME}/bin:${PATH}"
 }
 
-check_port() {
+kill_port() {
   local port="$1"
   local name="$2"
-  if lsof -nP -iTCP:"${port}" -sTCP:LISTEN >/dev/null 2>&1; then
-    echo "[${name}] port ${port} is already in use."
-    echo "Stop the existing process first, then run this script again."
-    exit 1
+  local pids
+  pids="$(lsof -ti TCP:"${port}" 2>/dev/null || true)"
+  if [[ -n "${pids}" ]]; then
+    echo "[${name}] killing existing process on port ${port} (PID: ${pids})"
+    echo "${pids}" | xargs kill -9 2>/dev/null || true
+    sleep 1
   fi
 }
 
@@ -123,8 +125,8 @@ trap cleanup EXIT INT TERM
 
 ensure_java17
 init_local_defaults
-check_port "${CSM_PORT}" "csm"
-check_port "${MEDIPLAT_PORT}" "mediplat"
+kill_port "${CSM_PORT}" "csm"
+kill_port "${MEDIPLAT_PORT}" "mediplat"
 
 echo "Starting local services..."
 echo "- CounselMan : http://localhost:${CSM_PORT}/csm/login"

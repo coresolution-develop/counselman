@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import com.coresolution.csm.serivce.CsmAuthService;
@@ -152,13 +153,33 @@ public class UserApiController {
         if (ud == null) return ResponseEntity.notFound().build();
 
         String tempPw = genTempPassword();
-        ud.setUs_col_03(aes.encrypt(tempPw));
+        String encPw = aes.encrypt(tempPw);
 
         try {
-            cs.userUpdatePassword(ud);
+            int updated = cs.updatePwd(inst, id, encPw);
+            if (updated < 1) {
+                log.warn("[resetPassword] updatePwd returned 0 rows: userId={} inst={}", id, inst);
+                return ResponseEntity.status(500).body(Map.of("error", "비밀번호 초기화 실패 (사용자를 찾을 수 없습니다)"));
+            }
+            syncMpUserPassword(inst, ud.getUs_col_02(), tempPw);
             return ResponseEntity.ok(Map.of("ok", true, "tempPassword", tempPw));
         } catch (Exception e) {
+            log.error("[resetPassword] failed userId={} inst={}", id, inst, e);
             return ResponseEntity.status(500).body(Map.of("error", "비밀번호 초기화 실패"));
+        }
+    }
+
+    private void syncMpUserPassword(String inst, String loginId, String rawPassword) {
+        try {
+            String bcryptHash = new BCryptPasswordEncoder().encode(rawPassword);
+            int rows = jdbcTemplate.update(
+                "UPDATE mp_user SET password_hash = ? WHERE inst_code = ? AND username = ?",
+                bcryptHash, inst, loginId);
+            if (rows > 0) {
+                log.info("[syncMpUserPassword] mp_user synced for inst={} username={}", inst, loginId);
+            }
+        } catch (Exception e) {
+            log.warn("[syncMpUserPassword] inst={} username={}: {}", inst, loginId, e.getMessage());
         }
     }
 

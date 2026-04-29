@@ -108,6 +108,10 @@
           <svg><use href="#i-shield"/></svg>
           역할 관리
         </button>
+        <a class="tab" th:href="@{/access}" role="tab">
+          <svg><use href="#i-key"/></svg>
+          CSM 접근 권한
+        </a>
         <a class="tab" th:href="@{/admin/room-board}" role="tab">
           <svg><use href="#i-bed"/></svg>
           병실현황판 관리
@@ -441,7 +445,7 @@
 
 <!-- Editor defaults for host persistence -->
 <script>
-  const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  var TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
     "variation": "default",
     "layout": "grid",
     "sidebarCollapsed": false
@@ -485,7 +489,7 @@
     records: 'notebook',
   };
 
-  document.addEventListener('alpine:init', () => {
+  function _registerRoleManager() {
     Alpine.data('roleManager', () => ({
       loading: true,
       roles: [],
@@ -809,14 +813,21 @@
         } catch(e) { console.error('removeUser', e); }
       },
     }));
-  });
+  }
+
+  if (window.Alpine) {
+    _registerRoleManager();
+  } else {
+    document.addEventListener('alpine:init', _registerRoleManager);
+  }
 }());
 </script>
 
 <script>
-  document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '관리자', current: '역할 관리' }); });
+  document.addEventListener('turbo:load', () => { MPChrome.mount({ parent: '관리자', current: '역할 관리' }); }, { once: true });
 </script>
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<script data-turbo-eval="false" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js"></script>
+<script data-turbo-eval="false" defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 
 </body>
 </html>

@@ -168,8 +168,9 @@
 <script th:src="@{/assets/js/datepicker.js}"></script>
 <script th:src="@{/assets/js/chrome.js}" data-page="message" th:attr="data-ctx=@{/}"></script>
 <script>
-  document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '커뮤니케이션', current: '문자관리' }); });
+  document.addEventListener('turbo:load', () => { MPChrome.mount({ parent: '커뮤니케이션', current: '문자관리' }); }, { once: true });
 </script>
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<script data-turbo-eval="false" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js"></script>
+<script data-turbo-eval="false" defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 </body>
 </html>

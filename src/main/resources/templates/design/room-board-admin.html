@@ -121,6 +121,10 @@
           <svg><use href="#i-shield"/></svg>
           역할 관리
         </a>
+        <a class="tab" th:href="@{/access}" role="tab">
+          <svg><use href="#i-key"/></svg>
+          CSM 접근 권한
+        </a>
         <button class="tab is-active" role="tab" aria-selected="true">
           <svg><use href="#i-bed"/></svg>
           병실현황판 관리
@@ -374,7 +378,7 @@
 </div><!-- .app -->
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('turbo:load', () => {
   const ctx = location.pathname.startsWith('/csm/') ? '/csm' : '';
   const csrfToken  = document.querySelector('meta[name="_csrf"]')?.getAttribute('content') || '';
   const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') || '';
@@ -532,10 +536,9 @@ document.addEventListener('DOMContentLoaded', () => {
 <script th:src="@{/assets/js/app.js}"></script>
 <script th:src="@{/assets/js/chrome.js}" data-page="admin" th:attr="data-ctx=@{/}"></script>
 <script>
-  document.addEventListener('alpine:init', () => {
-    MPChrome.mount({ parent: '관리자', current: '병실현황판 관리' });
-  });
+  document.addEventListener('turbo:load', () => { MPChrome.mount({ parent: '관리자', current: '병실현황판 관리' }); }, { once: true });
 </script>
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<script data-turbo-eval="false" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js"></script>
+<script data-turbo-eval="false" defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 </body>
 </html>

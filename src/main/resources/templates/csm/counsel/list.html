@@ -70,23 +70,29 @@
             display: none;
             flex-shrink: 0;
             margin-left: auto;
-            padding: 2px 5px;
+            padding: 2px 6px;
             background: none;
-            border: none;
+            border: 1px solid transparent;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 12px;
             line-height: 1;
-            opacity: 0.28;
-            transition: opacity 0.15s, background 0.15s;
+            color: #888;
+            opacity: 0.55;
+            transition: opacity 0.15s, background 0.15s, border-color 0.15s;
         }
-        #order .sortable-item .col-pin-btn { display: inline-flex; align-items: center; }
-        .col-pin-btn:hover { opacity: 0.8; background: #eef7f0; }
-        .sortable-item.is-pinned .col-pin-btn { opacity: 1; }
+        #order .sortable-item .col-pin-btn { display: inline-flex; align-items: center; gap: 2px; }
+        .col-pin-btn:hover { opacity: 1; background: #eef7f0; border-color: #b2d9be; color: #06603A; }
+        .sortable-item.is-pinned .col-pin-btn { opacity: 1; background: #eef7f0; border-color: #06603A; color: #06603A; }
         .sortable-item.is-pinned {
             background: #eef7f0;
             border-color: #b2d9be;
             font-weight: 600;
+        }
+        /* 항목 텍스트가 왼쪽 정렬되도록 */
+        #order .sortable-item,
+        #inner-content .sortable-item {
+            justify-content: flex-start;
         }
 
         .loading-spinner {

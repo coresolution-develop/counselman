@@ -236,11 +236,25 @@
           <svg><use href="#i-shield"/></svg>
           역할 관리
         </a>
+        <a class="tab" th:href="@{/access}" role="tab">
+          <svg><use href="#i-key"/></svg>
+          CSM 접근 권한
+        </a>
         <a class="tab" th:href="@{/admin/room-board}" role="tab">
           <svg><use href="#i-bed"/></svg>
           병실현황판 관리
         </a>
       </div>
+
+      <!-- Loading skeleton -->
+      <template x-if="loading">
+        <div style="padding:48px;text-align:center;color:var(--text-tertiary);font-size:13px;">
+          <svg style="width:20px;height:20px;animation:spin 1s linear infinite;margin-bottom:8px;display:block;margin-inline:auto"><use href="#i-refresh"/></svg>
+          불러오는 중...
+        </div>
+      </template>
+
+      <div x-show="!loading">
 
       <!-- Hero -->
       <div class="um-hero">
@@ -550,13 +564,15 @@
         </div>
       </div>
 
+      </div><!-- /x-show="!loading" -->
+
     </div>
   </main>
 </div>
 
 <script th:inline="javascript">
-const _users = /*[[${usersJson}]]*/ '[]';
-const _ctx   = /*[[@{/}]]*/ '/';
+var _users = /*[[${usersJson}]]*/ '[]';
+var _ctx   = /*[[@{/}]]*/ '/';
 
 function userMgmt() {
   const dbUsers = (() => { try { return JSON.parse(_users); } catch(e) { return []; } })();
@@ -568,6 +584,7 @@ function userMgmt() {
   }
 
   return {
+    loading: true,
     q: '', tab: 'all', roleFilter: '', selected: null,
     users: dbUsers,
 
@@ -593,9 +610,13 @@ function userMgmt() {
     tempPw: null,
 
     async init() {
-      await this.loadDbRoles();
-      if (this.users.length) this.selected = this.users[0].id;
-      if (this.selected) await this.loadUserRoles(this.selected);
+      try {
+        await this.loadDbRoles();
+        if (this.users.length) this.selected = this.users[0].id;
+        if (this.selected) await this.loadUserRoles(this.selected);
+      } finally {
+        this.loading = false;
+      }
       this.$watch('selected', async (id) => {
         if (id) await this.loadUserRoles(id);
         else this.userRoles = [];
@@ -719,8 +740,9 @@ function userMgmt() {
 <script th:src="@{/assets/js/datepicker.js}"></script>
 <script th:src="@{/assets/js/chrome.js}" data-page="admin" th:attr="data-ctx=@{/}"></script>
 <script>
-  document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '관리자', current: '사용자 관리' }); });
+  document.addEventListener('turbo:load', () => { MPChrome.mount({ parent: '관리자', current: '사용자 관리' }); }, { once: true });
 </script>
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<script data-turbo-eval="false" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js"></script>
+<script data-turbo-eval="false" defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 </body>
 </html>

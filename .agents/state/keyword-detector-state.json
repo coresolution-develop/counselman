@@ -5,7 +5,11 @@
       "count": 1
     },
     "review": {
-      "lastTriggeredAt": "2026-04-28T03:04:26.704Z",
+      "lastTriggeredAt": "2026-04-29T08:55:05.523Z",
+      "count": 1
+    },
+    "debug": {
+      "lastTriggeredAt": "2026-04-29T08:04:14.287Z",
       "count": 1
     }
   }

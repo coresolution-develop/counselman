@@ -219,6 +219,7 @@ public class RolesApiController {
         jdbcTemplate.update(
                 "INSERT IGNORE INTO csm.user_role_" + safe + " (user_id, role_id, assigned_by) VALUES (?, ?, ?)",
                 userId, roleId, assignedBy);
+        syncUserAuth(safe, userId);
         return ResponseEntity.ok(Map.of("result", "ok"));
     }
 
@@ -237,6 +238,7 @@ public class RolesApiController {
         jdbcTemplate.update(
                 "DELETE FROM csm.user_role_" + safe + " WHERE user_id = ? AND role_id = ?",
                 userId, roleId);
+        syncUserAuth(safe, userId);
         return ResponseEntity.ok(Map.of("result", "ok"));
     }
 
@@ -308,6 +310,25 @@ public class RolesApiController {
                 newId, roleId);
 
         return ResponseEntity.ok(Map.of("role_id", newId, "role_code", newCode));
+    }
+
+    /** Recalculates us_col_08 from the user's current roles and writes it back to user_data. */
+    private void syncUserAuth(String safe, long userId) {
+        try {
+            List<Map<String, Object>> roles = jdbcTemplate.queryForList(
+                    "SELECT r.is_system FROM csm.user_role_" + safe + " ur"
+                    + " JOIN csm.role_" + safe + " r ON r.role_id = ur.role_id"
+                    + " WHERE ur.user_id = ?", userId);
+            int auth = roles.stream()
+                    .anyMatch(r -> Integer.valueOf(1).equals(r.get("is_system"))) ? 1 : 2;
+            jdbcTemplate.update(
+                    "UPDATE csm.user_data_" + safe + " SET us_col_08 = ? WHERE us_col_01 = ?",
+                    auth, userId);
+        } catch (Exception e) {
+            // non-fatal; log only
+            org.slf4j.LoggerFactory.getLogger(RolesApiController.class)
+                    .warn("[syncUserAuth] userId={}: {}", userId, e.getMessage());
+        }
     }
 
     private String resolveInst(HttpSession session) {

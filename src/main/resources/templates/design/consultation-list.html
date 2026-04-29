@@ -105,6 +105,214 @@
       border-top: 1px solid #e5e7eb;
     }
     .col-settings-footer .btn--ghost { margin-right: auto; }
+
+    /* ── 체크박스 ── */
+    .table input[type="checkbox"] {
+      width: 16px; height: 16px; accent-color: var(--brand-500); cursor: pointer; vertical-align: middle;
+    }
+
+    /* ── 상담기록 섹션: 상단 도달 시 sticky 고정, 테이블이 나머지 높이 채움 ── */
+    .list-sticky-section {
+      position: sticky;
+      top: 0;
+      height: calc(100vh - var(--header-height, 64px));
+      display: flex;
+      flex-direction: column;
+      background: var(--page-bg, #f3f4f6);
+      padding-top: 8px;
+    }
+    .list-sticky-section .table-wrap {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: auto;
+    }
+    .list-sticky-section .footer-bar {
+      position: static !important;
+      flex-shrink: 0;
+      margin-top: 8px;
+    }
+
+    /* ── 좌측 고정 (freeze) ── */
+    .table thead th.col-frozen { background: var(--gray-50); }
+    .table tbody td.col-frozen { position: sticky; z-index: 1; background: var(--surface, #fff); transition: background var(--dur-fast) var(--ease-smooth); }
+    /* 선택된 행의 고정 셀 배경색 */
+    .table tbody tr.is-selected td.col-frozen { background: var(--brand-50, #ecfdf5); }
+    /* hover 시 고정 셀 배경색 */
+    .table tbody tr:hover td.col-frozen { background: var(--brand-50); }
+    .table tbody tr.is-selected:hover td.col-frozen { background: var(--brand-50, #ecfdf5); }
+    .table thead th.col-frozen-last,
+    .table tbody td.col-frozen-last { box-shadow: 2px 0 6px -1px rgba(0,0,0,.10); }
+
+    /* ── 핀 버튼 ── */
+    .col-settings-item { display: flex; align-items: center; gap: 6px; }
+    .col-settings-item__label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pin-btn {
+      flex-shrink: 0; background: none; border: none; padding: 2px 3px; cursor: pointer;
+      color: #d1d5db; line-height: 1; border-radius: 3px; transition: color .15s;
+    }
+    .pin-btn:hover { color: var(--brand-600, #059669); }
+    .pin-btn--active { color: var(--brand-500, #10b981); }
+
+    /* ── 월별 캘린더 ── */
+    .calendar-panel {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border-default, #e5e7eb);
+      background: var(--surface, #fff);
+      overflow: hidden;
+    }
+    .calendar-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-default, #e5e7eb);
+      background: var(--gray-50, #f9fafb);
+    }
+    .calendar-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text-primary, #111827);
+    }
+    .calendar-nav {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .calendar-grid {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(7, minmax(120px, 1fr));
+      grid-auto-rows: minmax(118px, 1fr);
+      overflow: auto;
+    }
+    .calendar-weekday,
+    .calendar-day {
+      border-right: 1px solid var(--border-default, #e5e7eb);
+      border-bottom: 1px solid var(--border-default, #e5e7eb);
+    }
+    .calendar-weekday {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      padding: 8px 10px;
+      background: var(--gray-50, #f9fafb);
+      color: var(--text-secondary, #6b7280);
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+    }
+    .calendar-day {
+      position: relative;
+      min-width: 120px;
+      padding: 8px;
+      background: var(--surface, #fff);
+      overflow: visible;
+    }
+    .calendar-day.is-muted { background: var(--gray-50, #f9fafb); color: var(--text-tertiary, #9ca3af); }
+    .calendar-day.is-today { background: color-mix(in oklab, var(--brand-500, #10b981) 7%, #fff); }
+    .calendar-day__num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      margin-bottom: 6px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .calendar-day.is-today .calendar-day__num {
+      background: var(--brand-500, #10b981);
+      color: #fff;
+    }
+    .calendar-count-btn {
+      width: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      margin-top: 10px;
+      padding: 8px 6px;
+      border: 1px solid color-mix(in oklab, var(--brand-500, #10b981) 24%, transparent);
+      border-radius: 6px;
+      background: color-mix(in oklab, var(--brand-500, #10b981) 8%, #fff);
+      color: var(--brand-700, #047857);
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .calendar-count-btn:hover,
+    .calendar-count-btn:focus-visible {
+      border-color: var(--brand-500, #10b981);
+      background: color-mix(in oklab, var(--brand-500, #10b981) 13%, #fff);
+      outline: none;
+    }
+    .calendar-empty {
+      margin-top: 12px;
+      color: var(--text-tertiary, #9ca3af);
+      font-size: 11px;
+    }
+    .calendar-popover {
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      top: 42px;
+      z-index: 20;
+      display: none;
+      min-width: 220px;
+      max-height: 280px;
+      padding: 8px;
+      border: 1px solid var(--border-default, #e5e7eb);
+      border-radius: 8px;
+      background: var(--surface, #fff);
+      box-shadow: 0 12px 30px rgba(15, 23, 42, .18);
+      overflow-y: auto;
+    }
+    .calendar-day:hover .calendar-popover,
+    .calendar-day:focus-within .calendar-popover,
+    .calendar-day.is-open .calendar-popover {
+      display: block;
+    }
+    .calendar-popover__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+      color: var(--text-secondary, #6b7280);
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .calendar-event {
+      width: 100%;
+      display: block;
+      margin-top: 4px;
+      padding: 5px 6px;
+      border: 1px solid color-mix(in oklab, var(--brand-500, #10b981) 18%, transparent);
+      border-radius: 6px;
+      background: color-mix(in oklab, var(--brand-500, #10b981) 6%, #fff);
+      color: var(--text-primary, #111827);
+      font-size: 12px;
+      line-height: 1.25;
+      text-align: left;
+      cursor: pointer;
+    }
+    .calendar-event:hover { border-color: var(--brand-500, #10b981); background: color-mix(in oklab, var(--brand-500, #10b981) 10%, #fff); }
+    .calendar-event__name,
+    .calendar-event__meta {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .calendar-event__name { font-weight: 700; }
+    .calendar-event__meta { margin-top: 2px; color: var(--text-secondary, #6b7280); font-size: 11px; }
   </style>
 </head>
 <body>
@@ -129,7 +337,7 @@
       </div>
 
       <!-- Search bar -->
-      <form class="search-bar" th:action="@{/counsel/list}" method="get">
+      <form class="search-bar" th:action="@{/counsel/list}" method="get" @submit.prevent="submitSearch($event)">
         <select class="select" name="dateRange" id="dateRangeSelect">
           <option value="all"    th:selected="${cri != null and cri.dateRange == 'all'}">전체기간</option>
           <option value="10"     th:selected="${cri == null or cri.dateRange == '10' or cri.dateRange == ''}">최근 10일</option>
@@ -175,15 +383,17 @@
         <span class="badge badge--warn">우선순위순</span>
         <span class="section-head__hint" x-text="queue.length + '건 대기'"></span>
         <div style="flex:1"></div>
-        <button class="btn-xs"><svg><use href="#i-refresh"/></svg>새로고침</button>
-        <button class="btn-xs btn-xs--brand">접수 관리</button>
+        <button type="button" class="btn-xs" :disabled="queueLoading" @click="refreshQueue()">
+          <svg><use href="#i-refresh"/></svg><span x-text="queueLoading ? '새로고침 중' : '새로고침'"></span>
+        </button>
+        <button type="button" class="btn-xs btn-xs--brand" @click="visit('/counsel/intake')">접수 관리</button>
       </div>
 
       <div class="queue">
         <template x-for="(q, i) in queue" :key="q.id">
           <div class="queue-card" style="cursor:pointer;"
                :style="q.beingWorkedOn ? 'border-color: var(--brand-400); background: color-mix(in oklab, var(--brand-500) 4%, #fff);' : ''"
-               @click="window.location.href = ctx + '/counsel/inpatient?reservationId=' + q.id">
+               @click="visit('/counsel/inpatient?reservationId=' + q.id)">
             <div class="queue-card__head">
               <span class="prio" :class="'prio--' + q.prio" x-text="'P' + q.prio"></span>
               <span class="queue-card__name" x-text="q.name || '(이름 없음)'"></span>
@@ -201,13 +411,14 @@
             <div x-show="q.note" class="queue-card__note" x-text="q.note"></div>
             <div class="queue-card__actions">
               <button class="btn-xs btn-xs--brand" style="flex:1;justify-content:center;"
-                @click.stop="window.location.href = ctx + '/counsel/intake?reservationId=' + q.id">상세보기</button>
+                @click.stop="visit('/counsel/intake?reservationId=' + q.id)">상세보기</button>
             </div>
           </div>
         </template>
       </div>
 
       <!-- Records table -->
+      <div class="list-sticky-section">
       <div class="section-head">
         <span class="section-head__title">상담 기록 목록</span>
         <span class="section-head__hint" x-text="filtered.length + '건'"></span>
@@ -226,9 +437,12 @@
         <button class="btn-xs" @click="settingsOpen = true" title="리스트 항목 설정" style="margin-left:8px;">
           <svg width="14" height="14"><use href="#i-settings"/></svg>항목 설정
         </button>
+        <button type="button" class="btn-xs btn-xs--brand" @click="toggleRecordView()">
+          <span x-text="viewMode === 'calendar' ? '목록 보기' : '월별 캘린더'"></span>
+        </button>
       </div>
 
-      <div class="table-wrap">
+      <div class="table-wrap" x-show="viewMode === 'table'">
         <table class="table">
           <thead>
             <tr>
@@ -244,7 +458,7 @@
           <tbody>
             <template x-for="r in filtered" :key="r.cs_idx">
               <tr :class="{ 'is-selected': selectedIds.has(r.cs_idx) }" style="cursor:pointer;"
-                  @dblclick="window.location.href = ctx + '/counsel/inpatient?cs_idx=' + r.cs_idx">
+                  @dblclick="visit('/counsel/inpatient?cs_idx=' + r.cs_idx)">
                 <td @click.stop>
                   <input type="checkbox" :checked="selectedIds.has(r.cs_idx)"
                          @change="toggleRow(r.cs_idx)" />
@@ -258,15 +472,67 @@
         </table>
       </div>
 
+      <div class="calendar-panel" x-show="viewMode === 'calendar'" x-cloak>
+        <div class="calendar-toolbar">
+          <div class="calendar-nav">
+            <button type="button" class="btn-xs" @click="moveCalendarMonth(-1)" aria-label="이전 달">
+              <svg><use href="#i-chevron-left"/></svg>
+            </button>
+            <button type="button" class="btn-xs" @click="setCalendarToday()">오늘</button>
+            <button type="button" class="btn-xs" @click="moveCalendarMonth(1)" aria-label="다음 달">
+              <svg><use href="#i-chevron-right"/></svg>
+            </button>
+          </div>
+          <div class="calendar-title" x-text="calendarTitle"></div>
+          <div class="section-head__hint" x-text="calendarMonthCount + '건'"></div>
+        </div>
+        <div class="calendar-grid">
+          <template x-for="day in calendarWeekdays" :key="day">
+            <div class="calendar-weekday" x-text="day"></div>
+          </template>
+          <template x-for="day in calendarDays" :key="day.date">
+            <div class="calendar-day"
+                 :class="{ 'is-muted': !day.inMonth, 'is-today': day.isToday, 'is-open': activeCalendarDate === day.date }"
+                 @mouseenter="openCalendarDay(day)"
+                 @mouseleave="closeCalendarDay(day)"
+                 @keydown.escape="activeCalendarDate = ''">
+              <span class="calendar-day__num" x-text="day.day"></span>
+              <template x-if="day.records.length > 0">
+                <button type="button"
+                        class="calendar-count-btn"
+                        @click.stop="toggleCalendarDay(day)"
+                        @focus="openCalendarDay(day)"
+                        :aria-expanded="String(activeCalendarDate === day.date)"
+                        x-text="'상담 ' + day.records.length + '건'"></button>
+              </template>
+              <div class="calendar-empty" x-show="day.records.length === 0">-</div>
+              <div class="calendar-popover" x-show="day.records.length > 0" @click.stop>
+                <div class="calendar-popover__head">
+                  <span x-text="calendarDayLabel(day.date)"></span>
+                  <span x-text="day.records.length + '건'"></span>
+                </div>
+                <template x-for="record in day.records" :key="record.cs_idx">
+                  <button type="button" class="calendar-event" @click="visit('/counsel/inpatient?cs_idx=' + record.cs_idx)">
+                    <span class="calendar-event__name" x-text="calendarRecordTitle(record)"></span>
+                    <span class="calendar-event__meta" x-text="calendarRecordMeta(record)"></span>
+                  </button>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
       <!-- Footer bar -->
       <div class="footer-bar">
         <button class="btn btn--ghost" @click="deleteSelected()">환자정보삭제</button>
         <button class="btn btn--outline" @click="openBulkSms()">
           <svg><use href="#i-send"/></svg>일괄 문자 보내기
         </button>
-        <a th:href="@{/counsel/inpatient}" class="btn btn--outline">상담 접수</a>
-        <a th:href="@{/counsel/intake}" class="btn btn--primary"><svg><use href="#i-plus"/></svg>신규상담</a>
+        <a th:href="@{/counsel/inpatient}" class="btn btn--outline" @click.prevent="visit('/counsel/inpatient')">상담 접수</a>
+        <a th:href="@{/counsel/intake}" class="btn btn--primary" @click.prevent="visit('/counsel/intake')"><svg><use href="#i-plus"/></svg>신규상담</a>
       </div>
+      </div><!-- /list-sticky-section -->
 
       <!-- 일괄 문자 보내기 모달 -->
       <div class="bulk-sms-overlay" x-show="bulkSmsOpen" x-cloak @click.self="bulkSmsOpen = false">
@@ -359,7 +625,7 @@
           <div class="col-settings-footer">
             <button type="button" class="btn btn--ghost" @click="moveAllToHidden()">모두 비우기</button>
             <button type="button" class="btn btn--outline" @click="settingsOpen = false">닫기</button>
-            <button type="button" class="btn btn--primary" @click="saveSettings()">저장</button>
+            <button type="button" class="btn btn--primary" :disabled="saving" @click="saveSettings()" x-text="saving ? '저장 중...' : '저장'"></button>
           </div>
         </div>
       </div>
@@ -403,16 +669,124 @@ function listPage() {
   return {
     ctx,
     queue:        /*[[${queueItems}]]*/ [],
+    queueLoading: false,
     allRecords:   records,
     filtered:     records,
     activeFilter: 'all',
+    viewMode:     'table',
+    calendarMonth: today.slice(0, 7),
+    calendarWeekdays: ['일', '월', '화', '수', '목', '금', '토'],
+    activeCalendarDate: '',
     selectedIds:  new Set(),
     columns,
     phOptions:    phOpts,
+    saving:       false,
+
+    init() {
+      this.$nextTick(() => {
+        if (typeof window.applyFreezePositions === 'function') window.applyFreezePositions();
+        this.refreshQueue({ silent: true });
+      });
+      this._refreshOnPageShow = () => this.refreshQueue({ silent: true });
+      this._refreshOnFocus = () => this.refreshQueue({ silent: true });
+      this._refreshOnVisibility = () => {
+        if (!document.hidden) this.refreshQueue({ silent: true });
+      };
+      window.addEventListener('pageshow', this._refreshOnPageShow);
+      window.addEventListener('focus', this._refreshOnFocus);
+      document.addEventListener('visibilitychange', this._refreshOnVisibility);
+      this._queueRefreshTimer = setInterval(() => {
+        if (!document.hidden) this.refreshQueue({ silent: true });
+      }, 15000);
+    },
+
+    destroy() {
+      window.removeEventListener('pageshow', this._refreshOnPageShow);
+      window.removeEventListener('focus', this._refreshOnFocus);
+      document.removeEventListener('visibilitychange', this._refreshOnVisibility);
+      clearInterval(this._queueRefreshTimer);
+    },
+
+    visit(path) {
+      const url = path && path.startsWith('http')
+        ? path
+        : (path && this.ctx && path.startsWith(this.ctx + '/') ? path : this.ctx + path);
+      if (window.Turbo && typeof window.Turbo.visit === 'function') {
+        window.Turbo.visit(url);
+      } else {
+        window.location.href = url;
+      }
+    },
+
+    submitSearch(event) {
+      const form = event?.target;
+      if (!form) return;
+      const params = new URLSearchParams(new FormData(form));
+      if (params.get('dateRange') !== 'custom') {
+        params.delete('startDate');
+        params.delete('endDate');
+      }
+      const action = form.getAttribute('action') || (this.ctx + '/counsel/list');
+      this.visit(action + '?' + params.toString());
+    },
+
+    async refreshQueue(options = {}) {
+      if (this.queueLoading) return;
+      this.queueLoading = true;
+      try {
+        const res = await fetch(this.ctx + '/counsel/list/reservations?requestType=json', {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+          credentials: 'same-origin'
+        });
+        const body = await res.json().catch(() => ({}));
+        if (res.redirected || res.url.includes('/login') || res.status === 401 || res.status === 403 || body.success === false) {
+          this.visit('/login');
+          return;
+        }
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        this.queue = Array.isArray(body.queueItems) ? body.queueItems : [];
+      } catch (e) {
+        console.error('Reservation queue refresh failed:', e);
+        if (!options.silent) {
+          alert('상담 접수 대기 목록을 새로고침하지 못했습니다.');
+        }
+      } finally {
+        this.queueLoading = false;
+      }
+    },
 
     // pill 카운트
     get todayCount()      { return this.allRecords.filter(r => (r['cs_col_16'] || '').slice(0,10) === today).length; },
     get incompleteCount() { return this.allRecords.filter(r => String(r['cs_col_19'] || '') !== '입원완료').length; },
+    get calendarTitle() {
+      const [year, month] = this.calendarMonth.split('-').map(Number);
+      return `${year}년 ${month}월`;
+    },
+    get calendarMonthCount() {
+      return this.filtered.filter(r => this.getRecordDate(r).slice(0, 7) === this.calendarMonth).length;
+    },
+    get calendarDays() {
+      const [year, month] = this.calendarMonth.split('-').map(Number);
+      const first = new Date(year, month - 1, 1);
+      const start = new Date(first);
+      start.setDate(first.getDate() - first.getDay());
+
+      const days = [];
+      for (let i = 0; i < 42; i++) {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        const date = this.formatCalendarDate(d);
+        days.push({
+          date,
+          day: d.getDate(),
+          inMonth: d.getMonth() === month - 1,
+          isToday: date === today,
+          records: this.filtered.filter(r => this.getRecordDate(r) === date),
+        });
+      }
+      return days;
+    },
 
     get allChecked() {
       return this.filtered.length > 0 && this.filtered.every(r => this.selectedIds.has(r.cs_idx));
@@ -434,6 +808,69 @@ function listPage() {
 
     toggleAll(checked) {
       this.selectedIds = checked ? new Set(this.filtered.map(r => r.cs_idx)) : new Set();
+    },
+
+    toggleRecordView() {
+      this.viewMode = this.viewMode === 'calendar' ? 'table' : 'calendar';
+      this.activeCalendarDate = '';
+    },
+
+    formatCalendarDate(date) {
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const dd = String(date.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    },
+
+    getRecordDate(record) {
+      const raw = String(record?.cs_col_16 || record?.csCol16 || record?.counselDate || '').trim();
+      const matched = raw.match(/\d{4}-\d{2}-\d{2}/);
+      return matched ? matched[0] : '';
+    },
+
+    moveCalendarMonth(delta) {
+      const [year, month] = this.calendarMonth.split('-').map(Number);
+      const next = new Date(year, month - 1 + delta, 1);
+      this.calendarMonth = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`;
+      this.activeCalendarDate = '';
+    },
+
+    setCalendarToday() {
+      this.calendarMonth = today.slice(0, 7);
+      this.activeCalendarDate = '';
+    },
+
+    openCalendarDay(day) {
+      if (day.records.length > 0) {
+        this.activeCalendarDate = day.date;
+      }
+    },
+
+    closeCalendarDay(day) {
+      if (this.activeCalendarDate === day.date) {
+        this.activeCalendarDate = '';
+      }
+    },
+
+    toggleCalendarDay(day) {
+      if (day.records.length === 0) return;
+      this.activeCalendarDate = this.activeCalendarDate === day.date ? '' : day.date;
+    },
+
+    calendarDayLabel(date) {
+      const [year, month, day] = String(date || '').split('-');
+      if (!year || !month || !day) return '';
+      return `${Number(month)}월 ${Number(day)}일`;
+    },
+
+    calendarRecordTitle(record) {
+      return String(record?.cs_col_01 || record?.name || '(이름 없음)');
+    },
+
+    calendarRecordMeta(record) {
+      const status = String(record?.cs_col_19 || '').trim();
+      const counselor = String(record?.cs_col_17 || '').trim();
+      return [status, counselor].filter(Boolean).join(' · ') || '상담 기록';
     },
 
     // ── 셀 렌더링 ──
@@ -604,12 +1041,14 @@ function listPage() {
       if (!visible || !hidden) return;
 
       const data = [];
+      const visibleColSet = new Set();
       Array.from(visible.children).forEach((li, idx) => {
         const col = li.getAttribute('data-column');
         if (!col || col === 'null') return;
+        visibleColSet.add(col);
         data.push({
           column:  col,
-          comment: li.getAttribute('data-comment') || '',
+          comment: (li.getAttribute('data-comment') || '').substring(0, 50),
           turn:    idx + 1,
           viewYn:  'y'
         });
@@ -619,14 +1058,19 @@ function listPage() {
         if (!col || col === 'null') return;
         data.push({
           column:  col,
-          comment: li.getAttribute('data-comment') || '',
+          comment: (li.getAttribute('data-comment') || '').substring(0, 50),
           turn:    null,
           viewYn:  'n'
         });
       });
 
+      // 좌측 고정 상태를 localStorage에 저장 (표시 항목 중 핀된 것만)
+      const pinned = window._pinnedCols ? Array.from(window._pinnedCols).filter(c => visibleColSet.has(c)) : [];
+      localStorage.setItem('csm-frozen-cols', JSON.stringify(pinned));
+
       const csrf       = document.querySelector('meta[name="_csrf"]')?.content || '';
       const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+      this.saving = true;
 
       try {
         console.log('[ListSetting] sending', data.length, 'items:', data.map(d => d.column + '(' + d.viewYn + ')'));
@@ -634,23 +1078,24 @@ function listPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', [csrfHeader]: csrf },
           credentials: 'same-origin',
-          redirect: 'error',
           body: JSON.stringify(data)
         });
         const body = await res.text().catch(() => '');
-        console.log('[ListSetting] response', res.status, body);
+        console.log('[ListSetting] response', res.status, res.redirected, body);
+        if (res.redirected || res.url.includes('/login') || res.status === 401 || res.status === 403) {
+          alert('세션이 만료되었습니다. 다시 로그인해주세요.');
+          window.location.href = this.ctx + '/login';
+          return;
+        }
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}: ${body}`);
         }
         window.location.reload();
       } catch (e) {
         console.error('ListSetting error:', e);
-        if (e instanceof TypeError) {
-          alert('세션이 만료되었거나 네트워크 오류가 발생했습니다. 페이지를 새로 고침 합니다.');
-          window.location.reload();
-        } else {
-          alert('설정 저장 중 오류가 발생했습니다: ' + e.message);
-        }
+        alert('설정 저장 중 오류가 발생했습니다: ' + e.message);
+      } finally {
+        this.saving = false;
       }
     }
   };
@@ -659,6 +1104,7 @@ function listPage() {
 </script>
 
 <script>
+(function () {
   // dateRange 변경 시 날짜 입력 초기화 (custom 아닌 경우)
   document.getElementById('dateRangeSelect')?.addEventListener('change', function () {
     if (this.value !== 'custom') {
@@ -682,23 +1128,125 @@ function listPage() {
   }
   searchTypeEl?.addEventListener('change', syncPlaceholder);
   syncPlaceholder();
+})();
 </script>
 
 <script th:src="@{/assets/js/app.js}"></script>
 <script th:src="@{/assets/js/datepicker.js}"></script>
 <script th:src="@{/assets/js/chrome.js}" data-page="list" th:attr="data-ctx=@{/}"></script>
 <script>
-  document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '상담 업무', current: '상담리스트' }); });
+  document.addEventListener('turbo:load', () => { MPChrome.mount({ parent: '상담 업무', current: '상담리스트' }); }, { once: true });
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<script data-turbo-eval="false" src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 <script>
-  document.addEventListener('DOMContentLoaded', function () {
+  document.addEventListener('turbo:load', function () {
     var visibleEl = document.getElementById('visibleCols');
     var hiddenEl  = document.getElementById('hiddenCols');
     if (!visibleEl || !hiddenEl) return;
 
-    // 클릭으로 이동 (Sortable 로드 여부와 무관하게 항상 동작)
+    // ── 좌측 고정 (pin/freeze) ──
+    var savedFrozen = [];
+    try { savedFrozen = JSON.parse(localStorage.getItem('csm-frozen-cols') || '[]'); } catch (e) {}
+    window._pinnedCols = new Set(savedFrozen);
+
+    var PIN_ICON = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/></svg>';
+
+    function makePinBtn(col) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pin-btn' + (window._pinnedCols.has(col) ? ' pin-btn--active' : '');
+      btn.title = '좌측 고정';
+      btn.innerHTML = PIN_ICON;
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (window._pinnedCols.has(col)) {
+          window._pinnedCols.delete(col);
+          btn.classList.remove('pin-btn--active');
+        } else {
+          window._pinnedCols.add(col);
+          btn.classList.add('pin-btn--active');
+        }
+      });
+      return btn;
+    }
+
+    function addPinButtons() {
+      Array.from(visibleEl.querySelectorAll('.col-settings-item')).forEach(function (li) {
+        if (li.querySelector('.pin-btn')) return;
+        var col = li.getAttribute('data-column');
+        if (!col) return;
+        if (!li.querySelector('.col-settings-item__label')) {
+          var text = li.textContent.trim();
+          li.textContent = '';
+          var span = document.createElement('span');
+          span.className = 'col-settings-item__label';
+          span.textContent = text;
+          li.appendChild(span);
+        }
+        li.appendChild(makePinBtn(col));
+      });
+    }
+
+    addPinButtons();
+    new MutationObserver(addPinButtons).observe(visibleEl, { childList: true });
+
+    // freeze 적용 함수 (전역 노출 — Alpine init()에서도 호출)
+    window.applyFreezePositions = function () {
+      var frozenSet = window._pinnedCols || new Set();
+      var ths = Array.from(document.querySelectorAll('.table thead tr th'));
+
+      ths.forEach(function (th) {
+        th.classList.remove('col-frozen', 'col-frozen-last');
+        th.style.removeProperty('left');
+        th.style.removeProperty('z-index');
+      });
+      document.querySelectorAll('.table tbody td.col-frozen').forEach(function (td) {
+        td.classList.remove('col-frozen', 'col-frozen-last');
+        td.style.removeProperty('position');
+        td.style.removeProperty('left');
+        td.style.removeProperty('z-index');
+      });
+
+      if (!frozenSet.size) return;
+
+      // 왼쪽부터 차례대로 누적 너비를 계산해 left 값 결정
+      var cumulativeLeft = 0;
+      var frozenInfo = [];
+      ths.forEach(function (th, idx) {
+        var col = th.getAttribute('data-col');
+        // 체크박스 컬럼(col-check)은 항상 고정
+        var shouldFreeze = th.classList.contains('col-check') || (col && frozenSet.has(col));
+        if (shouldFreeze) {
+          th.classList.add('col-frozen');
+          th.style.left = cumulativeLeft + 'px';
+          th.style.zIndex = '3';
+          frozenInfo.push({ idx: idx, left: cumulativeLeft });
+          cumulativeLeft += th.offsetWidth;
+        }
+      });
+
+      // 마지막 고정 컬럼에 구분선 클래스 추가
+      if (frozenInfo.length) {
+        var lastIdx = frozenInfo[frozenInfo.length - 1].idx;
+        ths[lastIdx].classList.add('col-frozen-last');
+      }
+
+      document.querySelectorAll('.table tbody tr').forEach(function (tr) {
+        var tds = tr.querySelectorAll('td');
+        frozenInfo.forEach(function (fi, i) {
+          var td = tds[fi.idx];
+          if (td) {
+            td.classList.add('col-frozen');
+            td.style.left = fi.left + 'px';
+            if (i === frozenInfo.length - 1) td.classList.add('col-frozen-last');
+          }
+        });
+      });
+    };
+
+    // 클릭으로 이동 (핀 버튼 클릭 제외)
     visibleEl.addEventListener('click', function (e) {
+      if (e.target.closest('.pin-btn')) return;
       var li = e.target.closest('.col-settings-item');
       if (li) hiddenEl.appendChild(li);
     });
@@ -715,6 +1263,7 @@ function listPage() {
     }
   });
 </script>
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<script data-turbo-eval="false" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js"></script>
+<script data-turbo-eval="false" defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 </body>
 </html>

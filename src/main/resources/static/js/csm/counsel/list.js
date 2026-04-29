@@ -36,12 +36,15 @@ document.addEventListener("DOMContentLoaded", function () {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'col-pin-btn';
-      btn.title = '이 열 고정';
-      btn.innerHTML = '📌';
+      btn.title = '이 열을 왼쪽에 고정합니다';
+      btn.innerHTML = '📌 고정';
       btn.addEventListener('click', e => {
         e.stopPropagation(); // 리스트 이동 이벤트 차단
         li.classList.toggle('is-pinned');
-        li.setAttribute('data-freeze', li.classList.contains('is-pinned') ? 'true' : 'false');
+        const isPinned = li.classList.contains('is-pinned');
+        li.setAttribute('data-freeze', isPinned ? 'true' : 'false');
+        btn.innerHTML = isPinned ? '📌 고정됨' : '📌 고정';
+        btn.title = isPinned ? '고정 해제' : '이 열을 왼쪽에 고정합니다';
         // 핀 클릭 즉시 테이블에 프리뷰 적용 (저장 전에도 확인 가능)
         previewFrozenCols();
       });
@@ -51,6 +54,8 @@ document.addEventListener("DOMContentLoaded", function () {
       if (colName && frozen.includes(colName)) {
         li.classList.add('is-pinned');
         li.setAttribute('data-freeze', 'true');
+        btn.innerHTML = '📌 고정됨';
+        btn.title = '고정 해제';
       }
     });
   }
@@ -434,6 +439,11 @@ document.addEventListener("DOMContentLoaded", function () {
     if (spinner) spinner.style.display = 'flex';
   }
 
+  function hideSpinner() {
+    const spinner = document.getElementById('spinner-overlay');
+    if (spinner) spinner.style.display = 'none';
+  }
+
   function navigateWithSpinner(path) {
     showSpinner();
     setTimeout(function () {
@@ -609,18 +619,17 @@ document.addEventListener("DOMContentLoaded", function () {
         data.push({
           column: item.getAttribute('data-column'),
           comment: item.getAttribute('data-comment'),
-          turn: item.getAttribute('data-turn'),
-          viewYn: item.getAttribute('data-view')
+          turn: idx + 1,
+          viewYn: 'y'
         });
       });
       const innerItems = document.querySelectorAll('#inner-content .sortable-item');
       innerItems.forEach(item => {
-        item.setAttribute('data-view', 'n');
         data.push({
           column: item.getAttribute('data-column'),
           comment: item.getAttribute('data-comment'),
           turn: null,
-          viewYn: item.getAttribute('data-view')
+          viewYn: 'n'
         });
       });
 // ── 고정 열 목록 localStorage에 저장 ──
@@ -641,11 +650,11 @@ if (clean.length !== data.length) {
       showSpinner();
       fetch('/csm/counsel/ListSetting', {
         method: 'POST',
-      credentials: 'same-origin',               // ★ 세션/쿠키 포함
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json',
-        [csrfHeader]: csrfToken                 // ★ 토큰 첨부
-		},
-        body: JSON.stringify(data)
+          [csrfHeader]: csrfToken
+        },
+        body: JSON.stringify(clean)
       })
         .then(r => r.ok ? r.text() : Promise.reject(r))
         .then(() => location.reload())
@@ -653,7 +662,7 @@ if (clean.length !== data.length) {
           const t = (await err.text?.()) || '';
           console.error('ListSetting error:', t || err);
           alert('설정 저장 중 오류가 발생했습니다.');
-		  hideSpinner();
+          hideSpinner();
         });
     });
   }

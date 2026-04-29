@@ -9,6 +9,36 @@
     <link rel="icon" type="image/png" sizes="16x16" th:href="@{/favicon-16x16.png}">
     <link rel="apple-touch-icon" sizes="180x180" th:href="@{/apple-touch-icon.png}">
     <link rel="stylesheet" th:href="@{/css/mediplat.css}">
+    <style>
+        /* ── Institution table enhancements ── */
+        .inst-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+        .inst-table th { background: #f0f4fa; color: var(--sub); font-weight: 600; padding: 8px 10px; text-align: left; border-bottom: 2px solid var(--line); }
+        .inst-table td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+        .inst-table tr:last-child td { border-bottom: none; }
+        .inst-table tr.is-selected td { background: #eef5ff; }
+        .inst-table tr:hover td { background: #f7faff; cursor: pointer; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+        .badge-on { background: #d1fae5; color: #065f46; }
+        .badge-off { background: #fee2e2; color: #991b1b; }
+        .inst-actions { display: flex; gap: 6px; }
+        .btn-sm { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid; line-height: 1.4; }
+        .btn-sm-primary { background: var(--accent); color: #fff; border-color: var(--accent-strong); }
+        .btn-sm-outline { background: #fff; color: var(--sub); border-color: var(--line); }
+        .btn-sm-danger { background: #fff; color: #dc2626; border-color: #fca5a5; }
+        .btn-sm-success { background: #fff; color: #059669; border-color: #6ee7b7; }
+        .form-hint { font-size: 11px; color: var(--sub); margin: 4px 0 0; }
+        .form-hint.csm-hint { color: var(--accent); }
+        /* ── Bulk upload ── */
+        .bulk-area { width: 100%; height: 160px; font-family: monospace; font-size: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; resize: vertical; }
+        .preview-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; max-height: 240px; overflow-y: auto; display: block; }
+        .preview-table th, .preview-table td { padding: 6px 8px; border: 1px solid var(--line); text-align: left; }
+        .preview-table th { background: #f0f4fa; font-weight: 600; }
+        .preview-table td.err { color: #dc2626; }
+        .bulk-result { margin-top: 10px; font-size: 13px; padding: 10px 14px; border-radius: 8px; }
+        .bulk-result.ok { background: #d1fae5; color: #065f46; }
+        .bulk-result.fail { background: #fee2e2; color: #991b1b; }
+        .badge-csm { background: #eff6ff; color: #1a74bf; border: 1px solid #bfdbfe; font-size: 11px; padding: 2px 7px; border-radius: 12px; font-weight: 600; }
+    </style>
 </head>
 <body>
 <header class="topbar">
@@ -28,30 +58,98 @@
     <div class="message error" th:if="${error != null}" th:text="${error}">오류</div>
 
     <section class="admin-grid">
+
+        <!-- ══════════════════════════════════════════
+             기관 상태 관리 (등록 + 수정 + 비활성화)
+             ══════════════════════════════════════════ -->
         <div class="admin-card" th:if="${canManagePlatform}">
             <div class="section-head">
-                <h2>기관 상태 관리</h2>
-                <p>Mediplat에서 사용할 기관을 직접 등록하고 사용 상태를 관리합니다.</p>
+                <h2>기관 관리</h2>
+                <p>기관을 등록·수정하고 사용 상태를 관리합니다. 신규 등록 시 CSM(카운셀맨) 서비스가 자동 활성화됩니다.</p>
             </div>
-            <form method="post" th:action="@{/admin/institutions}" class="stack-form">
-                <input name="instCode" type="text" placeholder="기관코드" required>
-                <input name="instName" type="text" placeholder="기관명" required>
-                <select name="useYn">
+            <form id="inst-form" method="post" th:action="@{/admin/institutions}" class="stack-form">
+                <input id="inst-code-input" name="instCode" type="text" placeholder="기관코드 (예: HOSPITAL01)" required>
+                <input id="inst-name-input" name="instName" type="text" placeholder="기관명" required>
+                <select id="inst-use-yn-input" name="useYn">
                     <option value="Y">사용</option>
                     <option value="N">중지</option>
                 </select>
-                <button type="submit">기관 저장</button>
-            </form>
-            <div class="table-list">
-                <div class="list-row list-head"><span>코드</span><span>기관명</span><span>상태</span></div>
-                <div class="list-row" th:each="institution : ${institutions}">
-                    <span th:text="${institution.instCode}">core</span>
-                    <span th:text="${institution.instName}">MediPlat Platform</span>
-                    <span th:text="${institution.useYn}">Y</span>
+                <p class="form-hint csm-hint">✓ 신규 기관 등록 시 COUNSELMAN 서비스가 자동 활성화됩니다.</p>
+                <div style="display:flex;gap:8px">
+                    <button type="submit" style="flex:1" id="inst-submit-btn">기관 저장</button>
+                    <button type="button" class="secondary-btn" id="inst-form-reset" style="flex:0 0 auto">초기화</button>
                 </div>
+            </form>
+            <p id="inst-edit-mode-label" style="display:none;font-size:12px;color:var(--accent);margin-top:4px">
+                수정 모드 — 목록에서 다른 행을 클릭하거나 초기화 버튼으로 신규 등록 모드로 전환합니다.
+            </p>
+
+            <table class="inst-table" id="inst-table">
+                <thead>
+                    <tr><th>코드</th><th>기관명</th><th>상태</th><th>CSM</th><th>작업</th></tr>
+                </thead>
+                <tbody>
+                    <tr th:each="inst : ${institutions}"
+                        th:attr="data-inst-code=${inst.instCode},data-inst-name=${inst.instName},data-use-yn=${inst.useYn}"
+                        class="inst-row" role="button" tabindex="0">
+                        <td th:text="${inst.instCode}">CODE</td>
+                        <td th:text="${inst.instName}">기관명</td>
+                        <td>
+                            <span class="badge" th:classappend="${inst.useYn == 'Y'} ? 'badge-on' : 'badge-off'"
+                                  th:text="${inst.useYn == 'Y'} ? '사용' : '중지'">사용</span>
+                        </td>
+                        <td><span class="badge-csm">COUNSELMAN</span></td>
+                        <td>
+                            <div class="inst-actions" onclick="event.stopPropagation()">
+                                <form method="post" th:action="@{/admin/institutions/status}" style="display:inline">
+                                    <input type="hidden" name="instCode" th:value="${inst.instCode}">
+                                    <input type="hidden" name="useYn" th:value="${inst.useYn == 'Y' ? 'N' : 'Y'}">
+                                    <button type="submit" class="btn-sm"
+                                            th:classappend="${inst.useYn == 'Y'} ? 'btn-sm-danger' : 'btn-sm-success'"
+                                            th:text="${inst.useYn == 'Y'} ? '비활성화' : '활성화'">비활성화</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ══════════════════════════════════════════
+             직원 대량 등록 (CSV)
+             ══════════════════════════════════════════ -->
+        <div class="admin-card" th:if="${canManagePlatform}">
+            <div class="section-head">
+                <h2>직원 대량 등록</h2>
+                <p>CSV 형식으로 기관 직원을 한 번에 등록합니다. 이미 존재하는 아이디는 비밀번호·이름·부서만 업데이트됩니다.</p>
+            </div>
+            <div class="stack-form">
+                <select id="bulk-inst-select">
+                    <option value="">기관 선택</option>
+                    <option th:each="institution : ${institutions}"
+                            th:value="${institution.instCode}"
+                            th:text="${institution.instName + ' (' + institution.instCode + ')'}">기관</option>
+                </select>
+                <p class="form-hint">형식: <code>아이디,비밀번호,이름,부서(선택)</code> — 첫 줄 헤더는 자동 무시됩니다.</p>
+                <textarea id="bulk-csv" class="bulk-area"
+                          placeholder="아이디,비밀번호,이름,부서
+hong1,pass1234,홍길동,원무과
+kim2,pass5678,김철수,간호부"></textarea>
+                <button type="button" id="bulk-preview-btn" class="secondary-btn">미리보기</button>
+                <div id="bulk-preview-wrap" style="display:none">
+                    <table class="preview-table">
+                        <thead><tr><th>#</th><th>아이디</th><th>비밀번호</th><th>이름</th><th>부서</th><th>상태</th></tr></thead>
+                        <tbody id="bulk-preview-body"></tbody>
+                    </table>
+                    <button type="button" id="bulk-submit-btn" style="margin-top:10px">등록 실행</button>
+                </div>
+                <div id="bulk-result" class="bulk-result" style="display:none"></div>
             </div>
         </div>
 
+        <!-- ══════════════════════════════════════════
+             기관별 서비스 권한
+             ══════════════════════════════════════════ -->
         <div class="admin-card" th:if="${canManagePlatform}">
             <div class="section-head">
                 <h2>기관별 서비스 권한</h2>
@@ -62,9 +160,7 @@
                     <option th:each="institution : ${institutions}"
                             th:value="${institution.instCode}"
                             th:text="${institution.instName + ' (' + institution.instCode + ')'}"
-                            th:selected="${institution.instCode == selectedInstCode}">
-                        기관
-                    </option>
+                            th:selected="${institution.instCode == selectedInstCode}">기관</option>
                 </select>
             </form>
             <form method="post" th:action="@{/admin/access}" class="stack-form">
@@ -99,6 +195,9 @@
             </form>
         </div>
 
+        <!-- ══════════════════════════════════════════
+             기관 관리자 계정
+             ══════════════════════════════════════════ -->
         <div class="admin-card" th:if="${canManagePlatform}">
             <div class="section-head">
                 <h2>기관 관리자 계정</h2>
@@ -111,9 +210,7 @@
                     <option th:each="institution : ${institutions}"
                             th:value="${institution.instCode}"
                             th:text="${institution.instName + ' (' + institution.instCode + ')'}"
-                            th:selected="${institution.instCode == selectedInstCode}">
-                        기관
-                    </option>
+                            th:selected="${institution.instCode == selectedInstCode}">기관</option>
                 </select>
                 <input name="username" type="text" placeholder="아이디" required>
                 <input name="password" type="password" placeholder="비밀번호" required>
@@ -135,6 +232,9 @@
             </div>
         </div>
 
+        <!-- ══════════════════════════════════════════
+             기관 사용자 계정
+             ══════════════════════════════════════════ -->
         <div class="admin-card" th:if="${canManageInstitutionUsers}">
             <div class="section-head">
                 <h2>기관 사용자 계정</h2>
@@ -145,9 +245,7 @@
                     <option th:each="institution : ${institutions}"
                             th:value="${institution.instCode}"
                             th:text="${institution.instName + ' (' + institution.instCode + ')'}"
-                            th:selected="${institution.instCode == selectedInstCode}">
-                        기관
-                    </option>
+                            th:selected="${institution.instCode == selectedInstCode}">기관</option>
                 </select>
             </form>
             <form method="post" th:action="@{/admin/users}" class="stack-form">
@@ -175,15 +273,15 @@
                     </div>
                     <div class="list-row list-row-user" th:if="${#lists.isEmpty(institutionUsers)}">
                         <span>등록된 사용자가 없습니다.</span>
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                        <span></span>
+                        <span></span><span></span><span></span><span></span>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- ══════════════════════════════════════════
+             사용자 기능 권한
+             ══════════════════════════════════════════ -->
         <div class="admin-card" th:if="${canManageInstitutionUsers}">
             <div class="section-head">
                 <h2>사용자 기능 권한</h2>
@@ -195,18 +293,14 @@
                         <option th:each="institution : ${institutions}"
                                 th:value="${institution.instCode}"
                                 th:text="${institution.instName + ' (' + institution.instCode + ')'}"
-                                th:selected="${institution.instCode == selectedInstCode}">
-                            기관
-                        </option>
+                                th:selected="${institution.instCode == selectedInstCode}">기관</option>
                     </select>
                 </th:block>
                 <select name="userAccessUsername" id="admin-user-access-select" th:disabled="${#lists.isEmpty(institutionUsers)}">
                     <option th:each="institutionUser : ${institutionUsers}"
                             th:value="${institutionUser.username}"
                             th:text="${institutionUser.displayName + ' (' + institutionUser.username + ')'}"
-                            th:selected="${institutionUser.username == selectedUserAccessUsername}">
-                        사용자
-                    </option>
+                            th:selected="${institutionUser.username == selectedUserAccessUsername}">사용자</option>
                 </select>
             </form>
             <p class="service-form-mode" id="admin-user-access-empty-users" th:hidden="${!#lists.isEmpty(institutionUsers)}">권한을 설정할 사용자가 없습니다.</p>
@@ -215,8 +309,7 @@
                 <input type="hidden" name="username" id="admin-user-access-username" th:value="${selectedUserAccessUsername}">
                 <div id="admin-user-access-service-list">
                     <label class="checkbox-row" th:each="service : ${institutionEnabledServices}">
-                        <input type="checkbox"
-                               name="enabledServiceCodes"
+                        <input type="checkbox" name="enabledServiceCodes"
                                th:value="${service.serviceCode}"
                                th:checked="${#lists.contains(userEnabledServiceCodes, service.serviceCode)}">
                         <span th:text="${service.serviceName + ' (' + service.serviceCode + ')'}">서비스</span>
@@ -229,27 +322,21 @@
                th:hidden="${#lists.isEmpty(institutionUsers) or !#lists.isEmpty(institutionEnabledServices)}">기관에 활성화된 서비스가 없습니다.</p>
         </div>
 
+        <!-- ══════════════════════════════════════════
+             병실현황판 전용 계정
+             ══════════════════════════════════════════ -->
         <div class="admin-card admin-card-wide" th:if="${canManagePlatform}">
             <div class="section-head">
                 <h2>병실현황판 전용 계정</h2>
-                <p>기관코드 없이 로그인 가능한 전용 아이디/비밀번호를 만들고, 조회 가능한 기관을 선택합니다. 아이디는 기관 계정과 중복되면 저장되지 않습니다.</p>
+                <p>기관코드 없이 로그인 가능한 전용 아이디/비밀번호를 만들고, 조회 가능한 기관을 선택합니다.</p>
                 <a class="ghost-btn" th:if="${viewerEditMode}" th:href="@{/admin(instCode=${selectedInstCode})}">새 계정 모드</a>
             </div>
             <form method="post" th:action="@{/admin/room-board-viewer/accounts}" class="stack-form">
                 <input type="hidden" name="instCode" th:value="${viewerSelectedInstCode}">
-                <input name="username"
-                       type="text"
-                       placeholder="아이디 (영문/숫자/언더스코어 4~40자)"
-                       th:value="${viewerFormUsername}"
-                       th:readonly="${viewerEditMode}"
-                       required>
-                <input name="displayName"
-                       type="text"
-                       placeholder="표시 이름"
-                       th:value="${viewerFormDisplayName}"
-                       required>
-                <input name="password"
-                       type="password"
+                <input name="username" type="text" placeholder="아이디 (영문/숫자/언더스코어 4~40자)"
+                       th:value="${viewerFormUsername}" th:readonly="${viewerEditMode}" required>
+                <input name="displayName" type="text" placeholder="표시 이름" th:value="${viewerFormDisplayName}" required>
+                <input name="password" type="password"
                        th:placeholder="${viewerEditMode ? '비밀번호 변경 시에만 입력' : '비밀번호'}"
                        th:required="${!viewerEditMode}">
                 <select name="useYn">
@@ -258,16 +345,13 @@
                 </select>
                 <div class="scope-check-grid">
                     <label class="checkbox-row" th:each="institution : ${viewerScopeInstitutions}">
-                        <input type="checkbox"
-                               name="instCodes"
-                               th:value="${institution.instCode}"
+                        <input type="checkbox" name="instCodes" th:value="${institution.instCode}"
                                th:checked="${#lists.contains(viewerSelectedInstCodes, institution.instCode)}">
                         <span th:text="${institution.instName + ' (' + institution.instCode + ')'}">기관</span>
                     </label>
                 </div>
                 <button type="submit" th:text="${viewerEditMode ? '계정 수정 저장' : '계정 생성'}">계정 생성</button>
             </form>
-
             <div class="table-list">
                 <div class="list-row list-head list-row-viewer"><span>아이디</span><span>표시 이름</span><span>조회 기관</span><span>상태</span><span>편집</span></div>
                 <div class="list-row list-row-viewer" th:each="account : ${viewerAccounts}">
@@ -275,12 +359,14 @@
                     <span th:text="${account.displayName}">병동 관리자</span>
                     <span th:text="${account.scopeSummary}">기관A, 기관B</span>
                     <span th:text="${account.useYn}">Y</span>
-                    <a class="ghost-btn"
-                       th:href="@{/admin(instCode=${selectedInstCode}, viewerUsername=${account.username})}">불러오기</a>
+                    <a class="ghost-btn" th:href="@{/admin(instCode=${selectedInstCode}, viewerUsername=${account.username})}">불러오기</a>
                 </div>
             </div>
         </div>
 
+        <!-- ══════════════════════════════════════════
+             서비스 등록
+             ══════════════════════════════════════════ -->
         <div class="admin-card admin-card-wide" th:if="${canManagePlatform}">
             <div class="section-head">
                 <h2>서비스 등록</h2>
@@ -307,7 +393,7 @@
                     <button type="button" id="service-form-reset" class="secondary-btn">선택 해제</button>
                 </div>
             </form>
-                <div class="table-list">
+            <div class="table-list">
                 <div class="list-row list-head list-row-service"><span>코드</span><span>이름</span><span>적용 URL</span><span>상태</span><span>변경</span></div>
                 <div class="list-row list-row-service service-edit-row"
                      th:each="service : ${services}"
@@ -323,8 +409,7 @@
                               data-description=${service.description},
                               data-display-order=${service.displayOrder},
                               data-use-yn=${service.useYn}"
-                     role="button"
-                     tabindex="0">
+                     role="button" tabindex="0">
                     <span th:text="${service.serviceCode}">COUNSELMAN</span>
                     <span th:text="${service.serviceName}">CounselMan</span>
                     <span th:text="${service.baseUrl}">http://localhost:8081/csm</span>
@@ -341,131 +426,203 @@
             </div>
         </div>
 
-        
     </section>
 </main>
+
 <script>
+/* ── Institution inline edit ── */
+(() => {
+    const instCodeInput   = document.getElementById('inst-code-input');
+    const instNameInput   = document.getElementById('inst-name-input');
+    const instUseYnInput  = document.getElementById('inst-use-yn-input');
+    const instForm        = document.getElementById('inst-form');
+    const instSubmitBtn   = document.getElementById('inst-submit-btn');
+    const instResetBtn    = document.getElementById('inst-form-reset');
+    const editModeLabel   = document.getElementById('inst-edit-mode-label');
+    const rows            = document.querySelectorAll('.inst-row');
+    if (!instCodeInput) return;
+
+    const setNewMode = () => {
+        instForm.reset();
+        instCodeInput.readOnly = false;
+        instSubmitBtn.textContent = '기관 저장';
+        editModeLabel.style.display = 'none';
+        rows.forEach(r => r.classList.remove('is-selected'));
+    };
+
+    const setEditMode = (row) => {
+        instCodeInput.value  = row.dataset.instCode;
+        instNameInput.value  = row.dataset.instName;
+        instUseYnInput.value = row.dataset.useYn;
+        instCodeInput.readOnly = true;
+        instSubmitBtn.textContent = '기관 수정 저장';
+        editModeLabel.style.display = '';
+        rows.forEach(r => r.classList.remove('is-selected'));
+        row.classList.add('is-selected');
+        instNameInput.focus();
+    };
+
+    rows.forEach(row => {
+        row.addEventListener('click', (e) => {
+            if (e.target.closest('.inst-actions')) return;
+            setEditMode(row);
+        });
+        row.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            if (e.target.closest('.inst-actions')) return;
+            e.preventDefault(); setEditMode(row);
+        });
+    });
+    instResetBtn?.addEventListener('click', setNewMode);
+})();
+
+/* ── Bulk user upload ── */
+(() => {
+    const bulkInstSelect  = document.getElementById('bulk-inst-select');
+    const bulkCsv         = document.getElementById('bulk-csv');
+    const previewBtn      = document.getElementById('bulk-preview-btn');
+    const submitBtn       = document.getElementById('bulk-submit-btn');
+    const previewWrap     = document.getElementById('bulk-preview-wrap');
+    const previewBody     = document.getElementById('bulk-preview-body');
+    const resultEl        = document.getElementById('bulk-result');
+    if (!bulkInstSelect) return;
+
+    const parseCsv = (raw) => {
+        const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+        const isHeader = (l) => /아이디|username|id/i.test(l.split(',')[0]);
+        const dataLines = lines.filter((l, i) => !(i === 0 && isHeader(l)));
+        return dataLines.map(line => {
+            const cols = line.split(',').map(c => c.trim());
+            return {
+                username:    cols[0] || '',
+                password:    cols[1] || '',
+                displayName: cols[2] || '',
+                dept:        cols[3] || '',
+                valid:       !!(cols[0] && cols[1] && cols[2])
+            };
+        });
+    };
+
+    const renderPreview = (rows) => {
+        previewBody.innerHTML = rows.map((r, i) => `
+            <tr>
+                <td>${i + 1}</td>
+                <td>${escHtml(r.username)}</td>
+                <td>${r.password ? '••••••' : '<span class="err">필수</span>'}</td>
+                <td>${escHtml(r.displayName) || '<span class="err">필수</span>'}</td>
+                <td>${escHtml(r.dept) || '-'}</td>
+                <td>${r.valid ? '✓' : '<span class="err">오류</span>'}</td>
+            </tr>`).join('');
+        previewWrap.style.display = '';
+        resultEl.style.display = 'none';
+    };
+
+    const escHtml = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    previewBtn?.addEventListener('click', () => {
+        const rows = parseCsv(bulkCsv.value);
+        if (!rows.length) { alert('CSV 내용을 입력해 주세요.'); return; }
+        renderPreview(rows);
+    });
+
+    submitBtn?.addEventListener('click', async () => {
+        const instCode = bulkInstSelect.value.trim();
+        if (!instCode) { alert('기관을 선택해 주세요.'); return; }
+        const rows = parseCsv(bulkCsv.value).filter(r => r.valid);
+        if (!rows.length) { alert('유효한 행이 없습니다.'); return; }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = '등록 중...';
+        try {
+            const csrfToken  = document.querySelector('meta[name="_csrf"]')?.content;
+            const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+            const headers = { 'Content-Type': 'application/json' };
+            if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+
+            const res = await fetch(`/api/admin/bulk-users?instCode=${encodeURIComponent(instCode)}`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(rows)
+            });
+            const data = await res.json().catch(() => ({}));
+            resultEl.style.display = '';
+            if (res.ok) {
+                resultEl.className = 'bulk-result ok';
+                resultEl.textContent = `✓ ${data.count ?? rows.length}명이 등록(또는 업데이트)되었습니다.`;
+            } else {
+                resultEl.className = 'bulk-result fail';
+                resultEl.textContent = `오류: ${data.error || '알 수 없는 오류'}`;
+            }
+        } catch (e) {
+            resultEl.style.display = '';
+            resultEl.className = 'bulk-result fail';
+            resultEl.textContent = '서버 오류가 발생했습니다.';
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = '등록 실행';
+        }
+    });
+})();
+
+/* ── Service form inline edit ── */
 (() => {
     const form = document.getElementById('service-form');
-    if (!form) {
-        return;
-    }
-
+    if (!form) return;
     const modeLabel = document.getElementById('service-form-mode');
     const submitButton = document.getElementById('service-submit-button');
     const resetButton = document.getElementById('service-form-reset');
     const rows = document.querySelectorAll('.service-edit-row');
     const runtimeEnv = String(form.dataset.runtimeEnv || 'LOCAL').toUpperCase();
     const fields = {
-        serviceCode: form.elements.namedItem('serviceCode'),
-        serviceName: form.elements.namedItem('serviceName'),
+        serviceCode:  form.elements.namedItem('serviceCode'),
+        serviceName:  form.elements.namedItem('serviceName'),
         baseUrlLocal: form.elements.namedItem('baseUrlLocal'),
-        baseUrlDev: form.elements.namedItem('baseUrlDev'),
-        baseUrlProd: form.elements.namedItem('baseUrlProd'),
+        baseUrlDev:   form.elements.namedItem('baseUrlDev'),
+        baseUrlProd:  form.elements.namedItem('baseUrlProd'),
         ssoEntryPath: form.elements.namedItem('ssoEntryPath'),
-        userTarget: form.elements.namedItem('userTarget'),
-        adminTarget: form.elements.namedItem('adminTarget'),
-        description: form.elements.namedItem('description'),
+        userTarget:   form.elements.namedItem('userTarget'),
+        adminTarget:  form.elements.namedItem('adminTarget'),
+        description:  form.elements.namedItem('description'),
         displayOrder: form.elements.namedItem('displayOrder'),
-        useYn: form.elements.namedItem('useYn')
+        useYn:        form.elements.namedItem('useYn'),
     };
-
-    const normalizeValue = (value) => {
-        if (value === undefined || value === null || value === 'null') {
-            return '';
-        }
-        return value;
-    };
-
-    const clearRowSelection = () => {
-        rows.forEach((row) => row.classList.remove('is-selected'));
-    };
-
-    const runtimeEnvField = () => {
-        if (runtimeEnv === 'PROD') {
-            return fields.baseUrlProd;
-        }
-        if (runtimeEnv === 'DEV') {
-            return fields.baseUrlDev;
-        }
-        return fields.baseUrlLocal;
-    };
-
+    const normalize = v => (v === undefined || v === null || v === 'null') ? '' : v;
+    const clearSelection = () => rows.forEach(r => r.classList.remove('is-selected'));
+    const runtimeEnvField = () => runtimeEnv === 'PROD' ? fields.baseUrlProd : runtimeEnv === 'DEV' ? fields.baseUrlDev : fields.baseUrlLocal;
     const setNewMode = () => {
-        clearRowSelection();
-        form.reset();
-        fields.serviceCode.readOnly = false;
-        if (modeLabel) {
-            modeLabel.textContent = '신규 등록 모드입니다. 서비스 목록 행을 클릭하면 수정 모드로 전환됩니다.';
-        }
-        if (submitButton) {
-            submitButton.textContent = '서비스 저장';
-        }
+        clearSelection(); form.reset(); fields.serviceCode.readOnly = false;
+        if (modeLabel) modeLabel.textContent = '신규 등록 모드입니다. 서비스 목록 행을 클릭하면 수정 모드로 전환됩니다.';
+        if (submitButton) submitButton.textContent = '서비스 저장';
     };
-
     const setEditMode = (row) => {
-        fields.serviceCode.value = normalizeValue(row.dataset.serviceCode);
+        fields.serviceCode.value = normalize(row.dataset.serviceCode);
         fields.serviceCode.readOnly = true;
-        fields.serviceName.value = normalizeValue(row.dataset.serviceName);
-        const localUrl = normalizeValue(row.dataset.baseUrlLocal);
-        const devUrl = normalizeValue(row.dataset.baseUrlDev);
-        const prodUrl = normalizeValue(row.dataset.baseUrlProd);
-        const effectiveUrl = normalizeValue(row.dataset.baseUrlEffective);
-        fields.baseUrlLocal.value = localUrl;
-        fields.baseUrlDev.value = devUrl;
-        fields.baseUrlProd.value = prodUrl;
-        if (!localUrl && !devUrl && !prodUrl && effectiveUrl) {
-            runtimeEnvField().value = effectiveUrl;
-        }
-        fields.ssoEntryPath.value = normalizeValue(row.dataset.ssoEntryPath);
-        fields.userTarget.value = normalizeValue(row.dataset.userTarget);
-        fields.adminTarget.value = normalizeValue(row.dataset.adminTarget);
-        fields.description.value = normalizeValue(row.dataset.description);
-        fields.displayOrder.value = normalizeValue(row.dataset.displayOrder) || '0';
-        fields.useYn.value = normalizeValue(row.dataset.useYn).toUpperCase() === 'N' ? 'N' : 'Y';
-
-        clearRowSelection();
-        row.classList.add('is-selected');
-
-        if (modeLabel) {
-            modeLabel.textContent = `${fields.serviceCode.value} 수정 모드입니다. 값을 변경하고 저장하면 즉시 반영됩니다.`;
-        }
-        if (submitButton) {
-            submitButton.textContent = '서비스 수정 저장';
-        }
+        fields.serviceName.value  = normalize(row.dataset.serviceName);
+        const lUrl = normalize(row.dataset.baseUrlLocal), dUrl = normalize(row.dataset.baseUrlDev), pUrl = normalize(row.dataset.baseUrlProd), eUrl = normalize(row.dataset.baseUrlEffective);
+        fields.baseUrlLocal.value = lUrl; fields.baseUrlDev.value = dUrl; fields.baseUrlProd.value = pUrl;
+        if (!lUrl && !dUrl && !pUrl && eUrl) runtimeEnvField().value = eUrl;
+        fields.ssoEntryPath.value = normalize(row.dataset.ssoEntryPath);
+        fields.userTarget.value   = normalize(row.dataset.userTarget);
+        fields.adminTarget.value  = normalize(row.dataset.adminTarget);
+        fields.description.value  = normalize(row.dataset.description);
+        fields.displayOrder.value = normalize(row.dataset.displayOrder) || '0';
+        fields.useYn.value = normalize(row.dataset.useYn).toUpperCase() === 'N' ? 'N' : 'Y';
+        clearSelection(); row.classList.add('is-selected');
+        if (modeLabel) modeLabel.textContent = `${fields.serviceCode.value} 수정 모드입니다.`;
+        if (submitButton) submitButton.textContent = '서비스 수정 저장';
         fields.serviceName.focus();
     };
-
-    rows.forEach((row) => {
-        row.addEventListener('click', (event) => {
-            if (event.target.closest('.inline-form-compact')) {
-                return;
-            }
-            setEditMode(row);
-        });
-        row.addEventListener('keydown', (event) => {
-            if (event.key !== 'Enter' && event.key !== ' ') {
-                return;
-            }
-            if (event.target.closest('.inline-form-compact')) {
-                return;
-            }
-            event.preventDefault();
-            setEditMode(row);
-        });
+    rows.forEach(row => {
+        row.addEventListener('click', e => { if (!e.target.closest('.inline-form-compact')) setEditMode(row); });
+        row.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('.inline-form-compact')) { e.preventDefault(); setEditMode(row); } });
     });
-
-    if (resetButton) {
-        resetButton.addEventListener('click', setNewMode);
-    }
+    resetButton?.addEventListener('click', setNewMode);
 })();
 
+/* ── Dynamic inst select ── */
 (() => {
     const adminShell = document.querySelector('main.page-shell.admin-shell');
-    if (!adminShell) {
-        return;
-    }
-
+    if (!adminShell) return;
     const instSelects = Array.from(document.querySelectorAll('.js-admin-inst-select'));
     const userAccessSelect = document.getElementById('admin-user-access-select');
     const serviceCheckboxContainer = document.getElementById('admin-institution-service-list');
@@ -480,178 +637,60 @@
     const userAccessServiceList = document.getElementById('admin-user-access-service-list');
     const userAccessSaveButton = document.getElementById('admin-user-access-save-button');
     const userAccessEmptyServices = document.getElementById('admin-user-access-empty-services');
+    if (!instSelects.length && !serviceCheckboxContainer && !integrationCheckbox && !institutionUserList && !userAccessSelect && !userAccessServiceList) return;
 
-    if (!instSelects.length
-        && !serviceCheckboxContainer
-        && !integrationCheckbox
-        && !institutionUserList
-        && !userAccessSelect
-        && !userAccessServiceList) {
-        return;
-    }
-
-    const escapeHtml = (value) => {
-        return String(value || '')
-            .replaceAll('&', '&amp;')
-            .replaceAll('<', '&lt;')
-            .replaceAll('>', '&gt;')
-            .replaceAll('"', '&quot;')
-            .replaceAll("'", '&#39;');
-    };
-
+    const escHtml = v => String(v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     const integrationEnabledMessage = 'ROOM_BOARD 서비스 권한 + ROOM_BOARD 기능이 모두 활성화된 기관은 연동을 켤 수 있습니다.';
     const integrationDisabledMessage = 'ROOM_BOARD 서비스 권한 또는 ROOM_BOARD 기능이 비활성화되어 현재는 연동을 켤 수 없습니다.';
-    const currentInstCode = () => {
-        const select = instSelects.find((node) => String(node.value || '').trim());
-        if (select) {
-            return String(select.value || '').trim();
-        }
-        const input = instCodeInputs.find((node) => String(node.value || '').trim());
-        return input ? String(input.value || '').trim() : '';
-    };
-    const currentUserAccessUsername = () => userAccessSelect ? String(userAccessSelect.value || '').trim() : '';
-    const syncInstCode = (instCode) => {
-        const normalized = String(instCode || '').trim();
-        instSelects.forEach((select) => {
-            select.value = normalized;
-        });
-        instCodeInputs.forEach((input) => {
-            input.value = normalized;
-        });
-        instDisplays.forEach((display) => {
-            display.value = normalized;
-        });
-    };
+    const currentInstCode = () => { const s = instSelects.find(n => String(n.value||'').trim()); if (s) return String(s.value||'').trim(); const i = instCodeInputs.find(n => String(n.value||'').trim()); return i ? String(i.value||'').trim() : ''; };
+    const currentUserAccessUsername = () => userAccessSelect ? String(userAccessSelect.value||'').trim() : '';
+    const syncInstCode = (instCode) => { const n = String(instCode||'').trim(); instSelects.forEach(s=>s.value=n); instCodeInputs.forEach(i=>i.value=n); instDisplays.forEach(d=>d.value=n); };
     const renderInstitutionServiceAccess = (services, enabledServiceCodes) => {
-        if (!serviceCheckboxContainer) {
-            return;
-        }
-        const enabledSet = new Set(Array.isArray(enabledServiceCodes) ? enabledServiceCodes.map((code) => String(code || '').toUpperCase()) : []);
-        serviceCheckboxContainer.innerHTML = (Array.isArray(services) ? services : []).map((service) => {
-            const code = String(service.serviceCode || '');
-            const checkedAttr = enabledSet.has(code.toUpperCase()) ? ' checked' : '';
-            const caption = `${String(service.serviceName || code)} (${code})`;
-            return `
-                <label class="checkbox-row">
-                    <input type="checkbox" name="enabledServiceCodes" value="${escapeHtml(code)}"${checkedAttr}>
-                    <span>${escapeHtml(caption)}</span>
-                </label>
-            `;
+        if (!serviceCheckboxContainer) return;
+        const enabled = new Set((Array.isArray(enabledServiceCodes) ? enabledServiceCodes : []).map(c=>String(c||'').toUpperCase()));
+        serviceCheckboxContainer.innerHTML = (Array.isArray(services)?services:[]).map(service => {
+            const code = String(service.serviceCode||''); const checked = enabled.has(code.toUpperCase()) ? ' checked' : '';
+            return `<label class="checkbox-row"><input type="checkbox" name="enabledServiceCodes" value="${escHtml(code)}"${checked}><span>${escHtml(service.serviceName||code)} (${escHtml(code)})</span></label>`;
         }).join('');
     };
     const renderInstitutionUsers = (users) => {
-        if (!institutionUserList) {
-            return;
-        }
-        const normalizedUsers = Array.isArray(users) ? users : [];
-        if (!normalizedUsers.length) {
-            institutionUserList.innerHTML = `
-                <div class="list-row list-row-user">
-                    <span>등록된 사용자가 없습니다.</span><span></span><span></span><span></span><span></span>
-                </div>
-            `;
-            return;
-        }
-        institutionUserList.innerHTML = normalizedUsers.map((institutionUser) => `
-            <div class="list-row list-row-user">
-                <span>${escapeHtml(institutionUser.instCode)}</span>
-                <span>${escapeHtml(institutionUser.username)}</span>
-                <span>${escapeHtml(institutionUser.displayName)}</span>
-                <span>${escapeHtml(institutionUser.roleCode)}</span>
-                <span>${escapeHtml(institutionUser.useYn)}</span>
-            </div>
-        `).join('');
+        if (!institutionUserList) return;
+        if (!users?.length) { institutionUserList.innerHTML = '<div class="list-row list-row-user"><span>등록된 사용자가 없습니다.</span><span></span><span></span><span></span><span></span></div>'; return; }
+        institutionUserList.innerHTML = users.map(u => `<div class="list-row list-row-user"><span>${escHtml(u.instCode)}</span><span>${escHtml(u.username)}</span><span>${escHtml(u.displayName)}</span><span>${escHtml(u.roleCode)}</span><span>${escHtml(u.useYn)}</span></div>`).join('');
     };
     const renderUserAccessUsers = (users, selectedUsername) => {
-        if (!userAccessSelect) {
-            return;
-        }
-        const normalizedUsers = Array.isArray(users) ? users : [];
-        if (!normalizedUsers.length) {
-            userAccessSelect.innerHTML = '<option value="">사용자 없음</option>';
-            userAccessSelect.disabled = true;
-            if (userAccessEmptyUsers) {
-                userAccessEmptyUsers.hidden = false;
-            }
-            if (userAccessUsernameInput) {
-                userAccessUsernameInput.value = '';
-            }
-            return;
-        }
-        userAccessSelect.disabled = false;
-        if (userAccessEmptyUsers) {
-            userAccessEmptyUsers.hidden = true;
-        }
-        const selected = String(selectedUsername || normalizedUsers[0].username || '');
-        userAccessSelect.innerHTML = normalizedUsers.map((institutionUser) => {
-            const username = String(institutionUser.username || '');
-            const selectedAttr = username === selected ? ' selected' : '';
-            const caption = `${String(institutionUser.displayName || username)} (${username})`;
-            return `<option value="${escapeHtml(username)}"${selectedAttr}>${escapeHtml(caption)}</option>`;
-        }).join('');
-        if (userAccessUsernameInput) {
-            userAccessUsernameInput.value = selected;
-        }
+        if (!userAccessSelect) return;
+        if (!users?.length) { userAccessSelect.innerHTML = '<option value="">사용자 없음</option>'; userAccessSelect.disabled = true; if (userAccessEmptyUsers) userAccessEmptyUsers.hidden = false; if (userAccessUsernameInput) userAccessUsernameInput.value = ''; return; }
+        userAccessSelect.disabled = false; if (userAccessEmptyUsers) userAccessEmptyUsers.hidden = true;
+        const selected = String(selectedUsername || users[0]?.username || '');
+        userAccessSelect.innerHTML = users.map(u => { const username = String(u.username||''); return `<option value="${escHtml(username)}"${username===selected?' selected':''}>${escHtml(u.displayName||username)} (${escHtml(username)})</option>`; }).join('');
+        if (userAccessUsernameInput) userAccessUsernameInput.value = selected;
     };
     const renderUserAccessServices = (services, enabledServiceCodes, hasUsers) => {
-        if (!userAccessServiceList) {
-            return;
-        }
-        const normalizedServices = Array.isArray(services) ? services : [];
-        const enabledSet = new Set(Array.isArray(enabledServiceCodes) ? enabledServiceCodes.map((code) => String(code || '').toUpperCase()) : []);
-        userAccessServiceList.innerHTML = normalizedServices.map((service) => {
-            const code = String(service.serviceCode || '');
-            const checkedAttr = enabledSet.has(code.toUpperCase()) ? ' checked' : '';
-            const caption = `${String(service.serviceName || code)} (${code})`;
-            return `
-                <label class="checkbox-row">
-                    <input type="checkbox" name="enabledServiceCodes" value="${escapeHtml(code)}"${checkedAttr}>
-                    <span>${escapeHtml(caption)}</span>
-                </label>
-            `;
+        if (!userAccessServiceList) return;
+        const enabled = new Set((Array.isArray(enabledServiceCodes)?enabledServiceCodes:[]).map(c=>String(c||'').toUpperCase()));
+        userAccessServiceList.innerHTML = (Array.isArray(services)?services:[]).map(service => {
+            const code = String(service.serviceCode||''); const checked = enabled.has(code.toUpperCase()) ? ' checked' : '';
+            return `<label class="checkbox-row"><input type="checkbox" name="enabledServiceCodes" value="${escHtml(code)}"${checked}><span>${escHtml(service.serviceName||code)} (${escHtml(code)})</span></label>`;
         }).join('');
-
-        const hasServices = normalizedServices.length > 0;
-        if (userAccessSaveButton) {
-            userAccessSaveButton.disabled = !hasUsers || !hasServices;
-        }
-        if (userAccessEmptyServices) {
-            userAccessEmptyServices.hidden = !hasUsers || hasServices;
-        }
-        if (userAccessForm) {
-            userAccessForm.hidden = !hasUsers;
-        }
+        const hasServices = (Array.isArray(services)?services:[]).length > 0;
+        if (userAccessSaveButton) userAccessSaveButton.disabled = !hasUsers || !hasServices;
+        if (userAccessEmptyServices) userAccessEmptyServices.hidden = !hasUsers || hasServices;
+        if (userAccessForm) userAccessForm.hidden = !hasUsers;
     };
 
     let loading = false;
     const fetchAdminAsyncData = async (instCode, userAccessUsername) => {
-        const normalizedInstCode = String(instCode || '').trim();
-        if (!normalizedInstCode || loading) {
-            return;
-        }
-        loading = true;
-        instSelects.forEach((select) => {
-            select.disabled = true;
-        });
-        if (userAccessSelect) {
-            userAccessSelect.disabled = true;
-        }
+        const normalized = String(instCode||'').trim();
+        if (!normalized || loading) return;
+        loading = true; instSelects.forEach(s => s.disabled = true); if (userAccessSelect) userAccessSelect.disabled = true;
         try {
-            const query = new URLSearchParams();
-            query.set('instCode', normalizedInstCode);
-            if (String(userAccessUsername || '').trim()) {
-                query.set('userAccessUsername', String(userAccessUsername).trim());
-            }
-            const response = await fetch(`/admin/async-data?${query.toString()}`, {
-                headers: {
-                    Accept: 'application/json'
-                }
-            });
-            if (!response.ok) {
-                throw new Error(`failed-${response.status}`);
-            }
-            const payload = await response.json();
-            const selectedInstCode = String(payload.selectedInstCode || normalizedInstCode);
+            const q = new URLSearchParams(); q.set('instCode', normalized);
+            if (String(userAccessUsername||'').trim()) q.set('userAccessUsername', String(userAccessUsername).trim());
+            const res = await fetch(`/admin/async-data?${q.toString()}`, { headers: { Accept: 'application/json' } });
+            if (!res.ok) throw new Error(`failed-${res.status}`);
+            const payload = await res.json();
+            const selectedInstCode = String(payload.selectedInstCode || normalized);
             const institutionUsers = Array.isArray(payload.institutionUsers) ? payload.institutionUsers : [];
             const selectedUserAccessUsername = String(payload.selectedUserAccessUsername || '');
             const services = Array.isArray(payload.services) ? payload.services : [];
@@ -660,44 +699,23 @@
             const enabledIntegrationCodes = Array.isArray(payload.enabledIntegrationCodes) ? payload.enabledIntegrationCodes : [];
             const userEnabledServiceCodes = Array.isArray(payload.userEnabledServiceCodes) ? payload.userEnabledServiceCodes : [];
             const roomBoardCounselPairEnabled = payload.roomBoardCounselPairEnabled === true;
-
             syncInstCode(selectedInstCode);
             renderInstitutionServiceAccess(services, enabledServiceCodes);
             renderInstitutionUsers(institutionUsers);
             renderUserAccessUsers(institutionUsers, selectedUserAccessUsername);
             renderUserAccessServices(institutionEnabledServices, userEnabledServiceCodes, institutionUsers.length > 0);
-
-            if (integrationCheckbox) {
-                integrationCheckbox.checked = enabledIntegrationCodes.some((code) => String(code || '').toUpperCase() === 'ROOMBOARD_CSM_LINK');
-                integrationCheckbox.disabled = !roomBoardCounselPairEnabled;
-            }
-            if (integrationGuide) {
-                integrationGuide.textContent = roomBoardCounselPairEnabled ? integrationEnabledMessage : integrationDisabledMessage;
-            }
-        } catch (error) {
-            console.error('Failed to fetch admin async data', error);
+            if (integrationCheckbox) { integrationCheckbox.checked = enabledIntegrationCodes.some(c => String(c||'').toUpperCase() === 'ROOMBOARD_CSM_LINK'); integrationCheckbox.disabled = !roomBoardCounselPairEnabled; }
+            if (integrationGuide) integrationGuide.textContent = roomBoardCounselPairEnabled ? integrationEnabledMessage : integrationDisabledMessage;
+        } catch (err) {
+            console.error('Failed to fetch admin async data', err);
             window.alert('기관 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
         } finally {
-            loading = false;
-            instSelects.forEach((select) => {
-                select.disabled = false;
-            });
-            if (userAccessSelect && userAccessSelect.options.length > 0) {
-                userAccessSelect.disabled = userAccessSelect.options.length <= 1 && userAccessSelect.value === '';
-            }
+            loading = false; instSelects.forEach(s => s.disabled = false);
+            if (userAccessSelect && userAccessSelect.options.length > 0) userAccessSelect.disabled = userAccessSelect.options.length <= 1 && userAccessSelect.value === '';
         }
     };
-
-    instSelects.forEach((select) => {
-        select.addEventListener('change', () => {
-            fetchAdminAsyncData(String(select.value || '').trim(), currentUserAccessUsername());
-        });
-    });
-    if (userAccessSelect) {
-        userAccessSelect.addEventListener('change', () => {
-            fetchAdminAsyncData(currentInstCode(), currentUserAccessUsername());
-        });
-    }
+    instSelects.forEach(s => s.addEventListener('change', () => fetchAdminAsyncData(String(s.value||'').trim(), currentUserAccessUsername())));
+    if (userAccessSelect) userAccessSelect.addEventListener('change', () => fetchAdminAsyncData(currentInstCode(), currentUserAccessUsername()));
 })();
 </script>
 </body>

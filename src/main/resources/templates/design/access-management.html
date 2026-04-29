@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="_csrf"        th:content="${_csrf.token}"/>
+  <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+  <title>MediPlat · CSM 접근 권한 관리</title>
+
+  <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/layout.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/components.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/role-management.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/tweaks.css}" />
+  <style>
+    /* ===== Access Management – scoped styles ===== */
+    .am-hero {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 20px;
+      padding: 22px 24px;
+      border-radius: var(--radius-lg);
+      background:
+        radial-gradient(1200px 200px at 90% 0%, color-mix(in oklab, var(--brand-500) 10%, transparent), transparent 60%),
+        linear-gradient(180deg, #fff 0%, var(--gray-50) 100%);
+      border: 1px solid var(--border-default);
+      overflow: hidden;
+    }
+    .am-hero__eyebrow { font-size: 11px; font-weight: 600; color: var(--brand-700); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+    .am-hero__title { font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.015em; margin-bottom: 4px; }
+    .am-hero__sub { font-size: 13px; color: var(--text-secondary); }
+    .am-hero__stats { display: flex; gap: 10px; }
+    .am-chip { min-width: 72px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border-default); background: #fff; text-align: center; }
+    .am-chip--brand { background: color-mix(in oklab, var(--brand-500) 8%, #fff); border-color: color-mix(in oklab, var(--brand-500) 25%, var(--border-default)); }
+    .am-chip--mute { background: var(--gray-50); }
+    .am-chip__val { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-primary); letter-spacing: -0.02em; }
+    .am-chip--brand .am-chip__val { color: var(--brand-700); }
+    .am-chip__lbl { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+
+    .am-toolbar { display: flex; align-items: center; gap: 10px; margin: 16px 0 10px; flex-wrap: wrap; }
+    .am-search { flex: 1; min-width: 260px; position: relative; }
+    .am-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--text-tertiary); pointer-events: none; }
+    .am-search input { width: 100%; height: 38px; padding: 0 14px 0 36px; border: 1px solid var(--border-default); border-radius: 10px; background: #fff; font-size: 13px; transition: all .15s; }
+    .am-search input:focus { border-color: var(--brand-400); box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-500) 14%, transparent); outline: none; }
+
+    .am-dept-select { height: 38px; padding: 0 12px; border: 1px solid var(--border-default); border-radius: 10px; background: #fff; font-size: 13px; min-width: 160px; }
+    .am-dept-select:focus { border-color: var(--brand-400); box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-500) 14%, transparent); outline: none; }
+
+    /* Dept group */
+    .am-group { border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: #fff; overflow: hidden; margin-bottom: 10px; }
+    .am-group__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 16px;
+      background: var(--gray-50);
+      border-bottom: 1px solid var(--border-default);
+      cursor: pointer;
+      user-select: none;
+    }
+    .am-group__head:hover { background: var(--gray-100); }
+    .am-group__name { font-size: 13px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
+    .am-group__count { font-size: 11px; font-weight: 600; color: var(--text-tertiary); background: var(--gray-200); padding: 2px 7px; border-radius: 20px; }
+    .am-group__enabled { font-size: 11px; color: var(--brand-700); font-weight: 600; }
+    .am-group__actions { display: flex; align-items: center; gap: 8px; }
+    .am-group__chevron { width: 16px; height: 16px; color: var(--text-tertiary); transition: transform .15s; }
+    .am-group__chevron.is-open { transform: rotate(180deg); }
+
+    /* List head */
+    .am-list-head {
+      display: grid;
+      grid-template-columns: minmax(160px, 2fr) minmax(120px, 1.5fr) minmax(100px, 1fr) 100px;
+      gap: 12px;
+      padding: 10px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      background: #fafafa;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .am-row {
+      display: grid;
+      grid-template-columns: minmax(160px, 2fr) minmax(120px, 1.5fr) minmax(100px, 1fr) 100px;
+      gap: 12px;
+      align-items: center;
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      transition: background .12s;
+    }
+    .am-row:last-child { border-bottom: 0; }
+    .am-row:hover { background: var(--gray-50); }
+
+    @media (max-width: 760px) {
+      .am-list-head,
+      .am-row { grid-template-columns: minmax(130px, 2fr) minmax(0, 1fr) 80px; }
+      .am-list-head > :nth-child(2),
+      .am-row .am-cell-id { display: none; }
+    }
+
+    .am-user { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .am-avatar { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 13px; flex: 0 0 auto; }
+    .am-user__name { font-weight: 600; font-size: 13px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .am-user__id { font-size: 11px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; margin-top: 1px; }
+    .am-cell-id { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+    .am-cell-dept { font-size: 12px; color: var(--text-secondary); }
+    .am-cell-toggle { display: flex; align-items: center; justify-content: flex-end; }
+
+    /* Toggle */
+    .am-toggle { position: relative; display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+    .am-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .am-toggle__track {
+      width: 40px; height: 22px; border-radius: 11px;
+      background: var(--gray-200);
+      transition: background .2s;
+      flex: 0 0 auto;
+    }
+    .am-toggle input:checked ~ .am-toggle__track { background: var(--brand-500); }
+    .am-toggle__thumb {
+      position: absolute;
+      left: 3px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,.2);
+      transition: left .2s;
+    }
+    .am-toggle input:checked ~ .am-toggle__track .am-toggle__thumb { left: 21px; }
+    .am-toggle input:disabled ~ .am-toggle__track { opacity: .5; cursor: not-allowed; }
+
+    .am-empty { padding: 40px 24px; text-align: center; color: var(--text-tertiary); font-size: 13px; }
+
+    /* Toast */
+    .am-toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 500;
+      background: var(--text-primary); color: #fff;
+      padding: 12px 18px; border-radius: 10px;
+      font-size: 13px; font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0,0,0,.2);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+<script th:src="@{/assets/js/sprite.js}"></script>
+
+<div class="app"
+     data-screen-label="Access Management"
+     :data-sidebar="$store.app.sidebarCollapsed ? 'collapsed' : 'expanded'"
+     :data-variation="$store.app.variation"
+     x-data>
+
+  <div id="slot-sidebar"></div>
+  <div id="slot-header"></div>
+
+  <main class="main">
+    <div class="page" x-data="accessMgmt()">
+
+      <!-- Page header -->
+      <div class="page__header">
+        <div>
+          <h1 class="page__title">관리자 설정</h1>
+          <p class="page__subtitle">사용자와 역할을 관리하고 시스템 권한을 제어합니다</p>
+        </div>
+      </div>
+
+      <!-- Admin sub-tabs -->
+      <div class="tabs" role="tablist">
+        <a class="tab" th:href="@{/users}" role="tab">
+          <svg><use href="#i-users"/></svg>
+          사용자 관리
+        </a>
+        <a class="tab" th:href="@{/roles}" role="tab">
+          <svg><use href="#i-shield"/></svg>
+          역할 관리
+        </a>
+        <a class="tab is-active" th:href="@{/access}" role="tab" aria-selected="true">
+          <svg><use href="#i-key"/></svg>
+          CSM 접근 권한
+        </a>
+        <a class="tab" th:href="@{/admin/room-board}" role="tab">
+          <svg><use href="#i-bed"/></svg>
+          병실현황판 관리
+        </a>
+      </div>
+
+      <!-- Loading skeleton -->
+      <template x-if="loading">
+        <div style="padding:48px;text-align:center;color:var(--text-tertiary);font-size:13px;">
+          <svg style="width:20px;height:20px;animation:spin 1s linear infinite;margin-bottom:8px;display:block;margin-inline:auto"><use href="#i-refresh"/></svg>
+          불러오는 중...
+        </div>
+      </template>
+
+      <div x-show="!loading">
+
+        <!-- Hero -->
+        <div class="am-hero">
+          <div>
+            <div class="am-hero__eyebrow">접근 제어</div>
+            <h1 class="am-hero__title">CSM 접근 권한 관리</h1>
+            <p class="am-hero__sub">부서 또는 개인별로 카운셀맨(CSM) 접근 권한을 설정합니다</p>
+          </div>
+          <div class="am-hero__stats">
+            <div class="am-chip"><div class="am-chip__val" x-text="users.length"></div><div class="am-chip__lbl">전체 직원</div></div>
+            <div class="am-chip am-chip--brand"><div class="am-chip__val" x-text="users.filter(u=>u.csm_enabled).length"></div><div class="am-chip__lbl">CSM 허용</div></div>
+            <div class="am-chip am-chip--mute"><div class="am-chip__val" x-text="users.filter(u=>!u.csm_enabled).length"></div><div class="am-chip__lbl">CSM 차단</div></div>
+          </div>
+          <button class="btn btn--outline" style="height:40px;white-space:nowrap;"
+                  :disabled="syncLoading"
+                  @click="syncCsmUsers()">
+            <template x-if="syncLoading">
+              <svg style="width:14px;height:14px;animation:spin 1s linear infinite"><use href="#i-refresh"/></svg>
+            </template>
+            <template x-if="!syncLoading">
+              <svg style="width:14px;height:14px"><use href="#i-refresh"/></svg>
+            </template>
+            CSM 사용자 동기화
+          </button>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="am-toolbar">
+          <div class="am-search">
+            <svg><use href="#i-search"/></svg>
+            <input type="search" x-model="q" placeholder="이름 또는 아이디 검색…" />
+          </div>
+          <select class="am-dept-select" x-model="deptFilter">
+            <option value="">전체 부서</option>
+            <template x-for="d in depts" :key="d">
+              <option :value="d" x-text="d"></option>
+            </template>
+          </select>
+        </div>
+
+        <!-- Dept groups -->
+        <template x-if="groupedDepts.length === 0">
+          <div class="am-empty">직원 데이터가 없습니다.</div>
+        </template>
+
+        <template x-for="group in groupedDepts" :key="group.dept">
+          <div class="am-group">
+            <div class="am-group__head" @click="toggleGroup(group.dept)">
+              <div class="am-group__name">
+                <span x-text="group.dept || '(부서 없음)'"></span>
+                <span class="am-group__count" x-text="group.rows.length + '명'"></span>
+                <span class="am-group__enabled" x-text="group.rows.filter(u=>u.csm_enabled).length + '명 허용'"></span>
+              </div>
+              <div class="am-group__actions" @click.stop>
+                <button class="btn btn--xs btn--outline"
+                        :disabled="deptLoading[group.dept]"
+                        @click="setDeptAccess(group.dept, true)">
+                  전체 허용
+                </button>
+                <button class="btn btn--xs btn--outline"
+                        :disabled="deptLoading[group.dept]"
+                        @click="setDeptAccess(group.dept, false)">
+                  전체 차단
+                </button>
+                <svg class="am-group__chevron" :class="{'is-open': openGroups[group.dept]}" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6l4 4 4-4"/></svg>
+              </div>
+            </div>
+
+            <div x-show="openGroups[group.dept]" x-cloak>
+              <!-- List head -->
+              <div class="am-list-head">
+                <div>이름</div>
+                <div>아이디</div>
+                <div>부서</div>
+                <div style="text-align:right">CSM 허용</div>
+              </div>
+
+              <template x-for="u in group.rows" :key="u.username">
+                <div class="am-row">
+                  <div class="am-user">
+                    <div class="am-avatar" :style="'background:' + avatarColor(u.display_name)">
+                      <span x-text="(u.display_name||'?')[0]"></span>
+                    </div>
+                    <div>
+                      <div class="am-user__name" x-text="u.display_name"></div>
+                    </div>
+                  </div>
+                  <div class="am-cell-id" x-text="u.username"></div>
+                  <div class="am-cell-dept" x-text="u.dept || '-'"></div>
+                  <div class="am-cell-toggle">
+                    <label class="am-toggle" :title="u.csm_enabled ? 'CSM 접근 허용됨' : 'CSM 접근 차단됨'">
+                      <input type="checkbox"
+                             :checked="u.csm_enabled"
+                             :disabled="toggleLoading[u.username]"
+                             @change="setAccess(u.username, $event.target.checked)" />
+                      <div class="am-toggle__track">
+                        <div class="am-toggle__thumb"></div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+
+      </div><!-- /x-show="!loading" -->
+
+      <!-- Toast notification -->
+      <div class="am-toast" x-show="toast.visible" x-cloak x-text="toast.msg" style="display:none"></div>
+
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+var _ctx = /*[[@{/}]]*/ '/';
+
+function accessMgmt() {
+  function csrfHeaders() {
+    const token  = document.querySelector('meta[name="_csrf"]')?.content;
+    const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+    return (token && header) ? { [header]: token } : {};
+  }
+
+  const AVATAR_COLORS = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6'];
+  function hashCode(s) {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+    return Math.abs(h);
+  }
+
+  return {
+    loading: true,
+    syncLoading: false,
+    users: [],
+    q: '',
+    deptFilter: '',
+    openGroups: {},
+    toggleLoading: {},
+    deptLoading: {},
+    toast: { visible: false, msg: '', _timer: null },
+
+    async init() {
+      try {
+        const res = await fetch(_ctx + 'api/access/users');
+        if (res.ok) {
+          this.users = await res.json();
+          // open all groups by default
+          const depts = [...new Set(this.users.map(u => u.dept || ''))];
+          depts.forEach(d => { this.openGroups[d] = true; });
+        }
+      } catch(e) {
+        this.showToast('직원 목록 조회에 실패했습니다.');
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    get depts() {
+      return [...new Set(this.users.map(u => u.dept || ''))].sort();
+    },
+
+    get filteredUsers() {
+      const q = this.q.trim().toLowerCase();
+      return this.users.filter(u => {
+        if (this.deptFilter && (u.dept || '') !== this.deptFilter) return false;
+        if (!q) return true;
+        return (u.display_name + ' ' + u.username).toLowerCase().includes(q);
+      });
+    },
+
+    get groupedDepts() {
+      const map = {};
+      this.filteredUsers.forEach(u => {
+        const d = u.dept || '';
+        if (!map[d]) map[d] = { dept: d, rows: [] };
+        map[d].rows.push(u);
+      });
+      return Object.values(map).sort((a, b) => a.dept.localeCompare(b.dept, 'ko'));
+    },
+
+    toggleGroup(dept) {
+      this.openGroups[dept] = !this.openGroups[dept];
+    },
+
+    avatarColor(name) {
+      return AVATAR_COLORS[hashCode(name || '?') % AVATAR_COLORS.length];
+    },
+
+    async setAccess(username, enable) {
+      const u = this.users.find(u => u.username === username);
+      if (!u) return;
+      const prev = u.csm_enabled;
+      u.csm_enabled = enable ? 1 : 0;
+      this.toggleLoading[username] = true;
+      try {
+        const res = await fetch(_ctx + 'api/access/users/' + encodeURIComponent(username) + '/counselman', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+          body: JSON.stringify({ enable })
+        });
+        if (res.ok) {
+          this.showToast(enable ? `${username} CSM 접근 허용됨` : `${username} CSM 접근 차단됨`);
+        } else {
+          u.csm_enabled = prev;
+          this.showToast('설정 변경에 실패했습니다.');
+        }
+      } catch(e) {
+        u.csm_enabled = prev;
+        this.showToast('서버 오류가 발생했습니다.');
+      } finally {
+        this.toggleLoading[username] = false;
+      }
+    },
+
+    async setDeptAccess(dept, enable) {
+      this.deptLoading[dept] = true;
+      try {
+        const res = await fetch(_ctx + 'api/access/dept/counselman', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+          body: JSON.stringify({ dept, enable })
+        });
+        if (res.ok) {
+          const val = enable ? 1 : 0;
+          this.users.forEach(u => {
+            if ((u.dept || '') === dept) u.csm_enabled = val;
+          });
+          this.showToast(enable ? `${dept || '(부서 없음)'} 전체 허용됨` : `${dept || '(부서 없음)'} 전체 차단됨`);
+        } else {
+          this.showToast('부서 설정 변경에 실패했습니다.');
+        }
+      } catch(e) {
+        this.showToast('서버 오류가 발생했습니다.');
+      } finally {
+        this.deptLoading[dept] = false;
+      }
+    },
+
+    async syncCsmUsers() {
+      this.syncLoading = true;
+      try {
+        const res = await fetch(_ctx + 'api/access/sync-csm-users', {
+          method: 'POST',
+          headers: { ...csrfHeaders() }
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          this.showToast(`동기화 완료: ${data.synced ?? 0}명 연동됨`);
+          // 목록 새로고침
+          const r2 = await fetch(_ctx + 'api/access/users');
+          if (r2.ok) {
+            this.users = await r2.json();
+            const depts = [...new Set(this.users.map(u => u.dept || ''))];
+            depts.forEach(d => { if (this.openGroups[d] === undefined) this.openGroups[d] = true; });
+          }
+        } else {
+          this.showToast(data.error || '동기화에 실패했습니다.');
+        }
+      } catch(e) {
+        this.showToast('서버 오류가 발생했습니다.');
+      } finally {
+        this.syncLoading = false;
+      }
+    },
+
+    showToast(msg) {
+      if (this.toast._timer) clearTimeout(this.toast._timer);
+      this.toast.msg = msg;
+      this.toast.visible = true;
+      this.toast._timer = setTimeout(() => { this.toast.visible = false; }, 2800);
+    },
+  };
+}
+</script>
+<script th:src="@{/assets/js/app.js}"></script>
+<script th:src="@{/assets/js/chrome.js}" data-page="admin" th:attr="data-ctx=@{/}"></script>
+<script>
+  document.addEventListener('turbo:load', () => { MPChrome.mount({ parent: '관리자', current: 'CSM 접근 권한' }); }, { once: true });
+</script>
+<script data-turbo-eval="false" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js"></script>
+<script data-turbo-eval="false" defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</body>
+</html>

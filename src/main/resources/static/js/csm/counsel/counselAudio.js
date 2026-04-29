@@ -155,6 +155,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const block = `[상담요약 ${summaryTimestamp()}]\n${summary}\n[/상담요약]`;
     const withoutSummary = stripSummaryBlock(counselContentInput.value || '');
     counselContentInput.value = withoutSummary ? `${block}\n\n${withoutSummary}` : block;
+    counselContentInput.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
   const STOP_WORDS = new Set([
@@ -423,6 +424,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!clean) return;
     const prev = String(counselContentInput.value || '').trim();
     counselContentInput.value = prev ? `${prev}\n${clean}` : clean;
+    counselContentInput.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
   function hasTranscriptInCounselContent(text) {
@@ -1069,8 +1071,9 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
-      const file = files.find((candidate) => isAudioUploadCandidate(candidate)) || files[0];
-      uploadAudioFile(file);
+      const audioFiles = files.filter((candidate) => isAudioUploadCandidate(candidate));
+      const targets = audioFiles.length ? audioFiles : [files[0]];
+      targets.reduce((chain, file) => chain.then(() => uploadAudioFile(file)), Promise.resolve());
     });
 
     audioDropZoneEl.addEventListener('click', function () {
@@ -1102,9 +1105,9 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   audioFileInput.addEventListener('change', function () {
-    const file = this.files && this.files[0] ? this.files[0] : null;
-    if (!file) return;
-    uploadAudioFile(file).finally(() => {
+    const files = Array.from(this.files || []).filter((file) => isAudioUploadCandidate(file));
+    if (!files.length) return;
+    files.reduce((chain, file) => chain.then(() => uploadAudioFile(file)), Promise.resolve()).finally(() => {
       this.value = '';
     });
   });

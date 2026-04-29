@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.http.HttpStatus;
@@ -746,12 +747,57 @@ public class MediplatController {
             return "redirect:/login";
         }
         try {
+            boolean isNew = !storeService.institutionExists(instCode);
             storeService.saveInstitution(instCode, instName, useYn);
+            if (isNew) {
+                storeService.saveInstitutionServiceAccess(instCode, List.of("COUNSELMAN"));
+            }
             redirectAttributes.addAttribute("message", "기관이 저장되었습니다.");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addAttribute("error", e.getMessage());
         }
         return "redirect:/admin";
+    }
+
+    @PostMapping("/admin/institutions/status")
+    public String setInstitutionStatus(
+            @RequestParam("instCode") String instCode,
+            @RequestParam("useYn") String useYn,
+            HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        if (!isPlatformAdminSession(session)) {
+            return "redirect:/login";
+        }
+        try {
+            storeService.setInstitutionUseYn(instCode, useYn);
+            redirectAttributes.addAttribute("message", "기관 상태가 변경되었습니다.");
+        } catch (Exception e) {
+            redirectAttributes.addAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin";
+    }
+
+    @PostMapping("/api/admin/institutions")
+    @ResponseBody
+    public ResponseEntity<?> saveInstitutionApi(
+            @RequestBody Map<String, String> body,
+            HttpSession session) {
+        if (!isPlatformAdminSession(session)) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        String instCode = body.getOrDefault("instCode", "");
+        String instName = body.getOrDefault("instName", "");
+        String useYn    = body.getOrDefault("useYn", "Y");
+        try {
+            boolean isNew = !storeService.institutionExists(instCode);
+            storeService.saveInstitution(instCode, instName, useYn);
+            if (isNew) {
+                storeService.saveInstitutionServiceAccess(instCode, java.util.List.of("COUNSELMAN"));
+            }
+            return ResponseEntity.ok(Map.of("ok", true, "isNew", isNew));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PostMapping("/admin/users")
@@ -1046,6 +1092,34 @@ public class MediplatController {
             return YearMonth.of(year, month);
         } catch (DateTimeException e) {
             return current;
+        }
+    }
+
+    @PostMapping("/api/admin/bulk-users")
+    @ResponseBody
+    public ResponseEntity<?> bulkSaveUsers(
+            @RequestParam("instCode") String instCode,
+            @RequestBody List<Map<String, String>> users,
+            jakarta.servlet.http.HttpSession session) {
+        PlatformSessionUser sessionUser = sessionUser(session);
+        if (!isAdminUser(sessionUser)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "권한이 없습니다."));
+        }
+        String managedInstCode = resolveManagedInstCode(sessionUser, instCode);
+        if (!StringUtils.hasText(managedInstCode)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "관리 대상 기관을 찾을 수 없습니다."));
+        }
+        if (users == null || users.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "등록할 사용자 목록이 비어 있습니다."));
+        }
+        try {
+            storeService.bulkSaveUsers(managedInstCode, users);
+            return ResponseEntity.ok(Map.of("ok", true, "count", users.size()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "대량 등록 실패: " + e.getMessage()));
         }
     }
 

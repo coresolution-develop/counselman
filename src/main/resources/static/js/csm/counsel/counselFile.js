@@ -855,8 +855,8 @@ document.addEventListener('DOMContentLoaded', function () {
         setFileStatus('드롭한 파일을 찾을 수 없습니다.', true);
         return;
       }
-      const file = files.find((candidate) => isCounselFileCandidate(candidate)) || files[0];
-      uploadCounselFile(file);
+      const targets = files.filter((candidate) => isCounselFileCandidate(candidate));
+      targets.reduce((chain, file) => chain.then(() => uploadCounselFile(file)), Promise.resolve());
     });
 
     fileDropZoneEl.addEventListener('click', function () {
@@ -877,9 +877,9 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   fileInput.addEventListener('change', function () {
-    const file = this.files && this.files[0] ? this.files[0] : null;
-    if (!file) return;
-    uploadCounselFile(file).finally(() => {
+    const files = Array.from(this.files || []).filter((file) => isCounselFileCandidate(file));
+    if (!files.length) return;
+    files.reduce((chain, file) => chain.then(() => uploadCounselFile(file)), Promise.resolve()).finally(() => {
       this.value = '';
     });
   });

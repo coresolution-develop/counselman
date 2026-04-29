@@ -1039,7 +1039,7 @@ public interface CsmMapper {
       String safe = sanitizeInst((String) params.get("inst"));
       return String.format("""
           SELECT
-            c.column_name,
+            c.column_name AS column_name,
             COALESCE(CAST(c.column_comment AS CHAR CHARACTER SET utf8mb4), '') AS column_comment
           FROM information_schema.columns c
           LEFT JOIN csm.counsel_list_%s cl

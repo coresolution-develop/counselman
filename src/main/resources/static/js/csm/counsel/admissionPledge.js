@@ -7,11 +7,16 @@
 
   const agreeCheckbox = document.getElementById('ap_agree');
   const pledgeTextInput = document.getElementById('ap_pledge_text');
+  const termsBlock = document.querySelector('.ap-terms-block');
   const signerNameInput = document.getElementById('ap_signer_name');
   const signerRelationInput = document.getElementById('ap_signer_relation');
   const signedAtInput = document.getElementById('ap_signed_at');
   const signedAtView = document.getElementById('ap_signed_at_view');
   const patientNameInput = document.getElementById('ap_patient_name');
+  const patientPhoneInput = document.getElementById('ap_phone');
+  const patientBirthInput = document.getElementById('ap_birth');
+  const roomInput = document.getElementById('ap_room');
+  const chartNoInput = document.getElementById('ap_chart_no');
   const guardianNameInput = document.getElementById('ap_guardian_name');
   const guardianRelationInput = document.getElementById('ap_guardian_relation');
   const guardianAddrInput = document.getElementById('ap_guardian_addr');
@@ -600,6 +605,11 @@
     const signerRelation = String(payload.signer_relation || '').trim();
     if (signerRelation && signerRelationInput) signerRelationInput.value = signerRelation;
 
+    if (patientNameInput) patientNameInput.value = String(payload.patient_name || patientNameInput.value || '').trim();
+    if (patientPhoneInput) patientPhoneInput.value = String(payload.patient_phone || patientPhoneInput.value || '').trim();
+    if (patientBirthInput) patientBirthInput.value = String(payload.patient_birth || patientBirthInput.value || '').trim();
+    if (roomInput) roomInput.value = String(payload.room || roomInput.value || '').trim();
+    if (chartNoInput) chartNoInput.value = String(payload.chart_no || chartNoInput.value || '').trim();
     if (guardianNameInput) guardianNameInput.value = String(payload.guardian_name || '').trim();
     if (guardianRelationInput) guardianRelationInput.value = String(payload.guardian_relation || '').trim();
     if (guardianAddrInput) guardianAddrInput.value = String(payload.guardian_addr || '').trim();
@@ -757,8 +767,8 @@
     const subGuardianPhone = String(subGuardianPhoneInput?.value || '').trim();
     const subGuardianCostYn = subGuardianCostInput?.checked ? 'Y' : 'N';
     const signedAt = String(signedAtInput?.value || '').trim() || nowDateTime();
-    const pledgeText = String(pledgeTextInput?.value || '').trim() || defaultPledgeText;
-    const csIdxValue = /^\d+$/.test(String(bootstrap.csIdx || '').trim()) ? Number(bootstrap.csIdx) : 0;
+    const pledgeText = String(termsBlock?.innerHTML || pledgeTextInput?.value || '').trim() || defaultPledgeText;
+    const csIdxValue = /^-?\d+$/.test(String(bootstrap.csIdx || '').trim()) ? Number(bootstrap.csIdx) : 0;
 
     if (signerNameInput) signerNameInput.value = signerName;
     if (signerRelationInput) signerRelationInput.value = signerRelation;
@@ -770,6 +780,11 @@
 
     return {
       cs_idx: csIdxValue,
+      patient_name: String(patientNameInput?.value || '').trim(),
+      patient_phone: String(patientPhoneInput?.value || '').trim(),
+      patient_birth: String(patientBirthInput?.value || '').trim(),
+      room: String(roomInput?.value || '').trim(),
+      chart_no: String(chartNoInput?.value || '').trim(),
       agreed_yn: agreeCheckbox && agreeCheckbox.checked ? 'Y' : 'N',
       signer_name: signerName,
       signer_relation: signerRelation,
@@ -792,7 +807,7 @@
     };
   }
 
-  applyBtn.addEventListener('click', function () {
+  applyBtn.addEventListener('click', async function () {
     const payload = buildPayload();
 
     if (payload.agreed_yn !== 'Y') {
@@ -813,6 +828,27 @@
     }
 
     storeReturnPayload(payload);
+
+    if (payload.cs_idx !== 0) {
+      try {
+        const ctx = (document.querySelector('meta[name="app-context-path"]')?.content || '/').replace(/\/$/, '');
+        const csrfToken  = document.querySelector('meta[name="_csrf"]')?.content || '';
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+        applyBtn.disabled = true;
+        applyBtn.textContent = '저장 중…';
+        await fetch(ctx + '/api/admission-pledge/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', [csrfHeader]: csrfToken },
+          body: JSON.stringify(payload),
+          credentials: 'same-origin',
+        });
+      } catch (e) {
+        console.warn('[admission-pledge] server save error', e);
+      } finally {
+        applyBtn.disabled = false;
+        applyBtn.textContent = '서명 완료 후 적용';
+      }
+    }
 
     if (window.opener && !window.opener.closed) {
       try {

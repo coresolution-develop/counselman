@@ -13,6 +13,7 @@
   <link rel="stylesheet" th:href="@{/assets/css/datepicker.css}" />
   <meta name="_csrf" th:content="${_csrf.token}" />
   <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+  <meta name="app-context-path" th:content="@{/}" />
   <style>
     [x-cloak] { display: none !important; }
     /* ===== Inpatient Consultation (ic-*) ===== */
@@ -261,6 +262,62 @@
     .ic-recorder__btn.is-primary { background: var(--brand-500); color: #fff; border-color: var(--brand-500); }
     .ic-recorder__btn.is-danger  { background: #ef4444; color: #fff; border-color: #ef4444; }
     .ic-recorder__btn[disabled] { opacity: .5; pointer-events: none; }
+    .ic-upload-status { margin-top: 8px; font-size: 12px; color: var(--text-tertiary); }
+    .recording-indicator { display: inline-flex; align-items: center; gap: 6px; }
+    .recording-indicator .recording-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--gray-400); }
+    .recording-indicator.is-recording .recording-dot { background: #ef4444; animation: pulse 1.4s infinite; }
+    .audio-drop-zone.is-dragover,
+    .counsel-file-drop-zone.is-dragover,
+    .ic-dropzone.is-dragover { border-color: var(--brand-500); background: var(--brand-50); }
+    .audio-record-list,
+    .counsel-file-list { display: grid; gap: 10px; margin-top: 12px; }
+    .audio-record-item,
+    .counsel-file-item { padding: 10px; border: 1px solid var(--border-default); border-radius: 8px; background: var(--gray-50); }
+    .audio-record-meta,
+    .counsel-file-head,
+    .counsel-file-buttons { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+    .audio-record-name,
+    .counsel-file-link { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 700; color: var(--text-primary); }
+    .audio-record-actions,
+    .counsel-file-buttons { flex-wrap: wrap; }
+    .audio-record-retry,
+    .audio-record-delete,
+    .counsel-file-extract,
+    .counsel-file-delete,
+    .counsel-preview-toggle,
+    .counsel-preview-generate,
+    .counsel-match-open-modal {
+      height: 26px; padding: 0 8px; border: 1px solid var(--border-default); border-radius: 6px;
+      background: #fff; font-size: 11px; font-weight: 700; color: var(--text-secondary);
+    }
+    .audio-record-delete,
+    .counsel-file-delete { color: #b91c1c; }
+    .audio-record-item audio { width: 100%; height: 34px; margin-top: 8px; }
+    .counsel-file-size { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; }
+    .counsel-preview-card { margin-top: 8px; border-top: 1px dashed var(--border-default); padding-top: 8px; }
+    .counsel-preview-toolbar { display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 6px; }
+    .counsel-preview-body,
+    .counsel-preview-empty { display: none; max-height: 120px; overflow: auto; padding: 8px; border-radius: 6px; background: #fff; font-size: 12px; line-height: 1.5; white-space: pre-wrap; color: var(--text-secondary); }
+    .counsel-preview-card[data-view="summary"] .counsel-preview-summary,
+    .counsel-preview-card[data-view="source"] .counsel-preview-source,
+    .counsel-preview-card[data-view="empty"] .counsel-preview-empty { display: block; }
+    .counsel-match-preview { margin-top: 6px; }
+    .match-modal-overlay { position: fixed; inset: 0; z-index: 1000; align-items: center; justify-content: center; background: rgba(15,23,42,.36); }
+    .match-modal { width: min(560px, calc(100vw - 32px)); max-height: min(640px, calc(100vh - 48px)); display: flex; flex-direction: column; background: #fff; border-radius: 12px; box-shadow: var(--shadow-xl); }
+    .match-modal-header,
+    .match-modal-toolbar,
+    .match-modal-footer { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border-subtle); }
+    .match-modal-footer { border-top: 1px solid var(--border-subtle); border-bottom: 0; justify-content: flex-end; }
+    .match-modal-title { font-weight: 800; }
+    .match-modal-close { margin-left: auto; font-size: 16px; }
+    .match-modal-body { overflow: auto; padding: 6px 14px; }
+    .match-modal-list { list-style: none; padding: 0; margin: 0; }
+    .match-modal-row { display: grid; grid-template-columns: auto 1fr auto 1fr auto; gap: 8px; align-items: center; padding: 9px 0; font-size: 12px; border-bottom: 1px solid var(--border-subtle); }
+    .match-modal-value { font-weight: 700; color: var(--brand-700); }
+    .match-modal-type { font-size: 11px; color: var(--text-tertiary); }
+    .match-modal-cancel-btn,
+    .match-modal-apply-btn { height: 32px; padding: 0 12px; border-radius: 8px; font-size: 12px; font-weight: 800; border: 1px solid var(--border-default); }
+    .match-modal-apply-btn { background: var(--brand-600); border-color: var(--brand-600); color: #fff; }
 
     .ic-side__section { padding: 16px 18px; border-top: 1px solid var(--border-subtle); }
     .ic-side__section-title { font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
@@ -438,6 +495,13 @@
 
   <main class="main">
     <div class="page" x-data="inpatientForm()">
+      <input type="hidden" name="cs_idx" th:value="${pd != null ? pd.csIdx : 0}" />
+      <input type="hidden" id="audio_temp_key" name="audio_temp_key" />
+      <input type="hidden" id="file_temp_key" name="file_temp_key" />
+      <input type="hidden" id="clova_stt_available" th:value="${clovaSpeechConfigured ? 'Y' : 'N'}" />
+      <input type="hidden" id="openai_summary_available" th:value="${openAiConfigured ? 'Y' : 'N'}" />
+      <input type="file" id="audioFileInput" accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac,.ac3,.webm" multiple style="display:none;" />
+      <input type="file" id="counselFileInput" multiple style="display:none;" />
 
       <!-- Page header -->
       <div class="page__header">
@@ -534,22 +598,33 @@
                                }">
                           <input x-show="hasControl(value, 'checkbox')"
                                  type="checkbox"
+                                 :name="value.fieldKey + '_checkbox'"
+                                 :data-label="value.name"
+                                 :data-field-base="value.fieldKey"
                                  x-model="value.checked" />
                           <input x-show="hasControl(value, 'radio')"
                                  type="radio"
-                                 :name="'dyn-radio-' + item.id"
+                                 :name="'field_' + item.id + '_radio'"
                                  :value="value.fieldKey"
+                                 :data-label="value.name"
+                                 :data-field-base="value.fieldKey"
                                  :checked="value.checked"
                                  @change="selectDynamicRadio(item, value)" />
                           <span class="ic-dynamic-field__label" x-text="value.name"></span>
                           <span class="ic-dynamic-field__control">
-                            <select class="ic-select" x-show="hasControl(value, 'select')" x-model="value.selected">
+                            <select class="ic-select" x-show="hasControl(value, 'select')" x-model="value.selected"
+                                    :name="value.fieldKey + '_select'"
+                                    :data-label="value.name"
+                                    :data-field-base="value.fieldKey">
                               <option value="">선택하세요</option>
                               <template x-for="option in (value.options || [])" :key="option">
                                 <option :value="option" x-text="option"></option>
                               </template>
                             </select>
-                            <input type="text" class="ic-input" x-show="hasControl(value, 'text')" x-model="value.text" />
+                            <input type="text" class="ic-input" x-show="hasControl(value, 'text')" x-model="value.text"
+                                   :name="value.fieldKey + '_text'"
+                                   :data-label="value.name"
+                                   :data-field-base="value.fieldKey" />
                           </span>
                         </label>
                       </template>
@@ -776,13 +851,15 @@
               <label class="ic-field__label">결과</label>
               <select class="ic-select" x-model="meta.result">
                 <option value="">선택하세요</option>
-                <template x-for="o in statusOptions" :key="o"><option :value="o" x-text="o"></option></template>
-                <template x-if="!statusOptions.includes('입원안함')"><option value="입원안함">입원안함</option></template>
+                <option>상담중</option>
+                <option>입원예약</option>
+                <option>입원완료</option>
+                <option>입원안함</option>
               </select>
             </div>
 
-            <!-- 입원예약: 날짜·시간·호실 -->
-            <template x-if="meta.result === '입원예약'">
+            <!-- 입원예약/입원완료: 날짜·시간·호실 -->
+            <template x-if="meta.result === '입원예약' || meta.result === '입원완료'">
               <div class="full" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:12px;border-radius:10px;background:color-mix(in oklab,var(--brand-500) 5%,#fff);border:1px dashed color-mix(in oklab,var(--brand-500) 30%,transparent);">
                 <div class="ic-field">
                   <label class="ic-field__label">입원예정일</label>
@@ -839,26 +916,32 @@
               입원서약서
             </div>
             <div class="ic-room__btns">
-              <a th:href="@{#}" class="ic-room__btn ic-room__btn--primary" style="text-decoration:none;background:#f59e0b;">
+              <button type="button" class="ic-room__btn ic-room__btn--primary" style="background:#f59e0b;border:none;cursor:pointer;"
+                      @click="openAdmissionPledge()">
                 <svg><use href="#i-edit"/></svg> 입원서약서 페이지 열기
-              </a>
+              </button>
+              <button type="button" class="ic-room__btn ic-room__btn--ghost" style="cursor:pointer;"
+                      @click="openPledgeImport()">
+                기존 서약서 가져오기
+              </button>
               <button class="ic-room__btn ic-room__btn--ghost" x-text="agreementLabel()"
                 :style="agreementStatus === 'done' ? 'color: var(--success, #10b981); border-color: var(--success, #10b981);' : ''"></button>
             </div>
           </div>
 
           <!-- Recorder -->
-          <div class="ic-recorder" :class="{ 'is-rec': recorder === 'rec' }" style="margin-bottom: 0;">
+          <div class="ic-recorder" :class="{ 'is-rec': recorder === 'rec' }" style="margin-bottom: 0;" th:if="${moduleCounselAudioEnabled}">
             <div class="ic-recorder__head">
               <svg style="width:14px;height:14px;color:var(--text-tertiary);"><use href="#i-chat"/></svg>
               <span class="ic-recorder__title">상담내용 · 음성 녹음</span>
-              <span class="ic-recorder__badge">
-                <span class="pulse"></span>
-                <span x-text="recorderLabel()"></span>
+              <span id="recordingIndicator" class="ic-recorder__badge recording-indicator" aria-live="polite">
+                <span class="pulse recording-dot"></span>
+                <span class="recording-label" x-text="recorderLabel()"></span>
+                <span id="recordingTimer" class="recording-timer">00:00</span>
               </span>
             </div>
 
-            <div class="ic-dropzone">
+            <div id="audioDropZone" class="ic-dropzone audio-drop-zone" role="button" tabindex="0" aria-label="음성 파일 드래그 앤 드롭 업로드">
               녹음 파일을 여기에 <strong>끌어놓거나 클릭</strong>해 업로드<br/>
               <span style="font-size:11px;">지원 포맷 · mp3, wav, m4a, webm · 최대 50MB</span>
             </div>
@@ -868,40 +951,46 @@
             </div>
 
             <div class="ic-recorder__actions">
-              <button class="ic-recorder__btn is-danger" @click="recorder = recorder === 'rec' ? 'idle' : 'rec'">
+              <button type="button" id="startRecordingBtn" class="ic-recorder__btn is-danger" @click="recorder = 'rec'">
                 <svg><use href="#i-phone"/></svg>
-                <span x-text="recorder === 'rec' ? '녹음중' : '녹음 시작'"></span>
+                <span>녹음 시작</span>
               </button>
-              <button class="ic-recorder__btn" :disabled="recorder !== 'rec'" @click="recorder = 'paused'">
+              <button type="button" id="stopRecordingBtn" class="ic-recorder__btn" disabled @click="recorder = 'paused'">
                 <svg><use href="#i-clock"/></svg>
                 녹음 중지
               </button>
-              <button class="ic-recorder__btn">
+              <button type="button" id="applyDiseaseMatchBtn" class="ic-recorder__btn">
                 <svg><use href="#i-sliders"/></svg>
-                커스텀 설정
+                커스텀 매칭
               </button>
-              <button class="ic-recorder__btn is-primary">
+              <button type="button" id="generateSummaryBtn" class="ic-recorder__btn is-primary"
+                      th:title="${!openAiConfigured ? 'OpenAI API 키 설정 후 사용 가능합니다.' : ''}">
                 <svg><use href="#i-check"/></svg>
                 상담 요약
               </button>
             </div>
+            <p id="recordingStatus" class="ic-upload-status">대기 중</p>
+            <audio id="recordPreview" controls class="record-preview" style="display:none;width:100%;margin-top:8px;"></audio>
+            <div id="audioRecordList" class="audio-record-list"></div>
           </div>
 
           <!-- File upload section -->
-          <div class="ic-side__section">
+          <div class="ic-side__section counsel-file-panel" th:if="${moduleCounselFileEnabled}">
             <div class="ic-side__section-title">
               <svg><use href="#i-notebook"/></svg>
               소견서 · CT · MRI · 처방전 등
             </div>
-            <div class="ic-dropzone">
+            <div id="counselFileDropZone" class="ic-dropzone counsel-file-drop-zone" role="button" tabindex="0" aria-label="서류 드래그 앤 드롭 업로드">
               서류 파일을 여기에 <strong>끌어놓거나 클릭</strong>해 업로드<br/>
               <span style="font-size:11px;">지원 포맷 · PDF, 이미지, Word, Excel, 한글, 텍스트</span>
             </div>
+            <div id="counselFileList" class="counsel-file-list"></div>
+            <p id="counselFileStatus" class="ic-upload-status"></p>
           </div>
 
           <!-- Consultation note -->
           <div class="ic-side__section">
-            <textarea class="ic-textarea"
+            <textarea id="cs_col_32" name="cs_col_32" class="ic-textarea"
                       style="min-height: 200px;"
                       placeholder="상담내용을 입력하세요"
                       x-model="meta.note"></textarea>
@@ -993,6 +1082,89 @@
           </div>
         </div>
       </template>
+
+      <template x-teleport="body">
+        <div class="ic-modal__backdrop" x-show="showPledgeImport" x-transition.opacity @click.self="showPledgeImport = false" @keydown.escape.window="showPledgeImport = false" x-cloak>
+          <div class="ic-modal" @click.stop>
+            <div class="ic-modal__head">
+              <svg style="width:16px;height:16px;"><use href="#i-clipboard"/></svg>
+              <h3>기존 입원서약서 가져오기</h3>
+              <button @click="showPledgeImport = false" aria-label="닫기"><svg style="width:18px;height:18px;"><use href="#i-x"/></svg></button>
+            </div>
+            <div class="ic-modal__body">
+              <div style="display:flex;gap:8px;margin-bottom:12px;">
+                <input type="text" class="ic-input" x-model="pledgeSearch" @keydown.enter.prevent="loadPledgeDocuments()" placeholder="환자명, 보호자명, 연락처, 상담번호 검색" />
+                <button type="button" class="btn btn--primary" @click="loadPledgeDocuments()">검색</button>
+              </div>
+              <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px;" x-text="pledgeImportLoading ? '불러오는 중...' : pledgeImportRows.length + '건'"></div>
+              <div style="max-height:420px;overflow:auto;border:1px solid var(--border-default);">
+                <table class="table" style="min-width:760px;">
+                  <thead>
+                    <tr>
+                      <th>환자</th>
+                      <th>보호자/연락처</th>
+                      <th>상태</th>
+                      <th>서명일</th>
+                      <th>최근 수정</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="row in pledgeImportRows" :key="row.csIdx">
+                      <tr>
+                        <td>
+                          <strong x-text="row.patientName || '(이름 없음)'"></strong>
+                          <div style="font-size:11px;color:var(--text-tertiary);" x-text="'상담번호 ' + row.csIdx"></div>
+                        </td>
+                        <td>
+                          <span x-text="row.guardianName || '-'"></span>
+                          <div style="font-size:11px;color:var(--text-tertiary);" x-text="row.guardianPhone || '-'"></div>
+                        </td>
+                        <td><span class="status" :class="row.status === '서명완료' ? 'status--done' : 'status--pending'" x-text="row.status"></span></td>
+                        <td x-text="row.signedAt || '-'"></td>
+                        <td x-text="row.updatedAt || '-'"></td>
+                        <td>
+                          <button type="button" class="btn-xs btn-xs--brand" @click="linkPledge(row)">연결</button>
+                        </td>
+                      </tr>
+                    </template>
+                    <tr x-show="!pledgeImportLoading && pledgeImportRows.length === 0">
+                      <td colspan="6" style="text-align:center;color:var(--text-tertiary);padding:24px;">검색 결과가 없습니다.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="ic-modal__foot">
+              <button class="btn btn--outline" @click="showPledgeImport = false">닫기</button>
+              <a class="btn btn--primary" th:href="@{/documents}" target="_blank"><svg><use href="#i-clipboard"/></svg>서류관리 열기</a>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <div id="matchCandidateModal" class="match-modal-overlay" style="display:none;">
+        <div class="match-modal">
+          <div class="match-modal-header">
+            <span class="match-modal-title">매칭 후보</span>
+            <button type="button" id="matchModalClose" class="match-modal-close">×</button>
+          </div>
+          <div class="match-modal-toolbar">
+            <label class="match-modal-select-all-wrap">
+              <input type="checkbox" id="matchModalSelectAll" checked />
+              전체 선택
+            </label>
+            <span id="matchModalCount" class="match-modal-count"></span>
+          </div>
+          <div class="match-modal-body">
+            <ul id="matchModalList" class="match-modal-list"></ul>
+          </div>
+          <div class="match-modal-footer">
+            <button type="button" id="matchModalCancel" class="match-modal-cancel-btn">취소</button>
+            <button type="button" id="matchModalApply" class="match-modal-apply-btn">선택 적용</button>
+          </div>
+        </div>
+      </div>
 
       <!-- ===== SMS Send Modal ===== -->
       <template x-teleport="body">
@@ -1232,6 +1404,7 @@ function inpatientForm() {
   const _smsSenderOptions = /*[[${smsSenderOptions}]]*/ [];
   const _smsPhrases       = /*[[${smsPhrases}]]*/ [];
   const _smsSignatures    = /*[[${smsSignatures}]]*/ [];
+  const _pledgeExists     = /*[[${pledgeExists}]]*/ false;
 
   return {
     loading: false,
@@ -1300,10 +1473,14 @@ function inpatientForm() {
     removeGuardian(i) { this.guardians.splice(i, 1); },
 
     stayOnPage: localStorage.getItem('ic_stay_on_page') !== 'false',
-    agreementStatus: localStorage.getItem('mp_agreement_status') || 'pending',
+    agreementStatus: _pledgeExists ? 'done' : (localStorage.getItem('mp_agreement_status_' + (_pd.csIdx || 0)) || 'pending'),
     agreementLabel() {
       return { pending: '미작성', progress: '작성중', done: '작성완료' }[this.agreementStatus] || '미작성';
     },
+    showPledgeImport: false,
+    pledgeImportLoading: false,
+    pledgeImportRows: [],
+    pledgeSearch: '',
 
     showHistory: false,
     selectedHistory: null,
@@ -1367,23 +1544,51 @@ function inpatientForm() {
     },
 
     init() {
+      document.addEventListener('counsel-file-text', (event) => {
+        const detail = event.detail || {};
+        const matched = Number(detail.matchedCount || 0);
+        if (matched > 0) {
+          this.meta.note = this.meta.note || '';
+        }
+      });
       const rid = this.meta.reservationId;
       if (rid > 0) {
         const beat = () => fetch(ctx + '/counsel/inpatient/heartbeat?reservationId=' + rid).catch(() => {});
         this._hbTimer = setInterval(beat, 3 * 60 * 1000);
-        const releaseBody = new URLSearchParams({
-          reservationId: rid,
-          _csrf: document.querySelector('meta[name="_csrf"]')?.content || '',
-        });
-        window.addEventListener('pagehide', () => {
+        let released = false;
+        const release = () => {
+          if (released) return;
+          released = true;
           clearInterval(this._hbTimer);
-          navigator.sendBeacon(ctx + '/counsel/inpatient/release', releaseBody);
-        });
+          const csrf = document.querySelector('meta[name="_csrf"]')?.content || '';
+          const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+          const releaseBody = new URLSearchParams({ reservationId: rid, _csrf: csrf });
+          const encodedBody = releaseBody.toString();
+          fetch(ctx + '/counsel/inpatient/release', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+              [csrfHeader]: csrf,
+            },
+            body: encodedBody,
+            credentials: 'same-origin',
+            keepalive: true,
+          }).catch(() => {
+            const beaconBody = new Blob([encodedBody], { type: 'application/x-www-form-urlencoded;charset=UTF-8' });
+            navigator.sendBeacon(ctx + '/counsel/inpatient/release', beaconBody);
+          });
+        };
+        window.addEventListener('pagehide', release);
+        document.addEventListener('turbo:before-cache', release);
       }
       window.addEventListener('message', (e) => {
         if (e.origin !== location.origin) return;
         if (e.data?.type === 'csm-room-board-select') {
           this.meta.admitRoom = e.data.roomName || '';
+        }
+        if (e.data?.type === 'csm-admission-pledge') {
+          this.agreementStatus = 'done';
+          localStorage.setItem('mp_agreement_status_' + (this.meta.csIdx || 0), 'done');
         }
       });
     },
@@ -1396,8 +1601,95 @@ function inpatientForm() {
         `width=${w},height=${h},left=${l},top=${t},resizable=yes,scrollbars=yes`);
     },
 
+    openAdmissionPledge() {
+      const params = new URLSearchParams();
+      if (this.meta.csIdx > 0) params.set('csIdx', String(this.meta.csIdx));
+      params.set('patientName', this.patient.name || '');
+      params.set('gender',      this.patient.gender || '');
+      params.set('birth',       this.patient.birth  || '');
+      params.set('room',        this.meta.admitRoom  || '');
+      params.set('phone',       this.guardians[0]?.phone || '');
+      params.set('returnUrl',   location.pathname + location.search);
+      const url = ctx + '/counsel/admission-pledge?' + params.toString();
+      const w = 1280, h = 900;
+      const l = Math.max(0, (screen.width  - w) / 2);
+      const t = Math.max(0, (screen.height - h) / 2);
+      const popup = window.open(url, 'csmAdmissionPledge',
+        `width=${w},height=${h},left=${l},top=${t},resizable=yes,scrollbars=yes`);
+      if (!popup) window.location.href = url;
+    },
+
+    async openPledgeImport() {
+      if (!(Number(this.meta.csIdx) > 0)) {
+        alert('기존 서약서를 연결하려면 먼저 현재 입원상담을 저장해주세요.');
+        return;
+      }
+      this.showPledgeImport = true;
+      await this.loadPledgeDocuments();
+    },
+
+    async loadPledgeDocuments() {
+      this.pledgeImportLoading = true;
+      try {
+        const params = new URLSearchParams();
+        if (this.pledgeSearch.trim()) params.set('q', this.pledgeSearch.trim());
+        const res = await fetch(ctx + '/api/documents/admission-pledges?' + params.toString(), {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+          credentials: 'same-origin',
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok || body.ok === false) throw new Error(body.error || ('HTTP ' + res.status));
+        const current = Number(this.meta.csIdx || 0);
+        this.pledgeImportRows = (Array.isArray(body.rows) ? body.rows : [])
+          .filter(row => Number(row.csIdx || 0) !== current);
+      } catch (e) {
+        console.error('Admission pledge list failed:', e);
+        alert('입원서약서 목록을 불러오지 못했습니다.');
+      } finally {
+        this.pledgeImportLoading = false;
+      }
+    },
+
+    async linkPledge(row, replaceExisting = false) {
+      const sourceCsIdx = Number(row?.csIdx || 0);
+      const targetCsIdx = Number(this.meta.csIdx || 0);
+      if (!(sourceCsIdx > 0 && targetCsIdx > 0)) return;
+      if (!replaceExisting && !confirm('선택한 입원서약서를 현재 상담에 연결합니다. 기존 상담에서는 이 서약서 연결이 해제됩니다. 계속하시겠습니까?')) {
+        return;
+      }
+      const c = csrf();
+      try {
+        const res = await fetch(ctx + '/api/documents/admission-pledges/link', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            [c.header]: c.token,
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({ sourceCsIdx, targetCsIdx, replaceExisting }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (body.code === 'TARGET_EXISTS' && !replaceExisting) {
+          if (confirm('현재 상담에 이미 입원서약서가 있습니다. 기존 연결을 교체하시겠습니까?')) {
+            await this.linkPledge(row, true);
+          }
+          return;
+        }
+        if (!res.ok || body.ok === false) throw new Error(body.error || ('HTTP ' + res.status));
+        this.agreementStatus = 'done';
+        localStorage.setItem('mp_agreement_status_' + targetCsIdx, 'done');
+        this.showPledgeImport = false;
+        alert('입원서약서를 현재 상담에 연결했습니다.');
+      } catch (e) {
+        console.error('Admission pledge link failed:', e);
+        alert(e.message || '입원서약서를 연결하지 못했습니다.');
+      }
+    },
+
     async save() {
       const c = csrf();
+      const wasNew = !(Number(this.meta.csIdx) > 0);
       const body = new URLSearchParams({
         cs_idx:        this.meta.csIdx,
         reservation_id: this.meta.reservationId,
@@ -1437,6 +1729,8 @@ function inpatientForm() {
         cs_col_38:     this.meta.admitRoom,
         cs_col_42:     this.patientStatus,
       });
+      body.append('audio_temp_key', document.getElementById('audio_temp_key')?.value || '');
+      body.append('file_temp_key', document.getElementById('file_temp_key')?.value || '');
       this.guardians.forEach(g => {
         body.append('cs_col_13[]', g.name || '');
         body.append('cs_col_14[]', g.rel  || '');
@@ -1456,6 +1750,10 @@ function inpatientForm() {
         this.patient.id = 'P-' + data.csIdx;
         if (!this.stayOnPage) {
           location.href = ctx + '/counsel/list';
+          return;
+        }
+        if (wasNew && data.csIdx) {
+          location.href = ctx + '/counsel/inpatient?cs_idx=' + data.csIdx;
           return;
         }
         alert('저장되었습니다.');
@@ -1640,9 +1938,12 @@ function inpatientForm() {
 <script th:src="@{/assets/js/app.js}"></script>
 <script th:src="@{/assets/js/datepicker.js}"></script>
 <script th:src="@{/assets/js/chrome.js}" data-page="inpatient" th:attr="data-ctx=@{/}"></script>
+<script th:src="@{/js/csm/counsel/counselFile.js(v='20260429a')}"></script>
+<script th:src="@{/js/csm/counsel/counselAudio.js(v='20260429a')}"></script>
 <script>
-  document.addEventListener('alpine:init', () => { MPChrome.mount({ parent: '상담 업무', current: '입원상담' }); });
+  document.addEventListener('turbo:load', () => { MPChrome.mount({ parent: '상담 업무', current: '입원상담' }); }, { once: true });
 </script>
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<script data-turbo-eval="false" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js"></script>
+<script data-turbo-eval="false" defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 </body>
 </html>

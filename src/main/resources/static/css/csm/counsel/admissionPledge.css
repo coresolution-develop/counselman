@@ -155,6 +155,137 @@ input[type=number] {
   display: none;
 }
 
+.ap-terms-block .doc-free-layout {
+  position: relative;
+  width: 966px;
+  min-height: 1040px;
+  margin: 0 auto;
+  background: #fff;
+  color: #222;
+}
+
+.ap-terms-block .doc-free-element {
+  position: absolute;
+  min-width: 24px;
+  min-height: 22px;
+  padding: 4px;
+}
+
+.ap-terms-block .doc-el-text {
+  width: 100%;
+  height: 100%;
+  white-space: pre-wrap;
+  word-break: keep-all;
+}
+
+.ap-terms-block .doc-el-box {
+  width: 100%;
+  height: 100%;
+  background: #fff;
+}
+
+.ap-terms-block .doc-el-sign {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid #222;
+  font-weight: 700;
+}
+
+.ap-terms-block .doc-el-sign::after {
+  content: " (서명)";
+  margin-left: 4px;
+  font-weight: 400;
+}
+
+.ap-terms-block .doc-el-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+}
+
+.ap-terms-block .doc-el-check::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  border: 1px solid #a8b7e8;
+  border-radius: 5px;
+  flex: 0 0 auto;
+}
+
+.ap-terms-block .doc-free-table {
+  width: 100%;
+  height: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: #fff;
+}
+
+.ap-terms-block .doc-free-table th,
+.ap-terms-block .doc-free-table td {
+  border: 1px solid #c7c7c7;
+  padding: 8px 10px;
+  vertical-align: middle;
+  word-break: keep-all;
+}
+
+.ap-terms-block .doc-free-table th {
+  background: #fafafa;
+  font-weight: 700;
+  text-align: center;
+}
+
+.ap-terms-block .doc-free-input {
+  display: inline-block;
+  min-width: 120px;
+  height: 28px;
+  background: #fff;
+  vertical-align: middle;
+}
+
+.ap-terms-block .doc-template-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 14px 0;
+  table-layout: fixed;
+}
+
+.ap-terms-block .doc-template-table th,
+.ap-terms-block .doc-template-table td {
+  border: 1px solid #c7c7c7;
+  padding: 8px 10px;
+  min-height: 36px;
+  vertical-align: top;
+}
+
+.ap-terms-block .doc-template-table th {
+  background: #fafafa;
+  font-weight: 700;
+}
+
+.ap-terms-block .doc-sign-field {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 160px;
+  min-height: 54px;
+  margin: 0 6px;
+  padding: 8px 14px;
+  border-bottom: 1px solid #222;
+  color: #444;
+  font-weight: 700;
+}
+
+.ap-terms-block .doc-sign-field::after {
+  content: " (서명)";
+  margin-left: 4px;
+  font-weight: 400;
+}
+
 .ap-sign-cell {
   width: 100px;
   border: 1px solid #dadada;

@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MediPlat · 상담통계</title>
+  <meta name="app-context-path" th:content="@{/}" />
+  <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/layout.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/components.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/role-management.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/tweaks.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/datepicker.css}" />
+
+  <style>
+    /* ============================================
+       Consultation Stats page
+       ============================================ */
+
+    /* ----- Filter bar ----- */
+    .cs-filter {
+      background: var(--surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 18px 22px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      align-items: end;
+      gap: 18px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+    .cs-filter__field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 140px;
+    }
+    .cs-filter__label {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    .cs-filter__select {
+      height: 38px;
+      padding: 0 32px 0 12px;
+      border: 1px solid var(--border-default);
+      border-radius: 8px;
+      background: var(--surface);
+      font-size: 13.5px;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      transition: border-color .14s, box-shadow .14s;
+    }
+    .cs-filter__select:hover { border-color: var(--gray-300); }
+    .cs-filter__select:focus {
+      outline: none;
+      border-color: var(--brand-500);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-500) 12%, transparent);
+    }
+    .cs-filter__spacer { flex: 1; min-width: 0; }
+    .cs-filter__export {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 38px;
+      padding: 0 18px;
+      border-radius: 999px;
+      border: 1px solid color-mix(in oklab, var(--brand-500) 35%, var(--border-default));
+      background: color-mix(in oklab, var(--brand-500) 5%, #fff);
+      color: var(--brand-700);
+      font-weight: 600;
+      font-size: 12.5px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all .14s;
+    }
+    .cs-filter__export:hover {
+      background: var(--brand-500);
+      color: #fff;
+      border-color: var(--brand-500);
+      box-shadow: 0 4px 12px -4px color-mix(in oklab, var(--brand-500) 50%, transparent);
+    }
+    .cs-filter__export svg { width: 14px; height: 14px; }
+
+    /* ----- Section card ----- */
+    .cs-section {
+      background: var(--surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 18px;
+      overflow: hidden;
+    }
+    .cs-section__head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 22px 6px;
+    }
+    .cs-section__num {
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
+      color: #fff;
+      font-size: 12.5px;
+      font-weight: 700;
+      box-shadow: 0 2px 6px -2px color-mix(in oklab, var(--brand-500) 50%, transparent);
+      flex-shrink: 0;
+    }
+    .cs-section__title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -.005em;
+    }
+    .cs-section__sub {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-left: auto;
+    }
+    .cs-section__body { padding: 14px 22px 20px; }
+
+    /* ----- Stat table ----- */
+    .cs-table-wrap {
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .cs-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+    .cs-table th, .cs-table td {
+      padding: 11px 14px;
+      text-align: center;
+      border-bottom: 1px solid var(--border-subtle);
+      white-space: nowrap;
+    }
+    .cs-table thead th {
+      background: linear-gradient(180deg, var(--gray-50), color-mix(in oklab, var(--brand-500) 3%, var(--gray-50)));
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--text-secondary);
+      letter-spacing: .02em;
+      border-bottom: 1px solid var(--border-default);
+      position: sticky;
+      top: 0;
+    }
+    .cs-table thead th:first-child {
+      text-align: left;
+      padding-left: 18px;
+      color: var(--text-primary);
+    }
+    .cs-table tbody td:first-child {
+      text-align: left;
+      padding-left: 18px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+    .cs-table tbody tr { transition: background .12s; }
+    .cs-table tbody tr:hover { background: color-mix(in oklab, var(--brand-500) 4%, #fff); }
+    .cs-table tbody tr.is-total {
+      background: color-mix(in oklab, var(--brand-500) 6%, #fff);
+      font-weight: 600;
+    }
+    .cs-table tbody tr.is-total td {
+      color: var(--brand-700);
+      border-top: 1.5px solid color-mix(in oklab, var(--brand-500) 30%, var(--border-default));
+    }
+    .cs-table tbody tr.is-total td:first-child { color: var(--brand-700); }
+    .cs-table tbody tr.is-meta td {
+      color: var(--text-tertiary);
+      font-size: 12px;
+      background: var(--gray-25, var(--gray-50));
+    }
+    .cs-table tbody tr.is-meta td:first-child { font-weight: 500; }
+    .cs-table tbody tr:last-child td { border-bottom: 0; }
+    .cs-table .num { font-feature-settings: 'tnum'; }
+    .cs-table .num--zero { color: var(--text-tertiary); }
+    .cs-table .num--brand { color: var(--brand-700); font-weight: 600; }
+
+    /* deltas */
+    .delta {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      font-weight: 600;
+      font-size: 12.5px;
+    }
+    .delta--up   { color: #2563eb; }
+    .delta--down { color: #ea580c; }
+    .delta--flat { color: var(--text-tertiary); }
+    .delta::before { font-size: 10px; line-height: 1; }
+    .delta--up::before   { content: '▲'; }
+    .delta--down::before { content: '▼'; }
+    .delta--flat::before { content: '–'; font-size: 13px; }
+
+    /* ----- Chart container ----- */
+    .cs-chart {
+      width: 100%;
+      height: 320px;
+      border-radius: 10px;
+    }
+    .cs-chart--lg { height: 380px; }
+    .cs-chart--donut { height: 280px; }
+
+    /* split row: chart + donut */
+    .cs-split {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+    @media (max-width: 1100px) {
+      .cs-split { grid-template-columns: 1fr; }
+    }
+    .cs-split > div {
+      background: var(--surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    /* spacer between table & chart */
+    .cs-stack { display: flex; flex-direction: column; gap: 14px; }
+    .cs-empty {
+      padding: 40px 18px;
+      text-align: center;
+      border: 1px dashed var(--border-default);
+      border-radius: 14px;
+      background: var(--surface);
+      color: var(--text-secondary);
+    }
+    .cs-empty__title { margin: 0 0 8px; font-size: 16px; font-weight: 800; color: var(--text-primary); }
+    .cs-empty__desc { margin: 0; font-size: 13px; }
+    .cs-load {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 120;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,.58);
+      backdrop-filter: blur(2px);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-secondary);
+    }
+    .cs-load.is-active { display: flex; }
+    .cs-error {
+      margin-bottom: 14px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid #fecaca;
+      background: #fef2f2;
+      color: #b91c1c;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body>
+<script th:src="@{/assets/js/sprite.js}"></script>
+<!-- ECharts for charts -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+
+<div class="app"
+     data-screen-label="Consultation Stats"
+     :data-sidebar="$store.app.sidebarCollapsed ? 'collapsed' : 'expanded'"
+     :data-variation="$store.app.variation"
+     x-data>
+
+  <div id="slot-sidebar"></div>
+  <div id="slot-header"></div>
+
+  <main class="main">
+    <div class="page"
+         x-data="statsPage()"
+         x-init="init()"
+         th:attr="data-has-data=${hasData},data-first-year=${firstYear},data-first-month=${firstMonth},data-last-year=${lastYear},data-last-month=${lastMonth}">
+
+      <div class="page__header">
+        <div>
+          <h1 class="page__title">상담통계</h1>
+          <p class="page__subtitle">기간·상담사별 추이를 시각화합니다. 변동률과 평균은 자동 계산됩니다.</p>
+        </div>
+      </div>
+
+      <!-- Loading skeleton -->
+      <template x-if="loading">
+        <div style="padding:48px;text-align:center;color:var(--text-tertiary);font-size:13px;">
+          <svg style="width:20px;height:20px;animation:spin 1s linear infinite;margin-bottom:8px;display:block;margin-inline:auto"><use href="#i-refresh"/></svg>
+          불러오는 중...
+        </div>
+      </template>
+
+      <div x-show="!loading">
+
+      <div class="cs-error" x-show="errorMessage" x-cloak x-text="errorMessage"></div>
+
+      <div class="cs-empty" x-show="!hasData" x-cloak>
+        <h2 class="cs-empty__title">상담 데이터가 없습니다</h2>
+        <p class="cs-empty__desc">상담 등록 후 통계를 확인할 수 있습니다.</p>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="cs-filter" x-show="hasData" x-cloak>
+        <div class="cs-filter__field">
+          <label class="cs-filter__label">년도</label>
+          <select class="cs-filter__select" x-model.number="filter.year" @change="handleYearChange()">
+            <template x-for="y in years" :key="y"><option :value="y" x-text="y + '년'"></option></template>
+          </select>
+        </div>
+        <div class="cs-filter__field">
+          <label class="cs-filter__label">월</label>
+          <select class="cs-filter__select" x-model.number="filter.month" @change="loadStatistics()">
+            <template x-for="m in months" :key="m"><option :value="m" x-text="m + '월'"></option></template>
+          </select>
+        </div>
+        <div class="cs-filter__field">
+          <label class="cs-filter__label">상담자</label>
+          <select class="cs-filter__select" x-model="filter.counselor" @change="loadStatistics()">
+            <option value="">전체</option>
+            <template x-for="c in counselors" :key="c"><option :value="c" x-text="c"></option></template>
+          </select>
+        </div>
+        <div class="cs-filter__spacer"></div>
+        <button class="cs-filter__export" type="button" @click="exportExcel()">
+          <svg><use href="#i-download"/></svg>엑셀 내보내기
+        </button>
+      </div>
+
+      <!-- ============ SECTION 1: 상담자별 + 상담형태별 ============ -->
+      <section class="cs-section" x-show="hasData" x-cloak>
+        <div class="cs-section__head">
+          <span class="cs-section__num">1</span>
+          <span class="cs-section__title">상담자별 상담건수 월별추이</span>
+          <span class="cs-section__sub">단위 · 건 / 평균 · 건당</span>
+        </div>
+        <div class="cs-section__body">
+          <div class="cs-table-wrap">
+            <table class="cs-table">
+              <thead>
+                <tr>
+                  <th>상담자</th>
+                  <template x-for="m in periodCols" :key="m"><th x-text="m"></th></template>
+                  <th>상담자별 비율</th>
+                  <th>월평균 상담건수</th>
+                  <th>총상담건수</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="r in counselorRows" :key="r.name">
+                  <tr :class="{ 'is-total': r.isTotal }">
+                    <td x-text="r.name"></td>
+                    <template x-for="(v, idx) in r.values" :key="idx">
+                      <td class="num" :class="{ 'num--zero': v === 0, 'num--brand': r.isTotal }" x-text="v"></td>
+                    </template>
+                    <td class="num" x-text="pct(r.pct)"></td>
+                    <td class="num" x-text="r.avg.toFixed(2) + '건'"></td>
+                    <td class="num" x-text="r.total + '건'"></td>
+                  </tr>
+                </template>
+                <tr class="is-meta" x-show="counselorRows.length">
+                  <td>전월대비 증감건수</td>
+                  <template x-for="(d, idx) in deltaTotalsAbs" :key="idx">
+                    <td>
+                      <template x-if="d === null"><span>–</span></template>
+                      <template x-if="d !== null">
+                        <span class="delta" :class="deltaClass(d)" x-text="Math.abs(d)"></span>
+                      </template>
+                    </td>
+                  </template>
+                  <td colspan="3"></td>
+                </tr>
+                <tr class="is-meta" x-show="counselorRows.length">
+                  <td>전월대비 증감률(%)</td>
+                  <template x-for="(d, idx) in deltaTotalsPct" :key="idx">
+                    <td>
+                      <template x-if="d === null"><span>–</span></template>
+                      <template x-if="d !== null">
+                        <span class="delta" :class="deltaClass(d)" x-text="Math.abs(d) + '%'"></span>
+                      </template>
+                    </td>
+                  </template>
+                  <td colspan="3"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 1-1. 상담형태별 -->
+        <div class="cs-section__head">
+          <span class="cs-section__num" style="background:linear-gradient(135deg,#94a3b8,#475569);">1-1</span>
+          <span class="cs-section__title">상담형태별 월별추이</span>
+        </div>
+        <div class="cs-section__body">
+          <div class="cs-table-wrap">
+            <table class="cs-table">
+              <thead>
+                <tr>
+                  <th>상담형태</th>
+                  <template x-for="m in periodCols" :key="m"><th x-text="m"></th></template>
+                  <th>상담자별 비율</th>
+                  <th>월평균 상담건수</th>
+                  <th>총상담건수</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="r in formRows" :key="r.name">
+                  <tr :class="{ 'is-total': r.isTotal }">
+                    <td x-text="r.name"></td>
+                    <template x-for="(v, idx) in r.values" :key="idx">
+                      <td class="num" :class="{ 'num--zero': v === 0, 'num--brand': r.isTotal }" x-text="v"></td>
+                    </template>
+                    <td class="num" x-text="pct(r.pct)"></td>
+                    <td class="num" x-text="r.avg.toFixed(2) + '건'"></td>
+                    <td class="num" x-text="r.total + '건'"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 차트: 상담건수 월별추이 -->
+        <div class="cs-section__head">
+          <span class="cs-section__num" style="background:linear-gradient(135deg,#94a3b8,#475569);">차트</span>
+          <span class="cs-section__title">상담건수 월별추이</span>
+        </div>
+        <div class="cs-section__body">
+          <div class="cs-chart cs-chart--lg" x-ref="chart1"></div>
+        </div>
+      </section>
+
+      <!-- ============ SECTION 2: 상담·입원 연계(성공)건수 ============ -->
+      <section class="cs-section" x-show="hasData" x-cloak>
+        <div class="cs-section__head">
+          <span class="cs-section__num">2</span>
+          <span class="cs-section__title">상담·입원 연계(성공)건수 월별추이</span>
+          <span class="cs-section__sub">상담→입원 연계 성공 건수 기준</span>
+        </div>
+        <div class="cs-section__body">
+          <div class="cs-table-wrap">
+            <table class="cs-table">
+              <thead>
+                <tr>
+                  <th>상담자</th>
+                  <template x-for="m in periodCols" :key="m"><th x-text="m"></th></template>
+                  <th>연계유형별 비율</th>
+                  <th>월평균 건수</th>
+                  <th>총 건수</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="r in linkRows" :key="r.name">
+                  <tr :class="{ 'is-total': r.isTotal }">
+                    <td x-text="r.name"></td>
+                    <template x-for="(v, idx) in r.values" :key="idx">
+                      <td class="num" :class="{ 'num--zero': v === 0, 'num--brand': r.isTotal }" x-text="v"></td>
+                    </template>
+                    <td class="num" x-text="pct(r.pct)"></td>
+                    <td class="num" x-text="r.avg.toFixed(2)"></td>
+                    <td class="num" x-text="r.total"></td>
+                  </tr>
+                </template>
+                <tr class="is-meta">
+                  <td>전월대비 증감건수</td>
+                  <template x-for="(d, idx) in deltaLinkAbs" :key="idx">
+                    <td>
+                      <template x-if="d === null"><span>–</span></template>
+                      <template x-if="d !== null"><span class="delta" :class="deltaClass(d)" x-text="Math.abs(d)"></span></template>
+                    </td>
+                  </template>
+                  <td colspan="3"></td>
+                </tr>
+                <tr class="is-meta">
+                  <td>전월대비 증감률(%)</td>
+                  <template x-for="(d, idx) in deltaLinkPct" :key="idx">
+                    <td>
+                      <template x-if="d === null"><span>–</span></template>
+                      <template x-if="d !== null"><span class="delta" :class="deltaClass(d)" x-text="Math.abs(d) + '%'"></span></template>
+                    </td>
+                  </template>
+                  <td colspan="3"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="cs-section__head">
+          <span class="cs-section__num" style="background:linear-gradient(135deg,#94a3b8,#475569);">차트</span>
+          <span class="cs-section__title">상담·입원 연계 월별추이</span>
+        </div>
+        <div class="cs-section__body">
+          <div class="cs-chart cs-chart--lg" x-ref="chart2"></div>
+        </div>
+      </section>
+
+      <!-- ============ SECTION 3: 상담유입경로 + 도넛 ============ -->
+      <section class="cs-section" x-show="hasData" x-cloak>
+        <div class="cs-section__head">
+          <span class="cs-section__num">3</span>
+          <span class="cs-section__title">상담유입경로별 건수 월별추이</span>
+        </div>
+        <div class="cs-section__body cs-stack">
+          <div class="cs-table-wrap">
+            <table class="cs-table">
+              <thead>
+                <tr>
+                  <th>유입경로</th>
+                  <template x-for="m in periodCols" :key="m"><th x-text="m"></th></template>
+                  <th>유입경로별 비율</th>
+                  <th>월평균 건수</th>
+                  <th>총 건수</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="r in inflowRows" :key="r.name">
+                  <tr :class="{ 'is-total': r.isTotal }">
+                    <td x-text="r.name"></td>
+                    <template x-for="(v, idx) in r.values" :key="idx">
+                      <td class="num" :class="{ 'num--zero': v === 0, 'num--brand': r.isTotal }" x-text="v"></td>
+                    </template>
+                    <td class="num" x-text="pct(r.pct)"></td>
+                    <td class="num" x-text="r.avg.toFixed(2)"></td>
+                    <td class="num" x-text="r.total"></td>
+                  </tr>
+                </template>
+                <tr class="is-meta">
+                  <td>전월대비 증감건수</td>
+                  <template x-for="(d, idx) in deltaInflowAbs" :key="idx">
+                    <td>
+                      <template x-if="d === null"><span>–</span></template>
+                      <template x-if="d !== null"><span class="delta" :class="deltaClass(d)" x-text="Math.abs(d)"></span></template>
+                    </td>
+                  </template>
+                  <td colspan="3"></td>
+                </tr>
+                <tr class="is-meta">
+                  <td>전월대비 증감률(%)</td>
+                  <template x-for="(d, idx) in deltaInflowPct" :key="idx">
+                    <td>
+                      <template x-if="d === null"><span>–</span></template>
+                      <template x-if="d !== null"><span class="delta" :class="deltaClass(d)" x-text="Math.abs(d) + '%'"></span></template>
+                    </td>
+                  </template>
+                  <td colspan="3"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="cs-section__head" style="padding:4px 0 0;">
+            <span class="cs-section__num" style="background:linear-gradient(135deg,#94a3b8,#475569);">3-1</span>
+            <span class="cs-section__title">상담유입경로별 입원연계(성공) 건수 월별추이</span>
+          </div>
+          <div class="cs-table-wrap">
+            <table class="cs-table">
+              <thead>
+                <tr>
+                  <th>유입경로</th>
+                  <template x-for="m in periodCols" :key="m"><th x-text="m"></th></template>
+                  <th>유입경로별 비율</th>
+                  <th>월평균 건수</th>
+                  <th>총 건수</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="r in inflowSuccessRows" :key="r.name">
+                  <tr :class="{ 'is-total': r.isTotal }">
+                    <td x-text="r.name"></td>
+                    <template x-for="(v, idx) in r.values" :key="idx">
+                      <td class="num" :class="{ 'num--zero': v === 0, 'num--brand': r.isTotal }" x-text="v"></td>
+                    </template>
+                    <td class="num" x-text="pct(r.pct)"></td>
+                    <td class="num" x-text="r.avg.toFixed(2)"></td>
+                    <td class="num" x-text="r.total"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="cs-split">
+            <div>
+              <div style="padding:6px 6px 4px;font-size:12px;font-weight:600;color:var(--text-secondary);">월별 점유율 (영역 차트)</div>
+              <div class="cs-chart" x-ref="chart3area"></div>
+            </div>
+            <div>
+              <div style="padding:6px 6px 4px;font-size:12px;font-weight:600;color:var(--text-secondary);">기간 합계 비율</div>
+              <div class="cs-chart cs-chart--donut" x-ref="chart3donut"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SECTION 4: 현재계신곳 ============ -->
+      <section class="cs-section" x-show="hasData" x-cloak>
+        <div class="cs-section__head">
+          <span class="cs-section__num">4</span>
+          <span class="cs-section__title">현재계신곳별 상담건수 월별추이</span>
+        </div>
+        <div class="cs-section__body">
+          <div class="cs-table-wrap">
+            <table class="cs-table">
+              <thead>
+                <tr>
+                  <th>현재계신곳</th>
+                  <template x-for="m in periodCols" :key="m"><th x-text="m"></th></template>
+                  <th>현재계신곳별 비율</th>
+                  <th>월평균 건수</th>
+                  <th>총 건수</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="r in locationRows" :key="r.name">
+                  <tr :class="{ 'is-total': r.isTotal }">
+                    <td x-text="r.name"></td>
+                    <template x-for="(v, idx) in r.values" :key="idx">
+                      <td class="num" :class="{ 'num--zero': v === 0, 'num--brand': r.isTotal }" x-text="v"></td>
+                    </template>
+                    <td class="num" x-text="pct(r.pct)"></td>
+                    <td class="num" x-text="r.avg.toFixed(2)"></td>
+                    <td class="num" x-text="r.total"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="cs-section__head">
+          <span class="cs-section__num" style="background:linear-gradient(135deg,#94a3b8,#475569);">4-1</span>
+          <span class="cs-section__title">현재계신곳별 입원연계(성공) 건수 월별추이</span>
+        </div>
+        <div class="cs-section__body">
+          <div class="cs-table-wrap">
+            <table class="cs-table">
+              <thead>
+                <tr>
+                  <th>현재계신곳</th>
+                  <template x-for="m in periodCols" :key="m"><th x-text="m"></th></template>
+                  <th>현재계신곳별 비율</th>
+                  <th>월평균 건수</th>
+                  <th>총 건수</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="r in locationSuccessRows" :key="r.name">
+                  <tr :class="{ 'is-total': r.isTotal }">
+                    <td x-text="r.name"></td>
+                    <template x-for="(v, idx) in r.values" :key="idx">
+                      <td class="num" :class="{ 'num--zero': v === 0, 'num--brand': r.isTotal }" x-text="v"></td>
+                    </template>
+                    <td class="num" x-text="pct(r.pct)"></td>
+                    <td class="num" x-text="r.avg.toFixed(2)"></td>
+                    <td class="num" x-text="r.total"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SECTION 5: 미입원 사유 ============ -->
+      <section class="cs-section" x-show="hasData" x-cloak>
+        <div class="cs-section__head">
+          <span class="cs-section__num">5</span>
+          <span class="cs-section__title">미입원 사유 유형별 월별추이</span>
+        </div>
+        <div class="cs-section__body">
+          <div class="cs-table-wrap">
+            <table class="cs-table">
+              <thead>
+                <tr>
+                  <th>미입원 사유</th>
+                  <template x-for="m in periodCols" :key="m"><th x-text="m"></th></template>
+                  <th>미입원사유별 비율</th>
+                  <th>월평균 건수</th>
+                  <th>총 건수</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="r in nonAdmissionRows" :key="r.name">
+                  <tr :class="{ 'is-total': r.isTotal }">
+                    <td x-text="r.name"></td>
+                    <template x-for="(v, idx) in r.values" :key="idx">
+                      <td class="num" :class="{ 'num--zero': v === 0, 'num--brand': r.isTotal }" x-text="v"></td>
+                    </template>
+                    <td class="num" x-text="pct(r.pct)"></td>
+                    <td class="num" x-text="r.avg.toFixed(2)"></td>
+                    <td class="num" x-text="r.total"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      </div><!-- /x-show="!loading" -->
+
+    </div>
+  </main>
+</div>
+
+<div id="statsLoading" class="cs-load">통계를 불러오는 중입니다</div>
+
+<script th:src="@{/assets/js/app.js}"></script>
+<script th:src="@{/assets/js/chrome.js}" th:attr="data-ctx=@{/}" data-page="stats"></script>
+<script>
+  document.addEventListener('turbo:load', () => { MPChrome.mount({ parent: '상담 업무', current: '상담통계' }); }, { once: true });
+</script>
+<script data-turbo-eval="false" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js"></script>
+<script data-turbo-eval="false" defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<script th:src="@{/assets/js/datepicker.js}"></script>
+
+<script>
+function statsPage() {
+  return {
+    loading: true,
+    hasData: false,
+    years: [],
+    months: [],
+    counselors: [],
+    filter: { year: null, month: null, counselor: '' },
+    periodCols: [],
+    counselorRows: [],
+    formRows: [],
+    linkRows: [],
+    inflowRows: [],
+    inflowSuccessRows: [],
+    locationRows: [],
+    locationSuccessRows: [],
+    nonAdmissionRows: [],
+    errorMessage: '',
+    firstYear: null,
+    firstMonth: null,
+    lastYear: null,
+    lastMonth: null,
+    _charts: [],
+
+    contextPath() {
+      const meta = document.querySelector('meta[name="app-context-path"]');
+      const raw = meta?.content || '/';
+      return raw.endsWith('/') ? raw : raw + '/';
+    },
+    endpoint(path) {
+      return this.contextPath() + path.replace(/^\/+/, '');
+    },
+    readPageState() {
+      const root = this.$root;
+      this.hasData = String(root.dataset.hasData) === 'true';
+      this.firstYear = Number(root.dataset.firstYear);
+      this.firstMonth = Number(root.dataset.firstMonth);
+      this.lastYear = Number(root.dataset.lastYear);
+      this.lastMonth = Number(root.dataset.lastMonth);
+      this.years = this.numberRange(this.firstYear, this.lastYear);
+      this.filter.year = this.lastYear;
+      this.months = this.monthOptions(this.filter.year);
+      this.filter.month = this.lastMonth;
+    },
+    numberRange(start, end) {
+      if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) return [];
+      return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+    },
+    monthOptions(year) {
+      let start = 1;
+      let end = 12;
+      if (year === this.firstYear) start = this.firstMonth;
+      if (year === this.lastYear) end = this.lastMonth;
+      if (this.firstYear === this.lastYear) {
+        start = this.firstMonth;
+        end = this.lastMonth;
+      }
+      return this.numberRange(start, end);
+    },
+    handleYearChange() {
+      this.months = this.monthOptions(Number(this.filter.year));
+      if (!this.months.includes(Number(this.filter.month))) {
+        this.filter.month = this.months[this.months.length - 1] || null;
+      }
+      this.loadStatistics();
+    },
+    async fetchJson(path) {
+      const params = new URLSearchParams({
+        year: String(this.filter.year),
+        month: String(this.filter.month),
+        counselor: this.filter.counselor || '',
+      });
+      const response = await fetch(`${this.endpoint(path)}?${params.toString()}`, {
+        headers: { 'Accept': 'application/json' },
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || '통계 조회 실패');
+      }
+      return response.json();
+    },
+    async loadStatistics() {
+      if (!this.hasData || !this.filter.year || !this.filter.month) { this.loading = false; return; }
+      document.getElementById('statsLoading')?.classList.add('is-active');
+      this.errorMessage = '';
+      try {
+        const [
+          counselStats,
+          methodStats,
+          successStats,
+          inflowStats,
+          inflowSuccessStats,
+          locationStats,
+          locationSuccessStats,
+          nonAdmissionStats,
+        ] = await Promise.all([
+          this.fetchJson('statistics1'),
+          this.fetchJson('statisticsType'),
+          this.fetchJson('statisticsAdmissionSuccess'),
+          this.fetchJson('statisticsByAdmissionType'),
+          this.fetchJson('statisticsByAdmissionTypeSuccess'),
+          this.fetchJson('statisticsByCurrentLocation'),
+          this.fetchJson('statisticsByCurrentLocationSuccess'),
+          this.fetchJson('statisticsNonAdmissionReason'),
+        ]);
+
+        this.periodCols = this.collectMonths([
+          counselStats,
+          methodStats,
+          successStats,
+          inflowStats,
+          inflowSuccessStats,
+          locationStats,
+          locationSuccessStats,
+          nonAdmissionStats,
+        ]);
+        this.counselorRows = this.buildRows(counselStats, 'counselor', '상담 총 건수');
+        this.formRows = this.buildRows(methodStats, 'method', '총합');
+        this.linkRows = this.buildRows(successStats, 'counselor', '총 건수');
+        this.inflowRows = this.buildRows(inflowStats, 'type', '총 건수');
+        this.inflowSuccessRows = this.buildRows(inflowSuccessStats, 'type', '총 건수');
+        this.locationRows = this.buildRows(locationStats, 'type', '총 건수');
+        this.locationSuccessRows = this.buildRows(locationSuccessStats, 'type', '총 건수');
+        this.nonAdmissionRows = this.buildRows(nonAdmissionStats, 'type', '총 건수');
+        this.updateCounselors([counselStats, successStats, inflowStats, inflowSuccessStats, locationStats, locationSuccessStats]);
+
+        this.$nextTick(() => this.renderCharts());
+      } catch (error) {
+        this.errorMessage = error?.message || '통계 데이터를 불러오지 못했습니다.';
+      } finally {
+        document.getElementById('statsLoading')?.classList.remove('is-active');
+        this.loading = false;
+      }
+    },
+    collectMonths(groups) {
+      const months = new Set();
+      groups.flat().forEach(row => {
+        if (row?.month) months.add(String(row.month));
+      });
+      const sorted = [...months].sort();
+      if (sorted.length) return sorted.map(this.monthLabel);
+      const month = String(this.filter.month).padStart(2, '0');
+      return [`${this.filter.year}.${month}`];
+    },
+    monthLabel(month) {
+      return String(month).replace(/(\d{4})-(\d{1,2})/, (_, y, m) => `${y}.${String(m).padStart(2, '0')}`);
+    },
+    normalizeName(value) {
+      const text = String(value || '').trim();
+      return text || '미지정';
+    },
+    countValue(value) {
+      const n = Number(value || 0);
+      return Number.isFinite(n) ? n : 0;
+    },
+    enrich(rows) {
+      const months = this.periodCols.length;
+      const grandTotal = (rows.find(r => r.isTotal)?.values || [])
+        .reduce((a,b) => a+b, 0) || 1;
+      return rows.map(r => {
+        const total = r.values.reduce((a,b)=>a+b,0);
+        return {
+          ...r,
+          total,
+          avg: total / months,
+          pct: r.isTotal ? 100 : (total / grandTotal * 100),
+        };
+      });
+    },
+    buildRows(data, key, totalName) {
+      const source = Array.isArray(data) ? data : [];
+      const monthKeys = this.periodCols;
+      const grouped = new Map();
+      const totals = Array(monthKeys.length).fill(0);
+
+      source.forEach(row => {
+        const name = this.normalizeName(row?.[key]);
+        const label = this.monthLabel(row?.month);
+        const idx = monthKeys.indexOf(label);
+        if (idx < 0) return;
+        if (!grouped.has(name)) grouped.set(name, Array(monthKeys.length).fill(0));
+        const count = this.countValue(row?.count);
+        grouped.get(name)[idx] += count;
+        totals[idx] += count;
+      });
+
+      const rows = [...grouped.entries()]
+        .sort(([a], [b]) => a.localeCompare(b, 'ko'))
+        .map(([name, values]) => ({ name, values, isTotal: false }));
+
+      rows.push({ name: totalName, values: totals, isTotal: true });
+      return this.enrich(rows);
+    },
+    updateCounselors(groups) {
+      if (this.filter.counselor) return;
+      const names = new Set(this.counselors);
+      groups.flat().forEach(row => {
+        if (row?.counselor) names.add(String(row.counselor).trim());
+      });
+      this.counselors = [...names].filter(Boolean).sort((a, b) => a.localeCompare(b, 'ko'));
+    },
+
+    init() {
+      this.readPageState();
+      if (this.hasData) this.loadStatistics();
+      this.$nextTick(() => {
+        window.addEventListener('resize', () => this.resizeAll());
+        const obs = new MutationObserver(() => this.resizeAll());
+        const app = document.querySelector('.app');
+        if (app) obs.observe(app, { attributes: true, attributeFilter: ['data-sidebar'] });
+      });
+    },
+
+    // ===== Deltas =====
+    deltaAbs(values) {
+      return values.map((v, i) => i === 0 ? null : v - values[i-1]);
+    },
+    deltaPct(values) {
+      return values.map((v, i) => {
+        if (i === 0) return null;
+        const prev = values[i-1];
+        if (prev === 0) return v === 0 ? 0 : null;
+        return Math.round((v - prev) / prev * 100);
+      });
+    },
+    get deltaTotalsAbs() {
+      const total = this.counselorRows.find(r => r.isTotal);
+      return total ? this.deltaAbs(total.values) : [];
+    },
+    get deltaTotalsPct() {
+      const total = this.counselorRows.find(r => r.isTotal);
+      return total ? this.deltaPct(total.values) : [];
+    },
+    get deltaLinkAbs() {
+      const total = this.linkRows.find(r => r.isTotal);
+      return total ? this.deltaAbs(total.values) : [];
+    },
+    get deltaLinkPct() {
+      const total = this.linkRows.find(r => r.isTotal);
+      return total ? this.deltaPct(total.values) : [];
+    },
+    get deltaInflowAbs() {
+      const total = this.inflowRows.find(r => r.isTotal);
+      return total ? this.deltaAbs(total.values) : [];
+    },
+    get deltaInflowPct() {
+      const total = this.inflowRows.find(r => r.isTotal);
+      return total ? this.deltaPct(total.values) : [];
+    },
+
+    deltaClass(d) {
+      if (d === null || d === undefined) return 'delta--flat';
+      if (d > 0) return 'delta--up';
+      if (d < 0) return 'delta--down';
+      return 'delta--flat';
+    },
+    pct(v) {
+      if (typeof v !== 'number') return '–';
+      return v.toFixed(2) + '%';
+    },
+
+    renderCharts() {
+      this._charts.forEach(c => c?.dispose?.());
+      this._charts = [];
+      if (!window.echarts || !this.periodCols.length) return;
+      const baseAxis = {
+        axisLine: { lineStyle: { color: '#cbd5e1' } },
+        axisTick: { show: false },
+        axisLabel: { color: '#64748b', fontSize: 11, fontFamily: 'inherit' },
+        splitLine: { lineStyle: { color: '#eef2f6', type: 'dashed' } },
+      };
+      const tooltipBase = {
+        backgroundColor: 'rgba(15,23,42,.92)',
+        borderWidth: 0,
+        textStyle: { color: '#fff', fontSize: 12, fontFamily: 'inherit' },
+        padding: [8, 12],
+      };
+
+      // ---- Chart 1: 상담건수 월별추이 (bar) ----
+      const total1 = this.counselorRows.find(r => r.isTotal)?.values || [];
+      const c1 = echarts.init(this.$refs.chart1);
+      c1.setOption({
+        grid: { left: 50, right: 30, top: 50, bottom: 40, containLabel: true },
+        legend: { data: ['상담 총 건수'], top: 8, left: 10, textStyle: { color: '#475569', fontSize: 12 }, icon: 'circle' },
+        tooltip: { trigger: 'axis', ...tooltipBase, axisPointer: { type: 'shadow' } },
+        xAxis: { type: 'category', data: this.periodCols, ...baseAxis },
+        yAxis: { type: 'value', ...baseAxis },
+        series: [{
+          name: '상담 총 건수',
+          type: 'bar',
+          data: total1,
+          barMaxWidth: 60,
+          itemStyle: {
+            borderRadius: [6, 6, 0, 0],
+            color: new echarts.graphic.LinearGradient(0,0,0,1,[
+              { offset: 0, color: '#1e3a8a' },
+              { offset: 1, color: '#1e40af' },
+            ]),
+          },
+          label: { show: true, position: 'top', color: '#1e293b', fontSize: 11, fontWeight: 600 },
+        }],
+      });
+      this._charts.push(c1);
+
+      // ---- Chart 2: 입원 연계 월별추이 (bar) ----
+      const total2 = this.linkRows.find(r => r.isTotal)?.values || [];
+      const c2 = echarts.init(this.$refs.chart2);
+      c2.setOption({
+        grid: { left: 50, right: 30, top: 50, bottom: 40, containLabel: true },
+        legend: { data: ['입원 연계 성공 건수'], top: 8, left: 10, textStyle: { color: '#475569', fontSize: 12 }, icon: 'circle' },
+        tooltip: { trigger: 'axis', ...tooltipBase, axisPointer: { type: 'shadow' } },
+        xAxis: { type: 'category', data: this.periodCols, ...baseAxis },
+        yAxis: { type: 'value', ...baseAxis },
+        series: [{
+          name: '입원 연계 성공 건수',
+          type: 'bar',
+          data: total2,
+          barMaxWidth: 60,
+          itemStyle: {
+            borderRadius: [6, 6, 0, 0],
+            color: new echarts.graphic.LinearGradient(0,0,0,1,[
+              { offset: 0, color: '#1e40af' },
+              { offset: 1, color: '#1e3a8a' },
+            ]),
+          },
+          label: { show: true, position: 'top', color: '#1e293b', fontSize: 11, fontWeight: 600 },
+        }],
+      });
+      this._charts.push(c2);
+
+      // ---- Chart 3 area: 유입경로 월별추이 (stacked area) ----
+      const successInflows = this.inflowSuccessRows.filter(r => !r.isTotal && r.total > 0);
+      const inflows = (successInflows.length ? this.inflowSuccessRows : this.inflowRows)
+        .filter(r => !r.isTotal);
+      const colors = ['#0d4731', '#10b981', '#f59e0b', '#2563eb', '#8b5cf6', '#ef4444', '#64748b'];
+      const c3a = echarts.init(this.$refs.chart3area);
+      c3a.setOption({
+        grid: { left: 30, right: 18, top: 30, bottom: 30, containLabel: true },
+        legend: { data: inflows.map(r => r.name), top: 4, textStyle: { color: '#475569', fontSize: 11 }, icon: 'circle', itemHeight: 8 },
+        tooltip: { trigger: 'axis', ...tooltipBase, axisPointer: { type: 'shadow' } },
+        xAxis: { type: 'category', boundaryGap: false, data: this.periodCols, ...baseAxis },
+        yAxis: { type: 'value', ...baseAxis },
+        series: inflows.map((r, i) => ({
+          name: r.name,
+          type: 'line',
+          smooth: true,
+          stack: 'Total',
+          data: r.values,
+          symbol: 'circle',
+          symbolSize: 6,
+          lineStyle: { width: 2, color: colors[i % colors.length] },
+          itemStyle: { color: colors[i % colors.length] },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0,0,0,1,[
+              { offset: 0, color: colors[i % colors.length] + 'cc' },
+              { offset: 1, color: colors[i % colors.length] + '11' },
+            ]),
+          },
+        })),
+      });
+      this._charts.push(c3a);
+
+      // ---- Chart 3 donut: 유입경로 합계 비율 ----
+      const c3d = echarts.init(this.$refs.chart3donut);
+      c3d.setOption({
+        tooltip: { trigger: 'item', ...tooltipBase, formatter: '{b}: {c}건 ({d}%)' },
+        legend: { orient: 'vertical', right: 8, top: 'middle', textStyle: { color: '#475569', fontSize: 11 }, icon: 'circle', itemHeight: 8 },
+        series: [{
+          name: '유입경로',
+          type: 'pie',
+          radius: ['52%', '78%'],
+          center: ['38%', '50%'],
+          avoidLabelOverlap: true,
+          itemStyle: { borderColor: '#fff', borderWidth: 2, borderRadius: 4 },
+          label: { show: false },
+          emphasis: { label: { show: true, fontSize: 13, fontWeight: 700, formatter: '{d}%' } },
+          data: inflows.map((r, i) => ({
+            name: r.name,
+            value: r.total,
+            itemStyle: { color: colors[i % colors.length] },
+          })),
+        }],
+      });
+      this._charts.push(c3d);
+    },
+
+    resizeAll() {
+      this._charts.forEach(c => c?.resize?.());
+    },
+    exportExcel() {
+      if (!this.filter.year || !this.filter.month) return;
+      const params = new URLSearchParams({
+        year: String(this.filter.year),
+        month: String(this.filter.month),
+        counselor: this.filter.counselor || '',
+      });
+      window.location.href = `${this.endpoint('statistics/export')}?${params.toString()}`;
+    },
+  };
+}
+</script>
+</body>
+</html>

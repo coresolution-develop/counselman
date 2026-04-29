@@ -612,12 +612,13 @@ function wardStatus() {
 <script th:src="@{/assets/js/datepicker.js}"></script>
 <script th:src="@{/assets/js/chrome.js}" data-page="ward" th:attr="data-ctx=@{/}"></script>
 <script>
-  document.addEventListener('alpine:init', () => {
+  document.addEventListener('turbo:load', () => {
     if (new URLSearchParams(location.search).get('popup') !== '1') {
       MPChrome.mount({ parent: '상담 업무', current: '병실현황판' });
     }
-  });
+  }, { once: true });
 </script>
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<script data-turbo-eval="false" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js"></script>
+<script data-turbo-eval="false" defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 </body>
 </html>
