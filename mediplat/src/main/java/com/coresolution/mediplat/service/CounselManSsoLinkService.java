@@ -46,12 +46,13 @@ public class CounselManSsoLinkService {
         String resolvedTargetPath = StringUtils.hasText(targetPath)
                 ? targetPath.trim()
                 : (user.isPlatformAdmin() ? service.getAdminTarget() : service.getUserTarget());
+        String resolvedBaseUrl = resolveBaseUrl(service.getBaseUrl());
+        String normalizedTargetPath = stripContextPath(resolvedTargetPath, resolvedBaseUrl);
         String targetToken = Base64.getUrlEncoder()
                 .withoutPadding()
-                .encodeToString(resolvedTargetPath.getBytes(StandardCharsets.UTF_8));
+                .encodeToString(normalizedTargetPath.getBytes(StandardCharsets.UTF_8));
         long expires = Instant.now().getEpochSecond() + expireSeconds;
         String signature = sign(resolvedInstCode, user.getUsername(), expires, targetToken);
-        String resolvedBaseUrl = resolveBaseUrl(service.getBaseUrl());
         String resolvedEntryPath = normalizeEntryPath(service.getSsoEntryPath());
         String dedupedEntryPath = dedupeEntryPath(resolvedBaseUrl, resolvedEntryPath);
         return resolvedBaseUrl + dedupedEntryPath
@@ -205,6 +206,28 @@ public class CounselManSsoLinkService {
         } catch (IllegalArgumentException e) {
             return entryPath;
         }
+    }
+
+    private String stripContextPath(String targetPath, String baseUrl) {
+        if (!StringUtils.hasText(targetPath) || !StringUtils.hasText(baseUrl)) {
+            return targetPath;
+        }
+        try {
+            String contextPath = trimTrailingSlash(URI.create(baseUrl).getPath());
+            if (!StringUtils.hasText(contextPath) || "/".equals(contextPath)) {
+                return targetPath;
+            }
+            if (targetPath.equals(contextPath)) {
+                return "/";
+            }
+            String prefix = contextPath + "/";
+            if (targetPath.startsWith(prefix)) {
+                return targetPath.substring(contextPath.length());
+            }
+        } catch (IllegalArgumentException e) {
+            // ignore
+        }
+        return targetPath;
     }
 
     private String upgradeToHttpsWhenNeeded(String baseUrl, HttpServletRequest request) {
