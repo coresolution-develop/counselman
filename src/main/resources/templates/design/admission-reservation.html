@@ -69,7 +69,7 @@
       color: var(--text-tertiary);
       font-size: 14px;
     }
-    .empty-state svg { width: 32px; height: 32px; margin-bottom: 12px; opacity: .4; }
+    .empty-state svg { display: block; width: 32px; height: 32px; margin: 0 auto 12px; opacity: .4; }
   </style>
 </head>
 <body>
@@ -308,7 +308,11 @@ function admissionPage() {
       if (!confirm('입원완료 처리하시겠습니까?\n이 목록에서 제거됩니다.')) return;
       item._busy = true;
       try {
-        const res = await postForm('/api/admission-reservation/confirm', { csIdx: item.csIdx });
+        const res = await postForm('/api/admission-reservation/confirm', {
+          csIdx:       item.csIdx,
+          plannedDate: item.plannedDate,
+          roomName:    item.roomName,
+        });
         if (res.success) {
           this.items = this.items.filter(i => i.csIdx !== item.csIdx);
           this.showToast('입원완료 처리되었습니다.');
