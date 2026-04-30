@@ -67,6 +67,16 @@ public class MediplatController {
         return sessionUser(session) == null ? "redirect:/login" : "redirect:/services";
     }
 
+    @GetMapping({ "/links", "/csm/links" })
+    public String companyLinks() {
+        PlatformService counselManService = storeService.findService("COUNSELMAN");
+        String baseUrl = counselManService == null ? "" : counselManService.getBaseUrl();
+        if (!StringUtils.hasText(baseUrl)) {
+            baseUrl = "http://localhost:8081/csm";
+        }
+        return "redirect:" + trimTrailingSlash(baseUrl) + "/links";
+    }
+
     @GetMapping("/login")
     public String loginPage(@RequestParam(name = "error", required = false) String error, Model model, HttpSession session) {
         if (sessionUser(session) != null) {
@@ -1132,6 +1142,14 @@ public class MediplatController {
             return "core";
         }
         return trimmedCode.toUpperCase(Locale.ROOT);
+    }
+
+    private String trimTrailingSlash(String value) {
+        String result = value == null ? "" : value.trim();
+        while (result.endsWith("/")) {
+            result = result.substring(0, result.length() - 1);
+        }
+        return result;
     }
 
     private void populateViewerAdminModel(Model model, String selectedInstCode, String viewerUsername) {

@@ -33,6 +33,10 @@ public class SecurityConfig {
 
         private static final String[] PUBLIC_PATHS = {
                         "/login", "/login/**", "/csm/login", "/csm/login/**",
+                        "/links", "/csm/links",
+                        "/admin/company-links", "/admin/company-links/**",
+                        "/csm/admin/company-links", "/csm/admin/company-links/**",
+                        "/api/company-links", "/csm/api/company-links",
                         "/mediplat/sso/entry", "/csm/mediplat/sso/entry",
                         "/room-board", "/csm/room-board",
                         "/room-board/return", "/csm/room-board/return",
