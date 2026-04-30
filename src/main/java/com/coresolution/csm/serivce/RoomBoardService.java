@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.sql.Statement;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -479,6 +480,9 @@ public class RoomBoardService {
         List<Map<String, Object>> patients = snapshot == null ? List.of() : loadSnapshotPatients(safe, snapshot.getId());
         Map<String, List<Map<String, Object>>> patientsByRoom = patients.stream()
                 .collect(Collectors.groupingBy(row -> normalizeRoomName(String.valueOf(row.get("room_name")))));
+        Map<String, List<Map<String, Object>>> completedAdmissionsByRoom = loadCompletedAdmissionsByRoom(
+                safe,
+                snapshot == null ? null : snapshot.getId());
         Map<String, List<String>> reservationNamesByRoom = loadReservationNamesByRoom(safe, baseDate);
         LocalDate dischargeNoticeDate = snapshotDate == null || snapshotDate.isBlank() ? LocalDate.now() : baseDate;
         Map<String, List<Map<String, Object>>> dischargeNoticesByRoom = loadDischargeNoticesByRoom(safe, dischargeNoticeDate);
@@ -491,7 +495,9 @@ public class RoomBoardService {
         for (RoomBoardRoomConfig config : activeConfigs) {
             String wardName = safeText(config.getWardName(), 50);
             String roomName = normalizeRoomName(config.getRoomName());
-            List<Map<String, Object>> roomPatients = patientsByRoom.getOrDefault(roomName, List.of());
+            List<Map<String, Object>> roomPatients = mergePatients(
+                    patientsByRoom.getOrDefault(roomName, List.of()),
+                    completedAdmissionsByRoom.getOrDefault(roomName, List.of()));
             List<String> reservationNames = reservationNamesByRoom.getOrDefault(roomName, List.of());
             List<Map<String, Object>> roomDischargeNotices = dischargeNoticesByRoom.getOrDefault(roomName, List.of());
             int occupiedCount = roomPatients.size();
@@ -609,6 +615,65 @@ public class RoomBoardService {
                  ORDER BY room_name ASC, patient_name ASC
                 """.formatted(safe);
         return jdbcTemplate.queryForList(sql, snapshotId);
+    }
+
+    private Map<String, List<Map<String, Object>>> loadCompletedAdmissionsByRoom(String inst, Long snapshotId) {
+        String safe = sanitizeInst(inst);
+        String snapshotFilter = snapshotId == null ? "" : """
+                   AND cd.updated_at >= (
+                       SELECT uploaded_at
+                         FROM csm.room_board_snapshot_%s
+                        WHERE rbs_id = ?
+                   )
+                """.formatted(safe);
+        String sql = """
+                SELECT cd.cs_idx, cd.cs_col_01 AS patient_name_hex, cd.cs_col_02 AS gender,
+                       cd.cs_col_38 AS room_name
+                  FROM csm.counsel_data_%s cd
+                 WHERE cd.cs_col_19 = '입원완료'
+                   AND cd.cs_col_38 IS NOT NULL
+                   AND TRIM(cd.cs_col_38) <> ''
+                %s
+                 ORDER BY cd.updated_at ASC, cd.cs_idx ASC
+                """.formatted(safe, snapshotFilter);
+        List<Map<String, Object>> rows = snapshotId == null
+                ? jdbcTemplate.queryForList(sql)
+                : jdbcTemplate.queryForList(sql, snapshotId);
+        List<Map<String, Object>> patients = new ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            String roomName = normalizeRoomName(Objects.toString(row.get("room_name"), ""));
+            if (roomName.isBlank()) {
+                continue;
+            }
+            String patientName = decryptHexString(safeText(row.get("patient_name_hex"), 500));
+            if (patientName.isBlank()) {
+                patientName = "입원완료환자";
+            }
+            Map<String, Object> patient = new LinkedHashMap<>();
+            patient.put("room_name", roomName);
+            patient.put("patient_name", patientName);
+            patient.put("gender", normalizeGender(safeText(row.get("gender"), 20)));
+            patients.add(patient);
+        }
+        return patients.stream()
+                .collect(Collectors.groupingBy(row -> normalizeRoomName(Objects.toString(row.get("room_name"), ""))));
+    }
+
+    private List<Map<String, Object>> mergePatients(
+            List<Map<String, Object>> snapshotPatients,
+            List<Map<String, Object>> completedAdmissions) {
+        List<Map<String, Object>> merged = new ArrayList<>(snapshotPatients);
+        for (Map<String, Object> admission : completedAdmissions) {
+            String admissionName = safeText(admission.get("patient_name"), 100);
+            String admissionRoom = normalizeRoomName(Objects.toString(admission.get("room_name"), ""));
+            boolean exists = merged.stream().anyMatch(patient ->
+                    admissionName.equals(safeText(patient.get("patient_name"), 100))
+                            && admissionRoom.equals(normalizeRoomName(Objects.toString(patient.get("room_name"), ""))));
+            if (!exists) {
+                merged.add(admission);
+            }
+        }
+        return merged;
     }
 
     private Map<String, List<Map<String, Object>>> loadDischargeNoticesByRoom(String inst, LocalDate date) {
@@ -1459,17 +1524,22 @@ public class RoomBoardService {
 
     /**
      * 입원예정일 및 배정병실을 업데이트합니다.
+     * @return 업데이트된 행 수
      */
     @Transactional
-    public void updateAdmissionDetails(String inst, long csIdx, String plannedDate, String roomName) {
+    public int updateAdmissionDetails(String inst, long csIdx, String plannedDate, String roomName) {
         String safe = sanitizeInst(inst);
         String safePlannedDate = plannedDate == null ? "" : plannedDate.trim();
         String safeRoomName = roomName == null ? "" : roomName.trim();
-        jdbcTemplate.update(
+        int rows = jdbcTemplate.update(
                 "UPDATE csm.counsel_data_" + safe + " SET cs_col_21 = ?, cs_col_38 = ?, updated_at = NOW() WHERE cs_idx = ?",
                 safePlannedDate.isEmpty() ? null : safePlannedDate,
                 safeRoomName.isEmpty() ? null : safeRoomName,
                 csIdx);
+        if (rows == 0) {
+            throw new IllegalArgumentException("업데이트할 상담 기록을 찾을 수 없습니다. csIdx=" + csIdx);
+        }
+        return rows;
     }
 
     /**
@@ -1477,10 +1547,122 @@ public class RoomBoardService {
      */
     @Transactional
     public void confirmAdmission(String inst, long csIdx) {
+        confirmAdmission(inst, csIdx, null, null);
+    }
+
+    /**
+     * 상담결과를 '입원완료'로 변경하고 병실현황판 최신 스냅샷에 재원자로 반영합니다.
+     */
+    @Transactional
+    public void confirmAdmission(String inst, long csIdx, String plannedDate, String roomName) {
+        ensureTables(inst);
         String safe = sanitizeInst(inst);
+        String safePlannedDate = plannedDate == null ? "" : plannedDate.trim();
+        String safeRoomName = roomName == null ? "" : roomName.trim();
+        if (!safePlannedDate.isBlank() || !safeRoomName.isBlank()) {
+            updateAdmissionDetails(safe, csIdx, safePlannedDate, safeRoomName);
+        }
+
+        Map<String, Object> admission = findAdmissionReservationForBoard(safe, csIdx);
+        String assignedRoom = normalizeRoomName(firstNonBlank(safeRoomName, safeText(admission.get("room_name"), 100)));
+        if (assignedRoom.isBlank()) {
+            throw new IllegalArgumentException("병실을 먼저 선택해주세요.");
+        }
+
         jdbcTemplate.update(
                 "UPDATE csm.counsel_data_" + safe + " SET cs_col_19 = '입원완료', updated_at = NOW() WHERE cs_idx = ?",
                 csIdx);
+        addConfirmedAdmissionToCurrentSnapshot(safe, admission, assignedRoom);
+    }
+
+    private Map<String, Object> findAdmissionReservationForBoard(String inst, long csIdx) {
+        String safe = sanitizeInst(inst);
+        String sql = """
+                SELECT cs_idx, cs_col_01 AS patient_name_hex, cs_col_02 AS gender,
+                       cs_col_21 AS planned_date, cs_col_38 AS room_name
+                  FROM csm.counsel_data_%s
+                 WHERE cs_idx = ?
+                 LIMIT 1
+                """.formatted(safe);
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, csIdx);
+        if (rows.isEmpty()) {
+            throw new IllegalArgumentException("입원예약 정보를 찾을 수 없습니다.");
+        }
+        return rows.get(0);
+    }
+
+    private void addConfirmedAdmissionToCurrentSnapshot(String inst, Map<String, Object> admission, String roomName) {
+        String safe = sanitizeInst(inst);
+        RoomBoardSnapshot snapshot = findSnapshot(safe, null);
+        long snapshotId = snapshot == null || snapshot.getId() == null
+                ? createAdmissionReservationSnapshot(safe)
+                : snapshot.getId();
+        String patientName = decryptHexString(safeText(admission.get("patient_name_hex"), 500));
+        if (patientName.isBlank()) {
+            patientName = "입원완료환자";
+        }
+        if (isPatientAlreadyInSnapshot(safe, snapshotId, roomName, patientName)) {
+            return;
+        }
+        String wardName = findWardNameByRoom(safe, roomName);
+        String plannedDate = safeText(admission.get("planned_date"), 20);
+        jdbcTemplate.update("""
+                INSERT INTO csm.room_board_patient_%s
+                (rbs_id, ward_name, room_name, patient_name, gender, admission_date, patient_type, memo, raw_row)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """.formatted(safe),
+                snapshotId,
+                wardName.isBlank() ? null : wardName,
+                roomName,
+                patientName,
+                normalizeGender(safeText(admission.get("gender"), 20)),
+                plannedDate.isBlank() ? LocalDate.now().format(DATE_FMT) : plannedDate,
+                "입원완료",
+                "입원예약관리에서 입원완료 처리",
+                "admission-reservation:" + safeText(admission.get("cs_idx"), 30));
+    }
+
+    private long createAdmissionReservationSnapshot(String inst) {
+        String safe = sanitizeInst(inst);
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(con -> {
+            var ps = con.prepareStatement("""
+                    INSERT INTO csm.room_board_snapshot_%s
+                    (source_type, snapshot_date, snapshot_time, raw_text, uploaded_by, parse_status, parse_message)
+                    VALUES ('ADMISSION_RESERVATION', ?, ?, '', 'admission-reservation', 'SUCCESS', '입원예약 입원완료 처리')
+                    """.formatted(safe), Statement.RETURN_GENERATED_KEYS);
+            ps.setObject(1, LocalDate.now());
+            ps.setString(2, LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")));
+            return ps;
+        }, keyHolder);
+        return Objects.requireNonNull(keyHolder.getKey()).longValue();
+    }
+
+    private boolean isPatientAlreadyInSnapshot(String inst, long snapshotId, String roomName, String patientName) {
+        String safe = sanitizeInst(inst);
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                  FROM csm.room_board_patient_%s
+                 WHERE rbs_id = ?
+                   AND room_name = ?
+                   AND patient_name = ?
+                """.formatted(safe), Integer.class, snapshotId, roomName, patientName);
+        return count != null && count > 0;
+    }
+
+    private String findWardNameByRoom(String inst, String roomName) {
+        String safe = sanitizeInst(inst);
+        List<String> rows = jdbcTemplate.queryForList("""
+                SELECT ward_name
+                 FROM csm.room_board_room_master_%s
+                 WHERE use_yn = 'Y'
+                   AND REPLACE(room_name, ' ', '') = ?
+                   AND start_date <= ?
+                   AND end_date >= ?
+                 ORDER BY start_date DESC, rbm_id DESC
+                 LIMIT 1
+                """.formatted(safe), String.class, roomName, LocalDate.now(), LocalDate.now());
+        return rows.isEmpty() ? "" : safeText(rows.get(0), 50);
     }
 
     /**

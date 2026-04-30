@@ -50,7 +50,8 @@ public class AdmissionReservationApiController {
             return ResponseEntity.ok(Map.of("success", true));
         } catch (Exception e) {
             log.warn("[ar-api] update fail inst={} csIdx={}: {}", inst, csIdx, e.toString());
-            return ResponseEntity.ok(Map.of("success", false, "message", "저장 중 오류가 발생했습니다."));
+            String message = e instanceof IllegalArgumentException ? e.getMessage() : "저장 중 오류가 발생했습니다.";
+            return ResponseEntity.ok(Map.of("success", false, "message", message));
         }
     }
 
@@ -58,6 +59,8 @@ public class AdmissionReservationApiController {
     @PostMapping("/confirm")
     public ResponseEntity<Map<String, Object>> confirm(
             @RequestParam("csIdx") long csIdx,
+            @RequestParam(value = "plannedDate", required = false, defaultValue = "") String plannedDate,
+            @RequestParam(value = "roomName", required = false, defaultValue = "") String roomName,
             HttpSession session) {
 
         String inst = resolveInst(session);
@@ -66,11 +69,12 @@ public class AdmissionReservationApiController {
                     .body(Map.of("success", false, "message", "로그인이 필요합니다."));
         }
         try {
-            roomBoardService.confirmAdmission(inst, csIdx);
+            roomBoardService.confirmAdmission(inst, csIdx, plannedDate, roomName);
             return ResponseEntity.ok(Map.of("success", true));
         } catch (Exception e) {
             log.warn("[ar-api] confirm fail inst={} csIdx={}: {}", inst, csIdx, e.toString());
-            return ResponseEntity.ok(Map.of("success", false, "message", "처리 중 오류가 발생했습니다."));
+            String message = e instanceof IllegalArgumentException ? e.getMessage() : "처리 중 오류가 발생했습니다.";
+            return ResponseEntity.ok(Map.of("success", false, "message", message));
         }
     }
 

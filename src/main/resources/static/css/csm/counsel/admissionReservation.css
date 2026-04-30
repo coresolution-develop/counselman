@@ -287,17 +287,21 @@
 
 /* ── 빈 목록 ── */
 .ar-empty {
-    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     padding: 60px 0;
     color: var(--ar-sub);
     font-size: 14px;
+    text-align: center;
 }
 
 .ar-empty-icon {
     font-size: 40px;
     margin-bottom: 12px;
     opacity: 0.35;
-    display: block;
+    line-height: 1;
 }
 
 /* ── 상태 뱃지 ── */

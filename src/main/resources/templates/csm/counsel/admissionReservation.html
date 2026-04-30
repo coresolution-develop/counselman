@@ -236,9 +236,11 @@
             if (!confirm('입원완료 처리하시겠습니까?\n상태가 "입원완료"로 변경되고 이 목록에서 제거됩니다.')) return;
             const csIdx = this.dataset.csIdx;
             const row = this.closest('tr');
+            const plannedDate = row.querySelector('.ar-planned-date')?.value || '';
+            const roomName    = row.querySelector('.ar-room-name')?.value || '';
 
             setRowBusy(row, true);
-            postJson(URL_CONFIRM, { csIdx })
+            postJson(URL_CONFIRM, { csIdx, plannedDate, roomName })
                 .then(res => {
                     if (res.success) {
                         showAlert('입원완료 처리되었습니다.', 'success');

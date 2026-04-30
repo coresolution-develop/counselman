@@ -30,6 +30,7 @@ import com.coresolution.csm.serivce.RoomBoardService;
 import com.coresolution.csm.serivce.SmsService;
 import com.coresolution.csm.vo.RoomBoardView;
 import com.coresolution.csm.vo.Userdata;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
 class RoomBoardControllerTest {
@@ -58,7 +59,8 @@ class RoomBoardControllerTest {
                 moduleFeatureService,
                 csmAuthService,
                 mediplatSsoService,
-                smsService);
+                smsService,
+                new ObjectMapper());
     }
 
     @Test
@@ -84,7 +86,7 @@ class RoomBoardControllerTest {
                 model,
                 session);
 
-        assertEquals("csm/counsel/roomBoard", view);
+        assertEquals("design/ward-status", view);
         assertEquals(Boolean.FALSE, model.getAttribute("popupMode"));
         verify(mediplatSsoService, never()).validateRoomBoardViewer(any(), any(), anyLong(), any());
     }
@@ -140,7 +142,7 @@ class RoomBoardControllerTest {
                 model,
                 new MockHttpSession());
 
-        assertEquals("csm/counsel/roomBoard", view);
+        assertEquals("design/ward-status", view);
         assertEquals(Boolean.TRUE, model.getAttribute("popupMode"));
         verify(mediplatSsoService).validateRoomBoardViewer("FALH", "viewer1", 1893456000L, "sig");
     }
