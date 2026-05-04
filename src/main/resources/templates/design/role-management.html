@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="turbo-visit-control" content="reload" />
   <meta name="_csrf"        th:content="${_csrf.token}"/>
   <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
   <title>MediPlat · 역할 관리</title>
@@ -88,7 +89,7 @@
 
   <!-- ============ Main ============ -->
   <main class="main">
-    <div class="page" x-data="roleManager()">
+    <div class="page" x-data="roleManagementPage()">
 
       <!-- Page header -->
       <div class="page__header">
@@ -112,7 +113,11 @@
           <svg><use href="#i-key"/></svg>
           CSM 접근 권한
         </a>
-        <a class="tab" th:href="@{/admin/room-board}" role="tab">
+        <a class="tab" th:href="@{/counsel/log-settings}" role="tab">
+          <svg><use href="#i-sliders"/></svg>
+          상담일지관리
+        </a>
+        <a class="tab" th:href="@{/room-board/manage}" role="tab">
           <svg><use href="#i-bed"/></svg>
           병실현황판 관리
         </a>
@@ -456,7 +461,7 @@
 <script th:src="@{/assets/js/datepicker.js}"></script>
 <script th:src="@{/assets/js/chrome.js}" data-page="admin" th:attr="data-ctx=@{/}"></script>
 
-<!-- API-driven roleManager — overrides the hardcoded version in app.js -->
+<!-- API-driven role management page component -->
 <script>
 (function () {
   const ctx = document.querySelector('[data-ctx]')?.dataset.ctx || '/';
@@ -489,8 +494,8 @@
     records: 'notebook',
   };
 
-  function _registerRoleManager() {
-    Alpine.data('roleManager', () => ({
+  function _registerRoleManagementPage() {
+    Alpine.data('roleManagementPage', () => ({
       loading: true,
       roles: [],
       groups: [],
@@ -816,9 +821,9 @@
   }
 
   if (window.Alpine) {
-    _registerRoleManager();
+    _registerRoleManagementPage();
   } else {
-    document.addEventListener('alpine:init', _registerRoleManager);
+    document.addEventListener('alpine:init', _registerRoleManagementPage);
   }
 }());
 </script>

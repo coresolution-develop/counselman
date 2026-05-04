@@ -125,6 +125,10 @@
           <svg><use href="#i-key"/></svg>
           CSM 접근 권한
         </a>
+        <a class="tab" th:href="@{/counsel/log-settings}" role="tab">
+          <svg><use href="#i-sliders"/></svg>
+          상담일지관리
+        </a>
         <button class="tab is-active" role="tab" aria-selected="true">
           <svg><use href="#i-bed"/></svg>
           병실현황판 관리
@@ -224,7 +228,7 @@
         <p class="rb-card-title" style="font-size:13px;margin-bottom:14px;">개별 병실 추가 · 수정</p>
         <p class="rb-note" style="margin-top:0;margin-bottom:14px;">아래 목록에서 행을 클릭하면 수정 폼에 자동으로 불러옵니다.</p>
 
-        <form th:action="@{/admin/room-board/room/save}" method="post" id="roomConfigForm">
+        <form th:action="@{/room-board/manage/room/save}" method="post" id="roomConfigForm">
           <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
           <input type="hidden" name="id" id="roomConfigId" />
           <div class="rb-grid">
@@ -331,7 +335,7 @@
                 <td th:text="${item.note}"></td>
                 <td th:text="${item.useYn == 'Y' ? '유효' : '종료'}"></td>
                 <td>
-                  <form th:action="@{/admin/room-board/room/delete}" method="post"
+                  <form th:action="@{/room-board/manage/room/delete}" method="post"
                         onsubmit="return confirm('삭제하시겠습니까?');" onclick="event.stopPropagation();">
                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
                     <input type="hidden" name="id" th:value="${item.id}" />
@@ -470,7 +474,7 @@ document.addEventListener('turbo:load', () => {
   document.getElementById('previewImportBtn')?.addEventListener('click', async () => {
     const raw = document.getElementById('rawText')?.value?.trim();
     if (!raw) { alert('붙여넣기 데이터를 입력해 주세요.'); return; }
-    const res  = await fetch(ctx + '/admin/room-board/import/preview', { method: 'POST', headers, body: buildPayload().toString() });
+    const res  = await fetch(ctx + '/room-board/manage/import/preview', { method: 'POST', headers, body: buildPayload().toString() });
     const data = await res.json();
     if (!res.ok) { alert(data.message || '미리보기에 실패했습니다.'); return; }
     renderPreview(data);
@@ -480,7 +484,7 @@ document.addEventListener('turbo:load', () => {
     const raw = document.getElementById('rawText')?.value?.trim();
     if (!raw) { alert('붙여넣기 데이터를 입력해 주세요.'); return; }
     if (!confirm('현재 붙여넣기 데이터를 저장하시겠습니까?')) return;
-    const res  = await fetch(ctx + '/admin/room-board/import/save', { method: 'POST', headers, body: buildPayload().toString() });
+    const res  = await fetch(ctx + '/room-board/manage/import/save', { method: 'POST', headers, body: buildPayload().toString() });
     const data = await res.json();
     if (!res.ok) { alert(data.message || '가져오기에 실패했습니다.'); return; }
     alert(`가져오기 완료: ${data.parsedCount || 0}건`);
@@ -515,7 +519,7 @@ document.addEventListener('turbo:load', () => {
 
   document.getElementById('previewRoomConfigPasteBtn')?.addEventListener('click', async () => {
     if (!document.getElementById('roomConfigRawText')?.value?.trim()) { alert('병실 기준정보 붙여넣기 데이터를 입력해 주세요.'); return; }
-    const res  = await fetch(ctx + '/admin/room-board/room-config/preview', { method: 'POST', headers, body: buildRcPayload().toString() });
+    const res  = await fetch(ctx + '/room-board/manage/room-config/preview', { method: 'POST', headers, body: buildRcPayload().toString() });
     const data = await res.json();
     if (!res.ok) { alert(data.message || '병실 기준정보 미리보기에 실패했습니다.'); return; }
     renderRcPreview(data);
@@ -524,7 +528,7 @@ document.addEventListener('turbo:load', () => {
   document.getElementById('saveRoomConfigPasteBtn')?.addEventListener('click', async () => {
     if (!document.getElementById('roomConfigRawText')?.value?.trim()) { alert('병실 기준정보 붙여넣기 데이터를 입력해 주세요.'); return; }
     if (!confirm('현재 병실 기준정보 붙여넣기 데이터를 저장하시겠습니까?')) return;
-    const res  = await fetch(ctx + '/admin/room-board/room-config/save', { method: 'POST', headers, body: buildRcPayload().toString() });
+    const res  = await fetch(ctx + '/room-board/manage/room-config/save', { method: 'POST', headers, body: buildRcPayload().toString() });
     const data = await res.json();
     if (!res.ok) { alert(data.message || '병실 기준정보 일괄 저장에 실패했습니다.'); return; }
     alert(`병실 기준정보 저장 완료: ${data.parsedCount || 0}건`);

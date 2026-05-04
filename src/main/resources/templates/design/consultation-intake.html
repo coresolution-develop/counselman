@@ -13,6 +13,132 @@
   <link rel="stylesheet" th:href="@{/assets/css/datepicker.css}" />
   <meta name="_csrf" th:content="${_csrf.token}" />
   <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+  <style>
+    @media (max-width: 768px) {
+      .app[data-screen-label="Consultation Intake"] {
+        overflow-x: hidden;
+      }
+      .app[data-screen-label="Consultation Intake"] .main {
+        padding: 16px;
+      }
+      .app[data-screen-label="Consultation Intake"] .page {
+        max-width: 100%;
+      }
+      .app[data-screen-label="Consultation Intake"] .page__header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .app[data-screen-label="Consultation Intake"] .stat-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .app[data-screen-label="Consultation Intake"] .intake-layout {
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 16px !important;
+      }
+      .app[data-screen-label="Consultation Intake"] .side-form {
+        position: static;
+        top: auto;
+        order: -1;
+      }
+      .app[data-screen-label="Consultation Intake"] .table {
+        min-width: 760px;
+      }
+      .app[data-screen-label="Consultation Intake"] .toolbar {
+        align-items: flex-start;
+      }
+      .app[data-screen-label="Consultation Intake"] .filter-pills {
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .app[data-screen-label="Consultation Intake"] .main {
+        padding: 12px;
+      }
+      .app[data-screen-label="Consultation Intake"] .page__title {
+        font-size: 22px;
+      }
+      .app[data-screen-label="Consultation Intake"] .page__subtitle {
+        font-size: 12px;
+      }
+      .app[data-screen-label="Consultation Intake"] .stat-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      .app[data-screen-label="Consultation Intake"] .stat-card {
+        padding: 12px;
+        border-radius: 10px;
+        box-shadow: none;
+      }
+      .app[data-screen-label="Consultation Intake"] .stat-card__label {
+        font-size: 11px;
+        min-width: 0;
+      }
+      .app[data-screen-label="Consultation Intake"] .stat-card__value {
+        font-size: 24px;
+      }
+      .app[data-screen-label="Consultation Intake"] .stat-card__trend {
+        overflow-wrap: anywhere;
+      }
+      .app[data-screen-label="Consultation Intake"] .toolbar {
+        gap: 8px;
+      }
+      .app[data-screen-label="Consultation Intake"] .toolbar__spacer {
+        display: none;
+      }
+      .app[data-screen-label="Consultation Intake"] .toolbar .btn-xs {
+        min-height: 44px;
+      }
+      .app[data-screen-label="Consultation Intake"] .filter-pills {
+        width: 100%;
+        padding: 3px;
+      }
+      .app[data-screen-label="Consultation Intake"] .pill {
+        min-height: 40px;
+        white-space: nowrap;
+      }
+      .app[data-screen-label="Consultation Intake"] .side-form {
+        padding: 14px;
+        border-radius: 10px;
+      }
+      .app[data-screen-label="Consultation Intake"] .side-form__grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      .app[data-screen-label="Consultation Intake"] .side-form__footer {
+        flex-direction: column;
+      }
+      .app[data-screen-label="Consultation Intake"] .input,
+      .app[data-screen-label="Consultation Intake"] .select,
+      .app[data-screen-label="Consultation Intake"] .textarea,
+      .app[data-screen-label="Consultation Intake"] .mp-dp-input > input,
+      .app[data-screen-label="Consultation Intake"] .btn,
+      .app[data-screen-label="Consultation Intake"] .btn-xs {
+        min-height: 44px;
+        font-size: 16px;
+      }
+      .app[data-screen-label="Consultation Intake"] .input,
+      .app[data-screen-label="Consultation Intake"] .select,
+      .app[data-screen-label="Consultation Intake"] .mp-dp-input > input {
+        height: 44px;
+      }
+      .app[data-screen-label="Consultation Intake"] .textarea {
+        min-height: 112px;
+      }
+      .app[data-screen-label="Consultation Intake"] .table-wrap {
+        border-radius: 10px;
+        max-width: 100%;
+      }
+      .app[data-screen-label="Consultation Intake"] .row-actions {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
 </head>
 <body>
 <script th:src="@{/assets/js/sprite.js}"></script>
@@ -60,7 +186,7 @@
       </div>
 
       <!-- Split layout: queue + form -->
-      <div style="display:grid; grid-template-columns: 1fr 360px; gap: 20px; align-items: start;">
+      <div class="intake-layout" style="display:grid; grid-template-columns: 1fr 360px; gap: 20px; align-items: start;">
 
         <!-- Queue -->
         <div>

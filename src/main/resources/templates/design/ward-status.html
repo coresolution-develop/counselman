@@ -294,6 +294,190 @@
     .ws-select-btn:disabled { background: var(--gray-200); color: var(--text-tertiary); cursor: not-allowed; transform: none; }
     .ws-select-btn--ghost { background: transparent; color: var(--brand-700); border: 1px solid var(--brand-500); }
     .ws-select-btn--ghost:hover { background: color-mix(in oklab, var(--brand-500) 8%, #fff); }
+
+    @media (max-width: 768px) {
+      .app[data-screen-label="Ward Status"] {
+        overflow-x: hidden;
+      }
+      .app[data-screen-label="Ward Status"] .main {
+        padding: 16px;
+      }
+      html.ws-popup .main {
+        padding: 16px !important;
+      }
+      .ws-wrap {
+        padding: 0;
+      }
+      .ws-hero {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        padding: 16px;
+        border-radius: 12px;
+      }
+      .ws-hero__actions {
+        width: 100%;
+        margin-left: 0;
+        flex-wrap: wrap;
+      }
+      .ws-hero__btn {
+        min-height: 44px;
+        justify-content: center;
+      }
+      .ws-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .ws-filters {
+        align-items: flex-start;
+        gap: 8px;
+        padding: 12px;
+      }
+      .ws-filters__label {
+        width: 100%;
+      }
+      .ws-chip {
+        min-height: 40px;
+      }
+      .ws-filters .spacer {
+        display: none;
+      }
+      .ws-reset {
+        min-height: 40px;
+      }
+      .ws-ward__head {
+        align-items: flex-start;
+        padding: 12px;
+      }
+      .ws-ward__mini {
+        width: 100%;
+        margin-left: 0 !important;
+        gap: 8px 12px;
+      }
+      .ws-ward > div[style*="overflow-x:auto"] {
+        overflow-x: visible !important;
+      }
+      .ws-table,
+      .ws-table thead,
+      .ws-table tbody,
+      .ws-table tr,
+      .ws-table th,
+      .ws-table td {
+        display: block;
+      }
+      .ws-table thead {
+        display: none;
+      }
+      .ws-table tbody tr {
+        margin: 10px;
+        padding: 12px;
+        border: 1px solid var(--border-default);
+        border-radius: 12px;
+        background: #fff;
+      }
+      .ws-table tbody tr:hover {
+        background: #fff;
+      }
+      .ws-table tbody td {
+        display: grid;
+        grid-template-columns: 96px minmax(0, 1fr);
+        gap: 10px;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+      .ws-table tbody td:last-child {
+        border-bottom: 0;
+      }
+      .ws-table tbody td::before {
+        content: attr(data-label);
+        color: var(--text-tertiary);
+        font-size: 11px;
+        font-weight: 800;
+      }
+      .ws-table tbody td.ws-room-beds-cell {
+        display: block;
+      }
+      .ws-table tbody td.ws-room-beds-cell::before {
+        display: block;
+        margin-bottom: 8px;
+      }
+      .ws-beds {
+        grid-auto-flow: row;
+        grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+        grid-auto-columns: auto;
+      }
+      .ws-bed-slot {
+        height: 52px;
+      }
+      .ws-select-btn {
+        width: 100%;
+        min-height: 44px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .app[data-screen-label="Ward Status"] .main,
+      html.ws-popup .main {
+        padding: 12px !important;
+      }
+      .ws-hero__title {
+        font-size: 17px;
+      }
+      .ws-hero__btn {
+        flex: 1 1 calc(50% - 4px);
+        padding: 8px 10px;
+      }
+      .ws-stats {
+        gap: 8px;
+      }
+      .ws-stat {
+        padding: 12px;
+        border-radius: 10px;
+      }
+      .ws-stat__value {
+        font-size: 24px;
+      }
+      .ws-stat__label,
+      .ws-stat__sub {
+        overflow-wrap: anywhere;
+      }
+      .ws-filters {
+        border-radius: 10px;
+      }
+      .ws-chip {
+        flex: 1 1 calc(50% - 4px);
+        justify-content: center;
+        padding: 7px 8px;
+      }
+      .ws-reset {
+        width: 100%;
+      }
+      .ws-ward {
+        border-radius: 10px;
+      }
+      .ws-ward__title {
+        width: 100%;
+      }
+      .ws-ward__mini span {
+        flex: 1 1 calc(50% - 6px);
+      }
+      .ws-table tbody tr {
+        margin: 8px;
+        padding: 10px;
+      }
+      .ws-table tbody td {
+        grid-template-columns: 82px minmax(0, 1fr);
+        gap: 8px;
+      }
+      .ws-beds {
+        grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+        gap: 6px;
+      }
+      .ws-bed-slot {
+        height: 50px;
+        font-size: 11px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -323,7 +507,7 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
           최신 현황
         </button>
-        <a th:href="@{/admin/room-board}" class="ws-hero__btn" x-show="!popupMode && canManage">관리 화면</a>
+        <a th:href="@{/room-board/manage}" class="ws-hero__btn" x-show="!popupMode && canManage">관리 화면</a>
         <button type="button" class="ws-hero__btn" @click="location.reload()" x-show="popupMode">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
           새로고침
@@ -422,27 +606,27 @@
             <tbody>
               <template x-for="room in ward.rooms" :key="room.id">
                 <tr :class="{ 'is-disabled': room.available === 0 }">
-                  <td>
+                  <td data-label="병실">
                     <span class="ws-bed">
                       <span x-text="room.id"></span>
                     </span>
                     <span class="ws-bed__sub" style="display:block;margin-top:3px;padding-left:4px;color:var(--text-tertiary);font-size:11px;" x-text="'(' + room.capacity + '인실)'"></span>
                     <span class="ws-discharge-summary" x-show="room.discharge > 0" x-text="'퇴원 ' + room.discharge + ' · 오후가능 ' + room.afternoon"></span>
                   </td>
-                  <td x-text="room.capacity + '병실'"></td>
-                  <td x-text="room.gender || '—'"></td>
-                  <td x-text="room.occupied + '명'"></td>
-                  <td>
+                  <td data-label="허가병상수" x-text="room.capacity + '병실'"></td>
+                  <td data-label="성별" x-text="room.gender || '—'"></td>
+                  <td data-label="재원자 수" x-text="room.occupied + '명'"></td>
+                  <td data-label="입원 T.O">
                     <span :class="room.available === 0 ? 'ws-available is-full' : 'ws-available'" x-text="room.available + '명 ' + (room.available === 0 ? '만실' : '입원 가능!')"></span>
                   </td>
-                  <td x-text="room.occupancy + '%'"></td>
-                  <td>
+                  <td data-label="가동률" x-text="room.occupancy + '%'"></td>
+                  <td data-label="간병 형태">
                     <template x-for="t in room.care"><span class="ws-tag" x-text="t"></span></template>
                   </td>
-                  <td x-text="room.reserved + '명'"></td>
-                  <td x-text="room.admitDate || '—'"></td>
-                  <td x-text="room.careType || '—'"></td>
-                  <td>
+                  <td data-label="예약 환자수" x-text="room.reserved + '명'"></td>
+                  <td data-label="입원 예정일" x-text="room.admitDate || '—'"></td>
+                  <td data-label="상태구분" x-text="room.careType || '—'"></td>
+                  <td data-label="재원환자 명단" class="ws-room-beds-cell">
                     <div class="ws-beds">
                       <template x-for="i in room.capacity" :key="i">
                         <div class="ws-bed-slot"
@@ -457,7 +641,7 @@
                       </template>
                     </div>
                   </td>
-                  <td x-show="popupMode">
+                  <td data-label="선택" x-show="popupMode">
                     <button class="ws-select-btn"
                             :disabled="room.available === 0"
                             :class="{ 'ws-select-btn--ghost': room.available === 0 }"

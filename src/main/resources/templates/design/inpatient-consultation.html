@@ -358,6 +358,7 @@
       position: sticky; bottom: 16px; z-index: 2;
     }
     .ic-footer .spacer { flex: 1; font-size: 12px; color: var(--text-tertiary); align-self: center; }
+    .ic-mobile-fab { display: none; }
 
     /* Guardian rows */
     .ic-guardian { display: grid; grid-template-columns: 1.1fr 0.7fr 1.4fr; gap: 8px; align-items: center; }
@@ -489,6 +490,292 @@
     .sms-foot .btn--primary:hover { background: var(--brand-600); }
     .sms-foot .btn--primary:disabled { background: var(--gray-300); cursor: not-allowed; }
     .sms-foot .btn--primary svg { width: 14px; height: 14px; }
+
+    /* 입원상담 모바일 보강: 기존 데스크톱 구조는 유지하고 좁은 화면에서만 재배치 */
+    @media (max-width: 768px) {
+      .app[data-screen-label="Inpatient Consultation"] {
+        overflow-x: hidden;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .main {
+        padding: 16px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .page {
+        max-width: 100%;
+        padding-bottom: 132px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .page__header {
+        align-items: flex-start;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .page__header > div:last-child {
+        width: 100%;
+        flex-wrap: wrap;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .page__header .btn {
+        min-height: 44px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-grid > aside.ic-card {
+        position: static !important;
+        top: auto !important;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-top {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 14px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-top .ic-field--wide {
+        grid-column: 1 / -1;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-dynamic-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-side__top,
+      .app[data-screen-label="Inpatient Consultation"] .ic-room__btns {
+        grid-template-columns: 1fr;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-guardian {
+        grid-template-columns: 1fr;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .sms-dialog {
+        width: min(720px, calc(100vw - 24px));
+        height: calc(100dvh - 24px);
+      }
+      .app[data-screen-label="Inpatient Consultation"] .sms-body {
+        grid-template-columns: 1fr;
+        overflow-y: auto;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .sms-col {
+        overflow: visible;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .sms-col--left,
+      .app[data-screen-label="Inpatient Consultation"] .sms-col--right {
+        border: 0;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .app[data-screen-label="Inpatient Consultation"] .main {
+        padding: 12px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .page__title {
+        font-size: 22px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .page {
+        padding-bottom: 88px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .page__subtitle {
+        font-size: 12px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .page__header > div:last-child .btn {
+        flex: 1 1 calc(50% - 4px);
+        justify-content: center;
+        padding: 0 10px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-card {
+        border-radius: 10px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-card__head {
+        padding: 12px;
+        gap: 8px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-card__head .eyebrow {
+        display: none;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-top,
+      .app[data-screen-label="Inpatient Consultation"] .ic-side__top {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 12px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-input,
+      .app[data-screen-label="Inpatient Consultation"] .ic-select,
+      .app[data-screen-label="Inpatient Consultation"] .mp-dp-input > input,
+      .app[data-screen-label="Inpatient Consultation"] .btn,
+      .app[data-screen-label="Inpatient Consultation"] .ic-room__btn,
+      .app[data-screen-label="Inpatient Consultation"] .ic-recorder__btn,
+      .app[data-screen-label="Inpatient Consultation"] .ic-phone-actions .btn-icon {
+        min-height: 44px;
+        font-size: 16px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-input,
+      .app[data-screen-label="Inpatient Consultation"] .ic-select,
+      .app[data-screen-label="Inpatient Consultation"] .mp-dp-input > input {
+        height: 44px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-toggle,
+      .app[data-screen-label="Inpatient Consultation"] .ic-field__label,
+      .app[data-screen-label="Inpatient Consultation"] .ic-dynamic-field__label,
+      .app[data-screen-label="Inpatient Consultation"] .ic-chip {
+        overflow-wrap: anywhere;
+        white-space: normal;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-sections {
+        padding: 4px 10px 12px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        padding: 12px 0;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-row__label {
+        position: static;
+        width: fit-content;
+        min-width: 72px;
+        text-align: left;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-chips,
+      .app[data-screen-label="Inpatient Consultation"] .ic-dynamic-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-dynamic-field,
+      .app[data-screen-label="Inpatient Consultation"] .ic-dynamic-field--with-control,
+      .app[data-screen-label="Inpatient Consultation"] .ic-dynamic-field--solo.ic-dynamic-field--with-control {
+        grid-template-columns: max-content minmax(0, 1fr);
+        width: 100%;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-dynamic-field__control {
+        grid-column: 1 / -1;
+        height: auto;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-inline-select,
+      .app[data-screen-label="Inpatient Consultation"] .ic-pair,
+      .app[data-screen-label="Inpatient Consultation"] .ic-row__body > div[style*="grid-template-columns:1fr 1fr"],
+      .app[data-screen-label="Inpatient Consultation"] .ic-side__top .full {
+        grid-template-columns: 1fr !important;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-side__section,
+      .app[data-screen-label="Inpatient Consultation"] .ic-room,
+      .app[data-screen-label="Inpatient Consultation"] .ic-recorder {
+        margin-left: 12px !important;
+        margin-right: 12px !important;
+        padding: 12px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-recorder__head,
+      .app[data-screen-label="Inpatient Consultation"] .audio-record-meta,
+      .app[data-screen-label="Inpatient Consultation"] .counsel-file-head {
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-recorder__badge {
+        margin-left: 0;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-recorder__actions {
+        grid-template-columns: 1fr 1fr;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-history {
+        overflow-x: auto;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-history__head,
+      .app[data-screen-label="Inpatient Consultation"] .ic-history__row {
+        min-width: 440px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-footer {
+        display: none;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-mobile-fab {
+        position: fixed;
+        right: 16px;
+        bottom: calc(16px + env(safe-area-inset-bottom));
+        z-index: 55;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 10px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-mobile-fab__bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-mobile-fab__menu {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-mobile-fab__action,
+      .app[data-screen-label="Inpatient Consultation"] .ic-mobile-fab__save,
+      .app[data-screen-label="Inpatient Consultation"] .ic-mobile-fab__toggle {
+        min-height: 44px;
+        border: 1px solid var(--border-primary, #d8e2ef);
+        box-shadow: var(--shadow-lg);
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-mobile-fab__action {
+        min-width: 132px;
+        justify-content: center;
+        background: var(--surface, #fff);
+        color: var(--text-primary, #111827);
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-mobile-fab__save {
+        height: 56px;
+        min-width: 124px;
+        justify-content: center;
+        border-radius: 999px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-mobile-fab__action.btn--primary {
+        background: var(--brand-500, #10b981);
+        border-color: var(--brand-500, #10b981);
+        color: #fff;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-mobile-fab__action:disabled,
+      .app[data-screen-label="Inpatient Consultation"] .ic-mobile-fab__save:disabled {
+        opacity: .6;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-mobile-fab__toggle {
+        width: 56px;
+        height: 56px;
+        border-radius: 999px;
+        background: var(--brand-500, #10b981);
+        color: #fff;
+        justify-content: center;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-mobile-fab__toggle svg {
+        transition: transform var(--dur-fast, 120ms);
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-mobile-fab.is-open .ic-mobile-fab__toggle svg {
+        transform: rotate(45deg);
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-textarea {
+        min-height: 120px;
+        font-size: 16px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-modal {
+        width: calc(100vw - 24px);
+        max-height: calc(100dvh - 24px);
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-modal__grid,
+      .app[data-screen-label="Inpatient Consultation"] .ic-modal__foot {
+        grid-template-columns: 1fr;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .sms-modal {
+        padding: 12px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .sms-head,
+      .app[data-screen-label="Inpatient Consultation"] .sms-foot {
+        padding: 12px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .sms-head__sub {
+        display: none;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .sms-foot .btn-group,
+      .app[data-screen-label="Inpatient Consultation"] .sms-foot .btn {
+        width: 100%;
+        margin-left: 0;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .sms-schedule,
+      .app[data-screen-label="Inpatient Consultation"] .sms-picklist,
+      .app[data-screen-label="Inpatient Consultation"] .sms-apply-row,
+      .app[data-screen-label="Inpatient Consultation"] .sms-recipient-add {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1042,6 +1329,25 @@
         <button class="btn btn--primary" @click="save()" :disabled="loading"><svg><use href="#i-check"/></svg><span x-text="loading ? '저장 중...' : '환자정보 저장'"></span></button>
       </div>
 
+      <div class="ic-mobile-fab" :class="{ 'is-open': mobileActionsOpen }" @keydown.escape.window="mobileActionsOpen = false">
+        <div class="ic-mobile-fab__menu" x-show="mobileActionsOpen" x-transition @click.outside="mobileActionsOpen = false">
+          <button type="button" class="btn btn--outline ic-mobile-fab__action"><svg><use href="#i-download"/></svg>일지 출력</button>
+          <button type="button" class="btn btn--outline ic-mobile-fab__action"><svg><use href="#i-download"/></svg>입원서식 출력</button>
+        </div>
+        <div class="ic-mobile-fab__bar">
+          <button type="button" class="btn btn--primary ic-mobile-fab__save" @click="save()" :disabled="loading">
+            <svg><use href="#i-check"/></svg><span x-text="loading ? '저장 중...' : '저장'"></span>
+          </button>
+          <button type="button"
+                  class="btn ic-mobile-fab__toggle"
+                  aria-label="입원상담 출력 메뉴 열기"
+                  :aria-expanded="String(mobileActionsOpen)"
+                  @click="mobileActionsOpen = !mobileActionsOpen">
+            <svg><use href="#i-plus"/></svg>
+          </button>
+        </div>
+      </div>
+
       <!-- History detail modal -->
       <template x-teleport="body">
         <div class="ic-modal__backdrop" x-show="showHistory" x-transition.opacity @click.self="showHistory = false" @keydown.escape.window="showHistory = false" x-cloak>
@@ -1409,6 +1715,7 @@ function inpatientForm() {
 
   return {
     loading: false,
+    mobileActionsOpen: false,
     recorder: 'idle',
     statusOptions:   _status,
     pathTypeOptions: _path,

@@ -183,11 +183,27 @@
       align-items: center;
       gap: 6px;
     }
+    .calendar-nav .btn-xs {
+      min-width: 34px;
+      justify-content: center;
+    }
+    .calendar-nav .btn-xs svg {
+      display: none;
+    }
+    .calendar-nav__text {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 10px;
+      font-size: 16px;
+      line-height: 1;
+      font-weight: 900;
+    }
     .calendar-grid {
       flex: 1;
       min-height: 0;
       display: grid;
-      grid-template-columns: repeat(7, minmax(120px, 1fr));
+      grid-template-columns: repeat(7, minmax(0, 1fr));
       grid-auto-rows: minmax(118px, 1fr);
       overflow: auto;
     }
@@ -209,7 +225,7 @@
     }
     .calendar-day {
       position: relative;
-      min-width: 120px;
+      min-width: 0;
       padding: 8px;
       background: var(--surface, #fff);
       overflow: visible;
@@ -313,6 +329,309 @@
     }
     .calendar-event__name { font-weight: 700; }
     .calendar-event__meta { margin-top: 2px; color: var(--text-secondary, #6b7280); font-size: 11px; }
+    .search-bar__filter-toggle,
+    .mobile-action-fab {
+      display: none;
+    }
+
+    /* 상담리스트 모바일 보강: 공용 컴포넌트 CSS 영향 없이 이 화면에만 적용 */
+    @media (max-width: 768px) {
+      .app[data-screen-label="Consultation List"] {
+        overflow-x: hidden;
+      }
+      .app[data-screen-label="Consultation List"] .main {
+        padding: 16px;
+      }
+      .app[data-screen-label="Consultation List"] .page {
+        max-width: 100%;
+      }
+      .app[data-screen-label="Consultation List"] .page__header,
+      .app[data-screen-label="Consultation List"] .section-head {
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+      .app[data-screen-label="Consultation List"] .search-bar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .app[data-screen-label="Consultation List"] .search-bar__to {
+        display: none;
+      }
+      .app[data-screen-label="Consultation List"] .queue {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+      .app[data-screen-label="Consultation List"] .list-sticky-section {
+        position: static;
+        height: auto;
+        min-height: 0;
+      }
+      .app[data-screen-label="Consultation List"] .list-sticky-section .table-wrap {
+        max-width: 100%;
+        overflow-x: auto;
+      }
+      .app[data-screen-label="Consultation List"] .table {
+        min-width: 720px;
+      }
+      .app[data-screen-label="Consultation List"] .calendar-grid {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        grid-auto-rows: minmax(92px, auto);
+        overflow-x: hidden;
+      }
+      .app[data-screen-label="Consultation List"] .calendar-day {
+        min-width: 0;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .app[data-screen-label="Consultation List"] .main {
+        padding: 12px;
+      }
+      .app[data-screen-label="Consultation List"] .page__title {
+        font-size: 22px;
+      }
+      .app[data-screen-label="Consultation List"] .page__subtitle {
+        font-size: 12px;
+      }
+      .app[data-screen-label="Consultation List"] .search-bar {
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        align-items: center;
+        gap: 8px;
+        padding: 0;
+        margin: 6px 0 16px;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      .app[data-screen-label="Consultation List"] .search-bar .input,
+      .app[data-screen-label="Consultation List"] .search-bar .select,
+      .app[data-screen-label="Consultation List"] .search-bar .btn {
+        height: 44px !important;
+        min-height: 44px;
+        font-size: 16px;
+      }
+      .app[data-screen-label="Consultation List"] .search-bar__keyword {
+        min-width: 0;
+        background: var(--surface, #fff);
+        border-radius: 10px;
+      }
+      .app[data-screen-label="Consultation List"] .search-bar__filter-toggle {
+        display: inline-flex;
+        width: 58px;
+        padding: 0;
+        justify-content: center;
+        white-space: nowrap;
+        border-radius: 10px;
+      }
+      .app[data-screen-label="Consultation List"] .search-bar__submit {
+        width: 44px;
+        padding: 0;
+        justify-content: center;
+      }
+      .app[data-screen-label="Consultation List"] .search-bar__submit span {
+        display: none;
+      }
+      .app[data-screen-label="Consultation List"] .search-bar__advanced,
+      .app[data-screen-label="Consultation List"] select.search-bar__advanced,
+      .app[data-screen-label="Consultation List"] input.search-bar__advanced,
+      .app[data-screen-label="Consultation List"] label.search-bar__advanced,
+      .app[data-screen-label="Consultation List"] span.search-bar__advanced,
+      .app[data-screen-label="Consultation List"] .search-bar:not(.is-expanded) .mp-dp-input,
+      .app[data-screen-label="Consultation List"] .search-bar:not(.is-expanded) .search-bar__advanced {
+        display: none !important;
+        grid-column: 1 / -1;
+      }
+      .app[data-screen-label="Consultation List"] .search-bar.is-expanded {
+        grid-template-columns: 1fr;
+        padding: 10px;
+        background: var(--surface, #fff);
+        border: 1px solid var(--border-subtle, #e5e7eb);
+        border-radius: 12px;
+        box-shadow: var(--shadow-xs);
+      }
+      .app[data-screen-label="Consultation List"] .search-bar.is-expanded .search-bar__advanced {
+        display: flex !important;
+      }
+      .app[data-screen-label="Consultation List"] .search-bar.is-expanded .mp-dp-input {
+        display: inline-flex !important;
+        grid-column: 1 / -1;
+      }
+      .app[data-screen-label="Consultation List"] .search-bar.is-expanded .search-bar__to {
+        display: none !important;
+      }
+      .app[data-screen-label="Consultation List"] .search-bar.is-expanded select.search-bar__advanced,
+      .app[data-screen-label="Consultation List"] .search-bar.is-expanded input.search-bar__advanced {
+        display: block !important;
+      }
+      .app[data-screen-label="Consultation List"] .search-bar.is-expanded .search-bar__keyword,
+      .app[data-screen-label="Consultation List"] .search-bar.is-expanded .search-bar__filter-toggle,
+      .app[data-screen-label="Consultation List"] .search-bar.is-expanded .search-bar__submit {
+        grid-column: 1 / -1;
+        width: 100%;
+      }
+      .app[data-screen-label="Consultation List"] .search-bar.is-expanded .search-bar__submit {
+        padding: 0 14px;
+      }
+      .app[data-screen-label="Consultation List"] .search-bar.is-expanded .search-bar__submit span {
+        display: inline;
+      }
+      .app[data-screen-label="Consultation List"] .search-bar__check {
+        min-height: 44px;
+        align-items: center;
+      }
+      .app[data-screen-label="Consultation List"] .filter-pills {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .app[data-screen-label="Consultation List"] .pill,
+      .app[data-screen-label="Consultation List"] .btn-xs,
+      .app[data-screen-label="Consultation List"] .btn {
+        min-height: 44px;
+      }
+      .app[data-screen-label="Consultation List"] .queue {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      .app[data-screen-label="Consultation List"] .queue-card {
+        min-width: 0;
+        padding: 12px;
+        border-radius: 10px;
+        box-shadow: none;
+      }
+      .app[data-screen-label="Consultation List"] .queue-card__actions .btn-xs {
+        width: 100%;
+      }
+      .app[data-screen-label="Consultation List"] .queue-card:active,
+      .app[data-screen-label="Consultation List"] .pill:active,
+      .app[data-screen-label="Consultation List"] .btn-xs:active,
+      .app[data-screen-label="Consultation List"] .btn:active {
+        transform: scale(.98);
+      }
+      .app[data-screen-label="Consultation List"] .calendar-toolbar,
+      .app[data-screen-label="Consultation List"] .bulk-sms-footer,
+      .app[data-screen-label="Consultation List"] .col-settings-footer {
+        flex-wrap: wrap;
+      }
+      .app[data-screen-label="Consultation List"] .calendar-toolbar {
+        align-items: center;
+        gap: 6px;
+      }
+      .app[data-screen-label="Consultation List"] .calendar-nav {
+        order: 2;
+        width: 100%;
+        justify-content: space-between;
+      }
+      .app[data-screen-label="Consultation List"] .calendar-title {
+        order: 1;
+        flex: 1;
+        font-size: 14px;
+      }
+      .app[data-screen-label="Consultation List"] .calendar-toolbar .section-head__hint {
+        order: 1;
+      }
+      .app[data-screen-label="Consultation List"] .calendar-grid {
+        grid-auto-rows: minmax(70px, auto);
+      }
+      .app[data-screen-label="Consultation List"] .calendar-weekday {
+        padding: 6px 2px;
+        font-size: 11px;
+      }
+      .app[data-screen-label="Consultation List"] .calendar-day {
+        padding: 5px 3px;
+        overflow: hidden;
+      }
+      .app[data-screen-label="Consultation List"] .calendar-day__num {
+        width: 22px;
+        height: 22px;
+        margin-bottom: 2px;
+        font-size: 11px;
+      }
+      .app[data-screen-label="Consultation List"] .calendar-count-btn {
+        margin-top: 4px;
+        padding: 4px 2px;
+        min-height: 32px;
+        font-size: 10px;
+        line-height: 1.2;
+      }
+      .app[data-screen-label="Consultation List"] .calendar-empty {
+        margin-top: 6px;
+        font-size: 10px;
+      }
+      .app[data-screen-label="Consultation List"] .bulk-sms-footer button,
+      .app[data-screen-label="Consultation List"] .col-settings-footer button {
+        flex: 1 1 100%;
+        justify-content: center;
+      }
+      .app[data-screen-label="Consultation List"] .footer-bar {
+        display: none;
+      }
+      .app[data-screen-label="Consultation List"] .mobile-action-fab {
+        position: fixed;
+        right: 16px;
+        bottom: calc(16px + env(safe-area-inset-bottom));
+        z-index: 55;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 10px;
+      }
+      .app[data-screen-label="Consultation List"] .mobile-action-fab__menu {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: stretch;
+      }
+      .app[data-screen-label="Consultation List"] .mobile-action-fab__action,
+      .app[data-screen-label="Consultation List"] .mobile-action-fab__toggle {
+        min-height: 44px;
+        border: 1px solid var(--border-primary, #d8e2ef);
+        box-shadow: var(--shadow-lg);
+      }
+      .app[data-screen-label="Consultation List"] .mobile-action-fab__action {
+        justify-content: center;
+        min-width: 116px;
+        background: var(--bg-primary, #fff);
+        color: var(--text-primary, #111827);
+      }
+      .app[data-screen-label="Consultation List"] .mobile-action-fab__action.btn--primary {
+        background: var(--brand-500, #10b981);
+        border-color: var(--brand-500, #10b981);
+        color: #fff;
+      }
+      .app[data-screen-label="Consultation List"] .mobile-action-fab__toggle {
+        width: 56px;
+        height: 56px;
+        border-radius: 999px;
+        background: var(--brand-500, #10b981);
+        color: #fff;
+        justify-content: center;
+      }
+      .app[data-screen-label="Consultation List"] .mobile-action-fab__toggle svg {
+        transition: transform var(--dur-fast, 120ms);
+      }
+      .app[data-screen-label="Consultation List"] .mobile-action-fab.is-open .mobile-action-fab__toggle svg {
+        transform: rotate(45deg);
+      }
+      .app[data-screen-label="Consultation List"] .bulk-sms-modal,
+      .app[data-screen-label="Consultation List"] .col-settings-modal {
+        width: calc(100vw - 24px);
+        max-width: calc(100vw - 24px);
+        max-height: calc(100dvh - 24px);
+      }
+      .app[data-screen-label="Consultation List"] .bulk-sms-select,
+      .app[data-screen-label="Consultation List"] .bulk-sms-textarea {
+        font-size: 16px;
+      }
+      .app[data-screen-label="Consultation List"] .calendar-popover {
+        position: fixed;
+        left: 12px;
+        right: 12px;
+        top: auto;
+        bottom: 12px;
+        min-width: 0;
+        max-height: 50dvh;
+      }
+    }
   </style>
 </head>
 <body>
@@ -337,44 +656,45 @@
       </div>
 
       <!-- Search bar -->
-      <form class="search-bar" th:action="@{/counsel/list}" method="get" @submit.prevent="submitSearch($event)">
-        <select class="select" name="dateRange" id="dateRangeSelect">
+      <form class="search-bar" :class="{ 'is-expanded': mobileFilterOpen }" th:action="@{/counsel/list}" method="get" @submit.prevent="submitSearch($event)">
+        <select class="select search-bar__advanced" name="dateRange" id="dateRangeSelect">
           <option value="all"    th:selected="${cri != null and cri.dateRange == 'all'}">전체기간</option>
           <option value="10"     th:selected="${cri == null or cri.dateRange == '10' or cri.dateRange == ''}">최근 10일</option>
           <option value="30"     th:selected="${cri != null and cri.dateRange == '30'}">최근 30일</option>
           <option value="90"     th:selected="${cri != null and cri.dateRange == '90'}">최근 90일</option>
           <option value="custom" th:selected="${cri != null and cri.dateRange == 'custom'}">직접 선택</option>
         </select>
-        <input type="date" class="input" id="startDateInput" name="startDate"
+        <input type="date" class="input search-bar__advanced" id="startDateInput" name="startDate"
                th:value="${cri != null and cri.dateRange == 'custom' ? cri.startDate : ''}" />
-        <span class="search-bar__to">—</span>
-        <input type="date" class="input" id="endDateInput" name="endDate"
+        <span class="search-bar__to search-bar__advanced">—</span>
+        <input type="date" class="input search-bar__advanced" id="endDateInput" name="endDate"
                th:value="${cri != null and cri.dateRange == 'custom' ? cri.endDate : ''}" />
-        <select class="select" name="status">
+        <select class="select search-bar__advanced" name="status">
           <option value="all" th:selected="${cri == null or #strings.isEmpty(cri.status) or cri.status == 'all'}">전체 상태</option>
           <option th:each="s : ${statusOptions}" th:value="${s}" th:text="${s}"
                   th:selected="${cri != null and cri.status == s}"></option>
         </select>
-        <select class="select" name="pathType">
+        <select class="select search-bar__advanced" name="pathType">
           <option value="all" th:selected="${cri == null or #strings.isEmpty(cri.pathType) or cri.pathType == 'all'}">전체 경로</option>
           <option th:each="p : ${pathTypeOptions}" th:value="${p}" th:text="${p}"
                   th:selected="${cri != null and cri.pathType == p}"></option>
         </select>
-        <select class="select" name="searchType" id="searchTypeSelect">
+        <select class="select search-bar__advanced" name="searchType" id="searchTypeSelect">
           <option value="patient"   th:selected="${cri == null or #strings.isEmpty(cri.searchType) or cri.searchType == 'patient'}">환자명</option>
           <option value="guardian"  th:selected="${cri != null and cri.searchType == 'guardian'}">보호자명</option>
           <option value="phone"     th:selected="${cri != null and cri.searchType == 'phone'}">전화번호</option>
           <option value="counselor" th:selected="${cri != null and cri.searchType == 'counselor'}">상담자</option>
           <option value="content"   th:selected="${cri != null and cri.searchType == 'content'}">상담내용</option>
         </select>
-        <input type="text" class="input" name="keyword" id="keywordInput"
+        <input type="text" class="input search-bar__keyword" name="keyword" id="keywordInput"
                th:value="${cri != null ? cri.keyword : ''}"
                placeholder="검색어를 입력하세요" />
-        <label class="search-bar__check">
+        <label class="search-bar__check search-bar__advanced">
           <input type="checkbox" name="end" value="on"
                  th:checked="${cri == null or cri.end == 'on'}" />완료 합계 포함
         </label>
-        <button type="submit" class="btn btn--primary" style="height:34px;"><svg><use href="#i-search"/></svg>검색</button>
+        <button type="button" class="btn btn--outline search-bar__filter-toggle" @click="mobileFilterOpen = !mobileFilterOpen" :aria-expanded="String(mobileFilterOpen)">필터</button>
+        <button type="submit" class="btn btn--primary search-bar__submit" style="height:34px;"><svg><use href="#i-search"/></svg><span>검색</span></button>
       </form>
 
       <!-- Priority queue -->
@@ -477,10 +797,12 @@
           <div class="calendar-nav">
             <button type="button" class="btn-xs" @click="moveCalendarMonth(-1)" aria-label="이전 달">
               <svg><use href="#i-chevron-left"/></svg>
+              <span class="calendar-nav__text" aria-hidden="true">‹</span>
             </button>
             <button type="button" class="btn-xs" @click="setCalendarToday()">오늘</button>
             <button type="button" class="btn-xs" @click="moveCalendarMonth(1)" aria-label="다음 달">
               <svg><use href="#i-chevron-right"/></svg>
+              <span class="calendar-nav__text" aria-hidden="true">›</span>
             </button>
           </div>
           <div class="calendar-title" x-text="calendarTitle"></div>
@@ -529,10 +851,24 @@
         <button class="btn btn--outline" @click="openBulkSms()">
           <svg><use href="#i-send"/></svg>일괄 문자 보내기
         </button>
-        <a th:href="@{/counsel/inpatient}" class="btn btn--outline" @click.prevent="visit('/counsel/inpatient')">상담 접수</a>
-        <a th:href="@{/counsel/intake}" class="btn btn--primary" @click.prevent="visit('/counsel/intake')"><svg><use href="#i-plus"/></svg>신규상담</a>
+        <a th:href="@{/counsel/intake}" class="btn btn--outline" @click.prevent="visit('/counsel/intake')">상담 접수</a>
+        <a th:href="@{/counsel/inpatient}" class="btn btn--primary" @click.prevent="visit('/counsel/inpatient')"><svg><use href="#i-plus"/></svg>신규상담</a>
       </div>
       </div><!-- /list-sticky-section -->
+
+      <div class="mobile-action-fab" :class="{ 'is-open': mobileActionsOpen }" @keydown.escape.window="mobileActionsOpen = false">
+        <div class="mobile-action-fab__menu" x-show="mobileActionsOpen" x-transition @click.outside="mobileActionsOpen = false">
+          <a th:href="@{/counsel/intake}" class="btn btn--outline mobile-action-fab__action" @click.prevent="visit('/counsel/intake')">상담접수</a>
+          <a th:href="@{/counsel/inpatient}" class="btn btn--primary mobile-action-fab__action" @click.prevent="visit('/counsel/inpatient')">신규상담</a>
+        </div>
+        <button type="button"
+                class="btn mobile-action-fab__toggle"
+                aria-label="상담 작업 열기"
+                :aria-expanded="String(mobileActionsOpen)"
+                @click="mobileActionsOpen = !mobileActionsOpen">
+          <svg><use href="#i-plus"/></svg>
+        </button>
+      </div>
 
       <!-- 일괄 문자 보내기 모달 -->
       <div class="bulk-sms-overlay" x-show="bulkSmsOpen" x-cloak @click.self="bulkSmsOpen = false">
@@ -677,6 +1013,8 @@ function listPage() {
     calendarMonth: today.slice(0, 7),
     calendarWeekdays: ['일', '월', '화', '수', '목', '금', '토'],
     activeCalendarDate: '',
+    mobileFilterOpen: false,
+    mobileActionsOpen: false,
     selectedIds:  new Set(),
     columns,
     phOptions:    phOpts,

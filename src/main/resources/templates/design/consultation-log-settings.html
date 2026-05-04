@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="turbo-visit-control" content="reload" />
   <title>MediPlat · 상담일지관리</title>
   <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
   <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
@@ -518,6 +519,30 @@
         </div>
       </div>
 
+      <!-- Admin sub-tabs -->
+      <div class="tabs" role="tablist">
+        <a class="tab" th:href="@{/users}" role="tab">
+          <svg><use href="#i-users"/></svg>
+          사용자 관리
+        </a>
+        <a class="tab" th:href="@{/roles}" role="tab">
+          <svg><use href="#i-shield"/></svg>
+          역할 관리
+        </a>
+        <a class="tab" th:href="@{/access}" role="tab">
+          <svg><use href="#i-key"/></svg>
+          CSM 접근 권한
+        </a>
+        <button class="tab is-active" role="tab" aria-selected="true">
+          <svg><use href="#i-sliders"/></svg>
+          상담일지관리
+        </button>
+        <a class="tab" th:href="@{/room-board/manage}" role="tab">
+          <svg><use href="#i-bed"/></svg>
+          병실현황판 관리
+        </a>
+      </div>
+
       <!-- Three columns -->
       <div class="cls-wrap">
 
@@ -794,7 +819,7 @@
 </div>
 
 <script th:src="@{/assets/js/app.js}"></script>
-<script th:src="@{/assets/js/chrome.js}" data-page="records" th:attr="data-ctx=@{/}"></script>
+<script th:src="@{/assets/js/chrome.js}" data-page="admin" th:attr="data-ctx=@{/}"></script>
 <script th:src="@{/assets/js/datepicker.js}"></script>
 <script>
   document.addEventListener('turbo:load', () => { MPChrome.mount({ parent: '관리자', current: '상담일지관리' }); }, { once: true });
@@ -914,7 +939,7 @@ function logSettings() {
       }));
       const c = csrf();
       try {
-        const res = await fetch(ctx + '/admin/counsel/log-settings/save', {
+        const res = await fetch(ctx + '/counsel/log-settings/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', [c.header]: c.token },
           body: JSON.stringify(payload),
@@ -1166,6 +1191,7 @@ function logSettings() {
     },
   };
 }
+
 </script>
 </body>
 </html>
