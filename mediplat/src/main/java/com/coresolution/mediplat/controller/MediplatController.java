@@ -64,7 +64,7 @@ public class MediplatController {
 
     @GetMapping({ "", "/" })
     public String root(HttpSession session) {
-        return sessionUser(session) == null ? "redirect:/login" : "redirect:/services";
+        return sessionUser(session) == null ? "redirect:/login" : "redirect:/portal";
     }
 
     @GetMapping({ "/links", "/csm/links" })
@@ -80,7 +80,7 @@ public class MediplatController {
     @GetMapping("/login")
     public String loginPage(@RequestParam(name = "error", required = false) String error, Model model, HttpSession session) {
         if (sessionUser(session) != null) {
-            return "redirect:/services";
+            return "redirect:/portal";
         }
         model.addAttribute("error", error);
         if (!model.containsAttribute("loginInstCode")) {
@@ -107,7 +107,7 @@ public class MediplatController {
             return "redirect:/login";
         }
         session.setAttribute(SESSION_USER, user);
-        return "redirect:/services";
+        return "redirect:/portal";
     }
 
     @GetMapping("/logout")
@@ -116,7 +116,7 @@ public class MediplatController {
         return "redirect:/login";
     }
 
-    @GetMapping("/services")
+    @GetMapping("/portal")
     public String servicesPage(Model model, HttpSession session) {
         PlatformSessionUser user = sessionUser(session);
         if (user == null) {
@@ -128,6 +128,7 @@ public class MediplatController {
         List<PlatformService> services = storeService.listServicesForUser(user);
         List<PlatformInstitution> roomBoardViewerInstitutions = storeService.listRoomBoardViewerInstitutions(user);
         model.addAttribute("user", user);
+        model.addAttribute("instName", storeService.getInstName(user.getInstCode()));
         model.addAttribute("services", services);
         model.addAttribute("roomBoardViewerInstitutionCount", roomBoardViewerInstitutions.size());
         model.addAttribute("roomBoardViewerEnabled", !roomBoardViewerInstitutions.isEmpty());
@@ -185,37 +186,37 @@ public class MediplatController {
         if (SERVICE_CODE_SEMINAR_ROOM.equals(normalizedServiceCode)) {
             PlatformService seminarRoomServiceEntry = storeService.findService(SERVICE_CODE_SEMINAR_ROOM);
             if (seminarRoomServiceEntry == null || !seminarRoomServiceEntry.isEnabled()) {
-                return "redirect:/services";
+                return "redirect:/portal";
             }
             List<String> enabledCodes = user.isPlatformAdmin()
                     ? List.of(SERVICE_CODE_SEMINAR_ROOM)
                     : storeService.listEnabledServiceCodesForUser(user);
             if (!user.isPlatformAdmin() && !enabledCodes.contains(SERVICE_CODE_SEMINAR_ROOM)) {
-                return "redirect:/services";
+                return "redirect:/portal";
             }
             return "redirect:/seminar-room";
         }
         if (SERVICE_CODE_ROOM_BOARD.equals(normalizedServiceCode)) {
             if (user.isPlatformAdmin()) {
-                return "redirect:/services";
+                return "redirect:/portal";
             }
             List<String> enabledCodes = storeService.listEnabledServiceCodesForUser(user);
             if (enabledCodes == null || !enabledCodes.contains(SERVICE_CODE_ROOM_BOARD)) {
-                return "redirect:/services";
+                return "redirect:/portal";
             }
             PlatformService roomBoardService = storeService.findService(SERVICE_CODE_ROOM_BOARD);
             if (roomBoardService != null && !roomBoardService.isEnabled()) {
-                return "redirect:/services";
+                return "redirect:/portal";
             }
             PlatformService roomBoardLaunchService = roomBoardService;
             if (roomBoardLaunchService == null) {
                 if (!storeService.isRoomBoardCounselLinkEnabled(user.getInstCode())) {
-                    return "redirect:/services";
+                    return "redirect:/portal";
                 }
                 roomBoardLaunchService = resolveRoomBoardLaunchService();
             }
             if (roomBoardLaunchService == null) {
-                return "redirect:/services";
+                return "redirect:/portal";
             }
             String launchUrl = counselManSsoLinkService.createLaunchUrl(
                     roomBoardLaunchService,
@@ -226,16 +227,16 @@ public class MediplatController {
         }
         var service = storeService.findService(normalizedServiceCode);
         if (service == null) {
-            return "redirect:/services";
+            return "redirect:/portal";
         }
         if (!service.isEnabled()) {
-            return "redirect:/services";
+            return "redirect:/portal";
         }
         List<String> enabledCodes = user.isPlatformAdmin()
                 ? List.of(service.getServiceCode())
                 : storeService.listEnabledServiceCodesForUser(user);
         if (!user.isPlatformAdmin() && !enabledCodes.contains(service.getServiceCode())) {
-            return "redirect:/services";
+            return "redirect:/portal";
         }
         String launchUrl = counselManSsoLinkService.createLaunchUrl(service, user);
         return "redirect:" + launchUrl;
@@ -268,11 +269,11 @@ public class MediplatController {
             return "redirect:/login";
         }
         if (!isServiceAccessible(user, SERVICE_CODE_SEMINAR_ROOM)) {
-            return "redirect:/services";
+            return "redirect:/portal";
         }
         String selectedInstCode = resolveServiceInstCode(user, instCode);
         if (!StringUtils.hasText(selectedInstCode)) {
-            return "redirect:/services";
+            return "redirect:/portal";
         }
         boolean canManageSeminars = user.isPlatformAdmin() || user.isInstitutionAdmin();
         List<PlatformInstitution> institutions = user.isPlatformAdmin()
@@ -507,7 +508,7 @@ public class MediplatController {
             return "redirect:/login";
         }
         if (!isServiceAccessible(user, SERVICE_CODE_SEMINAR_ROOM)) {
-            return "redirect:/services";
+            return "redirect:/portal";
         }
         String selectedInstCode = resolveServiceInstCode(user, instCode);
         try {
@@ -548,7 +549,7 @@ public class MediplatController {
             return "redirect:/login";
         }
         if (!isServiceAccessible(user, SERVICE_CODE_SEMINAR_ROOM)) {
-            return "redirect:/services";
+            return "redirect:/portal";
         }
         String selectedInstCode = resolveServiceInstCode(user, instCode);
         try {
@@ -577,7 +578,7 @@ public class MediplatController {
             return "redirect:/login";
         }
         if (!isServiceAccessible(user, SERVICE_CODE_SEMINAR_ROOM)) {
-            return "redirect:/services";
+            return "redirect:/portal";
         }
         String selectedInstCode = resolveServiceInstCode(user, instCode);
         if (!seminarRoomService.isSeminarManager(selectedInstCode, user.getUsername())) {
@@ -605,7 +606,7 @@ public class MediplatController {
             return "redirect:/login";
         }
         if (!isAdminUser(user)) {
-            return "redirect:/services";
+            return "redirect:/portal";
         }
         String selectedInstCode = resolveSelectedInstCode(user, instCode);
         List<PlatformInstitution> institutions = resolveAdminInstitutions(user, selectedInstCode);
@@ -621,6 +622,7 @@ public class MediplatController {
                 : List.of();
 
         model.addAttribute("user", user);
+        model.addAttribute("instName", storeService.getInstName(selectedInstCode));
         model.addAttribute("canManagePlatform", user.isPlatformAdmin());
         model.addAttribute("canManageInstitutionUsers", user.isPlatformAdmin() || user.isInstitutionAdmin());
         model.addAttribute("institutions", institutions);
@@ -649,7 +651,7 @@ public class MediplatController {
             model.addAttribute("viewerSelectedInstCodes", List.of());
             model.addAttribute("viewerSelectedInstCode", selectedInstCode);
         }
-        return "admin";
+        return "design/Institution-admin";
     }
 
     @GetMapping("/admin/async-data")

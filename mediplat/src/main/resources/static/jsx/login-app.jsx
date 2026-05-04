@@ -66,13 +66,23 @@ const HERO_COPY = {
 /* ============================================================== */
 /*  Form (shared across variants)                                  */
 /* ============================================================== */
+const LS_INST = 'mediplat.login.inst';
+const LS_USER = 'mediplat.login.user';
+const LS_REMEMBER = 'mediplat.login.remember';
+
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+
 function LoginForm({ tweaks }) {
   const init = window.__MP_LOGIN__ || {};
-  const [orgCode, setOrgCode] = React.useState(init.instCode || '');
-  const [userId, setUserId] = React.useState(init.username || '');
+  const savedRemember = lsGet(LS_REMEMBER) !== 'false';
+
+  const [orgCode, setOrgCode] = React.useState(init.instCode || lsGet(LS_INST) || '');
+  const [userId, setUserId] = React.useState(init.username || lsGet(LS_USER) || '');
   const [pw, setPw] = React.useState('');
   const [showPw, setShowPw] = React.useState(false);
-  const [remember, setRemember] = React.useState(true);
+  const [remember, setRemember] = React.useState(savedRemember);
   const [state, setState] = React.useState(init.error ? 'error' : 'idle');
   const [errorMsg, setErrorMsg] = React.useState(init.error || '');
   const [touched, setTouched] = React.useState(false);
@@ -84,6 +94,15 @@ function LoginForm({ tweaks }) {
       setState('error');
       setErrorMsg('아이디와 비밀번호를 입력해주세요.');
       return;
+    }
+    if (remember) {
+      lsSet(LS_INST, orgCode.trim());
+      lsSet(LS_USER, userId.trim());
+      lsSet(LS_REMEMBER, 'true');
+    } else {
+      lsDel(LS_INST);
+      lsDel(LS_USER);
+      lsSet(LS_REMEMBER, 'false');
     }
     setState('loading');
     setErrorMsg('');

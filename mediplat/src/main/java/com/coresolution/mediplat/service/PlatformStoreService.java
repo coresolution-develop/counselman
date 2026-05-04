@@ -1330,6 +1330,11 @@ public class PlatformStoreService {
         return findStoredInstitution(instCode);
     }
 
+    public String getInstName(String instCode) {
+        PlatformInstitution inst = findStoredInstitution(instCode);
+        return (inst != null && StringUtils.hasText(inst.getInstName())) ? inst.getInstName() : instCode;
+    }
+
     private List<PlatformInstitution> listStoredInstitutions() {
         return jdbcTemplate.query("""
                 SELECT id, inst_code, inst_name, use_yn

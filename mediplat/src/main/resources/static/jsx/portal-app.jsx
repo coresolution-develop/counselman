@@ -9,7 +9,7 @@ const PORTAL_TWEAKS = /*EDITMODE-BEGIN*/{
   "variant": "cards",
   "accent": "blue",
   "showGreeting": true,
-  "showSearch": true,
+  "showSearch": false,
   "showStatus": true,
   "tileShape": "rounded",
   "showFooterMeta": true
@@ -89,12 +89,11 @@ function Header({ user, tweaks, onLogout }) {
       )}
 
       <div className="ph__right">
-        <button className="ph__icon-btn" aria-label="알림"><PIcon.Bell width={16} height={16} /><span className="ph__badge">3</span></button>
         <div className="ph__user">
           <div className="ph__user-name">{user.name}</div>
           <div className="ph__user-meta">{user.org} · {user.role}</div>
         </div>
-        <button className="ph__pill"><PIcon.Settings width={14} height={14} />관리</button>
+        <button className="ph__pill" onClick={() => window.location.href = '/admin'}><PIcon.Settings width={14} height={14} />관리</button>
         <button className="ph__pill ph__pill--ghost" onClick={onLogout}><PIcon.Logout width={14} height={14} />로그아웃</button>
       </div>
     </header>
@@ -164,7 +163,6 @@ function VariantCards({ tweaks, onLaunch }) {
             <div className="pv-cards__sec-title">활성 앱</div>
             <div className="pv-cards__sec-sub">현재 기관에서 사용 가능한 시스템</div>
           </div>
-          <span className="pv-cards__sec-count">{APPS.filter(a => a.active).length}</span>
         </div>
         <div className="pv-cards__grid">
           {APPS.filter(app => app.active).map(app => (
@@ -195,7 +193,6 @@ function VariantCards({ tweaks, onLaunch }) {
             <div className="pv-cards__sec-title">준비중</div>
             <div className="pv-cards__sec-sub">출시를 준비하고 있는 시스템</div>
           </div>
-          <span className="pv-cards__sec-count">{APPS.filter(a => !a.active).length}</span>
         </div>
         <div className="pv-cards__grid">
           {APPS.filter(app => !app.active).map(app => (
@@ -292,6 +289,7 @@ const portalCss = `
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
 }
 
 /* Header */
@@ -377,7 +375,7 @@ const portalCss = `
 .pv-tiles__foot { margin-top: 40px; text-align: center; font-size: 12px; color: var(--ink-500); display: inline-flex; align-items: center; gap: 8px; justify-content: center; width: 100%; }
 .pv-tiles__dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981; }
 
-@media (max-width: 720px) {
+@media (max-width: 768px) {
   .pv-tiles__grid { grid-template-columns: repeat(2, 1fr); }
 }
 
@@ -433,9 +431,9 @@ const portalCss = `
 }
 .pv-card__icon--off { background: linear-gradient(135deg, #94a3b8, #6c7d97); box-shadow: none; }
 .pv-card__body { display: flex; flex-direction: column; gap: 4px; flex: 1; }
-.pv-card__name { font-weight: 700; font-size: 16px; letter-spacing: -0.02em; }
+.pv-card__name { font-weight: 700; font-size: 16px; letter-spacing: -0.02em; min-width: 0; overflow-wrap: anywhere; }
 .pv-card__kr { font-size: 11px; letter-spacing: 0.05em; color: var(--ink-500); text-transform: uppercase; font-weight: 600; }
-.pv-card__desc { font-size: 12.5px; color: var(--ink-600); line-height: 1.55; margin-top: 4px; }
+.pv-card__desc { font-size: 12.5px; color: var(--ink-600); line-height: 1.55; margin-top: 4px; min-width: 0; overflow-wrap: anywhere; }
 .pv-card__foot { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px dashed var(--ink-100); }
 .pv-card__pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: #047857; background: #ecfdf5; padding: 4px 10px; border-radius: 999px; }
 .pv-card__pill-dot { width: 6px; height: 6px; border-radius: 50%; background: #10b981; }
@@ -513,11 +511,114 @@ const portalCss = `
 .pv-hero__card-desc { font-size: 12px; color: var(--ink-600); line-height: 1.5; }
 .pv-hero__card-tag { position: absolute; top: 12px; right: 12px; display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 2px 8px; background: var(--ink-100); color: var(--ink-500); border-radius: 999px; font-weight: 600; }
 
-@media (max-width: 760px) {
+@media (max-width: 768px) {
   .pv-hero__feature { grid-template-columns: 1fr; padding: 28px; }
   .pv-hero__feature-right { align-items: flex-start; }
   .pv-hero__feature-stats { gap: 24px; }
   .pv-hero__feature-stats > div { align-items: flex-start; }
+}
+
+@media (max-width: 480px) {
+  .ph {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding: 14px 16px;
+    gap: 12px;
+  }
+  .ph__brand {
+    flex: 1 1 calc(100% - 148px);
+    min-width: 0;
+  }
+  .ph__right {
+    flex: 1 1 100%;
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .ph__user {
+    flex: 1 1 100%;
+    order: -1;
+    padding: 0;
+    text-align: left;
+    min-width: 0;
+  }
+  .ph__user-name,
+  .ph__user-meta {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .ph__pill {
+    flex: 1 1 calc(50% - 4px);
+    justify-content: center;
+    min-width: 0;
+  }
+  .ph__search {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: none;
+    order: 3;
+  }
+
+  .pv-cards {
+    padding: 24px 16px;
+  }
+  .pv-cards__grid {
+    grid-template-columns: 1fr;
+  }
+  .pv-tiles {
+    padding: 24px 16px;
+  }
+  .pv-tiles__grid {
+    grid-template-columns: 1fr;
+  }
+  .pv-tile {
+    min-height: 56px;
+    height: auto;
+  }
+  .pv-hero {
+    padding: 24px 16px;
+  }
+  .pv-hero__feature {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 24px;
+  }
+  .pv-hero__feature-right {
+    min-width: 0;
+  }
+  .pv-hero__feature-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+  }
+  .pv-hero__feature-name {
+    font-size: 22px;
+  }
+  .pv-hero__feature-stats {
+    flex-wrap: wrap;
+  }
+  .pv-tile,
+  .pv-card,
+  .pv-hero__feature,
+  .pv-hero__card,
+  .ph__pill {
+    min-height: 44px;
+  }
+  .pv-tile:active:not(:disabled),
+  .pv-card:active,
+  .pv-hero__feature:active,
+  .pv-hero__card:active:not(:disabled),
+  .ph__pill:active {
+    transform: scale(0.98);
+    filter: brightness(0.98);
+  }
+
+  .twk-panel {
+    display: none !important;
+  }
 }
 `;
 
@@ -529,7 +630,7 @@ function PortalApp() {
   const initUser = (window.__MP_PORTAL__ && window.__MP_PORTAL__.user) || {};
   const [user] = React.useState({
     name: initUser.name || '',
-    org:  (initUser.org  || '').toUpperCase(),
+    org:  initUser.instName || (initUser.org || '').toUpperCase(),
     role: initUser.role || '',
   });
 
