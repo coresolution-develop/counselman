@@ -3,16 +3,26 @@
    ============================================ */
 
 document.addEventListener('alpine:init', () => {
+  const isMobileNav = () => window.matchMedia('(max-width: 900px)').matches;
+  const closeMobileSidebar = () => {
+    if (!isMobileNav()) return;
+    const app = Alpine.store('app');
+    if (app) app.sidebarCollapsed = false;
+  };
 
   Alpine.store('app', {
-    sidebarCollapsed: JSON.parse(localStorage.getItem('mp.sidebarCollapsed') || 'false'),
+    sidebarCollapsed: isMobileNav() ? false : JSON.parse(localStorage.getItem('mp.sidebarCollapsed') || 'false'),
     variation: localStorage.getItem('mp.variation') || 'default',
     layout: localStorage.getItem('mp.layout') || 'grid',
     tweaksOpen: false,
 
     toggleSidebar() {
       this.sidebarCollapsed = !this.sidebarCollapsed;
+      if (isMobileNav()) return;
       localStorage.setItem('mp.sidebarCollapsed', JSON.stringify(this.sidebarCollapsed));
+    },
+    closeMobileSidebar() {
+      closeMobileSidebar();
     },
     setVariation(v) {
       this.variation = v;
@@ -23,6 +33,21 @@ document.addEventListener('alpine:init', () => {
       localStorage.setItem('mp.layout', l);
     },
   });
+
+  document.addEventListener('click', (event) => {
+    const app = Alpine.store('app');
+    if (!isMobileNav() || !app.sidebarCollapsed) return;
+    if (event.target.closest('.sidebar') || event.target.closest('.header__toggle')) return;
+    app.closeMobileSidebar();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') Alpine.store('app').closeMobileSidebar();
+  });
+
+  document.addEventListener('turbo:before-visit', closeMobileSidebar);
+  document.addEventListener('turbo:load', closeMobileSidebar);
+  window.addEventListener('pageshow', closeMobileSidebar);
 
   Alpine.data('roleManager', () => ({
     activeRole: 'counselor',
