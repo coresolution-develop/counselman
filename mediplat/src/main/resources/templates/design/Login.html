@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MediPlat · 로그인</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css" />
+<style>
+  :root {
+    /* CoreSolution deep blue */
+    --cs-blue-900: #0b1f4a;
+    --cs-blue-800: #112a5e;
+    --cs-blue-700: #173a82;
+    --cs-blue-600: #1d4ed8;
+    --cs-blue-500: #2563eb;
+    --cs-blue-400: #3b82f6;
+    --cs-cyan-400: #38bdf8;
+    --cs-mint:     #c7f0e7;
+
+    --ink-900: #0f172a;
+    --ink-700: #334155;
+    --ink-600: #475569;
+    --ink-500: #64748b;
+    --ink-400: #94a3b8;
+    --ink-300: #cbd5e1;
+    --ink-200: #e2e8f0;
+    --ink-100: #eef2f6;
+    --ink-50:  #f8fafc;
+
+    --danger:  #dc2626;
+    --danger-bg: #fef2f2;
+
+    --radius-card: 18px;
+    --radius-input: 10px;
+    --shadow-card: 0 24px 48px -12px rgba(11,31,74,0.18), 0 8px 16px -4px rgba(11,31,74,0.06);
+
+    --font: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    color: var(--ink-900);
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.01em;
+    background:
+      radial-gradient(1200px 600px at 90% -10%, #d6f1ea 0%, transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, #e2ecff 0%, transparent 55%),
+      linear-gradient(180deg, #f4f6fa 0%, #eef2f7 100%);
+    min-height: 100%;
+  }
+  #root { min-height: 100vh; }
+  button { font-family: inherit; cursor: pointer; border: 0; background: none; }
+  input { font-family: inherit; }
+  a { color: inherit; text-decoration: none; }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script th:inline="javascript">
+  window.__MP_LOGIN__ = {
+    error:    /*[[${error}]]*/ null,
+    instCode: /*[[${loginInstCode}]]*/ '',
+    username: /*[[${loginUsername}]]*/ ''
+  };
+</script>
+<form id="mp-login-form" method="post" th:action="@{/login}" style="display:none">
+  <input type="hidden" id="mp-ic" name="instCode">
+  <input type="hidden" id="mp-un" name="username">
+  <input type="hidden" id="mp-pw" name="password">
+</form>
+
+<script type="text/babel" th:src="@{/jsx/tweaks-panel.jsx}"></script>
+<script type="text/babel" th:src="@{/jsx/login-app.jsx}"></script>
+</body>
+</html>

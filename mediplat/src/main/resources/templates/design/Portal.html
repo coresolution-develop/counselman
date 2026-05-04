@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MediPlat · 포털</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css" />
+<style>
+  :root {
+    --cs-blue-900: #0b1f4a;
+    --cs-blue-800: #112a5e;
+    --cs-blue-700: #173a82;
+    --cs-blue-600: #1d4ed8;
+    --cs-blue-500: #2563eb;
+    --cs-mint:     #c7f0e7;
+
+    --ink-900: #0f172a;
+    --ink-700: #334155;
+    --ink-600: #475569;
+    --ink-500: #64748b;
+    --ink-400: #94a3b8;
+    --ink-300: #cbd5e1;
+    --ink-200: #e2e8f0;
+    --ink-100: #eef2f6;
+    --ink-50:  #f8fafc;
+
+    --slate-tile: #6c7d97;
+    --slate-tile-2: #94a3b8;
+
+    --font: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    color: var(--ink-900);
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.01em;
+    background: linear-gradient(180deg, #eef2f7 0%, #e6ecf3 100%);
+    min-height: 100%;
+  }
+  #root { min-height: 100vh; }
+  button { font-family: inherit; cursor: pointer; border: 0; background: none; }
+  a { color: inherit; text-decoration: none; }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script th:inline="javascript">
+  (function () {
+    var ICON_MAP = {
+      'COUNSELMAN':   { iconKey: 'counsel',   kr: '상담관리',      desc: '상담 접수 · 입원 연계 · 통계까지' },
+      'SEMINAR_ROOM': { iconKey: 'calendar',  kr: '세미나실 예약',  desc: '회의·교육 공간 예약 및 일정' },
+      'ROOM_BOARD':   { iconKey: 'bed',       kr: 'Ward Status',   desc: '병상 가동률과 환자 흐름을 실시간으로' }
+    };
+    var services = /*[[${services}]]*/ [];
+    var rawUser  = /*[[${user}]]*/ null;
+    window.__MP_PORTAL__ = {
+      user: rawUser ? { name: rawUser.displayName, org: rawUser.instCode, role: rawUser.roleCode } : {},
+      apps: services.map(function (s) {
+        var meta = ICON_MAP[s.serviceCode] || { iconKey: 'default', kr: '', desc: '' };
+        return {
+          id:          s.serviceCode.toLowerCase(),
+          name:        s.serviceName,
+          kr:          meta.kr,
+          active:      s.accessible,
+          desc:        s.description || meta.desc,
+          iconKey:     meta.iconKey,
+          serviceCode: s.serviceCode,
+          href:        s.accessible ? '/launch/' + s.serviceCode : '#',
+          note:        s.accessible ? undefined : '준비중'
+        };
+      })
+    };
+  })();
+</script>
+
+<script type="text/babel" th:src="@{/jsx/tweaks-panel.jsx}"></script>
+<script type="text/babel" th:src="@{/jsx/portal-app.jsx}"></script>
+</body>
+</html>

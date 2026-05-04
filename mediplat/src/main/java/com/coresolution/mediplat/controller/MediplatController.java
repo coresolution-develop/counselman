@@ -89,7 +89,7 @@ public class MediplatController {
         if (!model.containsAttribute("loginUsername")) {
             model.addAttribute("loginUsername", "");
         }
-        return "login";
+        return "design/Login";
     }
 
     @PostMapping("/login")
@@ -133,7 +133,7 @@ public class MediplatController {
         model.addAttribute("roomBoardViewerEnabled", !roomBoardViewerInstitutions.isEmpty());
         model.addAttribute("availableServices", services.stream().filter(PlatformService::isAccessible).toList());
         model.addAttribute("unavailableServices", services.stream().filter(service -> !service.isAccessible()).toList());
-        return "services";
+        return "design/Portal";
     }
 
     @GetMapping("/room-board-viewer")
@@ -1167,5 +1167,15 @@ public class MediplatController {
         model.addAttribute("viewerFormUseYn", editMode ? editAccount.getUseYn() : "Y");
         model.addAttribute("viewerSelectedInstCodes", editMode ? editAccount.getScopeInstCodes() : List.of());
         model.addAttribute("viewerSelectedInstCode", selectedInstCode);
+    }
+
+    @GetMapping("/design/login")
+    public String designLogin() {
+        return "design/Login";
+    }
+
+    @GetMapping("/design/portal")
+    public String designPortal() {
+        return "design/Portal";
     }
 }
