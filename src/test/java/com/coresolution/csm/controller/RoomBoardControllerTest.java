@@ -147,6 +147,11 @@ class RoomBoardControllerTest {
         verify(mediplatSsoService).validateRoomBoardViewer("FALH", "viewer1", 1893456000L, "sig");
     }
 
+    @Test
+    void legacyRoomBoardAdmin_redirectsToManagePath() {
+        assertEquals("redirect:/room-board/manage", controller.legacyRoomBoardAdmin());
+    }
+
     private Userdata managerUser(String userId) {
         Userdata user = new Userdata();
         user.setUs_col_02(userId);
