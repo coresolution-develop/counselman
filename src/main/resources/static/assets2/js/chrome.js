@@ -24,7 +24,6 @@
     ]},
     { section: '시스템', items: [
       { id: 'admin',       label: '관리자',       icon: 'shield',     href: '/roles', badge: '3' },
-      { id: 'records',     label: '상담일지관리', icon: 'notebook',   href: '/admin/counsel/log-settings' },
     ]},
   ];
 
