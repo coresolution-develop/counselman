@@ -191,7 +191,7 @@ public class CsmSchemaBootstrapService {
             {"counsel_list",        "상담리스트",   "/counsel/list",        30},
             {"notice",              "공지사항",     "/notice",              40},
             {"stats",               "상담통계",     "/stats",               50},
-            {"counsel_log",         "상담일지관리", "/admin/counsel/log-settings", 60},
+            {"counsel_log",         "상담일지관리", "/counsel/log-settings", 60},
             {"sms",                 "문자관리",     "/sms",                 70},
             {"room_board",          "병실현황판",   "/room-board",          80},
             {"admission",           "입원예약관리", "/admission-reservation", 90},

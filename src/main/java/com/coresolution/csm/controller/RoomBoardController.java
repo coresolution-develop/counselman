@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.StringUtils;
 import org.springframework.ui.Model;
@@ -57,6 +58,7 @@ public class RoomBoardController {
     private final ObjectMapper objectMapper;
 
     @GetMapping({ "room-board", "/room-board" })
+    @PreAuthorize("hasAuthority('ROOM_BOARD:READ') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public String roomBoard(
             @RequestParam(value = "snapshotDate", required = false) String snapshotDate,
             @RequestParam(value = "popup", required = false, defaultValue = "0") int popup,
@@ -115,6 +117,7 @@ public class RoomBoardController {
     }
 
     @GetMapping({ "room-board/discharge-notice", "/room-board/discharge-notice" })
+    @PreAuthorize("hasAuthority('ROOM_BOARD:READ') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public String dischargeNotice(
             @RequestParam(value = "date", required = false) String date,
             Model model,
@@ -201,6 +204,11 @@ public class RoomBoardController {
     }
 
     @GetMapping({ "admin/room-board", "/admin/room-board" })
+    public String legacyRoomBoardAdmin() {
+        return "redirect:/room-board/manage";
+    }
+
+    @GetMapping({ "room-board/manage", "/room-board/manage" })
     public String roomBoardAdmin(Model model, HttpSession session) {
         String inst = ensureInst(session);
         if (inst == null) {
@@ -225,7 +233,10 @@ public class RoomBoardController {
         return "design/room-board-admin";
     }
 
-    @PostMapping({ "admin/room-board/room/save", "/admin/room-board/room/save" })
+    @PostMapping({
+            "room-board/manage/room/save", "/room-board/manage/room/save",
+            "admin/room-board/room/save", "/admin/room-board/room/save"
+    })
     public String saveRoomConfig(RoomBoardRoomConfig form, HttpSession session) {
         String inst = ensureInst(session);
         if (inst == null) {
@@ -239,10 +250,13 @@ public class RoomBoardController {
             return "redirect:/admin";
         }
         roomBoardService.saveRoomConfig(inst, form, userinfo == null ? "" : userinfo.getUs_col_02());
-        return "redirect:/admin/room-board";
+        return "redirect:/room-board/manage";
     }
 
-    @PostMapping({ "admin/room-board/room/delete", "/admin/room-board/room/delete" })
+    @PostMapping({
+            "room-board/manage/room/delete", "/room-board/manage/room/delete",
+            "admin/room-board/room/delete", "/admin/room-board/room/delete"
+    })
     public String deleteRoomConfig(@RequestParam("id") long id, HttpSession session) {
         String inst = ensureInst(session);
         if (inst == null) {
@@ -256,10 +270,13 @@ public class RoomBoardController {
             return "redirect:/admin";
         }
         roomBoardService.deleteRoomConfig(inst, id);
-        return "redirect:/admin/room-board";
+        return "redirect:/room-board/manage";
     }
 
-    @PostMapping({ "admin/room-board/room-config/preview", "/admin/room-board/room-config/preview" })
+    @PostMapping({
+            "room-board/manage/room-config/preview", "/room-board/manage/room-config/preview",
+            "admin/room-board/room-config/preview", "/admin/room-board/room-config/preview"
+    })
     public ResponseEntity<?> previewRoomConfigPaste(
             @RequestParam("rawText") String rawText,
             HttpSession session) {
@@ -282,7 +299,10 @@ public class RoomBoardController {
         }
     }
 
-    @PostMapping({ "admin/room-board/room-config/save", "/admin/room-board/room-config/save" })
+    @PostMapping({
+            "room-board/manage/room-config/save", "/room-board/manage/room-config/save",
+            "admin/room-board/room-config/save", "/admin/room-board/room-config/save"
+    })
     public ResponseEntity<?> saveRoomConfigPaste(
             @RequestParam("rawText") String rawText,
             HttpSession session) {
@@ -308,7 +328,10 @@ public class RoomBoardController {
         }
     }
 
-    @PostMapping({ "admin/room-board/import/preview", "/admin/room-board/import/preview" })
+    @PostMapping({
+            "room-board/manage/import/preview", "/room-board/manage/import/preview",
+            "admin/room-board/import/preview", "/admin/room-board/import/preview"
+    })
     public ResponseEntity<?> previewImport(
             @RequestParam("sourceType") String sourceType,
             @RequestParam(value = "snapshotDate", required = false) String snapshotDate,
@@ -334,7 +357,10 @@ public class RoomBoardController {
         }
     }
 
-    @PostMapping({ "admin/room-board/import/save", "/admin/room-board/import/save" })
+    @PostMapping({
+            "room-board/manage/import/save", "/room-board/manage/import/save",
+            "admin/room-board/import/save", "/admin/room-board/import/save"
+    })
     public ResponseEntity<?> saveImport(
             @RequestParam("sourceType") String sourceType,
             @RequestParam(value = "snapshotDate", required = false) String snapshotDate,
@@ -491,6 +517,7 @@ public class RoomBoardController {
     // ─────────────────────────────────────────────────────────────────────
 
     @GetMapping({ "counsel/admission-reservation", "/counsel/admission-reservation" })
+    @PreAuthorize("hasAuthority('ADMISSION:READ') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public String admissionReservationPage(Model model, HttpSession session) {
         String inst = ensureInst(session);
         if (inst == null) {
