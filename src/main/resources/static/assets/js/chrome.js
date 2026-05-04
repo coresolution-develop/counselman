@@ -11,24 +11,25 @@
   };
 
   // ── 기본 메뉴 정의 ──────────────────────────────────────────────
+  // permKey: csm.menu_master의 menu_key 값. null이면 항상 표시.
   const NAV_DEFAULT = [
     { key: 's:상담 업무', section: '상담 업무', items: [
-      { id: 'reception',     label: '상담 접수',    icon: 'inbox',      href: '/counsel/intake' },
-      { id: 'inpatient',     label: '입원상담',     icon: 'bed',        href: '/counsel/inpatient' },
-      { id: 'inpatient-res', label: '입원예약관리', icon: 'calendar',   href: '/counsel/admission-reservation' },
-      { id: 'ward',          label: '병실현황판',   icon: 'bed',        href: '/room-board' },
-      { id: 'discharge',     label: '퇴원예고',     icon: 'calendar',   href: '/room-board/discharge-notice' },
-      { id: 'list',          label: '상담리스트',   icon: 'list',       href: '/counsel/list' },
-      { id: 'documents',     label: '서류관리',     icon: 'clipboard',  href: '/documents' },
-      { id: 'notice',        label: '공지사항',     icon: 'megaphone',  href: '/notices' },
-      { id: 'stats',         label: '상담통계',     icon: 'chart',      href: '/statistics' },
+      { id: 'reception',     label: '상담 접수',    icon: 'inbox',      href: '/counsel/intake',                permKey: 'counsel_reservation' },
+      { id: 'inpatient',     label: '입원상담',     icon: 'bed',        href: '/counsel/inpatient',             permKey: 'counsel_write' },
+      { id: 'inpatient-res', label: '입원예약관리', icon: 'calendar',   href: '/counsel/admission-reservation', permKey: 'admission' },
+      { id: 'ward',          label: '병실현황판',   icon: 'bed',        href: '/room-board',                    permKey: 'room_board' },
+      { id: 'discharge',     label: '퇴원예고',     icon: 'calendar',   href: '/room-board/discharge-notice',   permKey: 'room_board' },
+      { id: 'list',          label: '상담리스트',   icon: 'list',       href: '/counsel/list',                  permKey: 'counsel_list' },
+      { id: 'documents',     label: '서류관리',     icon: 'clipboard',  href: '/documents',                     permKey: 'counsel_log' },
+      { id: 'notice',        label: '공지사항',     icon: 'megaphone',  href: '/notices',                       permKey: 'notice' },
+      { id: 'stats',         label: '상담통계',     icon: 'chart',      href: '/statistics',                    permKey: 'stats' },
     ]},
     { key: 's:커뮤니케이션', section: '커뮤니케이션', items: [
-      { id: 'message',       label: '문자관리',     icon: 'chat',       href: '/message' },
+      { id: 'message',       label: '문자관리',     icon: 'chat',       href: '/message',                       permKey: 'sms' },
     ]},
     { key: 's:시스템', section: '시스템', items: [
-      { id: 'admin',         label: '관리자',       icon: 'shield',     href: '/roles', badge: '3' },
-      { id: 'records',       label: '상담일지관리', icon: 'sliders',    href: '/admin/counsel/log-settings' },
+      { id: 'admin',         label: '관리자',       icon: 'shield',     href: '/roles',                         permKey: 'admin',
+        active: ['/roles', '/users', '/access', '/counsel/log-settings', '/admin/counsel/log-settings', '/room-board/manage', '/admin/room-board'] },
     ]},
   ];
 
@@ -64,12 +65,23 @@
   const icon = (id) => `<svg><use href="#i-${id}"/></svg>`;
 
   // ── 사이드바 렌더 ────────────────────────────────────────────────
+  function canViewNavItem(permKey) {
+    const menuKeys = window._meCache && window._meCache.menuKeys;
+    if (!Array.isArray(menuKeys)) return true; // null/undefined = 데이터 없음 → 전체 표시(안전 폴백)
+    if (menuKeys.length === 0) return false;   // [] = 권한 없음 → 숨김
+    if (!permKey) return true;
+    return menuKeys.includes(permKey);
+  }
+
   function renderSidebar(editMode) {
     const pathNow = location.pathname;
     const sections = NAV.map(sec => {
-      const items = sec.items.map(it => {
+      const visibleItems = sec.items.filter(it => canViewNavItem(it.permKey));
+      if (visibleItems.length === 0) return '';
+      const items = visibleItems.map(it => {
         const fullHref = path(it.href);
-        const active = pathNow === fullHref ? ' is-active' : '';
+        const activePaths = [it.href, ...(it.active || [])].map(path);
+        const active = activePaths.includes(pathNow) ? ' is-active' : '';
         const badge  = it.badge ? `<span class="nav-item__badge">${it.badge}</span>` : '';
         const handle = editMode
           ? `<span class="nav-drag-handle" title="드래그하여 순서 변경">⠿</span>`
@@ -462,7 +474,8 @@
         if (hdSlot) hdSlot.outerHTML = renderHeader(crumb || { current: 'Dashboard' });
 
         // nav 순서 + 유저 정보: window 레벨 캐시 (Turbo 재방문 시 재사용)
-        if (!window._navCache || !window._meCache) {
+        // menuKeys 필드가 없으면 구버전 캐시 → 강제 재조회
+        if (!window._navCache || !window._meCache || !('menuKeys' in window._meCache)) {
           const [orderRows, me] = await Promise.all([
             fetch(CTX + '/api/nav-order').then(r => r.ok ? r.json() : []).catch(() => []),
             fetch(CTX + '/api/me').then(r => r.ok ? r.json() : {}).catch(() => ({})),

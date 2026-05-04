@@ -93,7 +93,9 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import com.coresolution.csm.config.InstDetails;
 import com.coresolution.csm.serivce.CounselListService;
 import com.coresolution.csm.serivce.CsmAuthService;
+import com.coresolution.csm.serivce.PermissionResolver;
 import com.coresolution.csm.serivce.RoomBoardService;
+import org.springframework.jdbc.core.JdbcTemplate;
 import com.coresolution.csm.serivce.CsmEmailService;
 import com.coresolution.csm.serivce.ModuleFeatureService;
 import com.coresolution.csm.serivce.CsmPasswordResetTokenService;
@@ -212,6 +214,10 @@ public class PageController {
             + "<p>4. 입원생활에 관련 법적 분쟁 발생 시 원칙적으로 환자 본인이 의료기관의 소송 상대방이 되며, 불가피할 경우 주보호자가 <strong>법적 대리인</strong>이 됩니다.</p>";
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newBuilder().build();
+    @Autowired
+    private PermissionResolver permissionResolver;
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
     @Autowired
     private AES128 aes;
     @Value("${login.aes-key}")
@@ -1534,6 +1540,7 @@ public class PageController {
     // return ResponseEntity.ok(body);
     // }
     @GetMapping(value = "counsel/list", params = "!requestType", produces = "text/html")
+    @PreAuthorize("hasAuthority('COUNSEL_LIST:READ') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ModelAndView getCounselListView(
             HttpSession session, HttpServletRequest req, Criteria cri,
             @RequestParam(value = "dateRange", defaultValue = "") String dateRange,
@@ -5752,6 +5759,7 @@ public class PageController {
     }
 
     @GetMapping({ "documents", "/documents" })
+    @PreAuthorize("hasAuthority('COUNSEL_LOG:READ') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ModelAndView documentManagementPage(
             @RequestParam(value = "q", defaultValue = "") String keyword,
             HttpSession session) {
@@ -7789,7 +7797,7 @@ public class PageController {
 
     @GetMapping(value = { "design/counsel/log-settings", "/design/counsel/log-settings" })
     public ModelAndView legacyDesignCounselLogSettings(HttpServletRequest request) {
-        return legacyDesignRedirect("/admin/counsel/log-settings", request);
+        return legacyDesignRedirect("/counsel/log-settings", request);
     }
 
     @GetMapping(value = { "design/notices", "/design/notices" })
@@ -7819,7 +7827,7 @@ public class PageController {
 
     @GetMapping("api/me")
     @ResponseBody
-    public Map<String, String> getMe(HttpSession session) {
+    public Map<String, Object> getMe(HttpSession session) {
         Userdata u = session != null ? (Userdata) session.getAttribute("userInfo") : null;
         if (u == null) return Map.of();
         String inst = (String) session.getAttribute("inst");
@@ -7830,12 +7838,50 @@ public class PageController {
             List<String> roleNames = cs.getUserRoleNames(inst, u.getUs_col_01());
             role = String.join(", ", roleNames);
         }
-        return Map.of(
-            "name",     safeString(u.getUs_col_12()),
-            "id",       safeString(u.getUs_col_02()),
-            "instname", instname,
-            "role",     role
-        );
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("name",     safeString(u.getUs_col_12()));
+        result.put("id",       safeString(u.getUs_col_02()));
+        result.put("instname", instname);
+        result.put("role",     role);
+        result.put("menuKeys", resolveAccessibleMenuKeys(u, inst));
+        return result;
+    }
+
+    private List<String> resolveAccessibleMenuKeys(Userdata u, String inst) {
+        if (u == null || inst == null) return null;
+        String loginId = u.getUs_col_02();
+        int col08 = u.getUs_col_08();
+        // authority 0 = platform_admin, 1 = inst_admin → 전체 메뉴 허용
+        if (col08 <= 1) {
+            log.debug("[menuKeys] user={} inst={} col08={} → admin, returning all keys", loginId, inst, col08);
+            try {
+                return jdbcTemplate.queryForList(
+                    "SELECT menu_key FROM csm.menu_master GROUP BY menu_key ORDER BY MIN(sort_order)",
+                    String.class);
+            } catch (Exception e) {
+                log.warn("[menuKeys] menu_master query failed: {}", e.toString());
+                return null;
+            }
+        }
+        // 일반 사용자: 역할 권한 + 사용자 오버라이드 → menu_key 목록
+        long userId = u.getUs_col_01();
+        try {
+            String safe = cs.sanitizeInstPublic(inst);
+            Set<String> permCodes = permissionResolver.resolveUserPermissions(userId, safe);
+            log.debug("[menuKeys] user={} inst={} col08={} permCodes={}", loginId, inst, col08, permCodes);
+            if (permCodes.isEmpty()) return List.of();
+            String placeholders = permCodes.stream().map(c -> "?").collect(Collectors.joining(","));
+            List<String> keys = jdbcTemplate.queryForList(
+                "SELECT menu_key FROM csm.permission_master"
+                + " WHERE code IN (" + placeholders + ")"
+                + " GROUP BY menu_key ORDER BY MIN(sort_order)",
+                String.class, permCodes.toArray());
+            log.debug("[menuKeys] user={} resolved menuKeys={}", loginId, keys);
+            return keys;
+        } catch (Exception e) {
+            log.warn("[menuKeys] user={} inst={} exception → returning null: {}", loginId, inst, e.toString());
+            return null;
+        }
     }
 
     @GetMapping({"api/notices-popup", "/api/notices-popup"})
@@ -7856,6 +7902,7 @@ public class PageController {
     }
 
     @GetMapping({ "counsel/intake", "/counsel/intake" })
+    @PreAuthorize("hasAuthority('COUNSEL_RESERVATION:READ') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ModelAndView designCounselIntake(
             @RequestParam(value = "reservationId", required = false) Long reservationId,
             HttpSession session) {
@@ -7963,6 +8010,7 @@ public class PageController {
     }
 
     @GetMapping({ "counsel/inpatient", "/counsel/inpatient" })
+    @PreAuthorize("hasAuthority('COUNSEL:READ') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ModelAndView designCounselInpatient(
             @RequestParam(value = "cs_idx", required = false) Integer csIdx,
             @RequestParam(value = "reservationId", required = false) Long reservationId,
@@ -8281,6 +8329,7 @@ public class PageController {
     }
 
     @GetMapping({ "notices", "/notices" })
+    @PreAuthorize("hasAuthority('NOTICE:READ') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public String designNotices(Model model, HttpSession session) {
         String inst = ensureInst(session);
         if (inst == null) return "redirect:/login";
@@ -8342,6 +8391,7 @@ public class PageController {
     }
 
     @GetMapping({ "message", "/message", "message/sent", "/message/sent", "message/reservations", "/message/reservations" })
+    @PreAuthorize("hasAuthority('SMS:SEND') or hasAuthority('SMS:HISTORY_READ') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public String designMessage(
             HttpServletRequest request,
             HttpSession session,
@@ -8384,11 +8434,7 @@ public class PageController {
     }
 
     @GetMapping({ "counsel/log-settings", "/counsel/log-settings" })
-    public ModelAndView legacyCounselLogSettings(HttpServletRequest request) {
-        return legacyDesignRedirect("/admin/counsel/log-settings", request);
-    }
-
-    @GetMapping({ "admin/counsel/log-settings", "/admin/counsel/log-settings" })
+    @PreAuthorize("hasAuthority('COUNSEL_LOG:READ') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ModelAndView designCounselLogSettings(HttpSession session) {
         ModelAndView mv = new ModelAndView("design/consultation-log-settings");
         String inst = ensureInst(session);
@@ -8400,6 +8446,11 @@ public class PageController {
             mv.addObject("settingsJson", "[]");
         }
         return mv;
+    }
+
+    @GetMapping({ "admin/counsel/log-settings", "/admin/counsel/log-settings" })
+    public ModelAndView legacyCounselLogSettings(HttpServletRequest request) {
+        return legacyDesignRedirect("/counsel/log-settings", request);
     }
 
     @PostMapping({
@@ -8539,6 +8590,7 @@ public class PageController {
     }
 
     @GetMapping({ "users", "/users" })
+    @PreAuthorize("hasAuthority('USER:READ') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ModelAndView designUserManagement(HttpSession session) {
         ModelAndView mv = new ModelAndView("design/user-management");
         String inst = ensureInst(session);
@@ -8592,6 +8644,7 @@ public class PageController {
     }
 
     @GetMapping({ "roles", "/roles" })
+    @PreAuthorize("hasAuthority('ROLE:READ') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public String designRoleManagement() {
         return "design/role-management";
     }
@@ -8602,6 +8655,7 @@ public class PageController {
     }
 
     @GetMapping({ "access", "/access" })
+    @PreAuthorize("hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ModelAndView designAccessManagement(HttpSession session) {
         String inst = ensureInst(session);
         if (inst == null) return new ModelAndView("redirect:/login");
