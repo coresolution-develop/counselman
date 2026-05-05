@@ -1,6 +1,6 @@
 # MediPlat 작업 현황
 
-> 최종 업데이트: 2026-05-04
+> 최종 업데이트: 2026-05-05
 
 ---
 
@@ -86,6 +86,8 @@
 
 - [ ] **CSM 허용 버튼** (`/csm/access`) — toggle POST가 `mp_user_service` 행을 실제로 생성/수정하는지 확인 필요 (현재 FALH 데이터 없어 모두 비활성 상태로 표시됨)
 - [ ] **서류관리 템플릿** (`/documents#template`) — 표 삽입 → 서명영역 삽입 → 저장 → 입원서약서 렌더링 브라우저 직접 검증
+- [ ] **채팅 페이지 폰트 CORS** — `common.css`의 `fonts.gstatic.com/ea/notosanskr/v2/` URL이 deprecated되어 CORS 에러 발생. `https://fonts.googleapis.com/css2?family=Noto+Sans+KR` CDN 또는 로컬 폰트로 교체 필요
+- [ ] **기본 아바타 이미지 누락** — 채팅 페이지에서 `/img/default-avatar.png` 404 발생. `src/main/resources/static/img/` 하위에 기본 아바타 이미지 파일 추가 필요
 
 ---
 
