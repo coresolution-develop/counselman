@@ -3,6 +3,7 @@ package com.coresolution.csm.config;
 import java.net.URI;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,6 +32,9 @@ public class SecurityConfig {
         @Value("${mediplat.platform.base-url:http://localhost:8082}")
         private String mediplatPlatformBaseUrl;
 
+        @Autowired
+        private KakaoOAuth2UserService kakaoOAuth2UserService;
+
         private static final String[] PUBLIC_PATHS = {
                         "/login", "/login/**", "/csm/login", "/csm/login/**",
                         "/links", "/csm/links",
@@ -50,7 +54,9 @@ public class SecurityConfig {
                         "/design/**", "/csm/design/**",
                         "/csm/css/**", "/csm/js/**", "/csm/img/**", "/csm/webjars/**", "/csm/icon/**",
                         "/csm/fonts/**", "/csm/public/**",
-                        "/favicon.ico", "/favicon/**", "/csm/favicon.ico", "/csm/favicon/**"
+                        "/favicon.ico", "/favicon/**", "/csm/favicon.ico", "/csm/favicon/**",
+                        "/chat", "/chat/**", "/csm/chat", "/csm/chat/**",
+                        "/ws/chat/**", "/csm/ws/chat/**"
         };
 
         @Bean
@@ -73,7 +79,11 @@ public class SecurityConfig {
                                                 new AntPathRequestMatcher("/api/access/**"),
                                                 new AntPathRequestMatcher("/csm/api/access/**"),
                                                 new AntPathRequestMatcher("/counsel/ListSetting", "POST"),
-                                                new AntPathRequestMatcher("/csm/counsel/ListSetting", "POST")))
+                                                new AntPathRequestMatcher("/csm/counsel/ListSetting", "POST"),
+                                                new AntPathRequestMatcher("/api/chat/**"),
+                                                new AntPathRequestMatcher("/csm/api/chat/**"),
+                                                new AntPathRequestMatcher("/ws/chat/**"),
+                                                new AntPathRequestMatcher("/csm/ws/chat/**")))
                                 .exceptionHandling(ex -> ex
                                                 .defaultAuthenticationEntryPointFor(
                                                                 new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
@@ -107,6 +117,10 @@ public class SecurityConfig {
                                 // ★ 폼 로그인 필터가 /login/post를 가로채지 않도록 비활성화
                                 .formLogin(form -> form.disable())
                                 .httpBasic(basic -> basic.disable())
+                                .oauth2Login(oauth2 -> oauth2
+                                                .loginPage("/chat")
+                                                .defaultSuccessUrl("/chat", true)
+                                                .userInfoEndpoint(u -> u.userService(kakaoOAuth2UserService)))
                                 .logout(l -> l.logoutUrl("/logout")
                                                 .logoutSuccessUrl(resolveMediplatRedirectUrl())
                                                 .permitAll());

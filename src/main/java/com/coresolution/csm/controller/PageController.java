@@ -8662,6 +8662,23 @@ public class PageController {
         return new ModelAndView("design/access-management");
     }
 
+    @GetMapping({ "faq-manage", "/faq-manage" })
+    @PreAuthorize("hasAuthority('FAQ:READ') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
+    public String faqManagement() {
+        return "design/faq-management";
+    }
+
+    @GetMapping({ "chat", "/chat" })
+    public String chatPage() {
+        return "design/chat-page";
+    }
+
+    @GetMapping({ "chat-admin", "/chat-admin" })
+    @PreAuthorize("hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN') or hasRole('COUNSELOR')")
+    public String chatAdmin() {
+        return "design/chat-admin";
+    }
+
     private static String nullToEmpty(String s) {
         return s == null ? "" : s;
     }

@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/thymeleaf-extras-springsecurity6">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="_csrf" th:content="${_csrf.token}"/>
+  <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+  <title>채팅 관리 | 카운셀맨</title>
+  <link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+  <style>
+    [x-cloak] { display: none !important; }
+
+    .admin-tabs { display: flex; gap: 4px; padding: 0 24px; border-bottom: 1px solid #e5e7eb; background: #fff; overflow-x: auto; }
+    .tab { display: flex; align-items: center; gap: 6px; padding: 12px 16px; font-size: 13px; color: #6b7280; text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all .15s; }
+    .tab:hover { color: #1a2332; }
+    .tab.active { color: #1a2332; font-weight: 600; border-bottom-color: #1a2332; }
+    .tab svg { width: 16px; height: 16px; }
+
+    .page-wrap { display: flex; height: calc(100vh - 105px); overflow: hidden; }
+
+    /* 채팅방 목록 패널 */
+    .room-panel {
+      width: 300px;
+      flex-shrink: 0;
+      border-right: 1px solid #e5e7eb;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+    }
+    .room-panel-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .room-panel-header h3 { font-size: 14px; font-weight: 700; }
+    .badge {
+      background: #ef4444;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 10px;
+      padding: 2px 7px;
+      min-width: 20px;
+      text-align: center;
+    }
+    .room-list { flex: 1; overflow-y: auto; }
+    .room-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid #f3f4f6;
+      cursor: pointer;
+      transition: background .1s;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .room-item:hover { background: #f9fafb; }
+    .room-item.selected { background: #eef2ff; }
+    .room-item.new-blink { animation: blink 1s ease-in-out 3; }
+    @keyframes blink { 0%,100% { background: #fff; } 50% { background: #fef9c3; } }
+    .room-item-top { display: flex; align-items: center; justify-content: space-between; }
+    .room-name { font-size: 14px; font-weight: 600; color: #1a2332; }
+    .room-status {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+    .status-WAITING { background: #fef9c3; color: #92400e; }
+    .status-ACTIVE  { background: #d1fae5; color: #065f46; }
+    .status-CLOSED  { background: #f3f4f6; color: #6b7280; }
+    .room-time { font-size: 12px; color: #9ca3af; }
+    .empty-rooms { text-align: center; color: #9ca3af; font-size: 13px; padding: 40px 16px; }
+
+    /* 채팅 영역 */
+    .chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #f8f9fb;
+      min-width: 0;
+    }
+    .chat-top-bar {
+      padding: 12px 20px;
+      background: #fff;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .chat-top-bar h4 { font-size: 14px; font-weight: 700; }
+    .chat-top-bar .sub { font-size: 12px; color: #6b7280; }
+    .btn-join {
+      background: #1a2332;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-close-room {
+      background: #ef4444;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .messages-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .msg { display: flex; flex-direction: column; max-width: 65%; }
+    .msg.user { align-self: flex-end; align-items: flex-end; }
+    .msg.counselor { align-self: flex-start; align-items: flex-start; }
+    .msg.system { align-self: center; align-items: center; max-width: 80%; }
+    .msg-name { font-size: 11px; color: #9ca3af; margin-bottom: 3px; }
+    .msg-bubble { padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; word-break: break-word; }
+    .msg.user .msg-bubble { background: #e0e7ff; color: #1e1b4b; border-radius: 14px 14px 4px 14px; }
+    .msg.counselor .msg-bubble { background: #1a2332; color: #fff; border-radius: 14px 14px 14px 4px; }
+    .msg.system .msg-bubble { background: #e8f4f8; color: #4b6a8a; font-size: 12px; text-align: center; border-radius: 8px; }
+
+    .input-area {
+      padding: 12px 20px;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      gap: 10px;
+      background: #fff;
+    }
+    .msg-input {
+      flex: 1;
+      border: 1.5px solid #d1d5db;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      resize: none;
+      height: 44px;
+    }
+    .msg-input:focus { border-color: #1a2332; }
+    .btn-send {
+      background: #1a2332;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 0 18px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .placeholder-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9ca3af;
+      font-size: 14px;
+    }
+
+    /* SVG icons */
+    .i-chat { display: none; }
+  </style>
+</head>
+<body x-data="chatAdminPage()" x-init="init()">
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="i-user" viewBox="0 0 20 20" fill="currentColor">
+    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clip-rule="evenodd"/>
+  </symbol>
+  <symbol id="i-role" viewBox="0 0 20 20" fill="currentColor">
+    <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
+  </symbol>
+  <symbol id="i-lock" viewBox="0 0 20 20" fill="currentColor">
+    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+  </symbol>
+  <symbol id="i-log" viewBox="0 0 20 20" fill="currentColor">
+    <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h4a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
+  </symbol>
+  <symbol id="i-board" viewBox="0 0 20 20" fill="currentColor">
+    <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414zM11 12a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/>
+  </symbol>
+  <symbol id="i-chat" viewBox="0 0 20 20" fill="currentColor">
+    <path d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7z"/>
+  </symbol>
+  <symbol id="i-faq" viewBox="0 0 20 20" fill="currentColor">
+    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+  </symbol>
+</svg>
+
+<!-- ── 탭바 ── -->
+<nav class="admin-tabs">
+  <a class="tab" th:href="@{/role-manage}">
+    <svg><use href="#i-role"/></svg>역할 관리
+  </a>
+  <a class="tab" th:href="@{/user-manage}">
+    <svg><use href="#i-user"/></svg>사용자 관리
+  </a>
+  <a class="tab" th:href="@{/access}">
+    <svg><use href="#i-lock"/></svg>접근 권한
+  </a>
+  <a class="tab" th:href="@{/consultation-log-settings}">
+    <svg><use href="#i-log"/></svg>상담 설정
+  </a>
+  <a class="tab" th:href="@{/room-board-admin}">
+    <svg><use href="#i-board"/></svg>병실현황판 관리
+  </a>
+  <a class="tab" th:href="@{/faq-manage}">
+    <svg><use href="#i-faq"/></svg>FAQ 관리
+  </a>
+  <a class="tab active" th:href="@{/chat-admin}">
+    <svg><use href="#i-chat"/></svg>채팅 관리
+  </a>
+</nav>
+
+<!-- ── 메인 레이아웃 ── -->
+<div class="page-wrap">
+
+  <!-- 채팅방 목록 -->
+  <div class="room-panel">
+    <div class="room-panel-header">
+      <h3>상담 목록</h3>
+      <span class="badge" x-show="waitingCount > 0" x-text="waitingCount"></span>
+    </div>
+    <div class="room-list">
+      <div class="empty-rooms" x-show="rooms.length === 0">
+        대기 중인 상담이 없습니다.
+      </div>
+      <template x-for="room in rooms" :key="room.id">
+        <div class="room-item"
+             :class="{ selected: selectedRoom && selectedRoom.id === room.id, 'new-blink': room._new }"
+             @click="selectRoom(room)">
+          <div class="room-item-top">
+            <span class="room-name" x-text="room.kakao_nickname"></span>
+            <span class="room-status" :class="'status-' + room.status" x-text="statusLabel(room.status)"></span>
+          </div>
+          <span class="room-time" x-text="formatTime(room.created_at)"></span>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- 채팅 영역 -->
+  <div class="chat-area">
+
+    <!-- 선택된 방 없을 때 -->
+    <div class="placeholder-area" x-show="!selectedRoom">
+      왼쪽 목록에서 상담을 선택해 주세요.
+    </div>
+
+    <!-- 선택된 방 있을 때 -->
+    <template x-if="selectedRoom">
+      <div style="display:flex;flex-direction:column;height:100%">
+        <div class="chat-top-bar">
+          <div>
+            <h4 x-text="selectedRoom.kakao_nickname + ' 님'"></h4>
+            <div class="sub" x-text="'상담방 #' + selectedRoom.id + ' · ' + statusLabel(selectedRoom.status)"></div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-join"
+                    x-show="selectedRoom.status === 'WAITING'"
+                    @click="joinRoom()">연결 수락</button>
+            <button class="btn-close-room"
+                    x-show="selectedRoom.status === 'ACTIVE'"
+                    @click="closeRoom()">상담 종료</button>
+          </div>
+        </div>
+
+        <div class="messages-area" x-ref="msgArea">
+          <template x-for="(msg, idx) in messages" :key="idx">
+            <div class="msg" :class="msgClass(msg)">
+              <div class="msg-name" x-show="msg.type === 'MESSAGE'" x-text="msg.senderName"></div>
+              <div class="msg-bubble" x-text="msg.content || msg.text"></div>
+            </div>
+          </template>
+        </div>
+
+        <div class="input-area" x-show="selectedRoom.status === 'ACTIVE'">
+          <textarea
+            class="msg-input"
+            placeholder="메시지를 입력하세요..."
+            x-model="inputText"
+            @keydown.enter.prevent="sendMessage()"
+            rows="1"></textarea>
+          <button class="btn-send" @click="sendMessage()">전송</button>
+        </div>
+      </div>
+    </template>
+
+  </div>
+</div>
+
+<!-- ── Scripts ── -->
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+<script th:inline="javascript">
+const CTX = /*[[${#request.contextPath}]]*/ "";
+function chatAdminPage() {
+  return {
+    inst: '',
+    counselorId: null,
+    counselorName: '',
+    rooms: [],
+    selectedRoom: null,
+    messages: [],
+    inputText: '',
+    stompClient: null,
+    pollTimer: null,
+
+    get waitingCount() {
+      return this.rooms.filter(r => r.status === 'WAITING').length;
+    },
+
+    async init() {
+      // 현재 로그인한 사용자 정보 읽기 (Spring Security principal)
+      const infoRes = await fetch(CTX + '/api/user/me').catch(() => null);
+      if (infoRes && infoRes.ok) {
+        const info = await infoRes.json();
+        this.counselorId = info.id;
+        this.counselorName = info.name || info.username || '상담사';
+      }
+
+      // inst 읽기 (URL → 세션)
+      const params = new URLSearchParams(location.search);
+      this.inst = params.get('inst') || 'FALH';
+
+      await this.loadRooms();
+      this.connectAdminWebSocket();
+      this.pollTimer = setInterval(() => this.loadRooms(), 10000);
+    },
+
+    async loadRooms() {
+      const res = await fetch(CTX + '/api/chat/rooms?inst=' + this.inst);
+      const data = await res.json();
+      const prev = new Set(this.rooms.map(r => r.id));
+      this.rooms = data.map(r => ({ ...r, _new: !prev.has(r.id) && r.status === 'WAITING' }));
+    },
+
+    connectAdminWebSocket() {
+      const sock = new SockJS(CTX + '/ws/chat');
+      this.stompClient = Stomp.over(sock);
+      this.stompClient.debug = null;
+      this.stompClient.connect({}, () => {
+        // 새 채팅방 알림 구독
+        this.stompClient.subscribe('/topic/admin/rooms/' + this.inst, (frame) => {
+          const msg = JSON.parse(frame.body);
+          if (msg.type === 'NEW_ROOM') this.loadRooms();
+        });
+      });
+    },
+
+    async selectRoom(room) {
+      this.selectedRoom = room;
+      this.messages = [];
+
+      // 이전 메시지 로드
+      const res = await fetch(CTX + '/api/chat/room/' + room.id + '/messages?inst=' + this.inst);
+      const data = await res.json();
+      this.messages = data.map(m => ({
+        type: 'MESSAGE',
+        senderType: m.sender_type,
+        senderName: m.sender_name,
+        content: m.content
+      }));
+
+      // 채팅방 구독 (기존 구독 해제 후 재구독)
+      if (this._roomSub) this._roomSub.unsubscribe();
+      if (this.stompClient && this.stompClient.connected) {
+        this._roomSub = this.stompClient.subscribe('/topic/chat/' + room.id, (frame) => {
+          const msg = JSON.parse(frame.body);
+          if (msg.type === 'MESSAGE') {
+            this.messages.push(msg);
+            this.$nextTick(() => this.scrollBottom());
+          }
+        });
+      }
+
+      this.$nextTick(() => this.scrollBottom());
+    },
+
+    async joinRoom() {
+      if (!this.selectedRoom) return;
+      await fetch(CTX + '/api/chat/room/' + this.selectedRoom.id + '/join'
+        + '?inst=' + this.inst
+        + '&counselorId=' + (this.counselorId || 0)
+        + '&counselorName=' + encodeURIComponent(this.counselorName),
+        { method: 'PUT' });
+      this.selectedRoom.status = 'ACTIVE';
+      this.loadRooms();
+    },
+
+    async closeRoom() {
+      if (!this.selectedRoom) return;
+      await fetch(CTX + '/api/chat/room/' + this.selectedRoom.id + '/close?inst=' + this.inst,
+        { method: 'PUT' });
+      this.selectedRoom.status = 'CLOSED';
+      this.loadRooms();
+    },
+
+    sendMessage() {
+      if (!this.inputText.trim() || !this.stompClient || !this.selectedRoom) return;
+      const content = this.inputText.trim();
+      this.stompClient.send('/app/chat/' + this.selectedRoom.id + '/send', {}, JSON.stringify({
+        inst: this.inst,
+        senderType: 'COUNSELOR',
+        senderName: this.counselorName,
+        content
+      }));
+      this.inputText = '';
+    },
+
+    msgClass(msg) {
+      if (msg.type === 'SYSTEM') return 'system';
+      return msg.senderType === 'USER' ? 'user' : 'counselor';
+    },
+
+    statusLabel(s) {
+      return { WAITING: '대기', ACTIVE: '상담중', CLOSED: '종료' }[s] || s;
+    },
+
+    formatTime(dt) {
+      if (!dt) return '';
+      return new Date(dt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+    },
+
+    scrollBottom() {
+      const el = this.$refs.msgArea;
+      if (el) el.scrollTop = el.scrollHeight;
+    }
+  };
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="turbo-visit-control" content="reload" />
+  <meta name="_csrf"        th:content="${_csrf.token}"/>
+  <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+  <title>MediPlat · FAQ 관리</title>
+
+  <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/layout.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/components.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/tweaks.css}" />
+  <style>
+    /* ===== FAQ Management styles ===== */
+    .faq-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,.45); backdrop-filter: blur(2px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .faq-modal {
+      background: #fff; border-radius: 16px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.22);
+      width: 100%; max-width: 560px;
+      overflow: hidden;
+    }
+    .faq-modal__head {
+      display: flex; align-items: center; gap: 12px;
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .faq-modal__head-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: grid; place-items: center;
+      background: color-mix(in oklab, var(--brand-500) 10%, #fff);
+      color: var(--brand-600); flex-shrink: 0;
+    }
+    .faq-modal__head-icon svg { width: 20px; height: 20px; }
+    .faq-modal__title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+    .faq-modal__body { padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+    .faq-modal__footer {
+      display: flex; justify-content: flex-end; gap: 8px;
+      padding: 16px 24px;
+      background: var(--gray-50); border-top: 1px solid var(--border-subtle);
+    }
+    .faq-form-group { display: flex; flex-direction: column; gap: 5px; }
+    .faq-form-group label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+    .faq-form-group input,
+    .faq-form-group select,
+    .faq-form-group textarea {
+      padding: 8px 12px; border: 1px solid var(--border-default); border-radius: 8px;
+      font-size: 13px; background: #fff; transition: all .15s; font-family: inherit;
+    }
+    .faq-form-group textarea { resize: vertical; min-height: 120px; }
+    .faq-form-group input:focus,
+    .faq-form-group select:focus,
+    .faq-form-group textarea:focus {
+      border-color: var(--brand-400); outline: none;
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-500) 14%, transparent);
+    }
+
+    /* Table */
+    .faq-table-wrap { overflow-x: auto; }
+    .faq-table {
+      width: 100%; border-collapse: collapse; font-size: 13px;
+    }
+    .faq-table th {
+      padding: 10px 14px; text-align: left;
+      font-size: 11px; font-weight: 600; color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--gray-50); white-space: nowrap;
+    }
+    .faq-table td {
+      padding: 12px 14px; border-bottom: 1px solid var(--border-subtle);
+      vertical-align: top; color: var(--text-primary);
+    }
+    .faq-table tr:last-child td { border-bottom: none; }
+    .faq-table tr:hover td { background: var(--gray-50); }
+    .faq-table .col-no    { width: 48px; text-align: center; color: var(--text-tertiary); }
+    .faq-table .col-cat   { width: 110px; }
+    .faq-table .col-q     { max-width: 320px; }
+    .faq-table .col-order { width: 64px; text-align: center; }
+    .faq-table .col-date  { width: 130px; color: var(--text-tertiary); font-size: 12px; }
+    .faq-table .col-act   { width: 90px; text-align: right; white-space: nowrap; }
+
+    .faq-q-text { font-weight: 500; }
+    .faq-a-text {
+      margin-top: 4px; font-size: 12px; color: var(--text-secondary);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .badge-cat {
+      display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px;
+      font-weight: 600; background: color-mix(in oklab, var(--brand-500) 10%, #fff);
+      color: var(--brand-600); white-space: nowrap;
+    }
+
+    /* Toolbar */
+    .faq-toolbar {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .faq-toolbar select {
+      height: 36px; padding: 0 10px; border: 1px solid var(--border-default);
+      border-radius: 8px; font-size: 13px; background: #fff; font-family: inherit;
+    }
+    .faq-search-box { position: relative; flex: 1; min-width: 180px; max-width: 320px; }
+    .faq-search-box svg {
+      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+      width: 14px; height: 14px; color: var(--text-tertiary);
+    }
+    .faq-search-box input {
+      width: 100%; height: 36px; padding: 0 12px 0 32px;
+      border: 1px solid var(--border-default); border-radius: 8px; font-size: 13px;
+      font-family: inherit;
+    }
+    .faq-search-box input:focus {
+      outline: none; border-color: var(--brand-400);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-500) 14%, transparent);
+    }
+
+    /* Empty state */
+    .faq-empty {
+      padding: 48px; text-align: center; color: var(--text-tertiary); font-size: 13px;
+    }
+    .faq-empty svg { width: 32px; height: 32px; margin-bottom: 10px; display: block; margin-inline: auto; }
+
+    /* Delete confirm */
+    .faq-modal--sm { max-width: 400px; }
+    .faq-del-msg { font-size: 14px; color: var(--text-primary); line-height: 1.6; }
+    .faq-del-q { font-weight: 600; color: var(--text-primary); margin-top: 6px; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<script th:src="@{/assets/js/sprite.js}"></script>
+
+<div class="app"
+     data-screen-label="FAQ Management"
+     :data-sidebar="$store.app.sidebarCollapsed ? 'collapsed' : 'expanded'"
+     :data-variation="$store.app.variation"
+     :data-layout="$store.app.layout"
+     x-data>
+
+  <div id="slot-sidebar"></div>
+  <div id="slot-header"></div>
+
+  <!-- ============ Main ============ -->
+  <main class="main">
+    <div class="page" x-data="faqManagementPage()">
+
+      <!-- Page header -->
+      <div class="page__header">
+        <div>
+          <h1 class="page__title">관리자 설정</h1>
+          <p class="page__subtitle">사용자와 역할을 관리하고 시스템 권한을 제어합니다</p>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs" role="tablist">
+        <a class="tab" th:href="@{/users}" role="tab">
+          <svg><use href="#i-users"/></svg>
+          사용자 관리
+        </a>
+        <a class="tab" th:href="@{/roles}" role="tab">
+          <svg><use href="#i-shield"/></svg>
+          역할 관리
+        </a>
+        <a class="tab" th:href="@{/access}" role="tab">
+          <svg><use href="#i-key"/></svg>
+          CSM 접근 권한
+        </a>
+        <a class="tab" th:href="@{/counsel/log-settings}" role="tab">
+          <svg><use href="#i-sliders"/></svg>
+          상담일지관리
+        </a>
+        <a class="tab" th:href="@{/room-board/manage}" role="tab">
+          <svg><use href="#i-bed"/></svg>
+          병실현황판 관리
+        </a>
+        <button class="tab is-active" role="tab" aria-selected="true">
+          <svg><use href="#i-chat"/></svg>
+          FAQ 관리
+        </button>
+      </div>
+
+      <!-- Loading -->
+      <template x-if="loading">
+        <div style="padding:48px;text-align:center;color:var(--text-tertiary);font-size:13px;">
+          <svg style="width:20px;height:20px;animation:spin 1s linear infinite;margin-bottom:8px;display:block;margin-inline:auto"><use href="#i-refresh"/></svg>
+          불러오는 중...
+        </div>
+      </template>
+
+      <!-- Content -->
+      <template x-if="!loading">
+        <div class="panel">
+          <div class="panel__header">
+            <span class="panel__title">FAQ 목록</span>
+            <span class="panel__count" x-text="filtered.length + '개'"></span>
+            <div style="flex:1"></div>
+            <button class="btn btn--primary" @click="openAdd()">
+              <svg style="width:14px;height:14px"><use href="#i-plus"/></svg>
+              질문 추가
+            </button>
+          </div>
+
+          <!-- Toolbar -->
+          <div style="padding: 0 0 0 0;">
+            <div class="faq-toolbar" style="padding: 12px 0 0 0;">
+              <select x-model="filterCat" @change="applyFilter()">
+                <option value="">전체 카테고리</option>
+                <template x-for="c in categories" :key="c">
+                  <option :value="c" x-text="c"></option>
+                </template>
+              </select>
+              <div class="faq-search-box">
+                <svg><use href="#i-search"/></svg>
+                <input type="text" placeholder="질문·답변 검색"
+                       x-model="keyword"
+                       @input="applyFilter()"
+                       @keydown.escape="keyword=''; applyFilter()" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div class="faq-table-wrap">
+            <template x-if="filtered.length === 0">
+              <div class="faq-empty">
+                <svg><use href="#i-chat"/></svg>
+                등록된 FAQ가 없습니다
+              </div>
+            </template>
+            <template x-if="filtered.length > 0">
+              <table class="faq-table">
+                <thead>
+                  <tr>
+                    <th class="col-no">#</th>
+                    <th class="col-cat">카테고리</th>
+                    <th class="col-q">질문 / 답변</th>
+                    <th class="col-order">순서</th>
+                    <th class="col-date">등록일</th>
+                    <th class="col-act"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="(item, idx) in filtered" :key="item.id">
+                    <tr>
+                      <td class="col-no" x-text="idx + 1"></td>
+                      <td class="col-cat">
+                        <span class="badge-cat" x-text="item.category"></span>
+                      </td>
+                      <td class="col-q">
+                        <div class="faq-q-text" x-text="item.question"></div>
+                        <div class="faq-a-text" x-text="item.answer"></div>
+                      </td>
+                      <td class="col-order" x-text="item.sort_order"></td>
+                      <td class="col-date" x-text="item.created_at || '-'"></td>
+                      <td class="col-act">
+                        <button class="btn btn--ghost btn--sm" @click="openEdit(item)" title="수정">
+                          <svg style="width:14px;height:14px"><use href="#i-edit"/></svg>
+                        </button>
+                        <button class="btn btn--ghost btn--sm" style="color:var(--danger-500)"
+                                @click="openDelete(item)" title="삭제">
+                          <svg style="width:14px;height:14px"><use href="#i-trash"/></svg>
+                        </button>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </template>
+          </div>
+        </div>
+      </template>
+
+      <!-- ====== Add / Edit Modal ====== -->
+      <div class="faq-overlay" x-show="showForm" x-cloak @click.self="showForm=false" style="display:none">
+        <div class="faq-modal">
+          <div class="faq-modal__head">
+            <div class="faq-modal__head-icon">
+              <svg><use :href="editTarget ? '#i-edit' : '#i-plus'"/></svg>
+            </div>
+            <div class="faq-modal__title" x-text="editTarget ? 'FAQ 수정' : 'FAQ 추가'"></div>
+          </div>
+          <div class="faq-modal__body">
+            <div class="faq-form-group">
+              <label>카테고리 <span style="color:#ef4444">*</span></label>
+              <input type="text" x-model="form.category"
+                     placeholder="예: 예약, 비용, 입원절차"
+                     list="faq-cat-list" />
+              <datalist id="faq-cat-list">
+                <template x-for="c in categories" :key="c">
+                  <option :value="c"></option>
+                </template>
+              </datalist>
+            </div>
+            <div class="faq-form-group">
+              <label>질문 <span style="color:#ef4444">*</span></label>
+              <input type="text" x-model="form.question" placeholder="자주 묻는 질문을 입력하세요" />
+            </div>
+            <div class="faq-form-group">
+              <label>답변 <span style="color:#ef4444">*</span></label>
+              <textarea x-model="form.answer" placeholder="답변 내용을 입력하세요"></textarea>
+            </div>
+            <div class="faq-form-group">
+              <label>노출 순서</label>
+              <input type="number" x-model.number="form.sortOrder" min="0" style="width:100px" />
+            </div>
+            <template x-if="formError">
+              <p style="font-size:12px;color:#ef4444;margin:0" x-text="formError"></p>
+            </template>
+          </div>
+          <div class="faq-modal__footer">
+            <button class="btn btn--outline" @click="showForm=false">취소</button>
+            <button class="btn btn--primary" @click="submitForm()"
+                    :disabled="saving">
+              <template x-if="saving">
+                <svg style="width:14px;height:14px;animation:spin 1s linear infinite"><use href="#i-refresh"/></svg>
+              </template>
+              <span x-text="editTarget ? '저장' : '추가'"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== Delete Confirm Modal ====== -->
+      <div class="faq-overlay" x-show="showDelete" x-cloak @click.self="showDelete=false" style="display:none">
+        <div class="faq-modal faq-modal--sm">
+          <div class="faq-modal__head">
+            <div class="faq-modal__head-icon" style="background:color-mix(in oklab,#ef4444 10%,#fff);color:#ef4444">
+              <svg><use href="#i-trash"/></svg>
+            </div>
+            <div class="faq-modal__title">FAQ 삭제</div>
+          </div>
+          <div class="faq-modal__body">
+            <p class="faq-del-msg">다음 FAQ를 삭제하시겠습니까?</p>
+            <p class="faq-del-q" x-text="deleteTarget?.question"></p>
+          </div>
+          <div class="faq-modal__footer">
+            <button class="btn btn--outline" @click="showDelete=false">취소</button>
+            <button class="btn btn--danger" @click="confirmDelete()" :disabled="saving">삭제</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Tweaks -->
+  <button class="tweaks-fab" @click="$store.app.tweaksOpen = !$store.app.tweaksOpen"
+          :data-tweaks-open="$store.app.tweaksOpen">
+    <svg><use href="#i-sliders"/></svg>
+  </button>
+  <div class="tweaks-panel" :data-tweaks-open="$store.app.tweaksOpen"
+       x-bind:style="$store.app.tweaksOpen ? 'display:block' : 'display:none'">
+    <h3>디자인 변형</h3>
+    <p>세 가지 톤을 실시간으로 전환해 비교해 보세요.</p>
+    <div class="tweak-row">
+      <label class="tweak-row__label">컬러 테마</label>
+      <div class="tweak-segments">
+        <button class="tweak-seg" :class="{'is-active': $store.app.variation === 'default'}" @click="$store.app.setVariation('default')">Classic</button>
+        <button class="tweak-seg" :class="{'is-active': $store.app.variation === 'fresh'}"   @click="$store.app.setVariation('fresh')">Fresh</button>
+        <button class="tweak-seg" :class="{'is-active': $store.app.variation === 'executive'}" @click="$store.app.setVariation('executive')">Executive</button>
+      </div>
+    </div>
+    <div class="tweak-row">
+      <label class="tweak-row__label">사이드바</label>
+      <div class="tweak-segments">
+        <button class="tweak-seg" :class="{'is-active': !$store.app.sidebarCollapsed}" @click="if($store.app.sidebarCollapsed) $store.app.toggleSidebar()">펼침</button>
+        <button class="tweak-seg" :class="{'is-active': $store.app.sidebarCollapsed}"  @click="if(!$store.app.sidebarCollapsed) $store.app.toggleSidebar()">접힘</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  var TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+    "variation": "default",
+    "layout": "grid",
+    "sidebarCollapsed": false
+  }/*EDITMODE-END*/;
+</script>
+
+<script th:src="@{/assets/js/app.js}"></script>
+<script th:src="@{/assets/js/chrome.js}" data-page="admin" th:attr="data-ctx=@{/}"></script>
+
+<script>
+(function () {
+  const ctx = document.querySelector('[data-ctx]')?.dataset.ctx || '/';
+
+  function csrfHeaders() {
+    const token  = document.querySelector('meta[name="_csrf"]')?.content;
+    const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+    return (token && header) ? { [header]: token } : {};
+  }
+
+  function _registerFaqManagementPage() {
+    Alpine.data('faqManagementPage', () => ({
+      loading:    true,
+      items:      [],
+      filtered:   [],
+      categories: [],
+      filterCat:  '',
+      keyword:    '',
+
+      showForm:    false,
+      editTarget:  null,
+      form:        { category: '', question: '', answer: '', sortOrder: 0 },
+      formError:   '',
+      saving:      false,
+
+      showDelete:   false,
+      deleteTarget: null,
+
+      async init() {
+        await Promise.all([this.loadFaqs(), this.loadCategories()]);
+        this.loading = false;
+      },
+
+      async loadFaqs() {
+        try {
+          const res = await fetch(ctx + 'api/faq');
+          if (res.ok) {
+            this.items = await res.json();
+            this.applyFilter();
+          }
+        } catch(e) { console.error('loadFaqs', e); }
+      },
+
+      async loadCategories() {
+        try {
+          const res = await fetch(ctx + 'api/faq/categories');
+          if (res.ok) this.categories = await res.json();
+        } catch(e) { console.error('loadCategories', e); }
+      },
+
+      applyFilter() {
+        const cat = this.filterCat.trim().toLowerCase();
+        const kw  = this.keyword.trim().toLowerCase();
+        this.filtered = this.items.filter(i => {
+          const matchCat = !cat || (i.category || '').toLowerCase() === cat;
+          const matchKw  = !kw  ||
+            (i.question || '').toLowerCase().includes(kw) ||
+            (i.answer   || '').toLowerCase().includes(kw);
+          return matchCat && matchKw;
+        });
+      },
+
+      // ── Add ──────────────────────────────────────────
+      openAdd() {
+        this.editTarget = null;
+        this.form = { category: this.filterCat || '', question: '', answer: '', sortOrder: 0 };
+        this.formError = '';
+        this.showForm = true;
+      },
+
+      // ── Edit ─────────────────────────────────────────
+      openEdit(item) {
+        this.editTarget = item;
+        this.form = {
+          category:  item.category  || '',
+          question:  item.question  || '',
+          answer:    item.answer    || '',
+          sortOrder: item.sort_order || 0,
+        };
+        this.formError = '';
+        this.showForm = true;
+      },
+
+      // ── Submit ───────────────────────────────────────
+      async submitForm() {
+        if (!this.form.category.trim()) { this.formError = '카테고리를 입력하세요.'; return; }
+        if (!this.form.question.trim()) { this.formError = '질문을 입력하세요.'; return; }
+        if (!this.form.answer.trim())   { this.formError = '답변을 입력하세요.'; return; }
+
+        this.saving = true;
+        this.formError = '';
+        try {
+          const url    = this.editTarget
+            ? ctx + 'api/faq/' + this.editTarget.id
+            : ctx + 'api/faq';
+          const method = this.editTarget ? 'PUT' : 'POST';
+          const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+            body: JSON.stringify(this.form),
+          });
+          if (res.ok) {
+            this.showForm = false;
+            await Promise.all([this.loadFaqs(), this.loadCategories()]);
+            this.$dispatch('toast', { message: this.editTarget ? '수정되었습니다' : '등록되었습니다' });
+          } else {
+            const data = await res.json().catch(() => ({}));
+            this.formError = data.error || '저장 실패';
+          }
+        } catch(e) {
+          this.formError = '네트워크 오류';
+          console.error('submitForm', e);
+        } finally {
+          this.saving = false;
+        }
+      },
+
+      // ── Delete ───────────────────────────────────────
+      openDelete(item) {
+        this.deleteTarget = item;
+        this.showDelete = true;
+      },
+
+      async confirmDelete() {
+        if (!this.deleteTarget) return;
+        this.saving = true;
+        try {
+          const res = await fetch(ctx + 'api/faq/' + this.deleteTarget.id, {
+            method: 'DELETE',
+            headers: csrfHeaders(),
+          });
+          if (res.ok) {
+            this.showDelete = false;
+            this.deleteTarget = null;
+            await this.loadFaqs();
+            this.$dispatch('toast', { message: '삭제되었습니다' });
+          }
+        } catch(e) { console.error('confirmDelete', e); }
+        finally { this.saving = false; }
+      },
+    }));
+  }
+
+  if (window.Alpine) {
+    _registerFaqManagementPage();
+  } else {
+    document.addEventListener('alpine:init', _registerFaqManagementPage);
+  }
+}());
+</script>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    MPChrome.mount({ parent: '관리자', current: 'FAQ 관리' });
+  }, { once: true });
+</script>
+<script data-turbo-eval="false" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js"></script>
+<script data-turbo-eval="false" defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+</body>
+</html>

@@ -551,6 +551,8 @@ public class CsmAuthService {
         ensureCounselDataEntryColumns(safe);
         ensureCounselGuardianColumns(safe);
         ensureRoleTables(safe);
+        ensureFaqTable(safe);
+        ensureChatTables(safe);
     }
 
     private void ensureRoleTables(String safe) {
@@ -587,6 +589,41 @@ public class CsmAuthService {
                 + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
         seedRoles(safe);
+    }
+
+    private void ensureFaqTable(String safe) {
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS csm.faq_" + safe + " ("
+                + "id         bigint AUTO_INCREMENT PRIMARY KEY,"
+                + "category   varchar(50)  NOT NULL DEFAULT '일반',"
+                + "question   varchar(500) NOT NULL,"
+                + "answer     text         NOT NULL,"
+                + "sort_order int          NOT NULL DEFAULT 0,"
+                + "use_yn     char(1)      NOT NULL DEFAULT 'Y',"
+                + "created_at datetime DEFAULT CURRENT_TIMESTAMP,"
+                + "updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    }
+
+    private void ensureChatTables(String safe) {
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS csm.chat_room_" + safe + " ("
+                + "id              bigint AUTO_INCREMENT PRIMARY KEY,"
+                + "kakao_id        varchar(64)  NOT NULL,"
+                + "kakao_nickname  varchar(100) NOT NULL DEFAULT '',"
+                + "kakao_thumbnail varchar(500) NOT NULL DEFAULT '',"
+                + "counselor_id    bigint       DEFAULT NULL,"
+                + "status          varchar(20)  NOT NULL DEFAULT 'WAITING',"
+                + "created_at      datetime DEFAULT CURRENT_TIMESTAMP,"
+                + "updated_at      datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS csm.chat_message_" + safe + " ("
+                + "id          bigint AUTO_INCREMENT PRIMARY KEY,"
+                + "room_id     bigint       NOT NULL,"
+                + "sender_type varchar(20)  NOT NULL,"
+                + "sender_name varchar(100) NOT NULL DEFAULT '',"
+                + "content     text         NOT NULL,"
+                + "sent_at     datetime DEFAULT CURRENT_TIMESTAMP"
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
 
     private void seedRoles(String safe) {

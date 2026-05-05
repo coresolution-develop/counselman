@@ -196,6 +196,7 @@ public class CsmSchemaBootstrapService {
             {"room_board",          "병실현황판",   "/room-board",          80},
             {"admission",           "입원예약관리", "/admission-reservation", 90},
             {"admin",               "관리자",       "/admin",               100},
+            {"faq_manage",          "FAQ 관리",     "/faq-manage",          110},
         };
         for (Object[] row : menus) {
             jdbcTemplate.update(upsert, row);
@@ -267,6 +268,11 @@ public class CsmSchemaBootstrapService {
             {"SETTINGS:READ", "admin", "SETTINGS", "READ", "설정 조회", 121},
             {"SETTINGS:EDIT", "admin", "SETTINGS", "EDIT", "설정 편집", 122},
             {"CATEGORY:EDIT", "admin", "CATEGORY", "EDIT", "카테고리 편집", 123},
+            // faq_manage
+            {"FAQ:READ",   "faq_manage", "FAQ", "READ",   "FAQ 조회", 131},
+            {"FAQ:CREATE", "faq_manage", "FAQ", "CREATE", "FAQ 등록", 132},
+            {"FAQ:EDIT",   "faq_manage", "FAQ", "EDIT",   "FAQ 수정", 133},
+            {"FAQ:DELETE", "faq_manage", "FAQ", "DELETE", "FAQ 삭제", 134},
         };
         for (Object[] row : perms) {
             jdbcTemplate.update(upsert, row);
