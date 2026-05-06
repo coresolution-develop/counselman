@@ -620,8 +620,8 @@ public class RoomBoardService {
     private Map<String, List<Map<String, Object>>> loadCompletedAdmissionsByRoom(String inst, Long snapshotId) {
         String safe = sanitizeInst(inst);
         String snapshotFilter = snapshotId == null ? "" : """
-                   AND cd.updated_at >= (
-                       SELECT uploaded_at
+                   AND DATE(cd.updated_at) >= (
+                       SELECT snapshot_date
                          FROM csm.room_board_snapshot_%s
                         WHERE rbs_id = ?
                    )
@@ -835,6 +835,12 @@ public class RoomBoardService {
             if (!key.isBlank()) {
                 out.putIfAbsent(key, notice);
             }
+            // Also register a name-based fallback so that patients coming through
+            // loadCompletedAdmissionsByRoom (no rbp_id in their map) and patients
+            // whose rbp_id changed after a snapshot re-import still match.
+            String nameKey = "name:" + normalizeRoomName(Objects.toString(notice.get("room_name"), ""))
+                    + ":" + safeText(notice.get("patient_name"), 100);
+            out.putIfAbsent(nameKey, notice);
         }
         return out;
     }
@@ -1507,7 +1513,7 @@ public class RoomBoardService {
             String sql = """
                     SELECT DISTINCT ward_name, room_name
                       FROM csm.room_board_room_master_%s
-                     WHERE use_yn != 'n'
+                     WHERE use_yn = 'Y'
                      ORDER BY ward_name ASC, room_name ASC
                     """.formatted(safe);
             return jdbcTemplate.query(sql, (rs, rowNum) -> {
@@ -1682,17 +1688,16 @@ public class RoomBoardService {
         if (rbpId == null || rbpId <= 0) {
             return null;
         }
-        RoomBoardSnapshot snapshot = findSnapshot(safe, null);
-        if (snapshot == null || snapshot.getId() == null) {
-            return null;
-        }
+        // rbp_id is a primary key — no rbs_id constraint so discharge notices can be
+        // registered even after a new snapshot is imported on top of a patient that
+        // was originally added via confirmAdmission (addConfirmedAdmissionToCurrentSnapshot).
         String sql = """
                 SELECT rbp_id, rbs_id, ward_name, room_name, patient_no, patient_name
                   FROM csm.room_board_patient_%s
-                 WHERE rbp_id = ? AND rbs_id = ?
+                 WHERE rbp_id = ?
                  LIMIT 1
                 """.formatted(safe);
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, rbpId, snapshot.getId());
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, rbpId);
         return rows.isEmpty() ? null : rows.get(0);
     }
 
