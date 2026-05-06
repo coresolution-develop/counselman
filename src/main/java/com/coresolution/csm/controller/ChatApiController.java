@@ -15,6 +15,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.coresolution.csm.serivce.CsmAuthService;
+import com.coresolution.csm.vo.CounselReservation;
+
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 
@@ -25,6 +28,7 @@ public class ChatApiController {
 
     private final JdbcTemplate jdbcTemplate;
     private final SimpMessagingTemplate messagingTemplate;
+    private final CsmAuthService csmAuthService;
 
     @GetMapping("/faqs")
     public List<Map<String, Object>> faqs(@RequestParam String inst) {
@@ -182,5 +186,26 @@ public class ChatApiController {
             Map.of("type", "ROOM_CLOSED"));
 
         return Map.of("ok", true);
+    }
+
+    @PostMapping("/counsel")
+    public Map<String, Object> submitCounsel(
+            @RequestParam String inst,
+            @RequestParam String name,
+            @RequestParam String phone,
+            @RequestParam String content) {
+
+        try {
+            CounselReservation reservation = new CounselReservation();
+            reservation.setPatient_name(name);
+            reservation.setPatient_phone(phone);
+            reservation.setCall_summary(content);
+            reservation.setCreated_by("챗봇");
+            reservation.setStatus("pending");
+            csmAuthService.saveCounselReservation(inst, reservation);
+            return Map.of("ok", true);
+        } catch (Exception e) {
+            return Map.of("ok", false, "error", e.getMessage());
+        }
     }
 }
