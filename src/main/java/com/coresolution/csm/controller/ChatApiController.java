@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -25,6 +26,18 @@ public class ChatApiController {
     private final JdbcTemplate jdbcTemplate;
     private final SimpMessagingTemplate messagingTemplate;
 
+    @GetMapping("/faqs")
+    public List<Map<String, Object>> faqs(@RequestParam String inst) {
+        String safe = inst.replaceAll("[^A-Za-z0-9_]", "");
+        try {
+            return jdbcTemplate.queryForList(
+                "SELECT id, category, question, answer FROM csm.faq_" + safe
+                + " WHERE use_yn = 'Y' ORDER BY sort_order ASC, id ASC");
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
     @GetMapping("/me")
     public Map<String, Object> me(@AuthenticationPrincipal OAuth2User user) {
         if (user == null) return Map.of("loggedIn", false);
@@ -34,6 +47,25 @@ public class ChatApiController {
             "nickname", user.getAttribute("nickname"),
             "thumbnail", user.getAttribute("thumbnail")
         );
+    }
+
+    @GetMapping("/room/my")
+    public Map<String, Object> myRoom(
+            @AuthenticationPrincipal OAuth2User user,
+            @RequestParam String inst) {
+
+        if (user == null) return Map.of();
+        String safe = inst.replaceAll("[^A-Za-z0-9_]", "");
+        String kakaoId = user.getAttribute("id");
+        try {
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                "SELECT id, status FROM csm.chat_room_" + safe
+                + " WHERE kakao_id = ? AND status IN ('WAITING','ACTIVE') ORDER BY created_at DESC LIMIT 1",
+                kakaoId);
+            return rows.isEmpty() ? Map.of() : rows.get(0);
+        } catch (Exception e) {
+            return Map.of();
+        }
     }
 
     @PostMapping("/room")
@@ -70,6 +102,18 @@ public class ChatApiController {
         return Map.of("roomId", roomId, "status", "WAITING");
     }
 
+    @GetMapping("/room/{roomId}/status")
+    public Map<String, Object> roomStatus(@PathVariable Long roomId, @RequestParam String inst) {
+        String safe = inst.replaceAll("[^A-Za-z0-9_]", "");
+        try {
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                "SELECT status, counselor_id FROM csm.chat_room_" + safe + " WHERE id = ?", roomId);
+            return rows.isEmpty() ? Map.of("status", "UNKNOWN") : rows.get(0);
+        } catch (Exception e) {
+            return Map.of("status", "UNKNOWN");
+        }
+    }
+
     @GetMapping("/room/{roomId}/messages")
     public List<Map<String, Object>> messages(
             @PathVariable Long roomId,
@@ -88,7 +132,21 @@ public class ChatApiController {
         return jdbcTemplate.queryForList(
             "SELECT id, kakao_id, kakao_nickname, kakao_thumbnail, counselor_id, status, created_at"
             + " FROM csm.chat_room_" + safe
-            + " WHERE status IN ('WAITING','ACTIVE') ORDER BY created_at DESC");
+            + " ORDER BY FIELD(status,'WAITING','ACTIVE','CLOSED'), created_at DESC");
+    }
+
+    @GetMapping("/waiting")
+    public List<Map<String, Object>> waiting(HttpSession session) {
+        String inst = session != null ? (String) session.getAttribute("inst") : null;
+        if (inst == null || inst.isBlank()) return List.of();
+        String safe = inst.replaceAll("[^A-Za-z0-9_]", "");
+        try {
+            return jdbcTemplate.queryForList(
+                "SELECT id, kakao_nickname, created_at FROM csm.chat_room_" + safe
+                + " WHERE status = 'WAITING' ORDER BY created_at DESC");
+        } catch (Exception e) {
+            return List.of();
+        }
     }
 
     @PutMapping("/room/{roomId}/join")

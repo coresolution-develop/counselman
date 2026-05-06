@@ -1,62 +1,242 @@
 <!DOCTYPE html>
-<html lang="ko" xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/thymeleaf-extras-springsecurity6">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="_csrf" th:content="${_csrf.token}"/>
-  <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
-  <title>상담 챗봇 | 효사랑가족요양병원</title>
-  <link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+  <meta name="ctx" th:content="@{/}"/>
+  <title>상담 | 효사랑가족요양병원</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <style>
+    [x-cloak] { display: none !important; }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
+    html, body {
+      height: 100%;
+      overflow: hidden;
       font-family: 'Pretendard Variable', 'Noto Sans KR', system-ui, sans-serif;
-      background: #f4f6f9;
-      min-height: 100vh;
+      font-size: 16px;
       color: #1a2332;
+      background: #f4f6f9;
+    }
+
+    /* ── App shell ── */
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
     }
 
     /* ── Header ── */
     .chat-header {
+      flex-shrink: 0;
       background: #1a2332;
       color: #fff;
-      padding: 16px 24px;
+      padding: 0 20px;
+      height: 56px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 100;
+      gap: 12px;
+      z-index: 10;
     }
-    .chat-header h1 { font-size: 16px; font-weight: 600; }
-    .chat-header .user-info { display: flex; align-items: center; gap: 10px; font-size: 13px; }
-    .chat-header .user-info img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
-    .btn-logout {
-      background: rgba(255,255,255,0.15);
+    .chat-header__left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .chat-header h1 {
+      font-size: 15px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .btn-faq-toggle {
+      display: none;
+      background: rgba(255,255,255,.15);
       border: none;
       color: #fff;
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 12px;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 600;
       cursor: pointer;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      min-height: 36px;
+    }
+    .chat-header__right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .user-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .user-nickname {
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .btn-logout {
+      background: rgba(255,255,255,.15);
+      border: none;
+      color: #fff;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      text-decoration: none;
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+    }
+    .btn-logout:hover { background: rgba(255,255,255,.25); }
+
+    /* ── Main content ── */
+    .main-content {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+      overflow: hidden;
     }
 
-    /* ── Layout ── */
-    .page-body { max-width: 800px; margin: 0 auto; padding: 24px 16px 100px; }
-
-    /* ── Login Box ── */
-    .login-box {
+    /* ── FAQ 패널 ── */
+    .faq-panel {
+      width: 300px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
       background: #fff;
-      border-radius: 16px;
+      border-right: 1px solid #e5e7eb;
+      overflow: hidden;
+    }
+    .faq-panel__header {
+      flex-shrink: 0;
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .faq-panel__title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: 12px;
+    }
+    .cat-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .cat-btn {
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1.5px solid #e5e7eb;
+      background: #fff;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all .15s;
+      min-height: 32px;
+    }
+    .cat-btn.active {
+      background: #1a2332;
+      color: #fff;
+      border-color: #1a2332;
+    }
+    .faq-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+    .faq-item { border-bottom: 1px solid #f3f4f6; }
+    .faq-q {
+      width: 100%;
+      text-align: left;
+      padding: 12px 20px;
+      background: none;
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      color: #1a2332;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      line-height: 1.5;
+    }
+    .faq-q:hover { background: #f9fafb; }
+    .faq-arrow {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      color: #9ca3af;
+      transition: transform .2s;
+      margin-top: 2px;
+    }
+    .faq-q.open .faq-arrow { transform: rotate(180deg); }
+    .faq-a {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height .25s ease, padding .2s;
+      font-size: 14px;
+      color: #374151;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      padding: 0 20px;
+    }
+    .faq-a.open { max-height: 400px; padding: 0 20px 14px; }
+    .faq-empty {
+      text-align: center;
+      color: #9ca3af;
+      font-size: 14px;
+      padding: 32px 20px;
+    }
+
+    /* ── 채팅 패널 ── */
+    .chat-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    /* ── 로그인 화면 ── */
+    .login-screen {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px;
+    }
+    .login-card {
+      background: #fff;
+      border-radius: 20px;
       padding: 48px 32px;
       text-align: center;
-      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+      box-shadow: 0 2px 16px rgba(0,0,0,.08);
+      max-width: 360px;
+      width: 100%;
     }
-    .login-box .icon { font-size: 48px; margin-bottom: 16px; }
-    .login-box h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
-    .login-box p { font-size: 14px; color: #6b7280; margin-bottom: 28px; line-height: 1.6; }
+    .login-card .icon {
+      width: 64px;
+      height: 64px;
+      background: #f0f4f8;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+    .login-card .icon svg { width: 32px; height: 32px; color: #1a2332; }
+    .login-card h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .login-card p { font-size: 15px; color: #6b7280; margin-bottom: 28px; line-height: 1.7; }
     .btn-kakao {
       display: inline-flex;
       align-items: center;
@@ -71,442 +251,543 @@
       cursor: pointer;
       transition: opacity .15s;
       text-decoration: none;
+      min-height: 52px;
     }
     .btn-kakao:hover { opacity: .9; }
-    .btn-kakao svg { width: 20px; height: 20px; }
+    .btn-kakao svg { width: 20px; height: 20px; flex-shrink: 0; }
 
-    /* ── FAQ Section ── */
-    .section-title {
-      font-size: 15px;
-      font-weight: 700;
-      color: #1a2332;
-      margin: 24px 0 12px;
-    }
-    .category-tabs {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
-    }
-    .cat-btn {
-      padding: 6px 14px;
-      border-radius: 20px;
-      border: 1.5px solid #d1d5db;
-      background: #fff;
-      font-size: 13px;
-      cursor: pointer;
-      transition: all .15s;
-    }
-    .cat-btn.active {
-      background: #1a2332;
-      color: #fff;
-      border-color: #1a2332;
-    }
-
-    .faq-list { display: flex; flex-direction: column; gap: 8px; }
-    .faq-item {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 1px 4px rgba(0,0,0,.06);
-      overflow: hidden;
-    }
-    .faq-q {
-      width: 100%;
-      text-align: left;
-      padding: 14px 16px;
-      background: none;
-      border: none;
-      font-size: 14px;
-      font-weight: 600;
-      color: #1a2332;
-      cursor: pointer;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-    }
-    .faq-q .arrow {
+    /* ── 상태 바 ── */
+    .status-bar {
       flex-shrink: 0;
-      width: 18px;
-      height: 18px;
-      transition: transform .2s;
-      color: #9ca3af;
-    }
-    .faq-q.open .arrow { transform: rotate(180deg); }
-    .faq-a {
-      padding: 0 16px;
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height .25s ease, padding .25s;
-      font-size: 13px;
-      color: #374151;
-      line-height: 1.7;
-      white-space: pre-wrap;
-    }
-    .faq-a.open {
-      max-height: 600px;
-      padding: 0 16px 14px;
-    }
-
-    /* ── 상담사 연결 FAB ── */
-    .fab-connect {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: linear-gradient(135deg, #1a2332, #2d4a7a);
-      color: #fff;
-      border: none;
-      border-radius: 28px;
-      padding: 14px 28px;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
+      padding: 8px 20px;
+      background: #f8f9fb;
+      border-bottom: 1px solid #e5e7eb;
       display: flex;
       align-items: center;
       gap: 8px;
-      box-shadow: 0 4px 20px rgba(26,35,50,.4);
-      transition: transform .15s, box-shadow .15s;
-      z-index: 200;
+      font-size: 13px;
+      color: #6b7280;
+      min-height: 36px;
     }
-    .fab-connect:hover { transform: translateX(-50%) translateY(-2px); box-shadow: 0 6px 24px rgba(26,35,50,.5); }
-    .fab-connect svg { width: 20px; height: 20px; }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-dot.waiting {
+      background: #f59e0b;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    .status-dot.active { background: #10b981; }
+    .status-dot.closed { background: #9ca3af; }
+    .status-dot.idle { background: #d1d5db; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .3; }
+    }
 
-    /* ── 채팅 모달 ── */
-    .chat-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.5);
-      z-index: 300;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-    }
-    .chat-modal {
-      background: #fff;
-      width: 100%;
-      max-width: 480px;
-      height: 70vh;
-      border-radius: 20px 20px 0 0;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    @media (min-width: 640px) {
-      .chat-overlay { align-items: center; }
-      .chat-modal { height: 580px; border-radius: 20px; }
-    }
-    .chat-modal-header {
-      padding: 16px 20px;
-      background: #1a2332;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .chat-modal-header .title { font-size: 15px; font-weight: 700; }
-    .chat-modal-header .status { font-size: 12px; opacity: .75; }
-    .btn-close-chat {
-      background: none;
-      border: none;
-      color: #fff;
-      cursor: pointer;
-      padding: 4px;
-    }
-    .chat-messages {
+    /* ── 메시지 영역 ── */
+    .messages-area {
       flex: 1;
       overflow-y: auto;
-      padding: 16px;
+      padding: 20px 20px 8px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      background: #f8f9fb;
+      gap: 12px;
+      -webkit-overflow-scrolling: touch;
     }
-    .msg { display: flex; flex-direction: column; max-width: 75%; }
+
+    /* 웰컴 카드 */
+    .welcome-card {
+      align-self: center;
+      text-align: center;
+      padding: 32px 24px;
+      max-width: 320px;
+    }
+    .welcome-card .icon {
+      width: 56px;
+      height: 56px;
+      background: #f0f4f8;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+    }
+    .welcome-card .icon svg { width: 28px; height: 28px; color: #1a2332; }
+    .welcome-card h3 { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+    .welcome-card p { font-size: 14px; color: #6b7280; line-height: 1.7; }
+
+    /* 메시지 버블 */
+    .msg { display: flex; flex-direction: column; max-width: 72%; }
     .msg.user { align-self: flex-end; align-items: flex-end; }
     .msg.counselor { align-self: flex-start; align-items: flex-start; }
     .msg.system { align-self: center; align-items: center; max-width: 90%; }
-    .msg-name { font-size: 11px; color: #9ca3af; margin-bottom: 3px; }
+    .msg-name { font-size: 12px; color: #9ca3af; margin-bottom: 4px; }
     .msg-bubble {
       padding: 10px 14px;
       border-radius: 16px;
-      font-size: 14px;
-      line-height: 1.5;
+      font-size: 15px;
+      line-height: 1.55;
       word-break: break-word;
     }
-    .msg.user .msg-bubble { background: #1a2332; color: #fff; border-radius: 16px 16px 4px 16px; }
-    .msg.counselor .msg-bubble { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px 16px 16px 4px; }
-    .msg.system .msg-bubble { background: #e8f4f8; color: #4b6a8a; font-size: 12px; text-align: center; border-radius: 8px; }
+    .msg.user .msg-bubble {
+      background: #1a2332;
+      color: #fff;
+      border-radius: 16px 16px 4px 16px;
+    }
+    .msg.counselor .msg-bubble {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px 16px 16px 4px;
+    }
+    .msg.system .msg-bubble {
+      background: #e8f4f8;
+      color: #4b6a8a;
+      font-size: 13px;
+      text-align: center;
+      border-radius: 8px;
+      padding: 8px 16px;
+    }
 
-    .chat-input-area {
+    /* ── 입력 영역 ── */
+    .input-area {
+      flex-shrink: 0;
       padding: 12px 16px;
       border-top: 1px solid #e5e7eb;
-      display: flex;
-      gap: 10px;
       background: #fff;
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
     }
     .chat-input {
       flex: 1;
       border: 1.5px solid #d1d5db;
       border-radius: 12px;
       padding: 10px 14px;
-      font-size: 14px;
+      font-size: 15px;
+      font-family: inherit;
       outline: none;
       resize: none;
-      height: 44px;
-      font-family: inherit;
+      min-height: 44px;
+      max-height: 120px;
+      line-height: 1.4;
+      transition: border-color .15s;
     }
     .chat-input:focus { border-color: #1a2332; }
+    .chat-input:disabled { background: #f9fafb; color: #9ca3af; }
     .btn-send {
       background: #1a2332;
       color: #fff;
       border: none;
       border-radius: 12px;
-      padding: 0 16px;
+      width: 44px;
+      height: 44px;
+      flex-shrink: 0;
       cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .15s, opacity .15s;
     }
-    .waiting-banner {
+    .btn-send:disabled { background: #d1d5db; cursor: default; }
+    .btn-send svg { width: 20px; height: 20px; }
+    .closed-notice {
+      flex-shrink: 0;
+      padding: 14px 20px;
+      border-top: 1px solid #e5e7eb;
+      background: #f9fafb;
       text-align: center;
-      padding: 20px;
-      color: #6b7280;
-      font-size: 13px;
+      font-size: 14px;
+      color: #9ca3af;
     }
-    .waiting-banner .spinner {
-      width: 24px; height: 24px;
-      border: 3px solid #e5e7eb;
-      border-top-color: #1a2332;
-      border-radius: 50%;
-      animation: spin .8s linear infinite;
-      margin: 0 auto 10px;
+
+    /* ── 모바일 FAQ 오버레이 ── */
+    .faq-overlay-bg {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.4);
+      z-index: 50;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .faq-overlay-bg.open { display: block; }
+
+    /* ── Responsive ── */
+    @media (max-width: 767px) {
+      .faq-panel {
+        position: fixed;
+        top: 56px;
+        left: 0;
+        bottom: 0;
+        width: 85vw;
+        max-width: 320px;
+        z-index: 60;
+        transform: translateX(-100%);
+        transition: transform .25s ease;
+        border-right: none;
+        box-shadow: 4px 0 24px rgba(0,0,0,.15);
+      }
+      .faq-panel.open { transform: translateX(0); }
+      .btn-faq-toggle { display: flex; }
+      .msg { max-width: 85%; }
+      .chat-header h1 { display: none; }
+      .user-nickname { display: none; }
+      .chat-header__right { gap: 6px; }
+      .btn-logout { padding: 6px 10px; }
+    }
+
+    @media (min-width: 768px) {
+      .faq-overlay-bg { display: none !important; }
+    }
   </style>
 </head>
-<body x-data="chatApp()" x-init="init()">
+<body>
+<div class="app" x-data="chatApp()" x-init="init()" x-cloak>
 
   <!-- ── Header ── -->
   <header class="chat-header">
-    <h1>효사랑가족요양병원 상담</h1>
-    <div class="user-info" x-show="user.loggedIn">
-      <img :src="user.thumbnail || CTX + '/img/default-avatar.png'" :alt="user.nickname" onerror="this.style.display='none'">
-      <span x-text="user.nickname + ' 님'"></span>
+    <div class="chat-header__left">
+      <button class="btn-faq-toggle" @click="faqOpen = !faqOpen" :aria-expanded="faqOpen">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+        </svg>
+        자주 묻는 질문
+      </button>
+      <h1>효사랑가족요양병원 상담</h1>
+    </div>
+    <div class="chat-header__right" x-show="user.loggedIn">
+      <img class="user-avatar" :src="user.thumbnail || ''" :alt="user.nickname"
+           onerror="this.style.display='none'" x-show="user.thumbnail">
+      <span class="user-nickname" x-text="user.nickname + ' 님'"></span>
       <a href="/logout" class="btn-logout">로그아웃</a>
     </div>
   </header>
 
-  <div class="page-body">
+  <!-- 모바일 FAQ 오버레이 배경 -->
+  <div class="faq-overlay-bg" :class="{ open: faqOpen }" @click="faqOpen = false"></div>
 
-    <!-- ── 로그인 전 ── -->
-    <div class="login-box" x-show="!user.loggedIn" x-cloak>
-      <div class="icon">💬</div>
-      <h2>상담 서비스</h2>
-      <p>카카오 로그인 후 자주 묻는 질문을 확인하거나<br>상담사와 직접 채팅하실 수 있습니다.</p>
-      <a class="btn-kakao" :href="kakaoLoginUrl()">
-        <svg viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 3C6.477 3 2 6.477 2 10.8c0 2.697 1.613 5.065 4.05 6.47L5.1 21l4.5-2.7c.78.15 1.59.225 2.4.225 5.523 0 10-3.477 10-7.725C22 6.477 17.523 3 12 3z"/>
-        </svg>
-        카카오로 시작하기
-      </a>
-    </div>
+  <div class="main-content">
 
-    <!-- ── 로그인 후 ── -->
-    <div x-show="user.loggedIn" x-cloak>
-
-      <!-- FAQ -->
-      <div class="section-title">자주 묻는 질문</div>
-      <div class="category-tabs">
-        <button class="cat-btn" :class="{ active: activeCategory === '' }" @click="setCategory('')">전체</button>
-        <template x-for="cat in categories" :key="cat">
-          <button class="cat-btn" :class="{ active: activeCategory === cat }" @click="setCategory(cat)" x-text="cat"></button>
-        </template>
+    <!-- ── FAQ 패널 ── -->
+    <aside class="faq-panel" :class="{ open: faqOpen }" x-show="user.loggedIn">
+      <div class="faq-panel__header">
+        <div class="faq-panel__title">자주 묻는 질문</div>
+        <div class="cat-tabs">
+          <button class="cat-btn" :class="{ active: activeCategory === '' }" @click="setCategory('')">전체</button>
+          <template x-for="cat in categories" :key="cat">
+            <button class="cat-btn" :class="{ active: activeCategory === cat }"
+                    @click="setCategory(cat)" x-text="cat"></button>
+          </template>
+        </div>
       </div>
-
       <div class="faq-list">
         <template x-for="faq in filteredFaqs" :key="faq.id">
           <div class="faq-item">
             <button class="faq-q" :class="{ open: faq._open }" @click="faq._open = !faq._open">
               <span x-text="faq.question"></span>
-              <svg class="arrow" viewBox="0 0 20 20" fill="currentColor">
+              <svg class="faq-arrow" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
               </svg>
             </button>
             <div class="faq-a" :class="{ open: faq._open }" x-text="faq.answer"></div>
           </div>
         </template>
-        <p x-show="filteredFaqs.length === 0" style="text-align:center;color:#9ca3af;font-size:13px;padding:24px 0;">해당하는 질문이 없습니다.</p>
+        <p class="faq-empty" x-show="filteredFaqs.length === 0">해당하는 질문이 없습니다.</p>
       </div>
-    </div>
+    </aside>
 
-  </div>
+    <!-- ── 채팅 패널 ── -->
+    <div class="chat-panel">
 
-  <!-- ── 상담사 연결 FAB ── -->
-  <button class="fab-connect" x-show="user.loggedIn && !chatOpen" @click="openChat()" x-cloak>
-    <svg viewBox="0 0 24 24" fill="currentColor">
-      <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
-    </svg>
-    상담사 연결
-  </button>
-
-  <!-- ── 채팅 모달 ── -->
-  <div class="chat-overlay" x-show="chatOpen" x-cloak @click.self="chatOpen = false">
-    <div class="chat-modal">
-      <div class="chat-modal-header">
-        <div>
-          <div class="title">실시간 상담</div>
-          <div class="status" x-text="chatStatus"></div>
-        </div>
-        <button class="btn-close-chat" @click="chatOpen = false">
-          <svg viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
-            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-          </svg>
-        </button>
-      </div>
-
-      <div class="chat-messages" x-ref="msgArea">
-        <!-- 대기 중 -->
-        <div class="waiting-banner" x-show="roomStatus === 'WAITING'">
-          <div class="spinner"></div>
-          상담사 연결을 기다리는 중입니다...
-        </div>
-        <!-- 메시지 목록 -->
-        <template x-for="(msg, idx) in messages" :key="idx">
-          <div class="msg" :class="msgClass(msg)">
-            <div class="msg-name" x-show="msg.type === 'MESSAGE'" x-text="msg.senderName"></div>
-            <div class="msg-bubble" x-text="msg.content || msg.text"></div>
+      <!-- 로그인 전 -->
+      <div class="login-screen" x-show="!user.loggedIn">
+        <div class="login-card">
+          <div class="icon">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+            </svg>
           </div>
-        </template>
+          <h2>상담 서비스</h2>
+          <p>카카오 로그인 후<br>상담사와 직접 채팅하실 수 있습니다.</p>
+          <a class="btn-kakao" :href="kakaoLoginUrl()">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 3C6.477 3 2 6.477 2 10.8c0 2.697 1.613 5.065 4.05 6.47L5.1 21l4.5-2.7c.78.15 1.59.225 2.4.225 5.523 0 10-3.477 10-7.725C22 6.477 17.523 3 12 3z"/>
+            </svg>
+            카카오로 시작하기
+          </a>
+        </div>
       </div>
 
-      <div class="chat-input-area" x-show="roomStatus === 'ACTIVE'">
-        <textarea
-          class="chat-input"
-          placeholder="메시지를 입력하세요..."
-          x-model="inputText"
-          @keydown.enter.prevent="sendMessage()"
-          rows="1"></textarea>
-        <button class="btn-send" @click="sendMessage()">전송</button>
-      </div>
+      <!-- 로그인 후 채팅 -->
+      <template x-if="user.loggedIn">
+        <div style="display:flex;flex-direction:column;flex:1;min-height:0;">
+
+          <!-- 상태 바 -->
+          <div class="status-bar">
+            <span class="status-dot" :class="roomStatus.toLowerCase()"></span>
+            <span x-text="statusText"></span>
+          </div>
+
+          <!-- 메시지 영역 -->
+          <div class="messages-area" x-ref="msgArea">
+
+            <!-- 웰컴 카드 (메시지 없을 때) -->
+            <div class="welcome-card" x-show="messages.length === 0">
+              <div class="icon">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+                </svg>
+              </div>
+              <h3>무엇이든 물어보세요</h3>
+              <p>메시지를 입력하면 상담사에게 바로 전달됩니다.<br>왼쪽의 자주 묻는 질문도 참고해 보세요.</p>
+            </div>
+
+            <!-- 메시지 목록 -->
+            <template x-for="(msg, idx) in messages" :key="idx">
+              <div class="msg"
+                   :class="msg.senderType === 'USER' ? 'user' : (msg.type === 'SYSTEM' ? 'system' : 'counselor')">
+                <div class="msg-name"
+                     x-show="msg.senderType !== 'USER' && msg.type !== 'SYSTEM'"
+                     x-text="msg.senderName"></div>
+                <div class="msg-bubble" x-text="msg.content || msg.text"></div>
+              </div>
+            </template>
+
+          </div>
+
+          <!-- 입력 영역 (CLOSED가 아닐 때) -->
+          <div class="input-area" x-show="roomStatus !== 'CLOSED'">
+            <textarea
+              class="chat-input"
+              placeholder="메시지를 입력하세요..."
+              x-model="input"
+              :disabled="sending"
+              @keydown.enter.prevent="sendMessage($event)"
+              @compositionstart="composing = true"
+              @compositionend="composing = false"
+              rows="1"
+              x-ref="inputEl"></textarea>
+            <button class="btn-send"
+                    :disabled="!input.trim() || sending"
+                    @click="sendMessage()">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- 상담 종료 안내 -->
+          <div class="closed-notice" x-show="roomStatus === 'CLOSED'">
+            상담이 종료되었습니다. 추가 문의가 있으시면 새로고침 후 다시 문의해 주세요.
+          </div>
+
+        </div>
+      </template>
+
     </div>
   </div>
+</div>
 
-  <!-- ── Scripts ── -->
-  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
 
-  <script th:inline="javascript">
-  const CTX = /*[[${#request.contextPath}]]*/ "";
-  function chatApp() {
-    return {
-      inst: '',
-      user: { loggedIn: false, id: '', nickname: '', thumbnail: '' },
-      faqs: [],
-      categories: [],
-      activeCategory: '',
-      chatOpen: false,
-      roomId: null,
-      roomStatus: 'WAITING',
-      chatStatus: '대기 중...',
-      messages: [],
-      inputText: '',
-      stompClient: null,
+<script>
+const CTX = (document.querySelector('meta[name=ctx]')?.content || '/').replace(/\/$/, '');
 
-      kakaoLoginUrl() {
-        sessionStorage.setItem('chat_inst', this.inst);
-        return '/csm/oauth2/authorization/kakao';
-      },
+function chatApp() {
+  return {
+    inst: '',
+    user: { loggedIn: false, nickname: '', thumbnail: '' },
+    faqs: [],
+    categories: [],
+    activeCategory: '',
+    faqOpen: false,
 
-      async init() {
-        // inst 복원
-        const params = new URLSearchParams(location.search);
-        this.inst = params.get('inst') || sessionStorage.getItem('chat_inst') || 'FALH';
-        sessionStorage.setItem('chat_inst', this.inst);
+    messages: [],
+    input: '',
+    composing: false,
+    sending: false,
 
-        // 로그인 상태 확인
-        const res = await fetch(CTX + '/api/chat/me');
+    roomId: null,
+    roomStatus: 'IDLE',   // IDLE | WAITING | ACTIVE | CLOSED
+    stompClient: null,
+    _pendingMessages: [],
+    _statusPollTimer: null,
+
+    get statusText() {
+      if (this.roomStatus === 'IDLE')    return '메시지를 보내면 상담사에게 연결됩니다';
+      if (this.roomStatus === 'WAITING') return '상담사 연결 대기 중...';
+      if (this.roomStatus === 'ACTIVE')  return '상담사와 연결되었습니다';
+      if (this.roomStatus === 'CLOSED')  return '상담 종료';
+      return '';
+    },
+
+    kakaoLoginUrl() {
+      sessionStorage.setItem('chat_inst', this.inst);
+      return CTX + '/oauth2/authorization/kakao';
+    },
+
+    async init() {
+      const params = new URLSearchParams(location.search);
+      this.inst = params.get('inst') || sessionStorage.getItem('chat_inst') || 'FALH';
+      sessionStorage.setItem('chat_inst', this.inst);
+
+      const res = await fetch(CTX + '/api/chat/me').catch(() => null);
+      if (res && res.ok) {
         this.user = await res.json();
-        if (this.user.loggedIn) this.loadFaqs();
-      },
-
-      async loadFaqs() {
-        const res = await fetch(CTX + '/api/faq?inst=' + this.inst + '&limit=200');
-        const data = await res.json();
-        this.faqs = (data.list || data || []).map(f => ({ ...f, _open: false }));
-        const catSet = new Set(this.faqs.map(f => f.category));
-        this.categories = [...catSet];
-      },
-
-      setCategory(cat) { this.activeCategory = cat; },
-
-      get filteredFaqs() {
-        if (!this.activeCategory) return this.faqs;
-        return this.faqs.filter(f => f.category === this.activeCategory);
-      },
-
-      async openChat() {
-        this.chatOpen = true;
-        if (this.roomId) return;
-
-        const res = await fetch(CTX + '/api/chat/room?inst=' + this.inst, { method: 'POST' });
-        const data = await res.json();
-        this.roomId = data.roomId;
-        this.roomStatus = data.status;
-        this.connectWebSocket();
-      },
-
-      connectWebSocket() {
-        const sock = new SockJS(CTX + '/ws/chat');
-        this.stompClient = Stomp.over(sock);
-        this.stompClient.debug = null;
-        this.stompClient.connect({}, () => {
-          this.stompClient.subscribe('/topic/chat/' + this.roomId, (frame) => {
-            const msg = JSON.parse(frame.body);
-            if (msg.type === 'COUNSELOR_JOINED') {
-              this.roomStatus = 'ACTIVE';
-              this.chatStatus = msg.counselorName + ' 상담사가 연결되었습니다';
-              this.addSystemMsg(msg.counselorName + ' 상담사가 연결되었습니다. 편하게 말씀해 주세요 😊');
-            } else if (msg.type === 'MESSAGE') {
-              this.messages.push(msg);
-              this.$nextTick(() => this.scrollBottom());
-            } else if (msg.type === 'ROOM_CLOSED') {
-              this.roomStatus = 'CLOSED';
-              this.chatStatus = '상담이 종료되었습니다';
-              this.addSystemMsg('상담이 종료되었습니다. 이용해 주셔서 감사합니다.');
-            }
-          });
-        });
-      },
-
-      sendMessage() {
-        if (!this.inputText.trim() || !this.stompClient) return;
-        const content = this.inputText.trim();
-        this.stompClient.send('/app/chat/' + this.roomId + '/send', {}, JSON.stringify({
-          inst: this.inst,
-          senderType: 'USER',
-          senderName: this.user.nickname,
-          content
-        }));
-        this.inputText = '';
-      },
-
-      addSystemMsg(text) {
-        this.messages.push({ type: 'SYSTEM', text });
-        this.$nextTick(() => this.scrollBottom());
-      },
-
-      msgClass(msg) {
-        if (msg.type === 'SYSTEM') return 'system';
-        return msg.senderType === 'USER' ? 'user' : 'counselor';
-      },
-
-      scrollBottom() {
-        const el = this.$refs.msgArea;
-        if (el) el.scrollTop = el.scrollHeight;
+        if (this.user.loggedIn) {
+          this.loadFaqs();
+          await this.resumeRoom();
+        }
       }
-    };
-  }
-  </script>
+    },
+
+    async resumeRoom() {
+      const res = await fetch(CTX + '/api/chat/room/my?inst=' + this.inst).catch(() => null);
+      if (!res || !res.ok) return;
+      const data = await res.json();
+      if (!data.id) return;
+
+      this.roomId = typeof data.id === 'number' ? data.id : Number(data.id);
+      this.roomStatus = data.status;
+
+      const msgRes = await fetch(CTX + '/api/chat/room/' + this.roomId + '/messages?inst=' + this.inst).catch(() => null);
+      if (msgRes && msgRes.ok) {
+        const rows = await msgRes.json();
+        this.messages = rows.map(m => ({
+          senderType: m.sender_type,
+          senderName: m.sender_name,
+          content: m.content
+        }));
+      }
+
+      this.connectStomp();
+      this.$nextTick(() => this.scrollBottom());
+    },
+
+    async loadFaqs() {
+      const res = await fetch(CTX + '/api/chat/faqs?inst=' + this.inst).catch(() => null);
+      if (!res || !res.ok) return;
+      const data = await res.json();
+      this.faqs = (Array.isArray(data) ? data : []).map(f => ({ ...f, _open: false }));
+      const catSet = new Set(this.faqs.map(f => f.category).filter(Boolean));
+      this.categories = [...catSet];
+    },
+
+    setCategory(cat) {
+      this.activeCategory = cat;
+    },
+
+    get filteredFaqs() {
+      if (!this.activeCategory) return this.faqs;
+      return this.faqs.filter(f => f.category === this.activeCategory);
+    },
+
+    async sendMessage(event) {
+      if (event?.isComposing || this.composing) return;
+      const content = this.input.trim();
+      if (!content || this.sending) return;
+
+      this.input = '';
+      this.messages.push({ senderType: 'USER', senderName: this.user.nickname, content });
+      this.$nextTick(() => this.scrollBottom());
+
+      if (!this.roomId) {
+        this.sending = true;
+        try {
+          const res = await fetch(CTX + '/api/chat/room?inst=' + this.inst, { method: 'POST' });
+          const data = await res.json();
+          this.roomId = data.roomId;
+          this.roomStatus = 'WAITING';
+          this.connectStomp();
+        } catch {
+          this.messages.push({ type: 'SYSTEM', text: '연결에 실패했습니다. 잠시 후 다시 시도해 주세요.' });
+          this.sending = false;
+          this.$nextTick(() => this.scrollBottom());
+          return;
+        }
+        this.sending = false;
+      }
+
+      this._sendViaStomp(content);
+    },
+
+    _sendViaStomp(content) {
+      if (!this.stompClient || !this.stompClient.connected) {
+        this._pendingMessages.push(content);
+        return;
+      }
+      this.stompClient.send('/app/chat/' + this.roomId + '/send', {}, JSON.stringify({
+        inst: this.inst,
+        senderType: 'USER',
+        senderName: this.user.nickname,
+        content
+      }));
+    },
+
+    connectStomp() {
+      if (this.stompClient) return;
+      const sock = new SockJS(CTX + '/ws/chat');
+      this.stompClient = Stomp.over(sock);
+      this.stompClient.debug = null;
+      this.stompClient.connect({}, () => {
+        this.stompClient.subscribe('/topic/chat/' + this.roomId, (frame) => {
+          const msg = JSON.parse(frame.body);
+          if (msg.type === 'COUNSELOR_JOINED') {
+            this._clearStatusPoll();
+            this.roomStatus = 'ACTIVE';
+            this.messages.push({ type: 'SYSTEM', text: msg.counselorName + ' 상담사가 연결되었습니다.' });
+          } else if (msg.type === 'ROOM_CLOSED') {
+            this._clearStatusPoll();
+            this.roomStatus = 'CLOSED';
+            this.messages.push({ type: 'SYSTEM', text: '상담이 종료되었습니다.' });
+          } else if (msg.type === 'MESSAGE' && msg.senderType !== 'USER') {
+            this.messages.push(msg);
+          }
+          this.$nextTick(() => this.scrollBottom());
+        });
+
+        this._pendingMessages.forEach(c => this._sendViaStomp(c));
+        this._pendingMessages = [];
+        this._startStatusPoll();
+      });
+    },
+
+    _startStatusPoll() {
+      if (this._statusPollTimer) return;
+      this._statusPollTimer = setInterval(async () => {
+        if (this.roomStatus !== 'WAITING') { this._clearStatusPoll(); return; }
+        try {
+          const res = await fetch(CTX + '/api/chat/room/' + this.roomId + '/status?inst=' + this.inst);
+          if (!res.ok) return;
+          const data = await res.json();
+          if (data.status === 'ACTIVE' && this.roomStatus === 'WAITING') {
+            this._clearStatusPoll();
+            this.roomStatus = 'ACTIVE';
+            this.messages.push({ type: 'SYSTEM', text: '상담사가 연결되었습니다.' });
+            this.$nextTick(() => this.scrollBottom());
+          } else if (data.status === 'CLOSED') {
+            this._clearStatusPoll();
+            this.roomStatus = 'CLOSED';
+            this.messages.push({ type: 'SYSTEM', text: '상담이 종료되었습니다.' });
+            this.$nextTick(() => this.scrollBottom());
+          }
+        } catch { /* ignore */ }
+      }, 3000);
+    },
+
+    _clearStatusPoll() {
+      if (this._statusPollTimer) { clearInterval(this._statusPollTimer); this._statusPollTimer = null; }
+    },
+
+    scrollBottom() {
+      const el = this.$refs.msgArea;
+      if (el) el.scrollTop = el.scrollHeight;
+    }
+  };
+}
+</script>
 </body>
 </html>

@@ -7841,6 +7841,8 @@ public class PageController {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("name",     safeString(u.getUs_col_12()));
         result.put("id",       safeString(u.getUs_col_02()));
+        result.put("userId",   u.getUs_col_01());
+        result.put("inst",     inst != null ? inst : "");
         result.put("instname", instname);
         result.put("role",     role);
         result.put("menuKeys", resolveAccessibleMenuKeys(u, inst));
