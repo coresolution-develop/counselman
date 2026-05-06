@@ -163,6 +163,7 @@
       font-weight: 600;
     }
     .ws-available.is-full { color: #ef4444; }
+    .ws-available.is-afternoon { color: #d97706; }
 
     .ws-tag {
       display: inline-block;
@@ -561,7 +562,7 @@
       </template>
       <label class="ws-chip" :class="{ 'is-on': onlyAvailable }" @click="onlyAvailable = !onlyAvailable" style="margin-left:8px;">
         <span class="ws-chip__dot"></span>
-        <span>입원 가능 병실만</span>
+        <span>입원 가능 병실만 (오후 포함)</span>
       </label>
       <div class="spacer"></div>
       <button class="ws-reset" @click="resetFilters()">필터 초기화</button>
@@ -605,7 +606,7 @@
             </thead>
             <tbody>
               <template x-for="room in ward.rooms" :key="room.id">
-                <tr :class="{ 'is-disabled': room.available === 0 }">
+                <tr :class="{ 'is-disabled': room.available === 0 && room.afternoon === 0 }">
                   <td data-label="병실">
                     <span class="ws-bed">
                       <span x-text="room.id"></span>
@@ -617,7 +618,8 @@
                   <td data-label="성별" x-text="room.gender || '—'"></td>
                   <td data-label="재원자 수" x-text="room.occupied + '명'"></td>
                   <td data-label="입원 T.O">
-                    <span :class="room.available === 0 ? 'ws-available is-full' : 'ws-available'" x-text="room.available + '명 ' + (room.available === 0 ? '만실' : '입원 가능!')"></span>
+                    <span :class="room.available > 0 ? 'ws-available' : (room.afternoon > 0 ? 'ws-available is-afternoon' : 'ws-available is-full')"
+                          x-text="room.available > 0 ? (room.available + '명 입원 가능!') : (room.afternoon > 0 ? '오후 입원 가능' : '만실')"></span>
                   </td>
                   <td data-label="가동률" x-text="room.occupancy + '%'"></td>
                   <td data-label="간병 형태">
@@ -643,10 +645,10 @@
                   </td>
                   <td data-label="선택" x-show="popupMode">
                     <button class="ws-select-btn"
-                            :disabled="room.available === 0"
-                            :class="{ 'ws-select-btn--ghost': room.available === 0 }"
+                            :disabled="room.available === 0 && room.afternoon === 0"
+                            :class="{ 'ws-select-btn--ghost': room.available === 0 && room.afternoon > 0 }"
                             @click="selectRoom(ward, room)">
-                      <span x-text="room.available === 0 ? '만실' : '선택'"></span>
+                      <span x-text="room.available > 0 ? '선택' : (room.afternoon > 0 ? '오후 입원' : '만실')"></span>
                     </button>
                   </td>
                 </tr>
@@ -753,7 +755,7 @@ function wardStatus() {
       if (this.onlyAvailable) {
         wards = wards.map(w => ({
           ...w,
-          rooms: w.rooms.filter(r => r.available > 0),
+          rooms: w.rooms.filter(r => r.available > 0 || r.afternoon > 0),
         })).filter(w => w.rooms.length > 0);
       }
       return wards;
@@ -775,14 +777,16 @@ function wardStatus() {
     },
 
     selectRoom(ward, room) {
-      if (!room || room.available <= 0) return;
+      if (!room || (room.available <= 0 && room.afternoon <= 0)) return;
       const roomName = room.id || '';
+      const afternoonOnly = room.available <= 0 && room.afternoon > 0;
       try {
         if (window.opener && !window.opener.closed) {
           window.opener.postMessage({
             type: 'csm-room-board-select',
             wardName: ward?.name || '',
             roomName,
+            afternoonOnly,
           }, window.location.origin);
         }
       } catch (_) {}
