@@ -3325,18 +3325,19 @@ public class CsmAuthService {
             }
 
             if (id != null && id > 0) {
+                int updated;
                 if (activate) {
-                    jdbcTemplate.update(
+                    updated = jdbcTemplate.update(
                             "UPDATE csm.counsel_pledge_template_" + safe
                             + " SET template_name=?, content=?, is_active='Y' WHERE id=?",
                             safeName, safeContent, id);
                 } else {
-                    jdbcTemplate.update(
+                    updated = jdbcTemplate.update(
                             "UPDATE csm.counsel_pledge_template_" + safe
                             + " SET template_name=?, content=? WHERE id=?",
                             safeName, safeContent, id);
                 }
-                return id;
+                return updated > 0 ? id : 0L;
             }
 
             KeyHolder kh = new GeneratedKeyHolder();

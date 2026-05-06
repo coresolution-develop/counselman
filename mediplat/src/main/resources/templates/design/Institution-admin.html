@@ -30,7 +30,18 @@
     --font: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
   }
   *, *::before, *::after { box-sizing: border-box; }
-  html, body { height: 100%; }
+	  html, body { height: 100%; scrollbar-width: thin; scrollbar-color: rgba(100,116,139,0.38) transparent; }
+	  html::-webkit-scrollbar,
+	  body::-webkit-scrollbar { width: 8px; }
+	  html::-webkit-scrollbar-track,
+	  body::-webkit-scrollbar-track { background: transparent; }
+	  html::-webkit-scrollbar-thumb,
+	  body::-webkit-scrollbar-thumb {
+	    background: rgba(100,116,139,0.28);
+	    border: 2px solid transparent;
+	    border-radius: 999px;
+	    background-clip: content-box;
+	  }
   body {
     margin: 0;
     font-family: var(--font);
@@ -56,24 +67,52 @@
 <body>
 <div id="root"></div>
 
+<meta th:if="${_csrf != null}" name="_csrf" th:content="${_csrf.token}"/>
+<meta th:if="${_csrf != null}" name="_csrf_header" th:content="${_csrf.headerName}"/>
+
 <script th:inline="javascript">
   (function () {
-    var rawUser     = /*[[${user}]]*/ null;
-    var rawUsers    = /*[[${institutionUsers}]]*/ [];
-    var rawFeatures = /*[[${institutionEnabledServices}]]*/ [];
-    var instCode    = /*[[${selectedInstCode}]]*/ '';
-    var instName    = /*[[${instName}]]*/ '';
+    var rawUser              = /*[[${user}]]*/ null;
+    var rawUsers             = /*[[${institutionUsers}]]*/ [];
+    var rawFeatures          = /*[[${institutionEnabledServices}]]*/ [];
+    var rawInstitutions      = /*[[${institutions}]]*/ [];
+    var rawAllServices       = /*[[${services}]]*/ [];
+    var rawEnabledSvcCodes   = /*[[${enabledServiceCodes}]]*/ [];
+    var instCode             = /*[[${selectedInstCode}]]*/ '';
+    var instName             = /*[[${instName}]]*/ '';
+    var canManagePlatform    = /*[[${canManagePlatform}]]*/ false;
     window.__MP_ADMIN__ = {
       user:     rawUser ? { name: rawUser.displayName, org: rawUser.instCode, instName: instName, role: rawUser.roleCode } : {},
       instCode: instCode,
       instName: instName,
+      canManagePlatform: canManagePlatform,
+      institutions: rawInstitutions.map(function (i) {
+        return { instCode: i.instCode, instName: i.instName, useYn: i.useYn };
+      }),
+      allServices: rawAllServices.map(function (s) {
+        return {
+          serviceCode:  s.serviceCode,
+          serviceName:  s.serviceName,
+          baseUrlLocal: s.baseUrlLocal || '',
+          baseUrlDev:   s.baseUrlDev   || '',
+          baseUrlProd:  s.baseUrlProd  || '',
+          userTarget:   s.userTarget   || '',
+          adminTarget:  s.adminTarget  || '',
+          ssoEntryPath: s.ssoEntryPath || '/mediplat/sso/entry',
+          description:  s.description  || '',
+          useYn:        s.useYn        || 'Y',
+          displayOrder: s.displayOrder != null ? s.displayOrder : 0
+        };
+      }),
+      enabledServiceCodes: rawEnabledSvcCodes,
       users: rawUsers.map(function (u) {
         return {
-          id:     u.id,
-          org:    u.instCode,
-          userId: u.username,
-          name:   u.displayName || u.username,
-          status: u.useYn === 'Y' ? '사용' : '미사용'
+          id:       u.id,
+          org:      u.instCode,
+          userId:   u.username,
+          name:     u.displayName || u.username,
+          roleCode: u.roleCode || 'USER',
+          status:   u.useYn === 'Y' ? '사용' : '미사용'
         };
       }),
       features: rawFeatures.map(function (s) {

@@ -163,12 +163,22 @@ button:hover,
 }
 
 .topbar {
-    width: min(1160px, calc(100% - 32px));
-    margin: 22px auto 0;
+    width: 100%;
+    min-height: 80px;
+    margin: 0;
+    padding: 14px max(16px, calc((100vw - 1160px) / 2));
     display: flex;
     justify-content: space-between;
     gap: 20px;
     align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 50;
+    background: rgba(247, 249, 253, 0.9);
+    border-bottom: 1px solid rgba(207, 219, 235, 0.86);
+    box-shadow: 0 12px 28px rgba(23, 46, 75, 0.06);
+    backdrop-filter: blur(14px);
 }
 
 .topbar h1 {
@@ -205,6 +215,10 @@ button:hover,
 
 .page-shell {
     padding: 28px 0 40px;
+}
+
+.topbar + .page-shell {
+    padding-top: 108px;
 }
 
 .services-page .page-shell {
@@ -1174,11 +1188,15 @@ body.modal-open {
 
 @media (max-width: 960px) {
     .topbar {
-        width: calc(100% - 24px);
-        margin-top: 16px;
+        min-height: 132px;
+        padding: 14px 16px;
         flex-direction: column;
         align-items: flex-start;
         gap: 12px;
+    }
+
+    .topbar + .page-shell {
+        padding-top: 160px;
     }
 
     .topbar-actions {

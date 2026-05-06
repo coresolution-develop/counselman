@@ -544,7 +544,9 @@ function docPageState() {
         var data = await res.json();
         if (data.ok) {
           this.editingId = data.id;
-          await this._reloadTemplates();
+          this._applyTemplates(data.templates);
+          if (!Array.isArray(data.templates)) await this._reloadTemplates();
+          this._syncEditorWithTemplate(data.id);
           this.showToast(true, '저장되었습니다. 서약서에 즉시 적용됩니다.');
         } else {
           this.showToast(false, data.error || '저장 실패');
@@ -565,7 +567,9 @@ function docPageState() {
         });
         var data = await res.json();
         if (data.ok) {
-          await this._reloadTemplates();
+          this._applyTemplates(data.templates);
+          if (!Array.isArray(data.templates)) await this._reloadTemplates();
+          this._syncEditorWithTemplate(id);
           this.showToast(true, '서약서 템플릿이 적용되었습니다.');
         } else {
           this.showToast(false, data.error || '적용 실패');
@@ -578,12 +582,19 @@ function docPageState() {
     async deactivateAll() {
       if (!confirm('모든 커스텀 템플릿을 비활성화하고 기본 서약서 내용을 사용할까요?')) return;
       try {
-        await fetch(this._ctx() + '/api/pledge-templates/deactivate-all', {
+        var res = await fetch(this._ctx() + '/api/pledge-templates/deactivate-all', {
           method: 'POST',
           headers: { [this._csrfHeader()]: this._csrf() },
           credentials: 'same-origin'
         });
-        await this._reloadTemplates();
+        var data = await res.json().catch(() => ({}));
+        this._applyTemplates(data.templates);
+        if (!Array.isArray(data.templates)) await this._reloadTemplates();
+        this.editingId = null;
+        this.editingName = '표준 서약서';
+        if (this.designer) {
+          this._loadDesignerContent(this.designer, _defaultPledgeTemplateContent || '');
+        }
         this.showToast(true, '기본값으로 초기화되었습니다.');
       } catch {
         this.showToast(false, '서버 오류가 발생했습니다.');
@@ -600,8 +611,12 @@ function docPageState() {
         });
         var data = await res.json();
         if (data.ok) {
-          if (this.editingId === id) this.editingId = null;
-          await this._reloadTemplates();
+          var wasEditing = String(this.editingId || '') === String(id);
+          this._applyTemplates(data.templates);
+          if (!Array.isArray(data.templates)) await this._reloadTemplates();
+          if (wasEditing) {
+            this._syncEditorWithActiveOrDefault();
+          }
           this.showToast(true, '삭제되었습니다.');
         } else {
           this.showToast(false, data.error || '삭제 실패');
@@ -618,8 +633,37 @@ function docPageState() {
           headers: { [this._csrfHeader()]: this._csrf() }
         });
         var data = await res.json();
-        if (data.ok) this.templates = data.templates || [];
+        if (data.ok) this._applyTemplates(data.templates);
       } catch {}
+    },
+
+    _applyTemplates(templates) {
+      if (Array.isArray(templates)) {
+        this.templates = templates;
+      }
+    },
+
+    _syncEditorWithTemplate(id) {
+      var target = this.templates.find(t => String(t.id) === String(id));
+      if (!target) return;
+      this.editingId = target.id;
+      this.editingName = target.template_name || '';
+      if (this.designer) {
+        this._loadDesignerContent(this.designer, target.content || '');
+      }
+    },
+
+    _syncEditorWithActiveOrDefault() {
+      var active = this.templates.find(t => String(t.is_active) === 'Y');
+      if (active) {
+        this._syncEditorWithTemplate(active.id);
+        return;
+      }
+      this.editingId = null;
+      this.editingName = '표준 서약서';
+      if (this.designer) {
+        this._loadDesignerContent(this.designer, _defaultPledgeTemplateContent || '');
+      }
     },
 
     showToast(ok, message) {

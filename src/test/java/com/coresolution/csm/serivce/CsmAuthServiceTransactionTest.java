@@ -1,5 +1,6 @@
 package com.coresolution.csm.serivce;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -131,6 +132,38 @@ class CsmAuthServiceTransactionTest {
         assert result == 0;
         verify(jdbcTemplate, never()).update(anyString(), anyInt());
         verify(jdbcTemplate, never()).queryForList(anyString(), eq(Integer.class), anyInt());
+    }
+
+    // ── pledge template update validation ─────────────────────────────────────
+
+    @Test
+    void savePledgeTemplate_existingMissingRow_returnsZero() {
+        when(jdbcTemplate.update(contains("SET is_active='N'"))).thenReturn(1);
+        when(jdbcTemplate.update(
+                contains("SET template_name=?, content=?, is_active='Y' WHERE id=?"),
+                eq("수정 템플릿"),
+                eq("<div>내용</div>"),
+                eq(99L)))
+                .thenReturn(0);
+
+        long result = service.savePledgeTemplate("FALH", 99L, "수정 템플릿", "<div>내용</div>", true);
+
+        assertThat(result).isZero();
+    }
+
+    @Test
+    void savePledgeTemplate_existingUpdatedRow_returnsId() {
+        when(jdbcTemplate.update(contains("SET is_active='N'"))).thenReturn(1);
+        when(jdbcTemplate.update(
+                anyString(),
+                eq("수정 템플릿"),
+                eq("<div>내용</div>"),
+                eq(7L)))
+                .thenReturn(1);
+
+        long result = service.savePledgeTemplate("FALH", 7L, "수정 템플릿", "<div>내용</div>", true);
+
+        assertThat(result).isEqualTo(7L);
     }
 
     // ── coreNoticeSave validation ──────────────────────────────────────────────

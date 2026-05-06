@@ -5724,7 +5724,7 @@ public class PageController {
         if (content.isBlank()) return Map.of("ok", false, "error", "내용이 비어 있습니다.");
         long savedId = cs.savePledgeTemplate(inst, id, name, content, activate);
         if (savedId == 0) return Map.of("ok", false, "error", "저장에 실패했습니다.");
-        return Map.of("ok", true, "id", savedId);
+        return Map.of("ok", true, "id", savedId, "templates", cs.listPledgeTemplates(inst));
     }
 
     @DeleteMapping(value = { "api/pledge-templates/{id}", "/api/pledge-templates/{id}" }, produces = "application/json;charset=UTF-8")
@@ -5734,7 +5734,7 @@ public class PageController {
         String inst = ensureInst(session);
         if (inst == null) return Map.of("ok", false, "error", "로그인이 필요합니다.");
         return cs.deletePledgeTemplate(inst, id)
-                ? Map.of("ok", true)
+                ? Map.of("ok", true, "templates", cs.listPledgeTemplates(inst))
                 : Map.of("ok", false, "error", "삭제할 항목을 찾지 못했습니다.");
     }
 
@@ -5745,7 +5745,7 @@ public class PageController {
         String inst = ensureInst(session);
         if (inst == null) return Map.of("ok", false, "error", "로그인이 필요합니다.");
         return cs.activatePledgeTemplate(inst, id)
-                ? Map.of("ok", true)
+                ? Map.of("ok", true, "templates", cs.listPledgeTemplates(inst))
                 : Map.of("ok", false, "error", "활성화할 항목을 찾지 못했습니다.");
     }
 
@@ -5755,7 +5755,7 @@ public class PageController {
         String inst = ensureInst(session);
         if (inst == null) return Map.of("ok", false, "error", "로그인이 필요합니다.");
         cs.deactivateAllPledgeTemplates(inst);
-        return Map.of("ok", true);
+        return Map.of("ok", true, "templates", cs.listPledgeTemplates(inst));
     }
 
     @GetMapping({ "documents", "/documents" })

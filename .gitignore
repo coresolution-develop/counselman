@@ -36,6 +36,8 @@ out/
 ### VS Code ###
 .vscode/
 .DS_Store
+.env.local
+mediplat/.env.local
 
 ### MediPlat runtime data ###
 mediplat/mediplat/data/

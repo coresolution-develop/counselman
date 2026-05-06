@@ -8,6 +8,19 @@ MEDIPLAT_PORT="${MEDIPLAT_PORT:-8082}"
 CSM_PID=""
 MEDIPLAT_PID=""
 
+load_local_env() {
+  local env_file="${ROOT_DIR}/.env.local"
+  if [[ ! -f "${env_file}" ]]; then
+    return
+  fi
+
+  echo "[env] loading ${env_file}"
+  set -a
+  # shellcheck disable=SC1090
+  source "${env_file}"
+  set +a
+}
+
 init_local_defaults() {
   export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-local}"
 
@@ -29,6 +42,11 @@ init_local_defaults() {
   # 빈 로컬 DB에서 csm 기동 실패를 유발하는 bootstrap 기본값 OFF
   export PLATFORM_ADMIN_BOOTSTRAP_ENABLED="${PLATFORM_ADMIN_BOOTSTRAP_ENABLED:-false}"
   export PLATFORM_ADMIN_SYNC_PASSWORD_ON_STARTUP="${PLATFORM_ADMIN_SYNC_PASSWORD_ON_STARTUP:-false}"
+
+  # OPENAI_API_KEY가 있으면 로컬 MediPlat 뉴스레터 AI 추천을 자동 활성화
+  if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+    export MEDIPLAT_NEWSLETTER_AI_ENABLED="${MEDIPLAT_NEWSLETTER_AI_ENABLED:-true}"
+  fi
 }
 
 ensure_java17() {
@@ -124,6 +142,7 @@ monitor_processes() {
 trap cleanup EXIT INT TERM
 
 ensure_java17
+load_local_env
 init_local_defaults
 kill_port "${CSM_PORT}" "csm"
 kill_port "${MEDIPLAT_PORT}" "mediplat"
