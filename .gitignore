@@ -41,3 +41,8 @@ mediplat/.env.local
 
 ### MediPlat runtime data ###
 mediplat/mediplat/data/
+
+### Python ###
+__pycache__/
+*.pyc
+*.pyo
