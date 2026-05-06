@@ -336,6 +336,31 @@ body.counsel-list-modern .list-setting-btn {
     height: 38px;
 }
 
+body.counsel-list-modern .csm-search-bar #setting {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    margin: 0;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    padding: 0;
+}
+
+body.counsel-list-modern .csm-search-bar #setting svg {
+    width: 16px;
+    height: 16px;
+}
+
+body.counsel-list-modern .csm-search-bar #searchBtn {
+    height: 34px;
+    min-height: 34px;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
 body.counsel-list-modern .toolbar-icon-btn img {
     width: 18px;
     height: 18px;
