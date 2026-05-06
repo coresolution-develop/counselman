@@ -29,7 +29,7 @@
     ]},
     { key: 's:시스템', section: '시스템', items: [
       { id: 'admin',         label: '관리자',       icon: 'shield',     href: '/roles',                         permKey: 'admin',
-        active: ['/roles', '/users', '/access', '/counsel/log-settings', '/admin/counsel/log-settings', '/room-board/manage', '/admin/room-board'] },
+        active: ['/roles', '/users', '/access', '/counsel/log-settings', '/admin/counsel/log-settings', '/room-board/manage', '/admin/room-board', '/faq-manage', '/chat-admin'] },
     ]},
   ];
 
@@ -152,7 +152,10 @@
         <input type="text" placeholder="검색" />
         <kbd>⌘K</kbd>
       </div>
-      <button class="header__icon-btn" aria-label="알림">${icon('bell')}<span class="dot"></span></button>
+      <div class="notif-wrap" id="js-notif-wrap">
+        <button class="header__icon-btn" id="js-bell-btn" aria-label="알림">${icon('bell')}<span class="notif-badge" id="js-notif-badge" style="display:none">0</span></button>
+        <div class="notif-panel" id="js-notif-panel" style="display:none"></div>
+      </div>
       <button class="header__icon-btn" aria-label="도움말">${icon('help')}</button>
       <button class="header__user">
         <div class="header__avatar js-user-avatar">?</div>
@@ -466,6 +469,168 @@
     });
   }
 
+  // ── 알림 CSS 주입 ───────────────────────────────────────────────
+  function injectNotifStyles() {
+    if (document.getElementById('mp-notif-styles')) return;
+    const s = document.createElement('style');
+    s.id = 'mp-notif-styles';
+    s.textContent = `
+      .notif-wrap { position: relative; }
+      .notif-badge {
+        position: absolute; top: 2px; right: 2px;
+        min-width: 16px; height: 16px;
+        background: var(--danger, #ef4444); color: #fff;
+        font-size: 10px; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        padding: 0 4px;
+        border-radius: 8px; border: 2px solid var(--surface, #fff);
+        pointer-events: none; box-sizing: border-box;
+      }
+      .notif-panel {
+        position: absolute; top: calc(100% + 8px); right: 0;
+        width: 300px;
+        background: #fff; border: 1px solid var(--border-subtle, #e5e7eb);
+        border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.12);
+        z-index: 9999; overflow: hidden;
+      }
+      .notif-panel__head {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 16px 10px;
+        font-size: 13px; font-weight: 700; color: var(--text-primary, #1a2332);
+        border-bottom: 1px solid var(--border-subtle, #e5e7eb);
+      }
+      .notif-panel__count {
+        font-size: 11px; font-weight: 700;
+        background: var(--danger, #ef4444); color: #fff;
+        padding: 2px 8px; border-radius: 10px;
+      }
+      .notif-panel__empty {
+        padding: 24px 16px; text-align: center;
+        font-size: 13px; color: var(--text-tertiary, #9ca3af);
+      }
+      .notif-item {
+        display: flex; align-items: center; gap: 12px;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-subtle, #f3f4f6);
+        text-decoration: none; color: inherit;
+        transition: background .1s;
+      }
+      .notif-item:hover { background: var(--gray-50, #f9fafb); }
+      .notif-item__icon {
+        width: 36px; height: 36px; border-radius: 10px;
+        background: color-mix(in oklab, #10b981 12%, #fff);
+        display: grid; place-items: center; flex-shrink: 0;
+      }
+      .notif-item__icon svg { width: 18px; height: 18px; color: #10b981; }
+      .notif-item__body { flex: 1; min-width: 0; }
+      .notif-item__name { font-size: 13px; font-weight: 600; color: var(--text-primary, #1a2332); }
+      .notif-item__meta { font-size: 12px; color: var(--text-tertiary, #9ca3af); margin-top: 2px; }
+      .notif-panel__footer {
+        display: block; text-align: center;
+        padding: 12px 16px;
+        font-size: 12px; font-weight: 600; color: var(--brand-600, #1a2332);
+        text-decoration: none;
+        border-top: 1px solid var(--border-subtle, #e5e7eb);
+        transition: background .1s;
+      }
+      .notif-panel__footer:hover { background: var(--gray-50, #f9fafb); }
+    `;
+    document.head.appendChild(s);
+  }
+
+  // ── 채팅 알림 폴링 ──────────────────────────────────────────────
+  let _notifTimer = null;
+  let _notifPanelOpen = false;
+
+  function updateNotifBadge(waitingRooms) {
+    const badge = document.getElementById('js-notif-badge');
+    if (!badge) return;
+    if (waitingRooms.length > 0) {
+      badge.textContent = waitingRooms.length;
+      badge.style.display = '';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  function renderNotifPanel(waitingRooms) {
+    const panel = document.getElementById('js-notif-panel');
+    if (!panel) return;
+    const chatAdminUrl = path('/chat-admin');
+    let inner = `<div class="notif-panel__head"><span>새 상담 요청</span>`;
+    if (waitingRooms.length > 0) {
+      inner += `<span class="notif-panel__count">${waitingRooms.length}건</span>`;
+    }
+    inner += `</div>`;
+    if (waitingRooms.length === 0) {
+      inner += `<div class="notif-panel__empty">대기 중인 상담이 없습니다.</div>`;
+    } else {
+      waitingRooms.slice(0, 5).forEach(r => {
+        const time = r.created_at
+          ? new Date(r.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+          : '';
+        inner += `<a class="notif-item" href="${chatAdminUrl}">
+          <div class="notif-item__icon">${icon('chat')}</div>
+          <div class="notif-item__body">
+            <div class="notif-item__name">${r.kakao_nickname || '고객'}</div>
+            <div class="notif-item__meta">상담 대기 중 · ${time}</div>
+          </div>
+        </a>`;
+      });
+    }
+    inner += `<a class="notif-panel__footer" href="${chatAdminUrl}">채팅 관리 페이지로 이동 →</a>`;
+    panel.innerHTML = inner;
+  }
+
+  async function pollChatNotif() {
+    try {
+      const res = await fetch(CTX + '/api/chat/waiting', { credentials: 'same-origin' });
+      if (!res.ok) return;
+      const waiting = await res.json();
+      updateNotifBadge(waiting);
+      if (_notifPanelOpen) renderNotifPanel(waiting);
+      window._chatWaitingRooms = waiting;
+    } catch { /* ignore */ }
+  }
+
+  function startNotifPoll() {
+    pollChatNotif();
+    if (_notifTimer) clearInterval(_notifTimer);
+    _notifTimer = setInterval(pollChatNotif, 30000);
+  }
+
+  function attachBellListener() {
+    _notifPanelOpen = false; // 페이지 이동 시 상태 초기화
+    const btn = document.getElementById('js-bell-btn');
+    const panel = document.getElementById('js-notif-panel');
+    if (!btn || !panel) return;
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      _notifPanelOpen = !_notifPanelOpen;
+      if (_notifPanelOpen) {
+        renderNotifPanel(window._chatWaitingRooms || []);
+        panel.style.display = '';
+      } else {
+        panel.style.display = 'none';
+      }
+    });
+
+    // document 클릭 핸들러는 최초 1회만 등록
+    if (!window._bellOutsideListenerAttached) {
+      window._bellOutsideListenerAttached = true;
+      document.addEventListener('click', (e) => {
+        if (!_notifPanelOpen) return;
+        const wrap = document.getElementById('js-notif-wrap');
+        if (wrap && !wrap.contains(e.target)) {
+          _notifPanelOpen = false;
+          const p = document.getElementById('js-notif-panel');
+          if (p) p.style.display = 'none';
+        }
+      });
+    }
+  }
+
   // ── mount ────────────────────────────────────────────────────────
   window.MPChrome = {
     async mount(crumb) {
@@ -475,7 +640,7 @@
 
         // nav 순서 + 유저 정보: window 레벨 캐시 (Turbo 재방문 시 재사용)
         // menuKeys 필드가 없으면 구버전 캐시 → 강제 재조회
-        if (!window._navCache || !window._meCache || !('menuKeys' in window._meCache)) {
+        if (!window._navCache || !window._meCache || !('menuKeys' in window._meCache) || !('inst' in window._meCache)) {
           const [orderRows, me] = await Promise.all([
             fetch(CTX + '/api/nav-order').then(r => r.ok ? r.json() : []).catch(() => []),
             fetch(CTX + '/api/me').then(r => r.ok ? r.json() : {}).catch(() => ({})),
@@ -491,7 +656,10 @@
 
         attachSidebarListeners();
         injectPageLoader();
+        injectNotifStyles();
         patchUserInfo(window._meCache);
+        attachBellListener();
+        startNotifPoll();
         checkAndShowNoticePopup();
       } finally {
         // 캐시 사용 시 즉시, API 호출 시 완료 후 로더 숨김
