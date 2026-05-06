@@ -83,7 +83,7 @@ public class MediplatSsoController {
                     userId,
                     expires,
                     mediplatSsoService.signRoomBoardViewer(normalizedInst, userId, expires));
-            return "redirect:" + request.getContextPath() + roomBoardTarget;
+            return "redirect:" + roomBoardTarget;
         }
 
         Userdata info = cs.loadUserInfo(normalizedInst, userId);
@@ -113,7 +113,7 @@ public class MediplatSsoController {
         session.setAttribute("userInfo", info);
         session.setAttribute("instname", info.getUs_col_05());
 
-        return "redirect:" + request.getContextPath() + redirectTarget;
+        return "redirect:" + redirectTarget;
     }
 
     private List<GrantedAuthority> buildAuthorities(Userdata info, String inst) {

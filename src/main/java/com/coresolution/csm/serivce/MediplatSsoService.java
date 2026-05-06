@@ -22,7 +22,7 @@ public class MediplatSsoService {
     public MediplatSsoService(
             @Value("${mediplat.sso.shared-secret:}") String sharedSecret,
             @Value("${mediplat.sso.allowed-clock-skew-seconds:60}") long allowedClockSkewSeconds,
-            @Value("${mediplat.sso.default-target:/counsel/list?page=1&perPageNum=10&comment=}") String defaultTarget) {
+            @Value("${mediplat.sso.default-target:/counsel/list}") String defaultTarget) {
         this.sharedSecret = sharedSecret == null ? "" : sharedSecret.trim();
         this.allowedClockSkewSeconds = allowedClockSkewSeconds;
         this.defaultTarget = normalizeTarget(defaultTarget);
@@ -138,7 +138,7 @@ public class MediplatSsoService {
     }
 
     private String defaultTargetOrFallback() {
-        return StringUtils.hasText(defaultTarget) ? defaultTarget : "/counsel/list?page=1&perPageNum=10&comment=";
+        return StringUtils.hasText(defaultTarget) ? defaultTarget : "/counsel/list";
     }
 
     private String canonicalPayload(String inst, String userId, long expires, String targetToken) {
