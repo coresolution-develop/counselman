@@ -1,6 +1,6 @@
 # MediPlat 작업 현황
 
-> 최종 업데이트: 2026-05-05
+> 최종 업데이트: 2026-05-06
 
 ---
 
@@ -60,19 +60,31 @@
 - [x] 보호자/연락처 연동 (AES 복호화)
 - [x] 저장·입원완료·예약취소 API 연동
 - [x] 입원완료 후 병실현황판 동기화 (스냅샷 생성)
+- [x] **병실현황판 팝업 연동** — 드롭다운 옆 버튼 클릭 → 현황판 팝업에서 병실 선택 → 자동 반영 (postMessage)
 
 ### 병실현황판 (`ward-status.html`)
 - [x] 실 데이터 연동 (`RoomBoardView` / `RoomBoardWardView` / `RoomBoardRoomView`)
 - [x] 사이드바·헤더 연결, 최신현황·관리화면 버튼 추가
 - [x] `/room-board/manage` 경로 승격 (레거시 `/admin/room-board` redirect 유지)
 - [x] 재원환자 병상 슬롯 색상 (입원가능/재원중/입원예약)
+- [x] **퇴원예고 기능 구현** — 퇴원예정일 등록·수정·삭제, 리스트 표시 (`discharge-notice.html`)
+- [x] **병실 카드 퇴원예고·오후 가능 수 표시** — 병상 슬롯에 오전/오후 퇴원 마크 표시
+- [x] **오전 퇴원 → 오후 입원 가능 연동** — "만실" 대신 "오후 입원 가능"(앰버) 표시, 행 흐림 해제, 필터 포함, 팝업 선택 버튼 활성화
 
-### 상담 리스트
-- [x] 검색 기능 백엔드 연동
-- [x] 환자 정보 삭제 백엔드 연동 (다중 삭제)
-- [x] 일괄 문자 보내기 백엔드 연동
-- [x] 상담 기록 카드 필터 (전체 / 오늘 / 미완료)
-- [x] Turbo 이동 / 대기목록 새로고침 수정
+### 병실현황판 ↔ 입원예약 ↔ 퇴원예고 연동 버그 수정 (`RoomBoardService.java`)
+- [x] 미사용 병실 드롭다운 노출 버그 — `use_yn != 'n'` → `use_yn = 'Y'`
+- [x] 입원완료 환자 현황판 누락 버그 — `uploaded_at` 타임스탬프 비교 → `snapshot_date` 날짜 비교
+- [x] 신규 스냅샷 후 퇴원예고 등록 불가 버그 — `rbs_id` 제약 제거, `rbp_id` 단독 조회
+- [x] 입원예약 경로 환자 퇴원 슬롯 미표시 버그 — 이름 기반 fallback 인덱스 추가
+
+### 챗봇 (`chat-page.html` + `ChatApiController.java`)
+- [x] 카카오 OAuth2 로그인 연동
+- [x] WebSocket (STOMP/SockJS) 실시간 채팅
+- [x] FAQ 패널 — 카테고리 필터, 아코디언 표시
+- [x] 관리자 채팅 수신 연동
+- [x] **FAQ 우선 응답 흐름** — 첫 메시지 전송 시 키워드 검색 → 결과 표시 → [도움이 됐어요 / 상담사에게 연결] 선택
+- [x] **챗봇 상담 접수 플로우** — 이름→연락처→내용→확인 순서, `counsel_reservation` 테이블 자동 저장 (created_by: 챗봇)
+- [x] **iOS Chrome 키보드 UX** — `font-size: 16px` 확대 방지, `visualViewport` API로 카카오톡 스타일 높이 동적 조정
 
 ### MediPlat — 기관 관리자
 - [x] 기관 관리자 페이지 신규 (`Institution-admin.html`, `institution-admin-app.jsx`)
@@ -88,6 +100,7 @@
 - [ ] **서류관리 템플릿** (`/documents#template`) — 표 삽입 → 서명영역 삽입 → 저장 → 입원서약서 렌더링 브라우저 직접 검증
 - [ ] **채팅 페이지 폰트 CORS** — `common.css`의 `fonts.gstatic.com/ea/notosanskr/v2/` URL이 deprecated되어 CORS 에러 발생. `https://fonts.googleapis.com/css2?family=Noto+Sans+KR` CDN 또는 로컬 폰트로 교체 필요
 - [ ] **기본 아바타 이미지 누락** — 채팅 페이지에서 `/img/default-avatar.png` 404 발생. `src/main/resources/static/img/` 하위에 기본 아바타 이미지 파일 추가 필요
+- [ ] **챗봇 FAQ 검색 — 비로그인 접근** — 현재 카카오 로그인 후에만 FAQ 패널 노출. 로그인 전에도 FAQ 조회 가능하도록 검토 필요
 
 ---
 
@@ -105,8 +118,12 @@
 - [ ] **webm 오디오 STT** — 브라우저 녹음 webm 파일 서버 변환 또는 전사 지원 필요
 
 ### 🛏️ 병실현황판
-- [ ] 퇴원예고 기능 구현 — 퇴원예정일 등록·수정·삭제, 리스트 표시
-- [ ] 병실현황판 카드에 입원예약·퇴원예고 수 추가 표시
+- [ ] 퇴원완료 처리 시 해당 병상 즉시 반영 (현재 스냅샷 재임포트 필요)
+- [ ] 퇴원예고 등록 후 현황판 자동 새로고침 (현재 수동 새로고침 필요)
+
+### 💬 챗봇
+- [ ] 챗봇 상담 접수 — 연락처 형식 검증 (010-xxxx-xxxx 패턴)
+- [ ] 상담사 채팅 관리 화면 — 대기 목록 실시간 알림 (브라우저 Notification API)
 
 ### 📊 상담 리스트
 - [ ] 리스트 항목 설정 관리 UI — 보여줄/가릴 컬럼 선택, 좌측 고정 설정
@@ -149,3 +166,5 @@
 | 상담 테이블 | `csm.counsel_data_{inst}` |
 | 동적 카테고리 | `csm.category_{inst}`, `csm.category_field_{inst}` |
 | CLOVA/GPT 연동 | 백엔드 준비됨, webm 제외 mp3/wav/m4a 지원 |
+| 챗봇 상담 접수 | `csm.counsel_reservation_{inst}` (patient_name, patient_phone, call_summary, created_by, status) |
+| 챗봇 채팅방 | `csm.chat_room_{inst}`, `csm.chat_message_{inst}`, `csm.faq_{inst}` |
