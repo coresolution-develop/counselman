@@ -821,15 +821,6 @@ document.addEventListener('DOMContentLoaded', function () {
       common.content.sms = { message };
     }
 
-    console.group('%c[SMS 전송 정보]', 'color:#0b79d0;font-weight:bold;');
-    console.log('account:', '(server-configured)');
-    console.log('refkey:', common.refkey);
-    console.log('type:', common.type);
-    console.log('from:', common.from);
-    console.log('sendtime(unix):', common.sendtime);
-    console.log('content:', common.content);
-    console.groupEnd();
-
     // 수신자별 개별 요청
     const sendRequests = selected.map(to => {
       const payload = Object.assign({}, common, { to });
@@ -994,7 +985,6 @@ document.addEventListener('DOMContentLoaded', function () {
         data: JSON.stringify({ title: templateName, template: templateContent }),
         success(resp) {
           alert('상용구 저장이 완료되었습니다.');
-          console.log('Server response:', resp);
           closeTemplateModal();
         },
         error(xhr) {
@@ -2003,7 +1993,6 @@ document.addEventListener('DOMContentLoaded', function () {
   /* -------- 보호자 행 추가/삭제 (폼 영역) -------- */
   window.handleSmsIconClick = function (icon) {
     const inputField = icon.closest('.input-with-icon')?.querySelector('input');
-    if (inputField) console.log('Phone number clicked:', inputField.value);
   };
 
   window.addGuardian = function () {
@@ -2053,7 +2042,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const container = document.getElementById('guardianContainer');
     if (!container) return;
     const entries = container.getElementsByClassName('guardian-entry');
-    if (entries.length <= 1) return console.log('최소 1개의 보호자 항목은 유지됩니다.');
+    if (entries.length <= 1) return;
 
     const entry = button.parentNode;
     entry.parentNode.removeChild(entry);
@@ -2228,13 +2217,6 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
     $hidden.val(compact);
-    console.log('📌 예약 발송 시간(YYYYMMDDHHmm):', compact);
-  });
-
-  // 디버그: 메시지 입력 로깅(원하면 주석처리)
-  const msgTA = document.getElementById('message-textarea');
-  if (msgTA) msgTA.addEventListener('input', e => {
-    console.log('Current textarea value:', JSON.stringify(e.target.value));
   });
 
 }); // DOMContentLoaded 종료

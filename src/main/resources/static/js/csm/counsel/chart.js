@@ -16,7 +16,6 @@ let cachedAdmissionTypeData = [];
 let cachedAdmissionSuccessData = [];
 let cachedCurrentLocationData = [];
 let cachedCurrentLocationSuccessData = [];
-console.log("📌 날짜정보:", firstYear, firstMonth, lastYear, lastMonth);
 const COMMON_TYPE_COLORS = {
     '기타': '#C98282',      // 기타는 항상 이 색상
     '대외협력': '#829FC9',   // 대외협력은 항상 이 색상
@@ -48,7 +47,6 @@ $('#yearSelect').on('change', function() {
 });
 
 
-console.log(`firstYear=${firstYear}, firstMonth=${firstMonth}, lastYear=${lastYear}, lastMonth=${lastMonth}`);
 
 
 // 연도/월 또는 상담자 변경 시 통계 전체 재로딩
@@ -180,9 +178,6 @@ function loadStatistics(year, month, counselor = '') { // counselor 기본값은
 	Promise.all([allDataPromise, successDataPromise])
     .then(([allData, successData]) => {
         // 이 시점에서는 allData와 successData가 모두 로드된 상태여야 합니다.
-        console.log("Promise.all - Final successData:", successData);
-        console.log("Promise.all - Final allData:", allData);
-
         // 여기서 renderAdmissionStatsTable 호출
         renderAdmissionStatsTable(successData, allData);
     })
@@ -679,8 +674,6 @@ function renderAdmissionSuccessTypePieChart(successData) {
 		y: aggregatedData[name],
 		color: getCommonTypeColor(name)
 	})).filter(item => item.y > 0);
-	console.log("Final chartData for pie chart:", chartData); // 여기에 추가
-
 	const container = $('#admissionSuccessTypePie');
 
 	if (chartData.length === 0) {
@@ -927,8 +920,6 @@ function renderCounselMethodTable(data) {
 	drawTotalCounselChart(totalPerMonth);
 }
 function renderAdmissionStatsTable(successData, allData) {
-	console.log("renderAdmissionStatsTable - successData:", successData);
-    console.log("renderAdmissionStatsTable - allData:", allData);
     if (!Array.isArray(successData) || !Array.isArray(allData)) {
         $('#admissionStatsTable').html('<tr><td colspan="99">데이터가 올바르지 않습니다.</td></tr>');
         return;
