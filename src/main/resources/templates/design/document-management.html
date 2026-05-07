@@ -86,6 +86,28 @@
     }
 
     .tpl-editor-panel { display: flex; flex-direction: column; gap: 12px; }
+
+    /* ── 서류 종류 행 ── */
+    .tpl-doctype-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px;
+      background: var(--surface); border: 1px solid var(--border-default);
+      border-radius: 6px; flex-wrap: wrap;
+    }
+    .tpl-doctype-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+    .tpl-doctype-pills { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+    .tpl-doctype-pill {
+      padding: 3px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+      border: 1px solid var(--border-default); background: #fff; color: var(--text-secondary);
+      cursor: pointer; transition: background .12s, border-color .12s, color .12s;
+    }
+    .tpl-doctype-pill:hover { border-color: var(--brand); color: var(--brand); }
+    .tpl-doctype-pill.is-active {
+      background: var(--brand); border-color: var(--brand); color: #fff;
+    }
+    .tpl-doctype-custom { display: flex; align-items: center; gap: 4px; }
+    .tpl-doctype-custom .input { height: 28px; font-size: 12px; padding: 0 8px; width: 130px; }
+
     .tpl-name-row { display: flex; align-items: center; gap: 8px; }
     .tpl-name-row .input { flex: 1; }
     .tpl-tools {
@@ -214,6 +236,32 @@
     .tpl-save-row { display: flex; justify-content: flex-end; gap: 8px; align-items: center; }
     .tpl-hint { font-size: 12px; color: var(--text-tertiary); flex: 1; }
 
+    /* ── 필드 바인딩 바 ── */
+    .tpl-field-bar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 10px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe; border-top: 0;
+      font-size: 12px; min-height: 36px; flex-wrap: wrap;
+    }
+    .tpl-field-bar__label { font-weight: 600; color: #1e40af; white-space: nowrap; }
+    .tpl-field-bar__select {
+      height: 26px; padding: 0 8px;
+      border: 1px solid #93c5fd; border-radius: 5px;
+      background: #fff; font-size: 12px; color: #1e3a8a;
+    }
+    .tpl-field-bar__confirm { font-size: 11px; color: #059669; font-weight: 600; }
+    .tpl-field-bar__hint { color: #94a3b8; font-size: 11px; }
+
+    /* ── 캔버스 요소 필드 배지 ── */
+    .doc-field-badge {
+      position: absolute; top: 3px; right: 20px;
+      padding: 1px 5px; border-radius: 4px;
+      background: #2563eb; color: #fff;
+      font-size: 10px; font-weight: 700; line-height: 1.5;
+      pointer-events: none; z-index: 10; white-space: nowrap;
+    }
+
     .tpl-toast {
       position: fixed; bottom: 24px; right: 24px;
       background: #fff; border: 1px solid var(--border-default);
@@ -335,10 +383,10 @@
               <p class="tpl-section-title">프리셋</p>
               <button class="tpl-preset-btn" @click="loadPreset()">📋 표준 서약서 (기본)</button>
 
-              <p class="tpl-section-title">저장된 템플릿</p>
+              <p class="tpl-section-title">저장된 템플릿 <span x-text="'(' + docType + ')'"></span></p>
               <div class="tpl-saved-list">
-                <p class="tpl-hint" x-show="templates.length === 0">저장된 템플릿이 없습니다.</p>
-                <template x-for="t in templates" :key="t.id">
+                <p class="tpl-hint" x-show="filteredTemplates().length === 0">이 서류 종류의 템플릿이 없습니다.</p>
+                <template x-for="t in filteredTemplates()" :key="t.id">
                   <div class="tpl-saved-item" :class="{ 'is-active': String(t.is_active) === 'Y' }">
                     <span class="tpl-saved-name" x-text="t.template_name"></span>
                     <span class="tpl-active-badge" x-show="String(t.is_active) === 'Y'">사용중</span>
@@ -350,13 +398,32 @@
                 </template>
               </div>
 
-              <div x-show="templates.some(t => String(t.is_active) === 'Y')" style="margin-top:4px;">
+              <div x-show="filteredTemplates().some(t => String(t.is_active) === 'Y')" style="margin-top:4px;">
                 <button class="tpl-preset-btn is-muted" @click="deactivateAll()">↩ 기본값으로 초기화</button>
               </div>
             </div>
 
             <!-- 오른쪽 에디터 -->
             <div class="tpl-editor-panel">
+              <!-- 서류 종류 선택 -->
+              <div class="tpl-doctype-row">
+                <span class="tpl-doctype-label">서류 종류</span>
+                <div class="tpl-doctype-pills">
+                  <template x-for="type in allDocTypes" :key="type">
+                    <button type="button" class="tpl-doctype-pill"
+                            :class="{ 'is-active': docType === type }"
+                            @click="switchDocType(type)" x-text="type"></button>
+                  </template>
+                </div>
+                <div class="tpl-doctype-custom">
+                  <input class="input" type="text" x-model="customDocType"
+                         placeholder="직접 입력 후 Enter" maxlength="30"
+                         @keydown.enter.prevent="addCustomDocType()" />
+                  <button type="button" class="btn btn--outline" style="height:28px;font-size:12px;padding:0 8px;"
+                          @click="addCustomDocType()">추가</button>
+                </div>
+              </div>
+
               <div class="tpl-name-row">
                 <input class="input" type="text" x-model="editingName"
                        placeholder="템플릿 이름 (예: 2025년 개정판)" maxlength="100" />
@@ -382,6 +449,30 @@
                 <button type="button" class="tpl-tool-btn" @click.stop.prevent="applySelectedStyle()">스타일 적용</button>
                 <button type="button" class="tpl-tool-btn" @click.stop.prevent="deleteSelected()">선택삭제</button>
               </div>
+              <!-- 필드 바인딩 바 -->
+              <div class="tpl-field-bar">
+                <span class="tpl-field-bar__label">📌 필드 바인딩</span>
+                <select class="tpl-field-bar__select" x-show="hasSelection" x-model="fieldKey" @change="setFieldKey(fieldKey)">
+                  <option value="">없음 (고정 텍스트 / 직접 입력)</option>
+                  <option value="patient_name">환자명</option>
+                  <option value="patient_birth">생년월일</option>
+                  <option value="patient_phone">환자 연락처</option>
+                  <option value="room">병실</option>
+                  <option value="chart_no">차트번호</option>
+                  <option value="guardian_name">주보호자 성명</option>
+                  <option value="guardian_phone">주보호자 연락처</option>
+                  <option value="guardian_relation">주보호자 관계</option>
+                  <option value="guardian_addr">주보호자 주소</option>
+                  <option value="sub_guardian_name">부보호자 성명</option>
+                  <option value="sub_guardian_phone">부보호자 연락처</option>
+                  <option value="sub_guardian_relation">부보호자 관계</option>
+                  <option value="sub_guardian_addr">부보호자 주소</option>
+                  <option value="signed_at">서명일시</option>
+                </select>
+                <span class="tpl-field-bar__confirm" x-show="hasSelection && fieldKey">→ 서약서 열 때 자동으로 채워집니다</span>
+                <span class="tpl-field-bar__hint" x-show="!hasSelection">요소를 클릭하면 자동 입력 필드를 지정할 수 있습니다 &nbsp;|&nbsp; Delete 키로 선택 요소 삭제</span>
+              </div>
+
               <div class="tpl-canvas-wrap">
                 <div id="pledgeDesignerCanvas"
                      class="doc-free-layout"
@@ -413,6 +504,7 @@
 
 <script th:inline="javascript">
   var _pledgeTemplates = /*[[${pledgeTemplates}]]*/ [];
+  var _pledgeDocTypes = /*[[${pledgeDocTypes}]]*/ [];
   var _defaultPledgeTemplateContent = /*[[${defaultPledgeTemplateContent}]]*/ '';
 </script>
 <script th:src="@{/assets/js/app.js}"></script>
@@ -423,15 +515,32 @@
 <script data-turbo-eval="false" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 <script>
+const _PREDEFINED_DOC_TYPES = ['입원서약서', '간병계약서', '동의서', '기타'];
+
+const _FIELD_LABELS = {
+  patient_name: '환자명', patient_birth: '생년월일', patient_phone: '환자 연락처',
+  room: '병실', chart_no: '차트번호',
+  guardian_name: '주보호자 성명', guardian_phone: '주보호자 연락처',
+  guardian_relation: '주보호자 관계', guardian_addr: '주보호자 주소',
+  sub_guardian_name: '부보호자 성명', sub_guardian_phone: '부보호자 연락처',
+  sub_guardian_relation: '부보호자 관계', sub_guardian_addr: '부보호자 주소',
+  signed_at: '서명일시',
+};
+
 function docPageState() {
   return {
     tab: location.hash === '#template' ? 'template' : 'list',
     templates: Array.isArray(_pledgeTemplates) ? _pledgeTemplates : [],
+    docType: '입원서약서',
+    allDocTypes: [...new Set([..._PREDEFINED_DOC_TYPES, ...(Array.isArray(_pledgeDocTypes) ? _pledgeDocTypes : [])])],
+    customDocType: '',
     editingId: null,
     editingName: '',
     saving: false,
     designer: null,
     selectedEl: null,
+    hasSelection: false,
+    fieldKey: '',
     dragState: null,
     fontSize: '14pt',
     fontColor: '#222222',
@@ -469,6 +578,38 @@ function docPageState() {
       this.tab = 'template';
     },
 
+    filteredTemplates() {
+      return this.templates.filter(t => (t.doc_type || '입원서약서') === this.docType);
+    },
+
+    switchDocType(type) {
+      if (this.docType === type) return;
+      this.docType = type;
+      this._selectElement(null);
+      if (!this.designer) return;
+      var active = this.filteredTemplates().find(t => String(t.is_active) === 'Y');
+      if (active) {
+        this.editingId = active.id;
+        this.editingName = active.template_name || '';
+        this._loadDesignerContent(this.designer, active.content || '');
+      } else {
+        this.editingId = null;
+        this.editingName = '';
+        var defaultContent = this.docType === '입원서약서' ? (_defaultPledgeTemplateContent || '') : '';
+        this._loadDesignerContent(this.designer, defaultContent);
+      }
+    },
+
+    addCustomDocType() {
+      var name = this.customDocType.trim();
+      if (!name || name.length > 30) return;
+      if (!this.allDocTypes.includes(name)) {
+        this.allDocTypes = [...this.allDocTypes, name];
+      }
+      this.customDocType = '';
+      this.switchDocType(name);
+    },
+
     _ctx() {
       return (document.querySelector('[data-ctx]')?.dataset.ctx || '/').replace(/\/$/, '');
     },
@@ -487,13 +628,14 @@ function docPageState() {
       if (!el) return;
 
       this.designer = el;
-      var active = this.templates.find(t => String(t.is_active) === 'Y');
+      var active = this.filteredTemplates().find(t => String(t.is_active) === 'Y');
       if (active) {
         this.editingId = active.id;
         this.editingName = active.template_name || '';
         this._loadDesignerContent(el, active.content || '');
       } else {
-        this._loadDesignerContent(el, _defaultPledgeTemplateContent || '');
+        var defaultContent = this.docType === '입원서약서' ? (_defaultPledgeTemplateContent || '') : '';
+        this._loadDesignerContent(el, defaultContent);
       }
       this._bindDesignerEvents();
       this._editorReady = true;
@@ -501,10 +643,12 @@ function docPageState() {
 
     loadPreset() {
       if (!this.designer) return;
-      if (!confirm('현재 편집 중인 내용을 표준 서약서 내용으로 교체할까요?')) return;
-      this._loadDesignerContent(this.designer, _defaultPledgeTemplateContent || '');
+      var label = this.docType === '입원서약서' ? '표준 서약서 내용' : '빈 캔버스';
+      if (!confirm('현재 편집 중인 내용을 ' + label + '으로 교체할까요?')) return;
+      var defaultContent = this.docType === '입원서약서' ? (_defaultPledgeTemplateContent || '') : '';
+      this._loadDesignerContent(this.designer, defaultContent);
       this.editingId = null;
-      this.editingName = '표준 서약서';
+      this.editingName = this.docType === '입원서약서' ? '표준 서약서' : '';
     },
 
     editTemplate(t) {
@@ -533,6 +677,7 @@ function docPageState() {
           id: this.editingId || null,
           name: this.editingName.trim() || '사용자 정의',
           content,
+          docType: this.docType,
           activate: true
         };
         var res = await fetch(this._ctx() + '/api/pledge-templates', {
@@ -544,7 +689,7 @@ function docPageState() {
         var data = await res.json();
         if (data.ok) {
           this.editingId = data.id;
-          this._applyTemplates(data.templates);
+          this._applyTemplates(data.templates, data.docTypes);
           if (!Array.isArray(data.templates)) await this._reloadTemplates();
           this._syncEditorWithTemplate(data.id);
           this.showToast(true, '저장되었습니다. 서약서에 즉시 적용됩니다.');
@@ -567,7 +712,7 @@ function docPageState() {
         });
         var data = await res.json();
         if (data.ok) {
-          this._applyTemplates(data.templates);
+          this._applyTemplates(data.templates, data.docTypes);
           if (!Array.isArray(data.templates)) await this._reloadTemplates();
           this._syncEditorWithTemplate(id);
           this.showToast(true, '서약서 템플릿이 적용되었습니다.');
@@ -580,20 +725,23 @@ function docPageState() {
     },
 
     async deactivateAll() {
-      if (!confirm('모든 커스텀 템플릿을 비활성화하고 기본 서약서 내용을 사용할까요?')) return;
+      var label = this.docType === '입원서약서' ? '표준 서약서 기본값' : '빈 캔버스';
+      if (!confirm('"' + this.docType + '" 템플릿을 모두 비활성화하고 ' + label + '으로 초기화할까요?')) return;
       try {
-        var res = await fetch(this._ctx() + '/api/pledge-templates/deactivate-all', {
+        var res = await fetch(
+          this._ctx() + '/api/pledge-templates/deactivate-all?docType=' + encodeURIComponent(this.docType), {
           method: 'POST',
           headers: { [this._csrfHeader()]: this._csrf() },
           credentials: 'same-origin'
         });
         var data = await res.json().catch(() => ({}));
-        this._applyTemplates(data.templates);
+        this._applyTemplates(data.templates, data.docTypes);
         if (!Array.isArray(data.templates)) await this._reloadTemplates();
         this.editingId = null;
-        this.editingName = '표준 서약서';
+        this.editingName = this.docType === '입원서약서' ? '표준 서약서' : '';
         if (this.designer) {
-          this._loadDesignerContent(this.designer, _defaultPledgeTemplateContent || '');
+          var defaultContent = this.docType === '입원서약서' ? (_defaultPledgeTemplateContent || '') : '';
+          this._loadDesignerContent(this.designer, defaultContent);
         }
         this.showToast(true, '기본값으로 초기화되었습니다.');
       } catch {
@@ -612,7 +760,7 @@ function docPageState() {
         var data = await res.json();
         if (data.ok) {
           var wasEditing = String(this.editingId || '') === String(id);
-          this._applyTemplates(data.templates);
+          this._applyTemplates(data.templates, data.docTypes);
           if (!Array.isArray(data.templates)) await this._reloadTemplates();
           if (wasEditing) {
             this._syncEditorWithActiveOrDefault();
@@ -633,13 +781,17 @@ function docPageState() {
           headers: { [this._csrfHeader()]: this._csrf() }
         });
         var data = await res.json();
-        if (data.ok) this._applyTemplates(data.templates);
+        if (data.ok) this._applyTemplates(data.templates, data.docTypes);
       } catch {}
     },
 
-    _applyTemplates(templates) {
+    _applyTemplates(templates, docTypes) {
       if (Array.isArray(templates)) {
         this.templates = templates;
+      }
+      if (Array.isArray(docTypes)) {
+        var merged = [...new Set([..._PREDEFINED_DOC_TYPES, ...docTypes])];
+        this.allDocTypes = merged;
       }
     },
 
@@ -654,15 +806,16 @@ function docPageState() {
     },
 
     _syncEditorWithActiveOrDefault() {
-      var active = this.templates.find(t => String(t.is_active) === 'Y');
+      var active = this.filteredTemplates().find(t => String(t.is_active) === 'Y');
       if (active) {
         this._syncEditorWithTemplate(active.id);
         return;
       }
       this.editingId = null;
-      this.editingName = '표준 서약서';
+      this.editingName = this.docType === '입원서약서' ? '표준 서약서' : '';
       if (this.designer) {
-        this._loadDesignerContent(this.designer, _defaultPledgeTemplateContent || '');
+        var defaultContent = this.docType === '입원서약서' ? (_defaultPledgeTemplateContent || '') : '';
+        this._loadDesignerContent(this.designer, defaultContent);
       }
     },
 
@@ -695,6 +848,21 @@ function docPageState() {
       this.designer.addEventListener('dblclick', (event) => {
         var editable = event.target.closest('[data-editable="true"]');
         if (editable) editable.focus();
+      });
+      window.addEventListener('keydown', (event) => {
+        if (!this.tab === 'template') return;
+        if (event.key === 'Escape') {
+          this._selectElement(null);
+          return;
+        }
+        if (event.key === 'Delete') {
+          var active = document.activeElement;
+          var inEditable = active && active !== document.body && this.selectedEl?.contains(active);
+          if (this.selectedEl && !inEditable) {
+            event.preventDefault();
+            this.deleteSelected();
+          }
+        }
       });
     },
 
@@ -755,6 +923,31 @@ function docPageState() {
         this.fontSize = this.selectedEl.style.fontSize || this.fontSize || '14pt';
         this.fontColor = this._rgbToHex(this.selectedEl.style.color) || this.fontColor || '#222222';
       }
+      this.hasSelection = !!element;
+      this.fieldKey = element?.dataset?.fieldKey || '';
+    },
+
+    setFieldKey(key) {
+      if (!this.selectedEl) return;
+      if (key) {
+        this.selectedEl.dataset.fieldKey = key;
+      } else {
+        delete this.selectedEl.dataset.fieldKey;
+      }
+      this._updateFieldBadge(this.selectedEl);
+    },
+
+    _updateFieldBadge(el) {
+      if (!el) return;
+      var old = el.querySelector('.doc-field-badge');
+      if (old) old.remove();
+      var key = el.dataset.fieldKey;
+      if (key && _FIELD_LABELS[key]) {
+        var badge = document.createElement('span');
+        badge.className = 'doc-field-badge';
+        badge.textContent = _FIELD_LABELS[key];
+        el.appendChild(badge);
+      }
     },
 
     _ensureCanvasHeight(el) {
@@ -795,6 +988,7 @@ function docPageState() {
         }
         this._makeEditable(el);
         el.classList.remove('is-selected');
+        this._updateFieldBadge(el);
       });
     },
 
@@ -846,6 +1040,7 @@ function docPageState() {
       clone.className = 'doc-free-layout';
       clone.querySelectorAll('.is-selected').forEach(el => el.classList.remove('is-selected'));
       clone.querySelectorAll('.doc-resize-handle').forEach(el => el.remove());
+      clone.querySelectorAll('.doc-field-badge').forEach(el => el.remove());
       clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
       clone.querySelectorAll('[data-editable]').forEach(el => el.removeAttribute('data-editable'));
       return clone.outerHTML;
@@ -901,6 +1096,8 @@ function docPageState() {
       if (!this.selectedEl) return;
       this.selectedEl.remove();
       this.selectedEl = null;
+      this.hasSelection = false;
+      this.fieldKey = '';
     }
   };
 }
