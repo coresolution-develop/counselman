@@ -3291,6 +3291,7 @@ public class CsmAuthService {
     private void ensurePledgeTemplateTable(String safeInst) {
         String sql = "CREATE TABLE IF NOT EXISTS csm.counsel_pledge_template_" + safeInst + " ("
                 + "id bigint auto_increment primary key,"
+                + "doc_type varchar(60) not null default '입원서약서',"
                 + "template_name varchar(100) not null default '사용자 정의',"
                 + "content longtext not null,"
                 + "is_active char(1) not null default 'N',"
@@ -3302,6 +3303,10 @@ public class CsmAuthService {
         } catch (Exception e) {
             log.warn("[pledge-template] ensure table fail inst={}, err={}", safeInst, e.toString());
         }
+        try {
+            jdbcTemplate.execute("ALTER TABLE csm.counsel_pledge_template_" + safeInst
+                    + " ADD COLUMN IF NOT EXISTS doc_type varchar(60) not null default '입원서약서'");
+        } catch (Exception ignored) {}
     }
 
     public List<Map<String, Object>> listPledgeTemplates(String inst) {
@@ -3309,21 +3314,38 @@ public class CsmAuthService {
         ensurePledgeTemplateTable(safe);
         try {
             return jdbcTemplate.queryForList(
-                    "SELECT id, template_name, content, is_active, created_at FROM csm.counsel_pledge_template_" + safe
-                    + " ORDER BY id ASC");
+                    "SELECT id, doc_type, template_name, content, is_active, created_at"
+                    + " FROM csm.counsel_pledge_template_" + safe
+                    + " ORDER BY doc_type ASC, id ASC");
         } catch (Exception e) {
             log.warn("[pledge-template] list fail inst={}, err={}", safe, e.toString());
             return Collections.emptyList();
         }
     }
 
-    public String getActivePledgeTemplateContent(String inst) {
+    public List<String> listPledgeDocTypes(String inst) {
         String safe = sanitizeInst(inst);
+        ensurePledgeTemplateTable(safe);
+        try {
+            return jdbcTemplate.queryForList(
+                    "SELECT DISTINCT doc_type FROM csm.counsel_pledge_template_" + safe
+                    + " ORDER BY doc_type ASC",
+                    String.class);
+        } catch (Exception e) {
+            log.warn("[pledge-template] list-doc-types fail inst={}, err={}", safe, e.toString());
+            return Collections.emptyList();
+        }
+    }
+
+    public String getActivePledgeTemplateContent(String inst, String docType) {
+        String safe = sanitizeInst(inst);
+        String safeDocType = docType == null || docType.isBlank() ? "입원서약서" : docType.trim();
         ensurePledgeTemplateTable(safe);
         try {
             List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                     "SELECT content FROM csm.counsel_pledge_template_" + safe
-                    + " WHERE is_active='Y' ORDER BY id DESC LIMIT 1");
+                    + " WHERE is_active='Y' AND doc_type=? ORDER BY id DESC LIMIT 1",
+                    safeDocType);
             if (rows.isEmpty()) return null;
             Object c = rows.get(0).get("content");
             return c == null ? null : String.valueOf(c);
@@ -3333,15 +3355,21 @@ public class CsmAuthService {
         }
     }
 
-    public long savePledgeTemplate(String inst, Long id, String name, String content, boolean activate) {
+    public String getActivePledgeTemplateContent(String inst) {
+        return getActivePledgeTemplateContent(inst, "입원서약서");
+    }
+
+    public long savePledgeTemplate(String inst, Long id, String name, String content, String docType, boolean activate) {
         String safe = sanitizeInst(inst);
         ensurePledgeTemplateTable(safe);
         String safeName = name == null || name.isBlank() ? "사용자 정의" : name.trim().substring(0, Math.min(name.trim().length(), 100));
         String safeContent = content == null ? "" : content;
+        String safeDocType = docType == null || docType.isBlank() ? "입원서약서" : docType.trim().substring(0, Math.min(docType.trim().length(), 60));
 
         try {
             if (activate) {
-                jdbcTemplate.update("UPDATE csm.counsel_pledge_template_" + safe + " SET is_active='N'");
+                jdbcTemplate.update("UPDATE csm.counsel_pledge_template_" + safe
+                        + " SET is_active='N' WHERE doc_type=?", safeDocType);
             }
 
             if (id != null && id > 0) {
@@ -3349,13 +3377,13 @@ public class CsmAuthService {
                 if (activate) {
                     updated = jdbcTemplate.update(
                             "UPDATE csm.counsel_pledge_template_" + safe
-                            + " SET template_name=?, content=?, is_active='Y' WHERE id=?",
-                            safeName, safeContent, id);
+                            + " SET doc_type=?, template_name=?, content=?, is_active='Y' WHERE id=?",
+                            safeDocType, safeName, safeContent, id);
                 } else {
                     updated = jdbcTemplate.update(
                             "UPDATE csm.counsel_pledge_template_" + safe
-                            + " SET template_name=?, content=? WHERE id=?",
-                            safeName, safeContent, id);
+                            + " SET doc_type=?, template_name=?, content=? WHERE id=?",
+                            safeDocType, safeName, safeContent, id);
                 }
                 return updated > 0 ? id : 0L;
             }
@@ -3365,11 +3393,12 @@ public class CsmAuthService {
             jdbcTemplate.update(con -> {
                 java.sql.PreparedStatement ps = con.prepareStatement(
                         "INSERT INTO csm.counsel_pledge_template_" + safe
-                        + " (template_name, content, is_active) VALUES (?,?,?)",
+                        + " (doc_type, template_name, content, is_active) VALUES (?,?,?,?)",
                         java.sql.Statement.RETURN_GENERATED_KEYS);
-                ps.setString(1, safeName);
-                ps.setString(2, safeContent);
-                ps.setString(3, isActive);
+                ps.setString(1, safeDocType);
+                ps.setString(2, safeName);
+                ps.setString(3, safeContent);
+                ps.setString(4, isActive);
                 return ps;
             }, kh);
             Number key = kh.getKey();
@@ -3378,6 +3407,11 @@ public class CsmAuthService {
             log.warn("[pledge-template] save fail inst={}, err={}", safe, e.toString());
             return 0L;
         }
+    }
+
+    /** 하위 호환 — docType 없이 호출 시 기존 id로 doc_type 조회해서 위임 */
+    public long savePledgeTemplate(String inst, Long id, String name, String content, boolean activate) {
+        return savePledgeTemplate(inst, id, name, content, "입원서약서", activate);
     }
 
     public boolean deletePledgeTemplate(String inst, long id) {
@@ -3397,7 +3431,12 @@ public class CsmAuthService {
         String safe = sanitizeInst(inst);
         ensurePledgeTemplateTable(safe);
         try {
-            jdbcTemplate.update("UPDATE csm.counsel_pledge_template_" + safe + " SET is_active='N'");
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                    "SELECT doc_type FROM csm.counsel_pledge_template_" + safe + " WHERE id=?", id);
+            if (rows.isEmpty()) return false;
+            String docType = String.valueOf(rows.get(0).getOrDefault("doc_type", "입원서약서"));
+            jdbcTemplate.update("UPDATE csm.counsel_pledge_template_" + safe
+                    + " SET is_active='N' WHERE doc_type=?", docType);
             return jdbcTemplate.update(
                     "UPDATE csm.counsel_pledge_template_" + safe + " SET is_active='Y' WHERE id=?", id) > 0;
         } catch (Exception e) {
@@ -3406,14 +3445,23 @@ public class CsmAuthService {
         }
     }
 
-    public void deactivateAllPledgeTemplates(String inst) {
+    public void deactivateAllPledgeTemplates(String inst, String docType) {
         String safe = sanitizeInst(inst);
         ensurePledgeTemplateTable(safe);
         try {
-            jdbcTemplate.update("UPDATE csm.counsel_pledge_template_" + safe + " SET is_active='N'");
+            if (docType == null || docType.isBlank()) {
+                jdbcTemplate.update("UPDATE csm.counsel_pledge_template_" + safe + " SET is_active='N'");
+            } else {
+                jdbcTemplate.update("UPDATE csm.counsel_pledge_template_" + safe
+                        + " SET is_active='N' WHERE doc_type=?", docType.trim());
+            }
         } catch (Exception e) {
             log.warn("[pledge-template] deactivate-all fail inst={}, err={}", safe, e.toString());
         }
+    }
+
+    public void deactivateAllPledgeTemplates(String inst) {
+        deactivateAllPledgeTemplates(inst, null);
     }
 
 }

@@ -700,6 +700,7 @@ function wardStatus() {
   }
 
   function mapWard(w, idx) {
+    const rooms = (w.rooms || []).map(mapRoom);
     return {
       id:       'w' + idx,
       name:     w.wardName    || '',
@@ -707,9 +708,9 @@ function wardStatus() {
       occupied: w.occupiedBeds  || 0,
       available:w.availableBeds || 0,
       occupancy:Math.round(w.occupancyRate || 0),
-      rooms:    (w.rooms || []).map(mapRoom),
-      get discharge() { return this.rooms.reduce((s, r) => s + (r.discharge || 0), 0); },
-      get afternoon() { return this.rooms.reduce((s, r) => s + (r.afternoon || 0), 0); },
+      rooms,
+      discharge: rooms.reduce((s, r) => s + (r.discharge || 0), 0),
+      afternoon: rooms.reduce((s, r) => s + (r.afternoon || 0), 0),
     };
   }
 
