@@ -3303,10 +3303,9 @@ public class CsmAuthService {
         } catch (Exception e) {
             log.warn("[pledge-template] ensure table fail inst={}, err={}", safeInst, e.toString());
         }
-        try {
-            jdbcTemplate.execute("ALTER TABLE csm.counsel_pledge_template_" + safeInst
-                    + " ADD COLUMN IF NOT EXISTS doc_type varchar(60) not null default '입원서약서'");
-        } catch (Exception ignored) {}
+        ensureTableColumn("csm", "counsel_pledge_template_" + safeInst, "doc_type",
+                "ALTER TABLE csm.counsel_pledge_template_" + safeInst
+                + " ADD COLUMN doc_type varchar(60) not null default '입원서약서'");
     }
 
     public List<Map<String, Object>> listPledgeTemplates(String inst) {
