@@ -137,6 +137,7 @@
 
 ### 🛏️ 병실현황판
 - [ ] 퇴원예고 등록 후 현황판 자동 새로고침 (현재 수동 새로고침 필요)
+- [ ] **간헐적 Alpine 버그 수정** — 상담통계와 동일한 `Cannot convert undefined or null to object`. 원인: `mapWard()` 반환 객체의 `get discharge()` / `get afternoon()` getter 함수가 Alpine reactive proxy 초기화 중 잘못된 `this` 컨텍스트로 호출될 가능성. 수정 방향: getter 제거 후 값 즉시 계산으로 대체
 
 ### 📊 상담 리스트
 - [ ] 리스트 항목 설정 관리 UI — 보여줄/가릴 컬럼 선택, 좌측 고정 설정
@@ -148,7 +149,7 @@
 - [ ] 공지 작성·수정·삭제 기능 백엔드 연동
 
 ### 📈 상담 통계
-- [ ] **간헐적 버그 수정** — 재현 조건 파악 및 원인 분석 필요
+- [ ] **간헐적 버그 수정** — Turbo Drive 이동 시 Alpine.js `Cannot convert undefined or null to object` 발생. 원인: `_charts: []`가 Alpine reactive state에 있어 ECharts 인스턴스를 push할 때 Alpine이 deep-proxy 시도. 수정 방향: `_charts`를 클로저 변수로 이동 (reactive state에서 제외)
 - [ ] 기존 통계 페이지 로직 참고하여 데이터 연동
 - [ ] 신규 디자인으로 업데이트
 
