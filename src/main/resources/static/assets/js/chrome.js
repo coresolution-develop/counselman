@@ -309,6 +309,7 @@
         body: JSON.stringify(payload),
         credentials: 'same-origin'
       });
+      window._navCache = payload;
     } catch (e) {
       console.error('nav-order 저장 실패', e);
     }
