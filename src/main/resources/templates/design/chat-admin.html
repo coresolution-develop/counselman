@@ -59,8 +59,18 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 6px;
     }
-    .room-panel-header h3 { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+    .room-panel-header h3 { font-size: 14px; font-weight: 700; color: var(--text-primary); flex: 1; }
+    .btn-notif {
+      border: none; background: none; cursor: pointer;
+      padding: 4px; border-radius: 6px; display: flex; align-items: center;
+      color: var(--text-tertiary); font-size: 11px; gap: 3px;
+      transition: background .1s;
+    }
+    .btn-notif:hover { background: var(--gray-100); }
+    .btn-notif.granted { color: var(--brand-600); }
+    .btn-notif.denied  { color: #ef4444; }
     .badge {
       background: #ef4444;
       color: #fff;
@@ -266,6 +276,16 @@
         <div class="room-panel">
           <div class="room-panel-header">
             <h3>상담 목록</h3>
+            <button class="btn-notif"
+                    :class="notifPermission"
+                    @click="requestNotifPermission()"
+                    :title="notifPermission === 'granted' ? '알림 허용됨' : notifPermission === 'denied' ? '알림 차단됨 (브라우저 설정에서 해제)' : '알림 허용 요청'">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span x-text="notifPermission === 'granted' ? '알림 ON' : notifPermission === 'denied' ? '차단됨' : '알림'"></span>
+            </button>
             <span class="badge" x-show="waitingCount > 0" x-text="waitingCount" x-cloak></span>
           </div>
           <div class="room-list">
@@ -370,6 +390,7 @@ function chatAdminPage() {
     stompClient: null,
     pollTimer: null,
     _roomSub: null,
+    notifPermission: 'default',
 
     get waitingCount() {
       return this.rooms.filter(r => r.status === 'WAITING').length;
@@ -386,9 +407,46 @@ function chatAdminPage() {
       const params = new URLSearchParams(location.search);
       this.inst = params.get('inst') || 'FALH';
 
+      // 알림 권한 상태 초기화
+      if ('Notification' in window) {
+        this.notifPermission = Notification.permission;
+        if (Notification.permission === 'default') {
+          // 페이지 로드 시 조용히 권한 요청 (사용자 제스처 불필요 시 시도)
+          Notification.requestPermission().then(p => { this.notifPermission = p; });
+        }
+      }
+
       await this.loadRooms();
       this.connectAdminWebSocket();
       this.pollTimer = setInterval(() => this.loadRooms(), 10000);
+    },
+
+    async requestNotifPermission() {
+      if (!('Notification' in window)) { alert('이 브라우저는 알림을 지원하지 않습니다.'); return; }
+      if (Notification.permission === 'denied') {
+        alert('알림이 차단되어 있습니다. 브라우저 주소창의 자물쇠 아이콘 → 알림 허용으로 변경해 주세요.');
+        return;
+      }
+      const p = await Notification.requestPermission();
+      this.notifPermission = p;
+    },
+
+    showNotification(title, body, roomId) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      const notif = new Notification(title, {
+        body,
+        icon: CTX + '/img/logo.png',
+        tag: 'csm-chat-' + (roomId || Date.now()),
+        renotify: true,
+      });
+      notif.onclick = () => {
+        window.focus();
+        if (roomId != null) {
+          const room = this.rooms.find(r => String(r.id) === String(roomId));
+          if (room) this.selectRoom(room);
+        }
+        notif.close();
+      };
     },
 
     async loadRooms() {
@@ -405,7 +463,19 @@ function chatAdminPage() {
       this.stompClient.connect({}, () => {
         this.stompClient.subscribe('/topic/admin/rooms/' + this.inst, (frame) => {
           const msg = JSON.parse(frame.body);
-          if (msg.type === 'NEW_ROOM') this.loadRooms();
+          if (msg.type === 'NEW_ROOM') {
+            this.loadRooms();
+            this.showNotification(
+              '새 채팅 상담 요청',
+              (msg.nickname || '고객') + '님이 채팅 상담을 요청했습니다.',
+              msg.roomId
+            );
+          } else if (msg.type === 'NEW_COUNSEL') {
+            this.showNotification(
+              '새 상담 접수',
+              (msg.name || '고객') + '님이 챗봇으로 상담을 접수했습니다.'
+            );
+          }
         });
       });
     },

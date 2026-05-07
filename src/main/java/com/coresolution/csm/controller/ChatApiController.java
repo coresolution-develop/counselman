@@ -195,6 +195,7 @@ public class ChatApiController {
             @RequestParam String phone,
             @RequestParam String content) {
 
+        String safe = inst.replaceAll("[^A-Za-z0-9_]", "");
         try {
             CounselReservation reservation = new CounselReservation();
             reservation.setPatient_name(name);
@@ -203,6 +204,8 @@ public class ChatApiController {
             reservation.setCreated_by("챗봇");
             reservation.setStatus("pending");
             csmAuthService.saveCounselReservation(inst, reservation);
+            messagingTemplate.convertAndSend("/topic/admin/rooms/" + safe,
+                Map.of("type", "NEW_COUNSEL", "name", name));
             return Map.of("ok", true);
         } catch (Exception e) {
             return Map.of("ok", false, "error", e.getMessage());
