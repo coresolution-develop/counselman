@@ -539,10 +539,13 @@ function docPageState() {
     templates: Array.isArray(_pledgeTemplates) ? _pledgeTemplates : [],
     docType: '입원서약서',
     allDocTypes: (function () {
-      var custom = (Array.isArray(_pledgeTemplates) ? _pledgeTemplates : [])
-        .map(function (t) { return t.doc_type || '입원서약서'; })
-        .filter(function (t) { return !_PREDEFINED_DOC_TYPES.includes(t); });
-      return [..._PREDEFINED_DOC_TYPES, ...new Set(custom)];
+      var result = [..._PREDEFINED_DOC_TYPES];
+      var seen = new Set(result.map(function (p) { return p.normalize('NFC'); }));
+      (Array.isArray(_pledgeTemplates) ? _pledgeTemplates : []).forEach(function (t) {
+        var dt = (t.doc_type || '').trim().normalize('NFC');
+        if (dt && !seen.has(dt)) { seen.add(dt); result.push(t.doc_type.trim()); }
+      });
+      return result;
     })(),
     customDocType: '',
     editingId: null,
@@ -795,13 +798,17 @@ function docPageState() {
     },
 
     _applyTemplates(templates, docTypes) {
-      if (Array.isArray(templates)) {
-        this.templates = templates;
-        var custom = templates
-          .map(function (t) { return t.doc_type || '입원서약서'; })
-          .filter(function (t) { return !_PREDEFINED_DOC_TYPES.includes(t); });
-        this.allDocTypes = [..._PREDEFINED_DOC_TYPES, ...new Set(custom)];
-      }
+      if (!Array.isArray(templates)) return;
+      this.templates = templates;
+      // Only ADD genuinely new custom types; never reset (prevents duplication bugs)
+      var seen = new Set(this.allDocTypes.map(function (t) { return t.normalize('NFC'); }));
+      templates.forEach((t) => {
+        var dt = (t.doc_type || '').trim();
+        if (dt && !seen.has(dt.normalize('NFC'))) {
+          seen.add(dt.normalize('NFC'));
+          this.allDocTypes = [...this.allDocTypes, dt];
+        }
+      });
     },
 
     _syncEditorWithTemplate(id) {
