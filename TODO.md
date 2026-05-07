@@ -1,6 +1,6 @@
 # MediPlat 작업 현황
 
-> 최종 업데이트: 2026-05-07
+> 최종 업데이트: 2026-05-08
 
 ---
 
@@ -101,8 +101,14 @@
 - [x] **PM 퇴원 자동 처리** — 다음날 00:05에 전날 PM `PLANNED → COMPLETED`
 
 ### 서류관리 (`document-management.html`)
-- [x] **템플릿 저장 유효성 검사 버그 수정** — `textContent` 체크 → `children.length` 체크로 변경 (입력칸·표 요소 저장 불가 문제)
 - [x] **취소 버튼 404 버그 수정** — `returnUrl` 컨텍스트 패스 누락 → 컨트롤러에서 `documentsReturnUrl` 모델 주입으로 해결
+- [x] **서류 종류(doc_type) 다중 템플릿 지원** — DB 마이그레이션, pill 탭 UI, 종류별 저장/적용/삭제
+- [x] **DB 마이그레이션 호환성 수정** — `ADD COLUMN IF NOT EXISTS` (MySQL 8.0+만 지원) → `ensureTableColumn()` 헬퍼로 교체
+- [x] **Turbo 이중 초기화 버그 수정** — Alpine CDN `data-turbo-eval="false"` 누락으로 `x-for` 8개 pill 렌더링 → 수정 완료
+- [x] **pill 색상 버그 수정** — `color: var(--text-secondary)` (흰색), active `background: var(--brand)` (투명) → 하드코딩 수정
+- [x] **캔버스 → TipTap 리치 에디터 전환** — 자유 배치 드래그/드롭 캔버스 제거, Word 방식 TipTap 에디터로 교체
+  - Bold / Italic / Underline / 제목 1~3 / 정렬 / 글자색 / 표 삽입
+  - `FieldChip` 커스텀 노드 — `{{환자명}}` 스타일 인라인 칩, `data-field-key` 속성으로 admissionPledge.html 주입과 호환
 
 ### MediPlat — 기관 관리자
 - [x] 기관 관리자 페이지 신규 (`Institution-admin.html`, `institution-admin-app.jsx`)
@@ -115,7 +121,7 @@
 ## 🔍 검증 필요 (브라우저 확인 미완료)
 
 - [ ] **CSM 허용 버튼** (`/csm/access`) — toggle POST가 `mp_user_service` 행을 실제로 생성/수정하는지 확인 필요 (현재 FALH 데이터 없어 모두 비활성 상태로 표시됨)
-- [ ] **서류관리 템플릿** (`/documents#template`) — 표 삽입 → 서명영역 삽입 → 저장 → 입원서약서 렌더링 브라우저 직접 검증
+- [ ] **서류관리 TipTap 에디터** — 표 삽입·필드 칩 삽입 → 저장 → 입원서약서(`admissionPledge.html`) 렌더링 흐름 브라우저 E2E 검증
 - [ ] **채팅 페이지 폰트 CORS** — `common.css`의 `fonts.gstatic.com/ea/notosanskr/v2/` URL이 deprecated되어 CORS 에러 발생. `https://fonts.googleapis.com/css2?family=Noto+Sans+KR` CDN 또는 로컬 폰트로 교체 필요
 - [ ] **기본 아바타 이미지 누락** — 채팅 페이지에서 `/img/default-avatar.png` 404 발생. `src/main/resources/static/img/` 하위에 기본 아바타 이미지 파일 추가 필요
 - [ ] **챗봇 FAQ 검색 — 비로그인 접근** — 현재 카카오 로그인 후에만 FAQ 패널 노출. 로그인 전에도 FAQ 조회 가능하도록 검토 필요
@@ -153,9 +159,20 @@
 - [ ] 기존 통계 페이지 로직 참고하여 데이터 연동
 - [ ] 신규 디자인으로 업데이트
 
-### 📄 서류관리
-- [ ] **템플릿 관리 UI/UX 개선** — 캔버스 편집 경험 전반 개선
-- [ ] **자유배치 필드 데이터 바인딩** — 캔버스 요소에 필드 타입/키 저장 모델 추가 (현재 outerHTML로 좌표만 보존)
+### 📄 서류관리 (TipTap 에디터)
+
+#### 🐛 알려진 버그
+- [ ] **TipTap 툴바 "mismatched transaction" 오류** — `chain().focus()`가 내부적으로 `requestAnimationFrame`을 사용해, `run()` 이후 RAF 콜백이 낡은 트랜잭션을 재적용해 충돌 발생. 모든 툴바 명령(`cmd`, `setTextColor`, `setHeading`, `insertTable`)에서 재현됨
+  - **수정 방향**: `chain().focus()` 제거 → `editor.view.focus()` 동기 호출 후 체인 실행 (RAF 없음)
+  - **현황**: 수정 커밋 완료 (`080f2b0` + 후속 fix), 브라우저 검증 필요
+- [ ] **기본 프리셋 서약서 내용 포맷 비호환** — `_defaultPledgeTemplateContent` (서버에서 전달) 가 구형 캔버스 HTML(`doc-free-layout` 포함)이어서 TipTap 로드 시 plaintext 변환됨 (서식 소실)
+  - **수정 방향**: 서버 기본값을 TipTap 호환 HTML로 교체하거나, 기본 프리셋을 JS 상수로 하드코딩
+
+#### 🔧 개선 예정
+- [ ] **표 컬럼 리사이즈 UI** — TipTap `resizable: true` 설정됐으나 실제 드래그 핸들 CSS(`prosemirror-tables` 패키지 CSS) 미적용. 별도 CSS 추가 필요
+- [ ] **글자색 상태 동기화** — `_syncMarks()`에서 현재 커서 위치의 텍스트 색상을 툴바 색상 선택기에 반영하는 로직 미구현
+- [ ] **admissionPledge.html 렌더링 호환** — FieldChip(`data-field-key`) → 실제 환자 데이터 주입 후 PDF 출력 흐름 검증
+- [ ] **간병계약서·동의서 기본 콘텐츠** — 입원서약서 외 서류 종류의 기본 프리셋 내용 미존재 (빈 에디터로 시작)
 
 ### 🧭 공통 / 네비게이션
 - [ ] **좌측 네비게이션 스크롤 CSS 수정**

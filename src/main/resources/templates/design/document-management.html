@@ -576,9 +576,10 @@ function docPageState() {
 
     cmd(name) {
       if (!this._editor) return;
-      var chain = this._editor.chain().focus();
-      if (name === 'bold')        chain.toggleBold();
-      else if (name === 'italic') chain.toggleItalic();
+      this._editor.view.focus();
+      var chain = this._editor.chain();
+      if (name === 'bold')           chain.toggleBold();
+      else if (name === 'italic')    chain.toggleItalic();
       else if (name === 'underline') chain.toggleUnderline();
       else if (name === 'alignLeft')   chain.setTextAlign('left');
       else if (name === 'alignCenter') chain.setTextAlign('center');
@@ -589,7 +590,8 @@ function docPageState() {
 
     setHeading(level) {
       if (!this._editor) return;
-      var chain = this._editor.chain().focus();
+      this._editor.view.focus();
+      var chain = this._editor.chain();
       if (level === 0) chain.setParagraph();
       else chain.toggleHeading({ level });
       chain.run();
@@ -598,12 +600,14 @@ function docPageState() {
 
     setTextColor(color) {
       if (!this._editor) return;
-      this._editor.chain().focus().setColor(color).run();
+      this._editor.view.focus();
+      this._editor.chain().setColor(color).run();
     },
 
     insertTable() {
       if (!this._editor) return;
-      this._editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+      this._editor.view.focus();
+      this._editor.chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
     },
 
     insertField(f) {
