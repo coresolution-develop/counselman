@@ -949,6 +949,8 @@
 
 <script>
 function statsPage() {
+  let _charts = [];
+
   return {
     loading: true,
     hasData: false,
@@ -970,7 +972,6 @@ function statsPage() {
     firstMonth: null,
     lastYear: null,
     lastMonth: null,
-    _charts: [],
 
     contextPath() {
       const meta = document.querySelector('meta[name="app-context-path"]');
@@ -1210,8 +1211,8 @@ function statsPage() {
     },
 
     renderCharts() {
-      this._charts.forEach(c => c?.dispose?.());
-      this._charts = [];
+      _charts.forEach(c => c?.dispose?.());
+      _charts = [];
       if (!window.echarts || !this.periodCols.length) return;
       const baseAxis = {
         axisLine: { lineStyle: { color: '#cbd5e1' } },
@@ -1250,7 +1251,7 @@ function statsPage() {
           label: { show: true, position: 'top', color: '#1e293b', fontSize: 11, fontWeight: 600 },
         }],
       });
-      this._charts.push(c1);
+      _charts.push(c1);
 
       // ---- Chart 2: 입원 연계 월별추이 (bar) ----
       const total2 = this.linkRows.find(r => r.isTotal)?.values || [];
@@ -1276,7 +1277,7 @@ function statsPage() {
           label: { show: true, position: 'top', color: '#1e293b', fontSize: 11, fontWeight: 600 },
         }],
       });
-      this._charts.push(c2);
+      _charts.push(c2);
 
       // ---- Chart 3 area: 유입경로 월별추이 (stacked area) ----
       const successInflows = this.inflowSuccessRows.filter(r => !r.isTotal && r.total > 0);
@@ -1308,7 +1309,7 @@ function statsPage() {
           },
         })),
       });
-      this._charts.push(c3a);
+      _charts.push(c3a);
 
       // ---- Chart 3 donut: 유입경로 합계 비율 ----
       const c3d = echarts.init(this.$refs.chart3donut);
@@ -1331,11 +1332,11 @@ function statsPage() {
           })),
         }],
       });
-      this._charts.push(c3d);
+      _charts.push(c3d);
     },
 
     resizeAll() {
-      this._charts.forEach(c => c?.resize?.());
+      _charts.forEach(c => c?.resize?.());
     },
     exportExcel() {
       if (!this.filter.year || !this.filter.month) return;
