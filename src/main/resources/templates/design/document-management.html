@@ -477,13 +477,20 @@ function docPageState() {
       if (this.tab === 'template') {
         this.$nextTick(() => this._initEditor());
       }
-      window.addEventListener('tiptap:ready', () => {
+      var _onTiptapReady = () => {
         if (this.tab === 'template') this._initEditor();
-      });
-      window.addEventListener('message', (e) => {
+      };
+      var _onMessage = (e) => {
         if (e.data?.type === 'csm-admission-pledge') {
           window.location.reload();
         }
+      };
+      window.addEventListener('tiptap:ready', _onTiptapReady);
+      window.addEventListener('message', _onMessage);
+      this.$cleanup(() => {
+        window.removeEventListener('tiptap:ready', _onTiptapReady);
+        window.removeEventListener('message', _onMessage);
+        if (this._editor) { this._editor.destroy(); this._editor = null; }
       });
     },
 
@@ -554,13 +561,15 @@ function docPageState() {
         onSelectionUpdate() { self._syncMarks(); },
       });
       var active = this.filteredTemplates().find(t => String(t.is_active) === 'Y');
+      var initialContent = active
+        ? (active.content || '')
+        : (this.docType === '입원서약서' ? (_defaultPledgeTemplateContent || '') : '');
       if (active) {
         this.editingId = active.id;
         this.editingName = active.template_name || '';
-        this._loadEditorContent(active.content || '');
-      } else {
-        this._loadEditorContent(this.docType === '입원서약서' ? (_defaultPledgeTemplateContent || '') : '');
       }
+      // defer setContent by one tick so the editor view finishes its initial render
+      setTimeout(() => this._loadEditorContent(initialContent), 0);
     },
 
     _syncMarks() {
@@ -814,7 +823,7 @@ function docPageState() {
   };
 }
 </script>
-<script type="module">
+<script type="module" data-turbo-eval="false">
 import { Editor } from 'https://esm.sh/@tiptap/core@2.11.5';
 import StarterKit from 'https://esm.sh/@tiptap/starter-kit@2.11.5';
 import Underline from 'https://esm.sh/@tiptap/extension-underline@2.11.5';
