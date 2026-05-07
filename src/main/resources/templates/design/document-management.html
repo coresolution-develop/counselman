@@ -148,6 +148,8 @@
       box-shadow: 0 1px 8px rgba(15, 23, 42, .12);
       font-size: 14pt;
       line-height: 1.45;
+      font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+                   'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
     }
     .doc-free-element {
       position: absolute;
@@ -517,6 +519,10 @@
 <script>
 const _PREDEFINED_DOC_TYPES = ['입원서약서', '간병계약서', '동의서', '기타'];
 
+// Alpine 반응형 프록시 밖에 두어야 중복 생성 방지 로직이 동기적으로 동작
+let _lastCreateKey = '';
+let _lastCreateAt = 0;
+
 const _FIELD_LABELS = {
   patient_name: '환자명', patient_birth: '생년월일', patient_phone: '환자 연락처',
   room: '병실', chart_no: '차트번호',
@@ -532,7 +538,12 @@ function docPageState() {
     tab: location.hash === '#template' ? 'template' : 'list',
     templates: Array.isArray(_pledgeTemplates) ? _pledgeTemplates : [],
     docType: '입원서약서',
-    allDocTypes: [...new Set([..._PREDEFINED_DOC_TYPES, ...(Array.isArray(_pledgeDocTypes) ? _pledgeDocTypes : [])])],
+    allDocTypes: (function () {
+      var custom = (Array.isArray(_pledgeTemplates) ? _pledgeTemplates : [])
+        .map(function (t) { return t.doc_type || '입원서약서'; })
+        .filter(function (t) { return !_PREDEFINED_DOC_TYPES.includes(t); });
+      return [..._PREDEFINED_DOC_TYPES, ...new Set(custom)];
+    })(),
     customDocType: '',
     editingId: null,
     editingName: '',
@@ -544,8 +555,6 @@ function docPageState() {
     dragState: null,
     fontSize: '14pt',
     fontColor: '#222222',
-    lastCreateKey: '',
-    lastCreateAt: 0,
     _editorReady: false,
     toast: { visible: false, ok: true, message: '' },
 
@@ -788,10 +797,10 @@ function docPageState() {
     _applyTemplates(templates, docTypes) {
       if (Array.isArray(templates)) {
         this.templates = templates;
-      }
-      if (Array.isArray(docTypes)) {
-        var merged = [...new Set([..._PREDEFINED_DOC_TYPES, ...docTypes])];
-        this.allDocTypes = merged;
+        var custom = templates
+          .map(function (t) { return t.doc_type || '입원서약서'; })
+          .filter(function (t) { return !_PREDEFINED_DOC_TYPES.includes(t); });
+        this.allDocTypes = [..._PREDEFINED_DOC_TYPES, ...new Set(custom)];
       }
     },
 
@@ -1004,11 +1013,11 @@ function docPageState() {
     _isDuplicateCreate(key) {
       if (!key) return false;
       var now = Date.now();
-      if (this.lastCreateKey === key && now - this.lastCreateAt < 180) {
+      if (_lastCreateKey === key && now - _lastCreateAt < 300) {
         return true;
       }
-      this.lastCreateKey = key;
-      this.lastCreateAt = now;
+      _lastCreateKey = key;
+      _lastCreateAt = now;
       return false;
     },
 
