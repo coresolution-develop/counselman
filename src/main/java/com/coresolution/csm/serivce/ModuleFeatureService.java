@@ -24,12 +24,14 @@ public class ModuleFeatureService {
     public static final String FEATURE_COUNSEL_AUDIO = "COUNSEL_AUDIO";
     public static final String FEATURE_ADMISSION_PLEDGE = "ADMISSION_PLEDGE";
     public static final String FEATURE_COUNSEL_FILE = "COUNSEL_FILE";
+    public static final String FEATURE_ROOMBOARD_CSM_LINK = "ROOMBOARD_CSM_LINK";
 
     private static final List<ModuleFeatureDefinition> FEATURE_DEFINITIONS = List.of(
             new ModuleFeatureDefinition(FEATURE_ROOM_BOARD, "병실현황판", "병실현황판 조회 및 관리"),
             new ModuleFeatureDefinition(FEATURE_COUNSEL_AUDIO, "녹음", "상담 녹음 및 음성 파일 업로드"),
             new ModuleFeatureDefinition(FEATURE_ADMISSION_PLEDGE, "서약서", "입원서약서 작성 및 서명"),
-            new ModuleFeatureDefinition(FEATURE_COUNSEL_FILE, "파일 업로드", "상담 파일 업로드 및 추출"));
+            new ModuleFeatureDefinition(FEATURE_COUNSEL_FILE, "파일 업로드", "상담 파일 업로드 및 추출"),
+            new ModuleFeatureDefinition(FEATURE_ROOMBOARD_CSM_LINK, "병실현황판 연동", "병실현황판-입원상담 SSO 연동"));
     private static final Set<String> FEATURE_CODES = FEATURE_DEFINITIONS.stream()
             .map(ModuleFeatureDefinition::getCode)
             .collect(Collectors.toUnmodifiableSet());

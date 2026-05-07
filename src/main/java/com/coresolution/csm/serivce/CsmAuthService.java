@@ -62,6 +62,8 @@ public class CsmAuthService {
     private CsmMapper cs;
     @Autowired
     private JdbcTemplate jdbcTemplate;
+    @Autowired
+    private ModuleFeatureService moduleFeatureService;
 
     // public AjaxResponse loginSelect(Userdata ud) {
     // return cs.loginSelect(ud); // 여기서 예외 던지지 않기
@@ -177,7 +179,7 @@ public class CsmAuthService {
         } catch (IllegalArgumentException e) {
             return false;
         }
-        return isPlatformIntegrationEnabled(safeInst);
+        return moduleFeatureService.isEnabled(safeInst, ModuleFeatureService.FEATURE_ROOMBOARD_CSM_LINK);
     }
 
     private boolean isPlatformIntegrationEnabled(String inst) {
