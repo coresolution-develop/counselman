@@ -311,7 +311,7 @@
                   <td th:text="${#strings.isEmpty(row.counselor) ? '-' : row.counselor}">-</td>
                   <td>
                     <a class="btn-xs btn-xs--brand"
-                       th:href="@{/counsel/admission-pledge(csIdx=${row.csIdx}, returnUrl=${#request.contextPath + '/documents'})}">열기</a>
+                       th:href="@{/counsel/admission-pledge(csIdx=${row.csIdx}, returnUrl=${documentsReturnUrl})}">열기</a>
                     <a class="btn-xs"
                        th:if="${row.linked}"
                        th:href="@{/counsel/inpatient(cs_idx=${row.csIdx})}">상담 보기</a>

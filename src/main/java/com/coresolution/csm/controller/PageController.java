@@ -5831,7 +5831,8 @@ public class PageController {
     @PreAuthorize("hasAuthority('COUNSEL_LOG:READ') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ModelAndView documentManagementPage(
             @RequestParam(value = "q", defaultValue = "") String keyword,
-            HttpSession session) {
+            HttpSession session,
+            HttpServletRequest request) {
         ModelAndView mv = new ModelAndView();
         String inst = ensureInst(session);
         if (inst == null) return new ModelAndView("redirect:/login");
@@ -5843,6 +5844,7 @@ public class PageController {
         mv.addObject("keyword", safeString(keyword).trim());
         mv.addObject("pledgeTemplates", cs.listPledgeTemplates(inst));
         mv.addObject("defaultPledgeTemplateContent", DEFAULT_PLEDGE_TEMPLATE_CONTENT);
+        mv.addObject("documentsReturnUrl", request.getContextPath() + "/documents");
         mv.setViewName("design/document-management");
         return mv;
     }
