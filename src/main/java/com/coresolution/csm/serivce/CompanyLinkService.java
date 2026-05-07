@@ -34,17 +34,51 @@ public class CompanyLinkService {
                     key idx_company_link_use_sort (use_yn, sort_order, id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """);
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS csm.company_link_category (
+                    category_name varchar(80) not null primary key,
+                    sort_order int not null default 0,
+                    updated_at timestamp default current_timestamp on update current_timestamp
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """);
+    }
+
+    public List<java.util.Map<String, Object>> listCategories() {
+        ensureTable();
+        return jdbcTemplate.queryForList("""
+                SELECT cl.category AS category_name,
+                       COALESCE(cat.sort_order, 9999) AS sort_order
+                  FROM csm.company_link cl
+                  LEFT JOIN csm.company_link_category cat ON cat.category_name = cl.category
+                 WHERE cl.use_yn = 'Y'
+                 GROUP BY cl.category, cat.sort_order
+                 ORDER BY COALESCE(cat.sort_order, 9999) ASC, cl.category ASC
+                """);
+    }
+
+    @Transactional
+    public void saveCategoryOrder(String category, int sortOrder) {
+        ensureTable();
+        String safeCategory = trimTo(category, 80);
+        if (safeCategory.isBlank()) return;
+        int safeOrder = Math.max(0, Math.min(sortOrder, 9999));
+        jdbcTemplate.update("""
+                INSERT INTO csm.company_link_category (category_name, sort_order)
+                VALUES (?, ?)
+                ON DUPLICATE KEY UPDATE sort_order = ?
+                """, safeCategory, safeOrder, safeOrder);
     }
 
     public List<CompanyLink> listActiveLinks() {
         ensureTable();
         return jdbcTemplate.query("""
-                SELECT id, title, url, description, category, sort_order, use_yn,
-                       DATE_FORMAT(created_at,'%%Y-%%m-%%d %%H:%%i:%%s') AS created_at,
-                       DATE_FORMAT(updated_at,'%%Y-%%m-%%d %%H:%%i:%%s') AS updated_at
-                  FROM csm.company_link
-                 WHERE use_yn = 'Y'
-                 ORDER BY sort_order ASC, title ASC, id ASC
+                SELECT cl.id, cl.title, cl.url, cl.description, cl.category, cl.sort_order, cl.use_yn,
+                       DATE_FORMAT(cl.created_at,'%%Y-%%m-%%d %%H:%%i:%%s') AS created_at,
+                       DATE_FORMAT(cl.updated_at,'%%Y-%%m-%%d %%H:%%i:%%s') AS updated_at
+                  FROM csm.company_link cl
+                  LEFT JOIN csm.company_link_category cat ON cat.category_name = cl.category
+                 WHERE cl.use_yn = 'Y'
+                 ORDER BY COALESCE(cat.sort_order, 9999) ASC, cl.sort_order ASC, cl.title ASC, cl.id ASC
                 """, (rs, rowNum) -> {
             CompanyLink link = new CompanyLink();
             link.setId(rs.getLong("id"));

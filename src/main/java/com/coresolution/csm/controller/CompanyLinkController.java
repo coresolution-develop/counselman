@@ -4,6 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
@@ -33,8 +34,29 @@ public class CompanyLinkController {
         List<CompanyLink> links = companyLinkService.listActiveLinks();
         model.addAttribute("links", links);
         model.addAttribute("linkGroups", groupByCategory(links));
+        model.addAttribute("categories", companyLinkService.listCategories());
         model.addAttribute("canManageLinks", true);
         return "design/company-links";
+    }
+
+    @PostMapping({ "admin/company-links/category-order", "/admin/company-links/category-order" })
+    @ResponseBody
+    public Map<String, Object> saveCategoryOrder(
+            @RequestParam Map<String, String> params,
+            HttpSession session) {
+        try {
+            params.forEach((key, value) -> {
+                if (key.startsWith("cat_")) {
+                    String category = key.substring(4);
+                    int order;
+                    try { order = Integer.parseInt(value.trim()); } catch (NumberFormatException e) { order = 0; }
+                    companyLinkService.saveCategoryOrder(category, order);
+                }
+            });
+            return Map.of("ok", true);
+        } catch (Exception e) {
+            return Map.of("ok", false, "msg", e.getMessage());
+        }
     }
 
     @PostMapping({ "admin/company-links", "/admin/company-links" })

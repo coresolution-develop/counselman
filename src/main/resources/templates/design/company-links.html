@@ -214,6 +214,47 @@
     .lh-btn--primary:hover { background: var(--lh-brand-dark); }
     .lh-btn--danger { background: #fff; color: var(--lh-danger); border-color: #fecaca; }
     .lh-btn--danger:hover { background: #fef2f2; }
+    .lh-section-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--lh-muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      padding: 14px 16px 8px;
+      border-top: 1px solid var(--lh-border);
+    }
+    .lh-cat-list {
+      display: grid;
+      gap: 6px;
+      padding: 0 16px 14px;
+    }
+    .lh-cat-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 64px;
+      gap: 8px;
+      align-items: center;
+    }
+    .lh-cat-name {
+      font-size: 13px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .lh-cat-order {
+      height: 32px;
+      padding: 0 8px;
+      border: 1px solid var(--lh-border);
+      border-radius: 6px;
+      font: inherit;
+      font-size: 13px;
+      text-align: center;
+      width: 100%;
+    }
+    .lh-cat-order:focus {
+      outline: none;
+      border-color: var(--lh-brand);
+    }
     .lh-manage-list {
       display: grid;
       gap: 8px;
@@ -354,6 +395,25 @@
           </div>
         </form>
 
+        <!-- 분류 순서 관리 -->
+        <div th:if="${categories != null and !categories.isEmpty()}">
+          <div class="lh-section-title">분류 순서</div>
+          <div class="lh-cat-list" id="catOrderList">
+            <div class="lh-cat-row" th:each="cat : ${categories}">
+              <span class="lh-cat-name" th:text="${cat.category_name} ?: '(미분류)'">분류명</span>
+              <input class="lh-cat-order" type="number" min="0" max="9999"
+                     th:value="${cat.sort_order}"
+                     th:data-cat="${cat.category_name}" />
+            </div>
+          </div>
+          <div class="lh-actions" style="padding: 0 16px 14px;">
+            <span id="catOrderMsg" style="font-size:12px;color:var(--lh-brand);display:none;">저장됐습니다.</span>
+            <button class="lh-btn lh-btn--primary" type="button"
+                    th:data-url="@{/admin/company-links/category-order}"
+                    onclick="saveCategoryOrder(this)">순서 저장</button>
+          </div>
+        </div>
+
         <div class="lh-manage-list" th:if="${links != null and !#lists.isEmpty(links)}">
           <div class="lh-manage-row" th:each="link : ${links}">
             <details class="lh-manage-edit">
@@ -431,6 +491,30 @@
         });
       }
     })();
+
+    async function saveCategoryOrder(btn) {
+      const csrfToken = document.querySelector('meta[name="_csrf"]')?.content || '';
+      const url = btn ? btn.dataset.url : '/admin/company-links/category-order';
+      const inputs = document.querySelectorAll('#catOrderList .lh-cat-order');
+      const params = new URLSearchParams({ _csrf: csrfToken });
+      inputs.forEach(input => {
+        const cat = input.dataset.cat;
+        if (cat) params.append('cat_' + cat, input.value || '0');
+      });
+      const msg = document.getElementById('catOrderMsg');
+      try {
+        const res = await fetch(url, { method: 'POST', body: params });
+        const data = await res.json();
+        if (data.ok) {
+          if (msg) { msg.style.display = 'inline'; setTimeout(() => { msg.style.display = 'none'; }, 2000); }
+          location.reload();
+        } else {
+          alert('저장 실패: ' + (data.msg || ''));
+        }
+      } catch (e) {
+        alert('저장 중 오류: ' + e.message);
+      }
+    }
   </script>
 </body>
 </html>
