@@ -413,5 +413,57 @@ window.ADMISSION_PLEDGE_BOOTSTRAP = {
 };
 </script>
 <script th:src="@{/js/csm/counsel/admissionPledge.js}"></script>
+<script>
+(function () {
+  var FIELD_INPUT_IDS = {
+    patient_name:          'ap_patient_name',
+    patient_birth:         'ap_birth',
+    patient_phone:         'ap_phone',
+    room:                  'ap_room',
+    chart_no:              'ap_chart_no',
+    guardian_name:         'ap_guardian_name',
+    guardian_phone:        'ap_guardian_phone',
+    guardian_relation:     'ap_guardian_relation',
+    guardian_addr:         'ap_guardian_addr',
+    sub_guardian_name:     'ap_sub_guardian_name',
+    sub_guardian_phone:    'ap_sub_guardian_phone',
+    sub_guardian_relation: 'ap_sub_guardian_relation',
+    sub_guardian_addr:     'ap_sub_guardian_addr',
+    signed_at:             'ap_signed_at',
+  };
+
+  function getValue(key) {
+    var inputId = FIELD_INPUT_IDS[key];
+    if (!inputId) return '';
+    var el = document.getElementById(inputId);
+    var val = el ? (el.value || '').trim() : '';
+    if (key === 'signed_at' && !val) {
+      var now = new Date();
+      return now.getFullYear() + '년 ' + (now.getMonth() + 1) + '월 ' + now.getDate() + '일';
+    }
+    return val;
+  }
+
+  function injectFields() {
+    var block = document.querySelector('.ap-terms-block');
+    if (!block) return;
+    block.querySelectorAll('[data-field-key]').forEach(function (wrapper) {
+      var key = wrapper.dataset.fieldKey;
+      var value = getValue(key);
+      if (!value) return;
+      var target = wrapper.querySelector('.doc-el-text, .doc-el-box, .doc-el-sign span');
+      if (target) {
+        target.textContent = value;
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', injectFields);
+  } else {
+    injectFields();
+  }
+})();
+</script>
 </body>
 </html>
