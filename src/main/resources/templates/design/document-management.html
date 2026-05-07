@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="_csrf" th:content="${_csrf.token}" />
   <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+  <meta name="turbo-cache-control" content="no-cache" />
   <title>MediPlat · 서류관리</title>
   <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
   <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
@@ -412,7 +413,7 @@
               <div class="tpl-doctype-row">
                 <span class="tpl-doctype-label">서류 종류</span>
                 <div class="tpl-doctype-pills">
-                  <template x-for="type in allDocTypes" :key="type">
+                  <template x-for="type in [...new Set(allDocTypes)]" :key="type">
                     <button type="button" class="tpl-doctype-pill"
                             :class="{ 'is-active': docType === type }"
                             @click="switchDocType(type)" x-text="type"></button>
