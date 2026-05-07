@@ -712,16 +712,10 @@
       <div class="queue">
         <template x-for="(q, i) in queue" :key="q.id">
           <div class="queue-card" style="cursor:pointer;"
-               :style="q.beingWorkedOn ? 'border-color: var(--brand-400); background: color-mix(in oklab, var(--brand-500) 4%, #fff);' : ''"
                @click="visit('/counsel/inpatient?reservationId=' + q.id)">
             <div class="queue-card__head">
               <span class="prio" :class="'prio--' + q.prio" x-text="'P' + q.prio"></span>
               <span class="queue-card__name" x-text="q.name || '(이름 없음)'"></span>
-              <span x-show="q.beingWorkedOn"
-                style="margin-left:auto;font-size:10px;font-weight:700;color:var(--brand-600);
-                       background:color-mix(in oklab,var(--brand-500) 12%,#fff);
-                       border:1px solid color-mix(in oklab,var(--brand-500) 30%,transparent);
-                       padding:2px 6px;border-radius:999px;animation:pulse-soft 2s infinite;">상담중</span>
             </div>
             <div class="queue-card__phone">
               <span x-show="q.phone" x-text="q.phone"></span>

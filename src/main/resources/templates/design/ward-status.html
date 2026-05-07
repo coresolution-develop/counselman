@@ -731,7 +731,16 @@ function wardStatus() {
     ],
     onlyAvailable: false,
 
-    init() {},
+    init() {
+      if (sessionStorage.getItem('wardboard_stale') === '1') {
+        sessionStorage.removeItem('wardboard_stale');
+        location.reload();
+        return;
+      }
+      window.addEventListener('pageshow', e => {
+        if (e.persisted) location.reload();
+      });
+    },
 
     get totals() {
       const L = this.wards.reduce((s, w) => s + w.licensed, 0);

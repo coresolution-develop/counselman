@@ -86,6 +86,22 @@ public class SmsService {
         return mapper.smsInsert(st);
     }
 
+    public int updateTemplate(String inst, int id, String title, String template) {
+        SmsTemplate st = new SmsTemplate();
+        st.setInst(safeInst(inst));
+        st.setId(id);
+        st.setTitle(title);
+        st.setTemplate(template);
+        return mapper.smsUpdate(st);
+    }
+
+    public int deleteTemplate(String inst, int id) {
+        SmsTemplate st = new SmsTemplate();
+        st.setInst(safeInst(inst));
+        st.setId(id);
+        return mapper.smsDelete(st);
+    }
+
     public List<Map<String, Object>> selectTransmissionHistory(Criteria cri) {
         String t = safeInst(cri.getInst());
         StringBuilder sql = new StringBuilder()

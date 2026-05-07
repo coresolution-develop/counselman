@@ -1572,10 +1572,14 @@
                     <div class="sms-picklist">
                       <div class="sms-picklist__items">
                         <template x-for="(p, pi) in sms.phrases" :key="pi">
-                          <label class="sms-picklist__item" :class="{ 'is-sel': sms.phraseIdx === pi }">
-                            <input type="radio" name="sms-phrase" :value="pi" x-model.number="sms.phraseIdx" />
-                            <span x-text="p.title"></span>
-                          </label>
+                          <div class="sms-picklist__item" :class="{ 'is-sel': sms.phraseIdx === pi }" style="justify-content:space-between;">
+                            <label style="display:flex;align-items:center;gap:7px;flex:1;cursor:pointer;min-width:0;">
+                              <input type="radio" name="sms-phrase" :value="pi" x-model.number="sms.phraseIdx" />
+                              <span x-text="p.title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                            </label>
+                            <button type="button" @click.stop="deletePhrase(pi)" title="삭제"
+                              style="flex-shrink:0;background:none;border:none;cursor:pointer;padding:2px 4px;color:var(--text-tertiary);font-size:14px;line-height:1;">×</button>
+                          </div>
                         </template>
                         <div x-show="sms.phrases.length === 0" style="padding:8px;font-size:12px;color:var(--text-tertiary);">등록된 상용구가 없습니다</div>
                       </div>
@@ -2230,7 +2234,7 @@ function inpatientForm() {
           body: JSON.stringify({ title, body }),
         });
         if (res.ok) {
-          this.sms.phrases.push({ title, body });
+          this.sms.phrases.push({ title, body, id: null });
           alert('상용구가 저장되었습니다.');
         } else {
           alert('상용구 저장에 실패했습니다.');
@@ -2238,6 +2242,27 @@ function inpatientForm() {
       } catch (e) {
         alert('저장 중 오류가 발생했습니다: ' + e.message);
       }
+    },
+
+    async deletePhrase(pi) {
+      const phrase = this.sms.phrases[pi];
+      if (!phrase) return;
+      if (!confirm(`'${phrase.title}' 상용구를 삭제하시겠습니까?`)) return;
+      if (phrase.id) {
+        const c = csrf();
+        try {
+          const res = await fetch(ctx + '/sms/phrase/' + phrase.id, {
+            method: 'DELETE',
+            headers: { [c.header]: c.token },
+          });
+          if (!res.ok) { alert('삭제에 실패했습니다.'); return; }
+        } catch (e) {
+          alert('삭제 중 오류가 발생했습니다: ' + e.message); return;
+        }
+      }
+      this.sms.phrases.splice(pi, 1);
+      if (this.sms.phraseIdx === pi) this.sms.phraseIdx = null;
+      else if (this.sms.phraseIdx > pi) this.sms.phraseIdx--;
     },
   };
 }

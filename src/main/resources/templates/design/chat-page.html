@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="ctx" th:content="@{/}"/>
   <title>상담 | 효사랑가족요양병원</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" rel="stylesheet">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <style>
     [x-cloak] { display: none !important; }
@@ -510,7 +514,7 @@
   <div class="main-content">
 
     <!-- ── FAQ 패널 ── -->
-    <aside class="faq-panel" :class="{ open: faqOpen }" x-show="user.loggedIn">
+    <aside class="faq-panel" :class="{ open: faqOpen }">
       <div class="faq-panel__header">
         <div class="faq-panel__title">자주 묻는 질문</div>
         <div class="cat-tabs">
@@ -690,11 +694,11 @@ function chatApp() {
       this.inst = params.get('inst') || sessionStorage.getItem('chat_inst') || 'FALH';
       sessionStorage.setItem('chat_inst', this.inst);
 
+      this.loadFaqs();
       const res = await fetch(CTX + '/api/chat/me').catch(() => null);
       if (res && res.ok) {
         this.user = await res.json();
         if (this.user.loggedIn) {
-          this.loadFaqs();
           await this.resumeRoom();
         }
       }
@@ -923,9 +927,13 @@ function chatApp() {
         this.botStep = 'phone';
         this.messages.push({ senderType: 'BOT', senderName: '상담봇', content: '연락처를 입력해주세요. (예: 010-1234-5678)' });
       } else if (this.botStep === 'phone') {
-        this.botData.phone = content;
-        this.botStep = 'content';
-        this.messages.push({ senderType: 'BOT', senderName: '상담봇', content: '상담 내용을 입력해주세요.' });
+        if (!/^01[0-9]-\d{3,4}-\d{4}$/.test(content.trim())) {
+          this.messages.push({ senderType: 'BOT', senderName: '상담봇', content: '올바른 연락처 형식이 아닙니다. 예: 010-1234-5678 형식으로 입력해주세요.' });
+        } else {
+          this.botData.phone = content.trim();
+          this.botStep = 'content';
+          this.messages.push({ senderType: 'BOT', senderName: '상담봇', content: '상담 내용을 입력해주세요.' });
+        }
       } else if (this.botStep === 'content') {
         this.botData.content = content;
         this.botStep = 'confirm';
