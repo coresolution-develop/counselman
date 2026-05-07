@@ -516,15 +516,15 @@
   document.addEventListener('turbo:load', () => { MPChrome.mount({ parent: '상담 업무', current: '서류관리' }); }, { once: true });
 </script>
 <script data-turbo-eval="false" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<script data-turbo-eval="false" defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 <script>
-const _PREDEFINED_DOC_TYPES = ['입원서약서', '간병계약서', '동의서', '기타'];
+var _PREDEFINED_DOC_TYPES = ['입원서약서', '간병계약서', '동의서', '기타'];
 
 // Alpine 반응형 프록시 밖에 두어야 중복 생성 방지 로직이 동기적으로 동작
-let _lastCreateKey = '';
-let _lastCreateAt = 0;
+var _lastCreateKey = '';
+var _lastCreateAt = 0;
 
-const _FIELD_LABELS = {
+var _FIELD_LABELS = {
   patient_name: '환자명', patient_birth: '생년월일', patient_phone: '환자 연락처',
   room: '병실', chart_no: '차트번호',
   guardian_name: '주보호자 성명', guardian_phone: '주보호자 연락처',
