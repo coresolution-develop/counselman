@@ -98,7 +98,7 @@
     .tpl-doctype-pills { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
     .tpl-doctype-pill {
       padding: 3px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
-      border: 1px solid var(--border-default); background: #fff; color: var(--text-secondary);
+      border: 1px solid var(--border-default); background: #fff; color: #374151;
       cursor: pointer; transition: background .12s, border-color .12s, color .12s;
     }
     .tpl-doctype-pill:hover { border-color: var(--brand); color: var(--brand); }
@@ -181,7 +181,8 @@
       display: none;
     }
     .doc-free-element.is-selected .doc-resize-handle { display: block; }
-    .doc-el-text { width: 100%; height: 100%; white-space: pre-wrap; word-break: keep-all; }
+    .doc-el-text { width: 100%; white-space: pre-wrap; word-break: keep-all; }
+    .doc-free-element[data-type="text"] { height: auto; min-height: 28px; }
     .doc-el-box {
       width: 100%;
       height: 100%;
@@ -447,8 +448,7 @@
                   <option value="18pt">18pt</option>
                   <option value="22pt">22pt</option>
                 </select>
-                <input class="tpl-tool-color" type="color" x-model="fontColor" @input="applySelectedStyle()" title="글자 색상" />
-                <button type="button" class="tpl-tool-btn" @click.stop.prevent="applySelectedStyle()">스타일 적용</button>
+                <input class="tpl-tool-color" type="color" x-model="fontColor" @change="applySelectedStyle()" title="글자 색상" />
                 <button type="button" class="tpl-tool-btn" @click.stop.prevent="deleteSelected()">선택삭제</button>
               </div>
               <!-- 필드 바인딩 바 -->
@@ -859,7 +859,7 @@ function docPageState() {
         if (editable) editable.focus();
       });
       window.addEventListener('keydown', (event) => {
-        if (!this.tab === 'template') return;
+        if (this.tab !== 'template') return;
         if (event.key === 'Escape') {
           this._selectElement(null);
           return;
@@ -907,9 +907,11 @@ function docPageState() {
       var el = this.dragState.el;
       if (this.dragState.mode === 'resize') {
         var width = Math.max(32, this.dragState.width + dx);
-        var height = Math.max(24, this.dragState.height + dy);
         el.style.width = Math.round(width) + 'px';
-        el.style.height = Math.round(height) + 'px';
+        if (el.dataset.type !== 'text') {
+          var height = Math.max(24, this.dragState.height + dy);
+          el.style.height = Math.round(height) + 'px';
+        }
         return;
       }
       var maxLeft = Math.max(0, this.designer.clientWidth - el.offsetWidth);
@@ -976,7 +978,7 @@ function docPageState() {
       el.style.left = Math.round(left) + 'px';
       el.style.top = Math.round(top) + 'px';
       el.style.width = Math.round(width) + 'px';
-      el.style.height = Math.round(height) + 'px';
+      if (type !== 'text') el.style.height = Math.round(height) + 'px';
       el.style.fontSize = this.fontSize || '14pt';
       el.style.color = this.fontColor || '#222222';
       el.innerHTML = innerHtml + '<span class="doc-resize-handle" aria-hidden="true"></span>';
