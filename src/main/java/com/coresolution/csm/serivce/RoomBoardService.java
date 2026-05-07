@@ -365,6 +365,19 @@ public class RoomBoardService {
                 noticeId);
     }
 
+    @Transactional
+    public int autoCompleteByTime(String inst, LocalDate dischargeDate, String dischargeTime) {
+        ensureTables(inst);
+        String safe = sanitizeInst(inst);
+        String normalizedTime = normalizeDischargeTime(dischargeTime);
+        return jdbcTemplate.update(
+                "UPDATE csm.room_board_discharge_notice_" + safe
+                        + " SET status = 'COMPLETED', updated_by = 'system'"
+                        + " WHERE discharge_date = ? AND discharge_time = ? AND status = 'PLANNED'",
+                dischargeDate,
+                normalizedTime);
+    }
+
     public RoomBoardImportResult previewImport(String inst, String sourceType, String snapshotDate, String snapshotTime,
             String rawText) {
         ensureTables(inst);
