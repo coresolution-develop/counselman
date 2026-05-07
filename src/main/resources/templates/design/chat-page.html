@@ -746,8 +746,8 @@
       <h1 :class="{ 'chat-header__title--compact': currentView === 'chat' }">효사랑가족요양병원 상담</h1>
     </div>
     <div class="chat-header__right" x-show="user.loggedIn">
-      <img class="user-avatar" :src="user.thumbnail || ''" :alt="user.nickname"
-           onerror="this.style.display='none'" x-show="user.thumbnail">
+      <img class="user-avatar" :src="user.thumbnail || (CTX + '/img/default-avatar.svg')" :alt="user.nickname"
+           onerror="this.src=CTX+'/img/default-avatar.svg'">
       <span class="user-nickname" x-text="user.nickname + ' 님'"></span>
       <a href="/logout" class="btn-logout">로그아웃</a>
     </div>
