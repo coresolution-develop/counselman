@@ -585,38 +585,54 @@ function docPageState() {
 
     cmd(name) {
       if (!this._editor) return;
-      this._editor.view.focus();
-      var chain = this._editor.chain();
-      if (name === 'bold')           chain.toggleBold();
-      else if (name === 'italic')    chain.toggleItalic();
-      else if (name === 'underline') chain.toggleUnderline();
-      else if (name === 'alignLeft')   chain.setTextAlign('left');
-      else if (name === 'alignCenter') chain.setTextAlign('center');
-      else if (name === 'alignRight')  chain.setTextAlign('right');
-      chain.run();
-      this._syncMarks();
+      var ed = this._editor;
+      setTimeout(() => {
+        if (!ed) return;
+        var chain = ed.chain();
+        if (name === 'bold')             chain.toggleBold();
+        else if (name === 'italic')      chain.toggleItalic();
+        else if (name === 'underline')   chain.toggleUnderline();
+        else if (name === 'alignLeft')   chain.setTextAlign('left');
+        else if (name === 'alignCenter') chain.setTextAlign('center');
+        else if (name === 'alignRight')  chain.setTextAlign('right');
+        chain.run();
+        ed.view.focus();
+        this._syncMarks();
+      }, 0);
     },
 
     setHeading(level) {
       if (!this._editor) return;
-      this._editor.view.focus();
-      var chain = this._editor.chain();
-      if (level === 0) chain.setParagraph();
-      else chain.toggleHeading({ level });
-      chain.run();
-      this._syncMarks();
+      var ed = this._editor;
+      setTimeout(() => {
+        if (!ed) return;
+        var chain = ed.chain();
+        if (level === 0) chain.setParagraph();
+        else chain.toggleHeading({ level });
+        chain.run();
+        ed.view.focus();
+        this._syncMarks();
+      }, 0);
     },
 
     setTextColor(color) {
       if (!this._editor) return;
-      this._editor.view.focus();
-      this._editor.chain().setColor(color).run();
+      var ed = this._editor;
+      setTimeout(() => {
+        if (!ed) return;
+        ed.chain().setColor(color).run();
+        ed.view.focus();
+      }, 0);
     },
 
     insertTable() {
       if (!this._editor) return;
-      this._editor.view.focus();
-      this._editor.chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+      var ed = this._editor;
+      setTimeout(() => {
+        if (!ed) return;
+        ed.chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+        ed.view.focus();
+      }, 0);
     },
 
     insertField(f) {
@@ -634,17 +650,21 @@ function docPageState() {
 
     _loadEditorContent(html) {
       if (!this._editor) return;
+      var ed = this._editor;
       var content = String(html || '').trim();
-      if (!content) { this._editor.commands.setContent('<p></p>'); return; }
-      // 구형 캔버스 HTML → 일반 텍스트로 변환
-      if (content.includes('doc-free-layout') || content.includes('doc-free-element')) {
-        var tmp = document.createElement('div');
-        tmp.innerHTML = content;
-        var text = (tmp.innerText || tmp.textContent || '').trim();
-        this._editor.commands.setContent('<p>' + text.replace(/\n+/g, '</p><p>') + '</p>');
-        return;
-      }
-      this._editor.commands.setContent(content);
+      setTimeout(() => {
+        if (!ed) return;
+        if (!content) { ed.commands.setContent('<p></p>'); return; }
+        // 구형 캔버스 HTML → 일반 텍스트로 변환
+        if (content.includes('doc-free-layout') || content.includes('doc-free-element')) {
+          var tmp = document.createElement('div');
+          tmp.innerHTML = content;
+          var text = (tmp.innerText || tmp.textContent || '').trim();
+          ed.commands.setContent('<p>' + text.replace(/\n+/g, '</p><p>') + '</p>');
+          return;
+        }
+        ed.commands.setContent(content);
+      }, 0);
     },
 
     _getEditorContent() {
