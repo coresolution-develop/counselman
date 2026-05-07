@@ -103,7 +103,7 @@
     }
     .tpl-doctype-pill:hover { border-color: var(--brand); color: var(--brand); }
     .tpl-doctype-pill.is-active {
-      background: var(--brand); border-color: var(--brand); color: #fff;
+      background: #16a34a; border-color: #16a34a; color: #fff;
     }
     .tpl-doctype-custom { display: flex; align-items: center; gap: 4px; }
     .tpl-doctype-custom .input { height: 28px; font-size: 12px; padding: 0 8px; width: 130px; }
@@ -608,8 +608,15 @@ function docPageState() {
 
     insertField(f) {
       if (!this._editor) return;
-      this._editor.chain().focus().insertContent({ type: 'fieldChip', attrs: { fieldKey: f.key, label: f.label } }).run();
+      var key = f.key;
+      var label = f.label;
       this.showFieldMenu = false;
+      // setTimeout defers TipTap command until Alpine finishes its DOM update for showFieldMenu,
+      // preventing "mismatched transaction" from overlapping state changes
+      setTimeout(() => {
+        if (!this._editor) return;
+        this._editor.commands.insertContent({ type: 'fieldChip', attrs: { fieldKey: key, label: label } });
+      }, 0);
     },
 
     _loadEditorContent(html) {
