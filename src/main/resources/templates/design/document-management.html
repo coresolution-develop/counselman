@@ -311,7 +311,7 @@
                   <td th:text="${#strings.isEmpty(row.counselor) ? '-' : row.counselor}">-</td>
                   <td>
                     <a class="btn-xs btn-xs--brand"
-                       th:href="@{/counsel/admission-pledge(csIdx=${row.csIdx}, returnUrl=${'/documents'})}">열기</a>
+                       th:href="@{/counsel/admission-pledge(csIdx=${row.csIdx}, returnUrl=${#request.contextPath + '/documents'})}">열기</a>
                     <a class="btn-xs"
                        th:if="${row.linked}"
                        th:href="@{/counsel/inpatient(cs_idx=${row.csIdx})}">상담 보기</a>
@@ -460,7 +460,7 @@ function docPageState() {
       var popup = window.open(url, 'csmAdmissionPledge',
         'width=1400,height=920,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no');
       if (!popup) {
-        window.location.href = url + '&returnUrl=' + encodeURIComponent('/documents');
+        window.location.href = url + '&returnUrl=' + encodeURIComponent(ctx + '/documents');
       }
     },
 
@@ -523,7 +523,7 @@ function docPageState() {
     async saveTemplate() {
       if (!this.designer) return;
       var content = this._serializeDesigner();
-      if (!content || !this.designer.textContent.trim()) {
+      if (!content || this.designer.children.length === 0) {
         this.showToast(false, '내용을 입력해 주세요.');
         return;
       }
