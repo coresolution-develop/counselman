@@ -2987,6 +2987,44 @@ public class PageController {
         }
     }
 
+    @PostMapping(value = { "sms/phrase/save", "/sms/phrase/save" }, produces = "text/plain;charset=UTF-8")
+    @ResponseBody
+    public ResponseEntity<String> saveSmsPhrase(HttpSession session, @RequestBody Map<String, String> body) {
+        String inst = ensureInst(session);
+        if (inst == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("세션이 만료되었습니다.");
+        String title    = body.getOrDefault("title", "").trim();
+        String template = body.getOrDefault("body",  "").trim();
+        if (title.isEmpty())    return ResponseEntity.badRequest().body("제목을 입력해주세요.");
+        if (template.isEmpty()) return ResponseEntity.badRequest().body("내용을 입력해주세요.");
+        ss.saveTemplate(inst, title, template);
+        return ResponseEntity.ok("상용구가 저장되었습니다.");
+    }
+
+    @PutMapping(value = { "sms/phrase/{id}", "/sms/phrase/{id}" }, produces = "text/plain;charset=UTF-8")
+    @ResponseBody
+    public ResponseEntity<String> updateSmsPhrase(HttpSession session,
+            @PathVariable("id") int id, @RequestBody Map<String, String> body) {
+        String inst = ensureInst(session);
+        if (inst == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("세션이 만료되었습니다.");
+        String title    = body.getOrDefault("title", "").trim();
+        String template = body.getOrDefault("body",  "").trim();
+        if (title.isEmpty())    return ResponseEntity.badRequest().body("제목을 입력해주세요.");
+        if (template.isEmpty()) return ResponseEntity.badRequest().body("내용을 입력해주세요.");
+        int updated = ss.updateTemplate(inst, id, title, template);
+        return updated > 0 ? ResponseEntity.ok("상용구가 수정되었습니다.")
+                : ResponseEntity.status(HttpStatus.NOT_FOUND).body("상용구를 찾을 수 없습니다.");
+    }
+
+    @DeleteMapping(value = { "sms/phrase/{id}", "/sms/phrase/{id}" }, produces = "text/plain;charset=UTF-8")
+    @ResponseBody
+    public ResponseEntity<String> deleteSmsPhrase(HttpSession session, @PathVariable("id") int id) {
+        String inst = ensureInst(session);
+        if (inst == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("세션이 만료되었습니다.");
+        int deleted = ss.deleteTemplate(inst, id);
+        return deleted > 0 ? ResponseEntity.ok("상용구가 삭제되었습니다.")
+                : ResponseEntity.status(HttpStatus.NOT_FOUND).body("상용구를 찾을 수 없습니다.");
+    }
+
     @PostMapping(value = { "sms/template/save", "/sms/template/save" }, produces = "text/plain;charset=UTF-8")
     @ResponseBody
     public ResponseEntity<String> saveTemplate(HttpSession session, @RequestBody SmsTemplate request) {
@@ -3002,6 +3040,37 @@ public class PageController {
         }
         ss.saveTemplate(inst, request.getTitle(), request.getTemplate());
         return ResponseEntity.ok("상용구가 저장되었습니다.");
+    }
+
+    @PutMapping(value = { "sms/template/{id}", "/sms/template/{id}" }, produces = "text/plain;charset=UTF-8")
+    @ResponseBody
+    public ResponseEntity<String> updateTemplate(HttpSession session,
+            @PathVariable("id") int id, @RequestBody SmsTemplate request) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("세션이 만료되었습니다.");
+        }
+        if (request.getTitle() == null || request.getTitle().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("템플릿 제목을 입력해주세요.");
+        }
+        if (request.getTemplate() == null || request.getTemplate().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("템플릿 내용을 입력해주세요.");
+        }
+        int updated = ss.updateTemplate(inst, id, request.getTitle(), request.getTemplate());
+        return updated > 0 ? ResponseEntity.ok("상용구가 수정되었습니다.")
+                : ResponseEntity.status(HttpStatus.NOT_FOUND).body("상용구를 찾을 수 없습니다.");
+    }
+
+    @DeleteMapping(value = { "sms/template/{id}", "/sms/template/{id}" }, produces = "text/plain;charset=UTF-8")
+    @ResponseBody
+    public ResponseEntity<String> deleteTemplate(HttpSession session, @PathVariable("id") int id) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("세션이 만료되었습니다.");
+        }
+        int deleted = ss.deleteTemplate(inst, id);
+        return deleted > 0 ? ResponseEntity.ok("상용구가 삭제되었습니다.")
+                : ResponseEntity.status(HttpStatus.NOT_FOUND).body("상용구를 찾을 수 없습니다.");
     }
 
     @PostMapping(value = { "sms/sendSMS", "/sms/sendSMS" }, produces = "text/plain;charset=UTF-8")
@@ -6445,20 +6514,6 @@ public class PageController {
         return "DRAFT";
     }
 
-    private boolean isBeingWorkedOn(String openedAt) {
-        if (openedAt == null || openedAt.isBlank()) return false;
-        for (DateTimeFormatter f : List.of(
-                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
-                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"),
-                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"),
-                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"))) {
-            try {
-                return LocalDateTime.parse(openedAt.trim(), f).isAfter(LocalDateTime.now().minusMinutes(5));
-            } catch (DateTimeParseException ignored) {}
-        }
-        return false;
-    }
-
     private String normalizeReservationStatusParam(String status, boolean allowAll) {
         String raw = safeString(status).trim();
         if (raw.isEmpty()) {
@@ -6527,7 +6582,6 @@ public class PageController {
                     m.put("phone", safeString(r.getPatient_phone()));
                     m.put("time", safeString(r.getReserved_at()));
                     m.put("note", safeString(r.getCall_summary()));
-                    m.put("beingWorkedOn", isBeingWorkedOn(r.getOpened_at()));
                     return m;
                 })
                 .collect(Collectors.toList());
@@ -8093,6 +8147,7 @@ public class PageController {
                 .filter(Objects::nonNull)
                 .map(t -> {
                     Map<String, String> m = new java.util.LinkedHashMap<>();
+                    m.put("id", String.valueOf(t.getId()));
                     m.put("title", safeString(t.getTitle()));
                     m.put("body", safeString(t.getTemplate()));
                     return m;
@@ -8345,12 +8400,20 @@ public class PageController {
         long pinnedCount = notices.stream()
                 .filter(n -> Integer.valueOf(1).equals(n.get("pinned")))
                 .count();
+        long publishedCount = notices.stream()
+                .filter(n -> !"DRAFT".equals(n.get("status")))
+                .count();
+        long draftCount = notices.stream()
+                .filter(n -> "DRAFT".equals(n.get("status")))
+                .count();
 
         Userdata info = ensureUserInfo(session, inst);
         model.addAttribute("info", info);
         model.addAttribute("notices", notices);
         model.addAttribute("noticeCount", notices.size());
         model.addAttribute("pinnedCount", pinnedCount);
+        model.addAttribute("publishedCount", publishedCount);
+        model.addAttribute("draftCount", draftCount);
         model.addAttribute("canWrite", canWrite);
         return "design/notices";
     }
@@ -8363,13 +8426,14 @@ public class PageController {
             @RequestParam(value = "id", defaultValue = "0") long id,
             @RequestParam("title") String title,
             @RequestParam(value = "body", defaultValue = "") String body,
-            @RequestParam(value = "pinned", defaultValue = "false") boolean pinned) {
+            @RequestParam(value = "pinned", defaultValue = "false") boolean pinned,
+            @RequestParam(value = "status", defaultValue = "PUBLISHED") String status) {
         String inst = ensureInst(session);
         if (inst == null) return Map.of("ok", false, "msg", "세션 만료");
         Userdata info = ensureUserInfo(session, inst);
         String author = info != null ? safeString(info.getUs_col_12()) : "";
         try {
-            long saved = cs.saveInstNotice(inst, id, title, body, pinned, author);
+            long saved = cs.saveInstNotice(inst, id, title, body, pinned, author, status);
             return Map.of("ok", true, "id", saved);
         } catch (Exception e) {
             return Map.of("ok", false, "msg", e.getMessage());

@@ -3214,17 +3214,23 @@ public class CsmAuthService {
             + "title      VARCHAR(300) NOT NULL DEFAULT '',"
             + "body       TEXT,"
             + "pinned     TINYINT(1)   NOT NULL DEFAULT 0,"
+            + "status     VARCHAR(20)  NOT NULL DEFAULT 'PUBLISHED',"
             + "author     VARCHAR(100) NOT NULL DEFAULT '',"
             + "created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,"
             + "updated_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
             + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        // Add status column to existing tables that predate this schema
+        try {
+            jdbcTemplate.execute(
+                "ALTER TABLE csm.inst_notice_" + safe + " ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'PUBLISHED'");
+        } catch (Exception ignored) {}
     }
 
     public List<Map<String, Object>> listInstNotices(String inst) {
         String safe = sanitizeInst(inst);
         ensureInstNoticeTable(safe);
         return jdbcTemplate.queryForList(
-            "SELECT id, title, body, pinned, author,"
+            "SELECT id, title, body, pinned, status, author,"
             + " DATE_FORMAT(created_at,'%Y-%m-%d %H:%i') AS created_at,"
             + " DATE_FORMAT(updated_at,'%Y-%m-%d %H:%i') AS updated_at"
             + " FROM csm.inst_notice_" + safe
@@ -3232,27 +3238,33 @@ public class CsmAuthService {
     }
 
     public long saveInstNotice(String inst, long id, String title, String body, boolean pinned, String author) {
+        return saveInstNotice(inst, id, title, body, pinned, author, "PUBLISHED");
+    }
+
+    public long saveInstNotice(String inst, long id, String title, String body, boolean pinned, String author, String status) {
         String safe = sanitizeInst(inst);
         ensureInstNoticeTable(safe);
         String safeTitle  = safeText(title,  300);
         String safeBody   = safeText(body,  20000);
         String safeAuthor = safeText(author, 100);
+        String safeStatus = "DRAFT".equals(status) ? "DRAFT" : "PUBLISHED";
         if (id > 0) {
             jdbcTemplate.update(
                 "UPDATE csm.inst_notice_" + safe
-                + " SET title=?, body=?, pinned=?, author=?, updated_at=NOW() WHERE id=?",
-                safeTitle, safeBody, pinned ? 1 : 0, safeAuthor, id);
+                + " SET title=?, body=?, pinned=?, status=?, author=?, updated_at=NOW() WHERE id=?",
+                safeTitle, safeBody, pinned ? 1 : 0, safeStatus, safeAuthor, id);
             return id;
         }
         KeyHolder kh = new GeneratedKeyHolder();
         jdbcTemplate.update(conn -> {
             PreparedStatement ps = conn.prepareStatement(
-                "INSERT INTO csm.inst_notice_" + safe + " (title,body,pinned,author) VALUES (?,?,?,?)",
+                "INSERT INTO csm.inst_notice_" + safe + " (title,body,pinned,status,author) VALUES (?,?,?,?,?)",
                 Statement.RETURN_GENERATED_KEYS);
             ps.setString(1, safeTitle);
             ps.setString(2, safeBody);
             ps.setInt(3, pinned ? 1 : 0);
-            ps.setString(4, safeAuthor);
+            ps.setString(4, safeStatus);
+            ps.setString(5, safeAuthor);
             return ps;
         }, kh);
         Number key = kh.getKey();

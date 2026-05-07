@@ -119,6 +119,14 @@
           <div class="stat-card__label"><span class="dot"></span>고정 공지</div>
           <div class="stat-card__value" x-text="notices.filter(n=>n.pinned).length"></div>
         </div>
+        <div class="stat-card stat-card--gray">
+          <div class="stat-card__label"><span class="dot"></span>적용됨</div>
+          <div class="stat-card__value" x-text="notices.filter(n=>n.status !== 'DRAFT').length"></div>
+        </div>
+        <div class="stat-card stat-card--gray">
+          <div class="stat-card__label"><span class="dot"></span>임시저장</div>
+          <div class="stat-card__value" x-text="notices.filter(n=>n.status === 'DRAFT').length"></div>
+        </div>
       </div>
 
       <!-- Toolbar -->
@@ -126,6 +134,8 @@
         <div class="filter-pills">
           <button class="pill" :class="{ 'is-active': filter === 'all' }" @click="filter='all'">전체</button>
           <button class="pill" :class="{ 'is-active': filter === 'pinned' }" @click="filter='pinned'">고정</button>
+          <button class="pill" :class="{ 'is-active': filter === 'published' }" @click="filter='published'">적용</button>
+          <button class="pill" :class="{ 'is-active': filter === 'draft' }" @click="filter='draft'" x-show="canWrite">임시저장</button>
         </div>
         <div class="toolbar__spacer"></div>
         <div class="header__search" style="height:34px; min-width:240px;">
@@ -149,6 +159,7 @@
             <div class="notice-item__head" @click="toggle(n)">
               <div class="notice-item__tags">
                 <span x-show="n.pinned" class="tag tag--fixed">고정</span>
+                <span x-show="n.status === 'DRAFT'" class="tag" style="background:#fef9c3;color:#854d0e;border:1px solid #fde047;">임시저장</span>
               </div>
               <span class="notice-item__title" x-text="n.title || '(제목 없음)'"></span>
               <span class="notice-item__meta">
@@ -189,11 +200,15 @@
               <input type="checkbox" id="nm-pin" x-model="modal.pinned" />
               <label for="nm-pin">상단 고정</label>
             </div>
+            <div class="nm-pin-row">
+              <input type="checkbox" id="nm-draft" :checked="modal.status === 'DRAFT'" @change="modal.status = $event.target.checked ? 'DRAFT' : 'PUBLISHED'" />
+              <label for="nm-draft">임시저장 (발행하지 않고 저장)</label>
+            </div>
           </div>
           <div class="nm-dialog__foot">
             <button class="btn btn--ghost" @click="modal.open=false">취소</button>
             <button class="btn btn--primary" @click="saveNotice()" :disabled="modal.saving">
-              <span x-text="modal.saving ? '저장 중…' : '저장'"></span>
+              <span x-text="modal.saving ? '저장 중…' : (modal.status === 'DRAFT' ? '임시저장' : '저장')"></span>
             </button>
           </div>
         </div>
@@ -214,14 +229,16 @@ function noticePage() {
   return {
     loading: false,
     ctx, canWrite,
-    notices: serverNotices.map(n => ({ ...n, pinned: n.pinned == 1 || n.pinned === true, _open: false })),
+    notices: serverNotices.map(n => ({ ...n, pinned: n.pinned == 1 || n.pinned === true, status: n.status || 'PUBLISHED', _open: false })),
     filter: 'all',
     search: '',
-    modal: { open: false, id: 0, title: '', body: '', pinned: false, saving: false },
+    modal: { open: false, id: 0, title: '', body: '', pinned: false, status: 'PUBLISHED', saving: false },
 
     get filtered() {
       let list = this.notices;
-      if (this.filter === 'pinned') list = list.filter(n => n.pinned);
+      if (this.filter === 'pinned')    list = list.filter(n => n.pinned);
+      if (this.filter === 'published') list = list.filter(n => n.status !== 'DRAFT');
+      if (this.filter === 'draft')     list = list.filter(n => n.status === 'DRAFT');
       if (this.search.trim()) {
         const kw = this.search.trim().toLowerCase();
         list = list.filter(n => (n.title || '').toLowerCase().includes(kw));
@@ -233,21 +250,23 @@ function noticePage() {
 
     openModal(n) {
       if (n) {
-        this.modal = { open: true, id: n.id, title: n.title, body: n.body || '', pinned: n.pinned, saving: false };
+        this.modal = { open: true, id: n.id, title: n.title, body: n.body || '', pinned: n.pinned, status: n.status || 'PUBLISHED', saving: false };
       } else {
-        this.modal = { open: true, id: 0, title: '', body: '', pinned: false, saving: false };
+        this.modal = { open: true, id: 0, title: '', body: '', pinned: false, status: 'PUBLISHED', saving: false };
       }
     },
 
     async saveNotice() {
       if (!this.modal.title.trim()) { alert('제목을 입력하세요.'); return; }
       this.modal.saving = true;
+      const savedModal = { ...this.modal };
       try {
         const body = new URLSearchParams({
-          id:     this.modal.id,
-          title:  this.modal.title,
-          body:   this.modal.body,
-          pinned: this.modal.pinned,
+          id:     savedModal.id,
+          title:  savedModal.title,
+          body:   savedModal.body,
+          pinned: savedModal.pinned,
+          status: savedModal.status,
           _csrf:  csrfToken,
         });
         const res  = await fetch(ctx + '/notices/save', { method: 'POST', body });
@@ -257,22 +276,24 @@ function noticePage() {
           const me = window._meCache || {};
           const authorName = (me.name && me.name.trim()) ? me.name : (me.id || '');
           const today = new Date().toISOString().slice(0, 10);
-          if (this.modal.id) {
-            const idx = this.notices.findIndex(x => x.id === this.modal.id);
+          if (savedModal.id) {
+            const idx = this.notices.findIndex(x => x.id === savedModal.id);
             if (idx !== -1) {
               this.notices[idx] = {
                 ...this.notices[idx],
-                title: this.modal.title,
-                body: this.modal.body,
-                pinned: this.modal.pinned,
+                title: savedModal.title,
+                body: savedModal.body,
+                pinned: savedModal.pinned,
+                status: savedModal.status,
               };
             }
           } else {
             this.notices.unshift({
               id: data.id,
-              title: this.modal.title,
-              body: this.modal.body,
-              pinned: this.modal.pinned,
+              title: savedModal.title,
+              body: savedModal.body,
+              pinned: savedModal.pinned,
+              status: savedModal.status,
               author: authorName,
               created_at: today,
               _open: false,
