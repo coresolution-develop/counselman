@@ -495,11 +495,18 @@ public class RoomBoardService {
         for (RoomBoardRoomConfig config : activeConfigs) {
             String wardName = safeText(config.getWardName(), 50);
             String roomName = normalizeRoomName(config.getRoomName());
+            List<Map<String, Object>> roomDischargeNotices = dischargeNoticesByRoom.getOrDefault(roomName, List.of());
+            Map<String, Map<String, Object>> completedDischargeIndex = indexDischargeNotices(
+                    roomDischargeNotices.stream()
+                            .filter(n -> "COMPLETED".equals(n.get("status")))
+                            .collect(Collectors.toList()));
             List<Map<String, Object>> roomPatients = mergePatients(
                     patientsByRoom.getOrDefault(roomName, List.of()),
-                    completedAdmissionsByRoom.getOrDefault(roomName, List.of()));
+                    completedAdmissionsByRoom.getOrDefault(roomName, List.of()))
+                    .stream()
+                    .filter(p -> !completedDischargeIndex.containsKey(dischargePatientKey(p)))
+                    .collect(Collectors.toList());
             List<String> reservationNames = reservationNamesByRoom.getOrDefault(roomName, List.of());
-            List<Map<String, Object>> roomDischargeNotices = dischargeNoticesByRoom.getOrDefault(roomName, List.of());
             int occupiedCount = roomPatients.size();
             int licensedBeds = config.getLicensedBeds() == null ? 0 : config.getLicensedBeds();
             int availableCount = Math.max(licensedBeds - occupiedCount - reservationNames.size(), 0);
