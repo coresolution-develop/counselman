@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="_csrf" th:content="${_csrf.token}" />
   <meta name="_csrf_header" th:content="${_csrf.headerName}" />
-  <meta name="turbo-cache-control" content="no-cache" />
   <title>MediPlat · 서류관리</title>
   <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
   <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
@@ -104,166 +103,86 @@
     }
     .tpl-doctype-pill:hover { border-color: var(--brand); color: var(--brand); }
     .tpl-doctype-pill.is-active {
-      background: #16a34a; border-color: #16a34a; color: #fff;
+      background: var(--brand); border-color: var(--brand); color: #fff;
     }
     .tpl-doctype-custom { display: flex; align-items: center; gap: 4px; }
     .tpl-doctype-custom .input { height: 28px; font-size: 12px; padding: 0 8px; width: 130px; }
 
     .tpl-name-row { display: flex; align-items: center; gap: 8px; }
     .tpl-name-row .input { flex: 1; }
-    .tpl-tools {
-      display: flex; flex-wrap: wrap; gap: 6px; padding: 8px;
+    /* ── TipTap 리치 에디터 ── */
+    .tiptap-toolbar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+      padding: 6px 8px;
       border: 1px solid var(--border-default); border-bottom: 0;
       border-radius: 6px 6px 0 0; background: var(--surface);
     }
-    .tpl-tool-btn {
-      height: 30px; padding: 0 10px; border: 1px solid var(--border-default);
-      border-radius: 5px; background: #fff; font-size: 12px; cursor: pointer;
+    .tiptap-tool-btn {
+      height: 28px; min-width: 28px; padding: 0 8px;
+      border: 1px solid transparent; border-radius: 4px;
+      background: none; font-size: 13px; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
     }
-    .tpl-tool-btn:hover { border-color: var(--brand); color: var(--brand); }
-    .tpl-tool-select,
-    .tpl-tool-color {
-      height: 30px;
-      border: 1px solid var(--border-default);
-      border-radius: 5px;
-      background: #fff;
-      font-size: 12px;
+    .tiptap-tool-btn:hover { background: var(--surface-raised); border-color: var(--border-default); }
+    .tiptap-tool-btn.is-active { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }
+    .tiptap-tool-sep { width: 1px; height: 20px; background: var(--border-default); margin: 0 2px; flex-shrink: 0; }
+    .tiptap-tool-select {
+      height: 28px; padding: 0 6px; font-size: 12px;
+      border: 1px solid var(--border-default); border-radius: 4px; background: #fff;
     }
-    .tpl-tool-select { padding: 0 8px; }
-    .tpl-tool-color { width: 36px; padding: 2px; }
-    .tpl-canvas-wrap {
-      border: 1px solid var(--border-default);
-      border-radius: 0 0 6px 6px;
-      overflow: auto;
-      background: #f3f4f6;
-      padding: 18px;
-      max-height: 72vh;
+    .tiptap-tool-color { height: 28px; width: 36px; padding: 2px; border: 1px solid var(--border-default); border-radius: 4px; cursor: pointer; }
+    .tiptap-field-btn {
+      height: 28px; padding: 0 10px; border-radius: 4px;
+      background: #eff6ff; border: 1px solid #bfdbfe;
+      color: #1d4ed8; font-size: 12px; font-weight: 600; cursor: pointer;
     }
-    .doc-free-layout {
-      position: relative;
-      width: 966px;
-      min-height: 1040px;
-      margin: 0 auto;
-      background: #fff;
-      color: #222;
-      box-shadow: 0 1px 8px rgba(15, 23, 42, .12);
-      font-size: 14pt;
-      line-height: 1.45;
+    .tiptap-field-btn:hover { background: #dbeafe; }
+    .tiptap-field-menu {
+      position: absolute; z-index: 200; background: #fff;
+      border: 1px solid var(--border-default); border-radius: 6px;
+      padding: 4px; box-shadow: 0 4px 16px rgba(0,0,0,.12);
+      min-width: 180px; top: 32px; left: 0;
+    }
+    .tiptap-field-menu-item {
+      display: block; width: 100%; text-align: left; padding: 6px 10px;
+      font-size: 13px; border: none; background: none; cursor: pointer; border-radius: 4px;
+    }
+    .tiptap-field-menu-item:hover { background: #f1f5f9; }
+    .tiptap-editor-wrap {
+      border: 1px solid var(--border-default); border-radius: 0 0 6px 6px;
+      overflow-y: auto; max-height: 72vh;
+      background: #f3f4f6; padding: 24px;
+    }
+    .ProseMirror {
+      width: 794px; margin: 0 auto; background: #fff;
+      padding: 60px 72px; min-height: 1040px;
+      box-shadow: 0 1px 8px rgba(15,23,42,.12);
+      font-size: 12pt; line-height: 1.8;
       font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
                    'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+      color: #222; outline: none;
     }
-    .doc-free-element {
-      position: absolute;
-      min-width: 24px;
-      min-height: 22px;
-      padding: 4px;
-      cursor: move;
-      user-select: none;
+    .ProseMirror h1 { font-size: 18pt; font-weight: 700; margin: 0.4em 0; }
+    .ProseMirror h2 { font-size: 15pt; font-weight: 700; margin: 0.4em 0; }
+    .ProseMirror h3 { font-size: 13pt; font-weight: 600; margin: 0.3em 0; }
+    .ProseMirror p { margin: 0 0 0.4em; }
+    .ProseMirror table { border-collapse: collapse; width: 100%; margin: 8px 0; table-layout: fixed; }
+    .ProseMirror table td, .ProseMirror table th {
+      border: 1px solid #c7c7c7; padding: 8px 10px;
+      vertical-align: top; min-width: 48px; position: relative;
     }
-    .doc-free-element.is-selected {
-      outline: 2px solid #2563eb;
-      outline-offset: 1px;
-      z-index: 20;
-    }
-    .doc-free-element [contenteditable="true"] {
-      cursor: text;
-      user-select: text;
-      outline: none;
-    }
-    .doc-resize-handle {
-      position: absolute;
-      right: -6px;
-      bottom: -6px;
-      width: 12px;
-      height: 12px;
-      border: 2px solid #2563eb;
-      background: #fff;
-      cursor: nwse-resize;
-      display: none;
-    }
-    .doc-free-element.is-selected .doc-resize-handle { display: block; }
-    .doc-el-text { width: 100%; white-space: pre-wrap; word-break: keep-all; }
-    .doc-free-element[data-type="text"] { height: auto; min-height: 28px; }
-    .doc-el-box {
-      width: 100%;
-      height: 100%;
-      border: 0;
-      background: #fff;
-    }
-    .doc-el-sign {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-bottom: 1px solid #222;
-      font-weight: 600;
-    }
-    .doc-el-sign::after { content: " (서명)"; font-weight: 400; margin-left: 4px; }
-    .doc-el-check {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      height: 100%;
-    }
-    .doc-el-check::before {
-      content: "";
-      width: 18px;
-      height: 18px;
-      border: 1px solid #a8b7e8;
-      border-radius: 5px;
-      flex: 0 0 auto;
-    }
-    .doc-free-table {
-      width: 100%;
-      height: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-      background: #fff;
-    }
-    .doc-free-table th,
-    .doc-free-table td {
-      border: 1px solid #c7c7c7;
-      padding: 8px 10px;
-      vertical-align: middle;
-      word-break: keep-all;
-    }
-    .doc-free-table th { background: #fafafa; font-weight: 600; text-align: center; }
-    .doc-free-input {
-      display: inline-block;
-      min-width: 120px;
-      height: 28px;
-      background: #fff;
-      vertical-align: middle;
+    .ProseMirror table th { background: #fafafa; font-weight: 600; text-align: center; }
+    .ProseMirror .selectedCell::after {
+      content: ''; position: absolute; inset: 0;
+      background: rgba(37,99,235,.12); pointer-events: none;
     }
     .tpl-save-row { display: flex; justify-content: flex-end; gap: 8px; align-items: center; }
     .tpl-hint { font-size: 12px; color: var(--text-tertiary); flex: 1; }
-
-    /* ── 필드 바인딩 바 ── */
-    .tpl-field-bar {
-      display: flex; align-items: center; gap: 10px;
-      padding: 6px 10px;
-      background: #eff6ff;
-      border: 1px solid #bfdbfe; border-top: 0;
-      font-size: 12px; min-height: 36px; flex-wrap: wrap;
-    }
-    .tpl-field-bar__label { font-weight: 600; color: #1e40af; white-space: nowrap; }
-    .tpl-field-bar__select {
-      height: 26px; padding: 0 8px;
-      border: 1px solid #93c5fd; border-radius: 5px;
-      background: #fff; font-size: 12px; color: #1e3a8a;
-    }
-    .tpl-field-bar__confirm { font-size: 11px; color: #059669; font-weight: 600; }
-    .tpl-field-bar__hint { color: #94a3b8; font-size: 11px; }
-
-    /* ── 캔버스 요소 필드 배지 ── */
-    .doc-field-badge {
-      position: absolute; top: 3px; right: 20px;
-      padding: 1px 5px; border-radius: 4px;
-      background: #2563eb; color: #fff;
-      font-size: 10px; font-weight: 700; line-height: 1.5;
-      pointer-events: none; z-index: 10; white-space: nowrap;
+    .tiptap-field-chip {
+      display: inline-block; padding: 1px 8px; border-radius: 12px;
+      background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd;
+      font-size: 11px; font-weight: 600; white-space: nowrap;
+      vertical-align: middle; user-select: none; cursor: default;
     }
 
     .tpl-toast {
@@ -413,7 +332,7 @@
               <div class="tpl-doctype-row">
                 <span class="tpl-doctype-label">서류 종류</span>
                 <div class="tpl-doctype-pills">
-                  <template x-for="type in [...new Set(allDocTypes)]" :key="type">
+                  <template x-for="type in allDocTypes" :key="type">
                     <button type="button" class="tpl-doctype-pill"
                             :class="{ 'is-active': docType === type }"
                             @click="switchDocType(type)" x-text="type"></button>
@@ -433,57 +352,44 @@
                        placeholder="템플릿 이름 (예: 2025년 개정판)" maxlength="100" />
               </div>
 
-              <div class="tpl-tools" role="toolbar" aria-label="서약서 템플릿 도구">
-                <button type="button" class="tpl-tool-btn" @click.stop.prevent="addText()">텍스트</button>
-                <button type="button" class="tpl-tool-btn" @click.stop.prevent="addInputBox()">입력칸</button>
-                <button type="button" class="tpl-tool-btn" @click.stop.prevent="addCheckbox()">체크박스</button>
-                <button type="button" class="tpl-tool-btn" @click.stop.prevent="addSignature()">서명영역</button>
-                <button type="button" class="tpl-tool-btn" @click.stop.prevent="addGuardianBlock('primary')">주보호자 표</button>
-                <button type="button" class="tpl-tool-btn" @click.stop.prevent="addGuardianBlock('secondary')">부보호자 표</button>
-                <button type="button" class="tpl-tool-btn" @click.stop.prevent="addReasonBlock()">동의사유 표</button>
-                <select class="tpl-tool-select" x-model="fontSize" @change="applySelectedStyle()">
-                  <option value="11pt">11pt</option>
-                  <option value="12pt">12pt</option>
-                  <option value="14pt">14pt</option>
-                  <option value="16pt">16pt</option>
-                  <option value="18pt">18pt</option>
-                  <option value="22pt">22pt</option>
+              <!-- TipTap 툴바 -->
+              <div class="tiptap-toolbar" role="toolbar" aria-label="서약서 템플릿 도구">
+                <button type="button" class="tiptap-tool-btn" :class="{ 'is-active': marks.bold }" @click="cmd('bold')" title="굵게">B</button>
+                <button type="button" class="tiptap-tool-btn" :class="{ 'is-active': marks.italic }" @click="cmd('italic')" title="기울임"><em>I</em></button>
+                <button type="button" class="tiptap-tool-btn" :class="{ 'is-active': marks.underline }" @click="cmd('underline')" title="밑줄"><u>U</u></button>
+                <div class="tiptap-tool-sep"></div>
+                <select class="tiptap-tool-select" @change="setHeading(+$event.target.value)" :value="headingLevel">
+                  <option value="0">본문</option>
+                  <option value="1">제목 1</option>
+                  <option value="2">제목 2</option>
+                  <option value="3">제목 3</option>
                 </select>
-                <input class="tpl-tool-color" type="color" x-model="fontColor" @change="applySelectedStyle()" title="글자 색상" />
-                <button type="button" class="tpl-tool-btn" @click.stop.prevent="deleteSelected()">선택삭제</button>
-              </div>
-              <!-- 필드 바인딩 바 -->
-              <div class="tpl-field-bar">
-                <span class="tpl-field-bar__label">📌 필드 바인딩</span>
-                <select class="tpl-field-bar__select" x-show="hasSelection" x-model="fieldKey" @change="setFieldKey(fieldKey)">
-                  <option value="">없음 (고정 텍스트 / 직접 입력)</option>
-                  <option value="patient_name">환자명</option>
-                  <option value="patient_birth">생년월일</option>
-                  <option value="patient_phone">환자 연락처</option>
-                  <option value="room">병실</option>
-                  <option value="chart_no">차트번호</option>
-                  <option value="guardian_name">주보호자 성명</option>
-                  <option value="guardian_phone">주보호자 연락처</option>
-                  <option value="guardian_relation">주보호자 관계</option>
-                  <option value="guardian_addr">주보호자 주소</option>
-                  <option value="sub_guardian_name">부보호자 성명</option>
-                  <option value="sub_guardian_phone">부보호자 연락처</option>
-                  <option value="sub_guardian_relation">부보호자 관계</option>
-                  <option value="sub_guardian_addr">부보호자 주소</option>
-                  <option value="signed_at">서명일시</option>
-                </select>
-                <span class="tpl-field-bar__confirm" x-show="hasSelection && fieldKey">→ 서약서 열 때 자동으로 채워집니다</span>
-                <span class="tpl-field-bar__hint" x-show="!hasSelection">요소를 클릭하면 자동 입력 필드를 지정할 수 있습니다 &nbsp;|&nbsp; Delete 키로 선택 요소 삭제</span>
+                <div class="tiptap-tool-sep"></div>
+                <button type="button" class="tiptap-tool-btn" :class="{ 'is-active': textAlign === 'left' }" @click="cmd('alignLeft')" title="왼쪽 정렬">&#8676;</button>
+                <button type="button" class="tiptap-tool-btn" :class="{ 'is-active': textAlign === 'center' }" @click="cmd('alignCenter')" title="가운데 정렬">&#8803;</button>
+                <button type="button" class="tiptap-tool-btn" :class="{ 'is-active': textAlign === 'right' }" @click="cmd('alignRight')" title="오른쪽 정렬">&#8677;</button>
+                <div class="tiptap-tool-sep"></div>
+                <input type="color" class="tiptap-tool-color" x-model="textColor" @change="setTextColor(textColor)" title="글자 색상" />
+                <div class="tiptap-tool-sep"></div>
+                <button type="button" class="tiptap-tool-btn" @click="insertTable()" title="표 삽입">⊞ 표</button>
+                <div class="tiptap-tool-sep"></div>
+                <div style="position:relative;">
+                  <button type="button" class="tiptap-field-btn" @click="showFieldMenu = !showFieldMenu">+ 필드 삽입</button>
+                  <div class="tiptap-field-menu" x-show="showFieldMenu" @click.outside="showFieldMenu = false" x-cloak>
+                    <template x-for="f in fieldList" :key="f.key">
+                      <button type="button" class="tiptap-field-menu-item" @click="insertField(f)" x-text="f.label"></button>
+                    </template>
+                  </div>
+                </div>
               </div>
 
-              <div class="tpl-canvas-wrap">
-                <div id="pledgeDesignerCanvas"
-                     class="doc-free-layout"
-                     aria-label="입원서약서 템플릿 배치 캔버스"></div>
+              <!-- TipTap 에디터 -->
+              <div class="tiptap-editor-wrap">
+                <div id="tiptapEditor"></div>
               </div>
 
               <div class="tpl-save-row">
-                <p class="tpl-hint">요소를 끌어서 위치를 바꾸고, 선택 후 우하단 핸들로 크기를 조절하세요. 텍스트는 더블클릭해서 수정합니다.</p>
+                <p class="tpl-hint">서약서 내용을 자유롭게 작성하세요. <strong>+ 필드 삽입</strong>으로 환자명·병실 등 자동입력 항목을 추가할 수 있습니다.</p>
                 <button class="btn btn--outline" @click="saveAsNew()">새 템플릿으로 저장</button>
                 <button class="btn btn--primary" :disabled="saving" @click="saveTemplate()">
                   <span x-show="saving">저장 중…</span>
@@ -520,19 +426,22 @@
 <script>
 var _PREDEFINED_DOC_TYPES = ['입원서약서', '간병계약서', '동의서', '기타'];
 
-// Alpine 반응형 프록시 밖에 두어야 중복 생성 방지 로직이 동기적으로 동작
-var _lastCreateKey = '';
-var _lastCreateAt = 0;
-
-var _FIELD_LABELS = {
-  patient_name: '환자명', patient_birth: '생년월일', patient_phone: '환자 연락처',
-  room: '병실', chart_no: '차트번호',
-  guardian_name: '주보호자 성명', guardian_phone: '주보호자 연락처',
-  guardian_relation: '주보호자 관계', guardian_addr: '주보호자 주소',
-  sub_guardian_name: '부보호자 성명', sub_guardian_phone: '부보호자 연락처',
-  sub_guardian_relation: '부보호자 관계', sub_guardian_addr: '부보호자 주소',
-  signed_at: '서명일시',
-};
+var _TIPTAP_FIELDS = [
+  { key: 'patient_name',          label: '환자명' },
+  { key: 'patient_birth',         label: '생년월일' },
+  { key: 'patient_phone',         label: '환자 연락처' },
+  { key: 'room',                  label: '병실' },
+  { key: 'chart_no',              label: '차트번호' },
+  { key: 'guardian_name',         label: '주보호자 성명' },
+  { key: 'guardian_phone',        label: '주보호자 연락처' },
+  { key: 'guardian_relation',     label: '주보호자 관계' },
+  { key: 'guardian_addr',         label: '주보호자 주소' },
+  { key: 'sub_guardian_name',     label: '부보호자 성명' },
+  { key: 'sub_guardian_phone',    label: '부보호자 연락처' },
+  { key: 'sub_guardian_relation', label: '부보호자 관계' },
+  { key: 'sub_guardian_addr',     label: '부보호자 주소' },
+  { key: 'signed_at',             label: '서명일시' },
+];
 
 function docPageState() {
   return {
@@ -552,14 +461,13 @@ function docPageState() {
     editingId: null,
     editingName: '',
     saving: false,
-    designer: null,
-    selectedEl: null,
-    hasSelection: false,
-    fieldKey: '',
-    dragState: null,
-    fontSize: '14pt',
-    fontColor: '#222222',
-    _editorReady: false,
+    _editor: null,
+    marks: {},
+    headingLevel: 0,
+    textAlign: 'left',
+    textColor: '#222222',
+    showFieldMenu: false,
+    fieldList: _TIPTAP_FIELDS,
     toast: { visible: false, ok: true, message: '' },
 
     init() {
@@ -569,6 +477,9 @@ function docPageState() {
       if (this.tab === 'template') {
         this.$nextTick(() => this._initEditor());
       }
+      window.addEventListener('tiptap:ready', () => {
+        if (this.tab === 'template') this._initEditor();
+      });
       window.addEventListener('message', (e) => {
         if (e.data?.type === 'csm-admission-pledge') {
           window.location.reload();
@@ -598,18 +509,16 @@ function docPageState() {
     switchDocType(type) {
       if (this.docType === type) return;
       this.docType = type;
-      this._selectElement(null);
-      if (!this.designer) return;
+      if (!this._editor) return;
       var active = this.filteredTemplates().find(t => String(t.is_active) === 'Y');
       if (active) {
         this.editingId = active.id;
         this.editingName = active.template_name || '';
-        this._loadDesignerContent(this.designer, active.content || '');
+        this._loadEditorContent(active.content || '');
       } else {
         this.editingId = null;
         this.editingName = '';
-        var defaultContent = this.docType === '입원서약서' ? (_defaultPledgeTemplateContent || '') : '';
-        this._loadDesignerContent(this.designer, defaultContent);
+        this._loadEditorContent(this.docType === '입원서약서' ? (_defaultPledgeTemplateContent || '') : '');
       }
     },
 
@@ -636,30 +545,97 @@ function docPageState() {
     },
 
     _initEditor() {
-      if (this._editorReady) return;
-      var el = document.getElementById('pledgeDesignerCanvas');
-      if (!el) return;
-
-      this.designer = el;
+      if (this._editor) return;
+      var el = document.getElementById('tiptapEditor');
+      if (!el || !window._TipTapEditor) return;
+      var self = this;
+      this._editor = window._TipTapEditor.create(el, {
+        onUpdate() { self._syncMarks(); },
+        onSelectionUpdate() { self._syncMarks(); },
+      });
       var active = this.filteredTemplates().find(t => String(t.is_active) === 'Y');
       if (active) {
         this.editingId = active.id;
         this.editingName = active.template_name || '';
-        this._loadDesignerContent(el, active.content || '');
+        this._loadEditorContent(active.content || '');
       } else {
-        var defaultContent = this.docType === '입원서약서' ? (_defaultPledgeTemplateContent || '') : '';
-        this._loadDesignerContent(el, defaultContent);
+        this._loadEditorContent(this.docType === '입원서약서' ? (_defaultPledgeTemplateContent || '') : '');
       }
-      this._bindDesignerEvents();
-      this._editorReady = true;
+    },
+
+    _syncMarks() {
+      if (!this._editor) return;
+      this.marks = {
+        bold:      this._editor.isActive('bold'),
+        italic:    this._editor.isActive('italic'),
+        underline: this._editor.isActive('underline'),
+      };
+      this.headingLevel = [1,2,3].find(n => this._editor.isActive('heading', { level: n })) || 0;
+      this.textAlign = ['left','center','right','justify'].find(a => this._editor.isActive({ textAlign: a })) || 'left';
+    },
+
+    cmd(name) {
+      if (!this._editor) return;
+      var chain = this._editor.chain().focus();
+      if (name === 'bold')        chain.toggleBold();
+      else if (name === 'italic') chain.toggleItalic();
+      else if (name === 'underline') chain.toggleUnderline();
+      else if (name === 'alignLeft')   chain.setTextAlign('left');
+      else if (name === 'alignCenter') chain.setTextAlign('center');
+      else if (name === 'alignRight')  chain.setTextAlign('right');
+      chain.run();
+      this._syncMarks();
+    },
+
+    setHeading(level) {
+      if (!this._editor) return;
+      var chain = this._editor.chain().focus();
+      if (level === 0) chain.setParagraph();
+      else chain.toggleHeading({ level });
+      chain.run();
+      this._syncMarks();
+    },
+
+    setTextColor(color) {
+      if (!this._editor) return;
+      this._editor.chain().focus().setColor(color).run();
+    },
+
+    insertTable() {
+      if (!this._editor) return;
+      this._editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+    },
+
+    insertField(f) {
+      if (!this._editor) return;
+      this._editor.chain().focus().insertContent({ type: 'fieldChip', attrs: { fieldKey: f.key, label: f.label } }).run();
+      this.showFieldMenu = false;
+    },
+
+    _loadEditorContent(html) {
+      if (!this._editor) return;
+      var content = String(html || '').trim();
+      if (!content) { this._editor.commands.setContent('<p></p>'); return; }
+      // 구형 캔버스 HTML → 일반 텍스트로 변환
+      if (content.includes('doc-free-layout') || content.includes('doc-free-element')) {
+        var tmp = document.createElement('div');
+        tmp.innerHTML = content;
+        var text = (tmp.innerText || tmp.textContent || '').trim();
+        this._editor.commands.setContent('<p>' + text.replace(/\n+/g, '</p><p>') + '</p>');
+        return;
+      }
+      this._editor.commands.setContent(content);
+    },
+
+    _getEditorContent() {
+      return this._editor ? this._editor.getHTML() : '';
     },
 
     loadPreset() {
-      if (!this.designer) return;
+      if (!this._editor) return;
       var label = this.docType === '입원서약서' ? '표준 서약서 내용' : '빈 캔버스';
       if (!confirm('현재 편집 중인 내용을 ' + label + '으로 교체할까요?')) return;
-      var defaultContent = this.docType === '입원서약서' ? (_defaultPledgeTemplateContent || '') : '';
-      this._loadDesignerContent(this.designer, defaultContent);
+      this._loadEditorContent(this.docType === '입원서약서' ? (_defaultPledgeTemplateContent || '') : '');
       this.editingId = null;
       this.editingName = this.docType === '입원서약서' ? '표준 서약서' : '';
     },
@@ -667,9 +643,7 @@ function docPageState() {
     editTemplate(t) {
       this.editingId = t.id;
       this.editingName = t.template_name || '';
-      if (this.designer) {
-        this._loadDesignerContent(this.designer, t.content || '');
-      }
+      this._loadEditorContent(t.content || '');
     },
 
     saveAsNew() {
@@ -678,9 +652,9 @@ function docPageState() {
     },
 
     async saveTemplate() {
-      if (!this.designer) return;
-      var content = this._serializeDesigner();
-      if (!content || this.designer.children.length === 0) {
+      if (!this._editor) return;
+      var content = this._getEditorContent();
+      if (!content || content === '<p></p>') {
         this.showToast(false, '내용을 입력해 주세요.');
         return;
       }
@@ -752,10 +726,7 @@ function docPageState() {
         if (!Array.isArray(data.templates)) await this._reloadTemplates();
         this.editingId = null;
         this.editingName = this.docType === '입원서약서' ? '표준 서약서' : '';
-        if (this.designer) {
-          var defaultContent = this.docType === '입원서약서' ? (_defaultPledgeTemplateContent || '') : '';
-          this._loadDesignerContent(this.designer, defaultContent);
-        }
+        this._loadEditorContent(this.docType === '입원서약서' ? (_defaultPledgeTemplateContent || '') : '');
         this.showToast(true, '기본값으로 초기화되었습니다.');
       } catch {
         this.showToast(false, '서버 오류가 발생했습니다.');
@@ -775,9 +746,7 @@ function docPageState() {
           var wasEditing = String(this.editingId || '') === String(id);
           this._applyTemplates(data.templates, data.docTypes);
           if (!Array.isArray(data.templates)) await this._reloadTemplates();
-          if (wasEditing) {
-            this._syncEditorWithActiveOrDefault();
-          }
+          if (wasEditing) this._syncEditorWithActiveOrDefault();
           this.showToast(true, '삭제되었습니다.');
         } else {
           this.showToast(false, data.error || '삭제 실패');
@@ -801,7 +770,6 @@ function docPageState() {
     _applyTemplates(templates, docTypes) {
       if (!Array.isArray(templates)) return;
       this.templates = templates;
-      // Only ADD genuinely new custom types; never reset (prevents duplication bugs)
       var seen = new Set(this.allDocTypes.map(function (t) { return t.normalize('NFC'); }));
       templates.forEach((t) => {
         var dt = (t.doc_type || '').trim();
@@ -817,309 +785,82 @@ function docPageState() {
       if (!target) return;
       this.editingId = target.id;
       this.editingName = target.template_name || '';
-      if (this.designer) {
-        this._loadDesignerContent(this.designer, target.content || '');
-      }
+      this._loadEditorContent(target.content || '');
     },
 
     _syncEditorWithActiveOrDefault() {
       var active = this.filteredTemplates().find(t => String(t.is_active) === 'Y');
-      if (active) {
-        this._syncEditorWithTemplate(active.id);
-        return;
-      }
+      if (active) { this._syncEditorWithTemplate(active.id); return; }
       this.editingId = null;
       this.editingName = this.docType === '입원서약서' ? '표준 서약서' : '';
-      if (this.designer) {
-        var defaultContent = this.docType === '입원서약서' ? (_defaultPledgeTemplateContent || '') : '';
-        this._loadDesignerContent(this.designer, defaultContent);
-      }
+      this._loadEditorContent(this.docType === '입원서약서' ? (_defaultPledgeTemplateContent || '') : '');
     },
 
     showToast(ok, message) {
       this.toast = { visible: true, ok, message };
       setTimeout(() => { this.toast.visible = false; }, 3000);
     },
-
-    _loadDesignerContent(canvas, content) {
-      this._selectElement(null);
-      canvas.innerHTML = '';
-      var html = String(content || '').trim();
-      var parsed = document.createElement('div');
-      parsed.innerHTML = html;
-      var layout = parsed.querySelector('.doc-free-layout');
-      if (layout) {
-        Array.from(layout.children).forEach(child => canvas.appendChild(child.cloneNode(true)));
-        this._normalizeDesignerChildren(canvas);
-        return;
-      }
-      this._addElement('text', 24, 24, 900, 620, html || '서약서 내용을 입력하세요.');
-    },
-
-    _bindDesignerEvents() {
-      if (!this.designer || this.designer.dataset.bound === 'Y') return;
-      this.designer.dataset.bound = 'Y';
-      this.designer.addEventListener('pointerdown', (event) => this._onDesignerPointerDown(event));
-      window.addEventListener('pointermove', (event) => this._onDesignerPointerMove(event));
-      window.addEventListener('pointerup', () => this._onDesignerPointerUp());
-      this.designer.addEventListener('dblclick', (event) => {
-        var editable = event.target.closest('[data-editable="true"]');
-        if (editable) editable.focus();
-      });
-      window.addEventListener('keydown', (event) => {
-        if (this.tab !== 'template') return;
-        if (event.key === 'Escape') {
-          this._selectElement(null);
-          return;
-        }
-        if (event.key === 'Delete') {
-          var active = document.activeElement;
-          var inEditable = active && active !== document.body && this.selectedEl?.contains(active);
-          if (this.selectedEl && !inEditable) {
-            event.preventDefault();
-            this.deleteSelected();
-          }
-        }
-      });
-    },
-
-    _onDesignerPointerDown(event) {
-      if (!this.designer) return;
-      var element = event.target.closest('.doc-free-element');
-      if (!element || !this.designer.contains(element)) {
-        this._selectElement(null);
-        return;
-      }
-      this._selectElement(element);
-      var rect = element.getBoundingClientRect();
-      var canvasRect = this.designer.getBoundingClientRect();
-      this.dragState = {
-        el: element,
-        mode: event.target.classList.contains('doc-resize-handle') ? 'resize' : 'move',
-        startX: event.clientX,
-        startY: event.clientY,
-        left: rect.left - canvasRect.left + this.designer.scrollLeft,
-        top: rect.top - canvasRect.top + this.designer.scrollTop,
-        width: rect.width,
-        height: rect.height
-      };
-      if (!event.target.closest('[contenteditable="true"]')) {
-        event.preventDefault();
-      }
-    },
-
-    _onDesignerPointerMove(event) {
-      if (!this.dragState || !this.designer) return;
-      var dx = event.clientX - this.dragState.startX;
-      var dy = event.clientY - this.dragState.startY;
-      var el = this.dragState.el;
-      if (this.dragState.mode === 'resize') {
-        var width = Math.max(32, this.dragState.width + dx);
-        el.style.width = Math.round(width) + 'px';
-        if (el.dataset.type !== 'text') {
-          var height = Math.max(24, this.dragState.height + dy);
-          el.style.height = Math.round(height) + 'px';
-        }
-        return;
-      }
-      var maxLeft = Math.max(0, this.designer.clientWidth - el.offsetWidth);
-      var left = Math.max(0, Math.min(maxLeft, this.dragState.left + dx));
-      var top = Math.max(0, this.dragState.top + dy);
-      el.style.left = Math.round(left) + 'px';
-      el.style.top = Math.round(top) + 'px';
-      this._ensureCanvasHeight(el);
-    },
-
-    _onDesignerPointerUp() {
-      this.dragState = null;
-    },
-
-    _selectElement(element) {
-      if (this.selectedEl) this.selectedEl.classList.remove('is-selected');
-      this.selectedEl = element;
-      if (this.selectedEl) this.selectedEl.classList.add('is-selected');
-      if (this.selectedEl) {
-        this.fontSize = this.selectedEl.style.fontSize || this.fontSize || '14pt';
-        this.fontColor = this._rgbToHex(this.selectedEl.style.color) || this.fontColor || '#222222';
-      }
-      this.hasSelection = !!element;
-      this.fieldKey = element?.dataset?.fieldKey || '';
-    },
-
-    setFieldKey(key) {
-      if (!this.selectedEl) return;
-      if (key) {
-        this.selectedEl.dataset.fieldKey = key;
-      } else {
-        delete this.selectedEl.dataset.fieldKey;
-      }
-      this._updateFieldBadge(this.selectedEl);
-    },
-
-    _updateFieldBadge(el) {
-      if (!el) return;
-      var old = el.querySelector('.doc-field-badge');
-      if (old) old.remove();
-      var key = el.dataset.fieldKey;
-      if (key && _FIELD_LABELS[key]) {
-        var badge = document.createElement('span');
-        badge.className = 'doc-field-badge';
-        badge.textContent = _FIELD_LABELS[key];
-        el.appendChild(badge);
-      }
-    },
-
-    _ensureCanvasHeight(el) {
-      if (!this.designer || !el) return;
-      var bottom = el.offsetTop + el.offsetHeight + 48;
-      if (bottom > this.designer.offsetHeight) {
-        this.designer.style.minHeight = bottom + 'px';
-      }
-    },
-
-    _addElement(type, left, top, width, height, innerHtml) {
-      if (!this.designer) return null;
-      if (this._isDuplicateCreate(type)) return null;
-      var el = document.createElement('div');
-      el.className = 'doc-free-element';
-      el.dataset.type = type;
-      el.style.left = Math.round(left) + 'px';
-      el.style.top = Math.round(top) + 'px';
-      el.style.width = Math.round(width) + 'px';
-      if (type !== 'text') el.style.height = Math.round(height) + 'px';
-      el.style.fontSize = this.fontSize || '14pt';
-      el.style.color = this.fontColor || '#222222';
-      el.innerHTML = innerHtml + '<span class="doc-resize-handle" aria-hidden="true"></span>';
-      this.designer.appendChild(el);
-      this._makeEditable(el);
-      this._selectElement(el);
-      this._ensureCanvasHeight(el);
-      return el;
-    },
-
-    _normalizeDesignerChildren(canvas) {
-      Array.from(canvas.querySelectorAll('.doc-free-element')).forEach((el) => {
-        if (!el.querySelector('.doc-resize-handle')) {
-          var handle = document.createElement('span');
-          handle.className = 'doc-resize-handle';
-          handle.setAttribute('aria-hidden', 'true');
-          el.appendChild(handle);
-        }
-        this._makeEditable(el);
-        el.classList.remove('is-selected');
-        this._updateFieldBadge(el);
-      });
-    },
-
-    _makeEditable(root) {
-      root.querySelectorAll('.doc-el-text, .doc-el-check span, .doc-el-sign span, .doc-free-table th, .doc-free-table td')
-        .forEach((el) => {
-          if (el.querySelector('.doc-free-input')) return;
-          el.dataset.editable = 'true';
-          el.setAttribute('contenteditable', 'true');
-        });
-    },
-
-    _isDuplicateCreate(key) {
-      if (!key) return false;
-      var now = Date.now();
-      if (_lastCreateKey === key && now - _lastCreateAt < 300) {
-        return true;
-      }
-      _lastCreateKey = key;
-      _lastCreateAt = now;
-      return false;
-    },
-
-    _rgbToHex(value) {
-      var color = String(value || '').trim();
-      if (/^#[0-9a-f]{6}$/i.test(color)) return color;
-      var match = color.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/i);
-      if (!match) return '';
-      return '#' + [match[1], match[2], match[3]]
-        .map(v => Math.max(0, Math.min(255, Number(v))).toString(16).padStart(2, '0'))
-        .join('');
-    },
-
-    applySelectedStyle() {
-      if (!this.selectedEl) {
-        this.showToast(false, '스타일을 적용할 요소를 선택해 주세요.');
-        return;
-      }
-      this.selectedEl.style.fontSize = this.fontSize || '14pt';
-      this.selectedEl.style.color = this.fontColor || '#222222';
-    },
-
-    _serializeDesigner() {
-      if (!this.designer) return '';
-      var clone = this.designer.cloneNode(true);
-      clone.removeAttribute('id');
-      clone.removeAttribute('aria-label');
-      clone.removeAttribute('data-bound');
-      clone.className = 'doc-free-layout';
-      clone.querySelectorAll('.is-selected').forEach(el => el.classList.remove('is-selected'));
-      clone.querySelectorAll('.doc-resize-handle').forEach(el => el.remove());
-      clone.querySelectorAll('.doc-field-badge').forEach(el => el.remove());
-      clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
-      clone.querySelectorAll('[data-editable]').forEach(el => el.removeAttribute('data-editable'));
-      return clone.outerHTML;
-    },
-
-    _escapeHtml(value) {
-      return String(value || '').replace(/[&<>"']/g, function (ch) {
-        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
-      });
-    },
-
-    addText() {
-      this._addElement('text', 32, 32, 360, 56,
-        '<div class="doc-el-text" data-editable="true" contenteditable="true">텍스트를 입력하세요.</div>');
-    },
-
-    addInputBox() {
-      this._addElement('input', 240, 92, 260, 32, '<div class="doc-el-box"></div>');
-    },
-
-    addCheckbox() {
-      this._addElement('checkbox', 48, 172, 260, 36,
-        '<div class="doc-el-check"><span data-editable="true" contenteditable="true">체크 항목</span></div>');
-    },
-
-    addSignature() {
-      var label = prompt('서명자 표시명을 입력하세요.', '보호자');
-      if (label == null) return;
-      this._addElement('signature', 720, 92, 160, 54,
-        '<div class="doc-el-sign"><span data-editable="true" contenteditable="true">' + this._escapeHtml(label || '서명자') + '</span></div>');
-    },
-
-    addGuardianBlock(kind) {
-      var title = kind === 'secondary' ? '부보호자' : '주보호자';
-      this._addElement('guardian-table', 24, kind === 'secondary' ? 250 : 48, 918, 168,
-        '<table class="doc-free-table"><tbody>'
-        + '<tr><th rowspan="3" style="width:48px;">' + title.split('').join('<br>') + '</th><th style="width:118px;">성명</th><td><span class="doc-free-input"></span></td><td style="width:380px;">(관계 : <span class="doc-free-input" style="width:150px;"></span> )</td><td style="width:84px;">(서 명)</td></tr>'
-        + '<tr><th>주소</th><td colspan="3"><span class="doc-free-input" style="width:640px;"></span></td></tr>'
-        + '<tr><th>휴대폰 번호</th><td><span class="doc-free-input"></span></td><td colspan="2"><span class="doc-el-check"><span>비용안내</span></span></td></tr>'
-        + '</tbody></table>');
-    },
-
-    addReasonBlock() {
-      this._addElement('reason-table', 24, 456, 918, 194,
-        '<table class="doc-free-table"><tbody>'
-        + '<tr><th colspan="3" style="height:56px; text-align:left;">환자가 아닌 보호자의 동의사유</th></tr>'
-        + '<tr><td><span class="doc-el-check"><span>환자의 신체적 정신적 장애로<br>의사결정 불가</span></span></td><td><span class="doc-el-check"><span>환자위임</span></span></td><td><span class="doc-el-check"><span>응급 상황</span></span></td></tr>'
-        + '<tr><td><span class="doc-el-check"><span>내용 설명 시 환자의 심신에 중대한<br>영향 우려</span></span></td><td><span class="doc-el-check"><span>미성년자</span></span></td><td></td></tr>'
-        + '</tbody></table>');
-    },
-
-    deleteSelected() {
-      if (!this.selectedEl) return;
-      this.selectedEl.remove();
-      this.selectedEl = null;
-      this.hasSelection = false;
-      this.fieldKey = '';
-    }
   };
 }
+</script>
+<script type="module">
+import { Editor } from 'https://esm.sh/@tiptap/core@2.11.5';
+import StarterKit from 'https://esm.sh/@tiptap/starter-kit@2.11.5';
+import Underline from 'https://esm.sh/@tiptap/extension-underline@2.11.5';
+import TextStyle from 'https://esm.sh/@tiptap/extension-text-style@2.11.5';
+import { Color } from 'https://esm.sh/@tiptap/extension-color@2.11.5';
+import TextAlign from 'https://esm.sh/@tiptap/extension-text-align@2.11.5';
+import Table from 'https://esm.sh/@tiptap/extension-table@2.11.5';
+import TableRow from 'https://esm.sh/@tiptap/extension-table-row@2.11.5';
+import TableCell from 'https://esm.sh/@tiptap/extension-table-cell@2.11.5';
+import TableHeader from 'https://esm.sh/@tiptap/extension-table-header@2.11.5';
+import { Node, mergeAttributes } from 'https://esm.sh/@tiptap/core@2.11.5';
+
+const FieldChip = Node.create({
+  name: 'fieldChip',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  addAttributes() {
+    return {
+      fieldKey: { default: '' },
+      label:    { default: '' },
+    };
+  },
+  parseHTML() {
+    return [{ tag: 'span[data-field-key]' }];
+  },
+  renderHTML({ node }) {
+    return ['span', {
+      'data-field-key': node.attrs.fieldKey,
+      class: 'tiptap-field-chip',
+      contenteditable: 'false',
+    }, '{{' + node.attrs.label + '}}'];
+  },
+});
+
+window._TipTapEditor = {
+  create(el, { onUpdate, onSelectionUpdate }) {
+    return new Editor({
+      element: el,
+      extensions: [
+        StarterKit,
+        Underline,
+        TextStyle,
+        Color,
+        TextAlign.configure({ types: ['heading', 'paragraph'] }),
+        Table.configure({ resizable: true }),
+        TableRow,
+        TableCell,
+        TableHeader,
+        FieldChip,
+      ],
+      onUpdate,
+      onSelectionUpdate,
+    });
+  },
+};
+window.dispatchEvent(new Event('tiptap:ready'));
 </script>
 </body>
 </html>
