@@ -260,6 +260,95 @@
     .btn-kakao:hover { opacity: .9; }
     .btn-kakao svg { width: 20px; height: 20px; flex-shrink: 0; }
 
+    /* ── 상담 선택 화면 ── */
+    .consult-home {
+      flex: 1;
+      overflow-y: auto;
+      padding: 48px 20px;
+      background: #f4f6f9;
+    }
+    .consult-home__inner {
+      width: min(960px, 100%);
+      margin: 0 auto;
+    }
+    .consult-home__eyebrow {
+      font-size: 13px;
+      font-weight: 700;
+      color: #6b7280;
+      margin-bottom: 10px;
+    }
+    .consult-home h2 {
+      font-size: 28px;
+      line-height: 1.35;
+      font-weight: 800;
+      color: #1a2332;
+      margin-bottom: 10px;
+    }
+    .consult-home__desc {
+      font-size: 15px;
+      line-height: 1.7;
+      color: #6b7280;
+      margin-bottom: 28px;
+    }
+    .consult-menu {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .consult-card {
+      min-height: 220px;
+      padding: 24px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #fff;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      transition: border-color .15s, box-shadow .15s, transform .15s;
+    }
+    .consult-card:hover,
+    .consult-card:focus {
+      border-color: #1a2332;
+      box-shadow: 0 8px 24px rgba(26,35,50,.10);
+      transform: translateY(-2px);
+      outline: none;
+    }
+    .consult-card__icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: #eef2f7;
+      color: #1a2332;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+    }
+    .consult-card__icon svg {
+      width: 24px;
+      height: 24px;
+    }
+    .consult-card h3 {
+      font-size: 19px;
+      font-weight: 800;
+      color: #1a2332;
+      margin-bottom: 8px;
+    }
+    .consult-card p {
+      font-size: 14px;
+      line-height: 1.65;
+      color: #6b7280;
+      margin-bottom: 20px;
+    }
+    .consult-card__cta {
+      margin-top: auto;
+      font-size: 14px;
+      font-weight: 700;
+      color: #1a2332;
+    }
+
     /* ── 상태 바 ── */
     .status-bar {
       flex-shrink: 0;
@@ -273,6 +362,25 @@
       color: #6b7280;
       min-height: 36px;
     }
+    .status-bar__main {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .btn-home {
+      margin-left: auto;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      color: #374151;
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      min-height: 28px;
+    }
+    .btn-home:hover { border-color: #1a2332; color: #1a2332; }
     .status-dot {
       width: 8px;
       height: 8px;
@@ -441,7 +549,11 @@
       .faq-panel.open { transform: translateX(0); }
       .btn-faq-toggle { display: flex; }
       .msg { max-width: 85%; }
-      .chat-header h1 { display: none; }
+      .chat-header h1 {
+        display: block;
+        font-size: 14px;
+      }
+      .chat-header h1.chat-header__title--compact { display: none; }
       .user-nickname { display: none; }
       .chat-header__right { gap: 6px; }
       .btn-logout { padding: 6px 10px; }
@@ -484,6 +596,11 @@
     .quick-btn:hover { background: #1a2332; color: #fff; }
     .quick-btn--primary { background: #1a2332; color: #fff; }
     .quick-btn--primary:hover { opacity: .85; }
+
+    @media (max-width: 900px) {
+      .consult-menu { grid-template-columns: 1fr; }
+      .consult-card { min-height: auto; }
+    }
   </style>
 </head>
 <body>
@@ -492,13 +609,13 @@
   <!-- ── Header ── -->
   <header class="chat-header">
     <div class="chat-header__left">
-      <button class="btn-faq-toggle" @click="faqOpen = !faqOpen" :aria-expanded="faqOpen">
+      <button class="btn-faq-toggle" x-show="currentView === 'chat'" @click="faqOpen = !faqOpen" :aria-expanded="faqOpen">
         <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
         </svg>
         자주 묻는 질문
       </button>
-      <h1>효사랑가족요양병원 상담</h1>
+      <h1 :class="{ 'chat-header__title--compact': currentView === 'chat' }">효사랑가족요양병원 상담</h1>
     </div>
     <div class="chat-header__right" x-show="user.loggedIn">
       <img class="user-avatar" :src="user.thumbnail || ''" :alt="user.nickname"
@@ -509,12 +626,12 @@
   </header>
 
   <!-- 모바일 FAQ 오버레이 배경 -->
-  <div class="faq-overlay-bg" :class="{ open: faqOpen }" @click="faqOpen = false"></div>
+  <div class="faq-overlay-bg" :class="{ open: faqOpen && currentView === 'chat' }" @click="faqOpen = false"></div>
 
   <div class="main-content">
 
     <!-- ── FAQ 패널 ── -->
-    <aside class="faq-panel" :class="{ open: faqOpen }">
+    <aside class="faq-panel" :class="{ open: faqOpen }" x-show="user.loggedIn && currentView === 'chat'">
       <div class="faq-panel__header">
         <div class="faq-panel__title">자주 묻는 질문</div>
         <div class="cat-tabs">
@@ -563,14 +680,63 @@
         </div>
       </div>
 
+      <!-- 상담 선택 -->
+      <template x-if="user.loggedIn && currentView === 'home'">
+        <section class="consult-home">
+          <div class="consult-home__inner">
+            <div class="consult-home__eyebrow">CONSULTATION</div>
+            <h2>필요한 상담 방식을 선택해 주세요</h2>
+            <p class="consult-home__desc">FAQ 기반 온라인 상담부터 상담 접수, 상담사 연결까지 원하는 방식으로 바로 시작할 수 있습니다.</p>
+
+            <div class="consult-menu">
+              <button class="consult-card" type="button" @click="openOnlineConsultation()">
+                <span class="consult-card__icon">
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v9c0 1.1-.9 2-2 2H8l-5 4V6c0-1.1.9-2 2-2zm2 4v2h12V8H6zm0 4v2h8v-2H6z"/>
+                  </svg>
+                </span>
+                <h3>온라인 상담</h3>
+                <p>궁금한 내용을 입력하면 관련 FAQ를 먼저 안내하고, 필요 시 상담사 연결로 이어집니다.</p>
+                <span class="consult-card__cta">질문 시작하기</span>
+              </button>
+
+              <button class="consult-card" type="button" @click="openCounselReception()">
+                <span class="consult-card__icon">
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M7 2h10c1.1 0 2 .9 2 2v16c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2zm1 5h8V5H8v2zm0 4h8V9H8v2zm0 4h5v-2H8v2z"/>
+                  </svg>
+                </span>
+                <h3>상담접수</h3>
+                <p>성함, 연락처, 상담 내용을 남기면 담당 상담사가 확인 후 연락드립니다.</p>
+                <span class="consult-card__cta">접수 작성하기</span>
+              </button>
+
+              <button class="consult-card" type="button" @click="openCounselorConnection()">
+                <span class="consult-card__icon">
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M12 12c2.2 0 4-1.8 4-4s-1.8-4-4-4-4 1.8-4 4 1.8 4 4 4zm0 2c-3.3 0-6 1.7-6 3.8V20h12v-2.2c0-2.1-2.7-3.8-6-3.8zm7-3h2V9h-2V7h-2v2h-2v2h2v2h2v-2z"/>
+                  </svg>
+                </span>
+                <h3>상담사연결</h3>
+                <p>상담사와 바로 대화를 시작하고 싶을 때 연결 대기열로 이동합니다.</p>
+                <span class="consult-card__cta">바로 연결하기</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      </template>
+
       <!-- 로그인 후 채팅 -->
-      <template x-if="user.loggedIn">
+      <template x-if="user.loggedIn && currentView === 'chat'">
         <div style="display:flex;flex-direction:column;flex:1;min-height:0;">
 
           <!-- 상태 바 -->
           <div class="status-bar">
-            <span class="status-dot" :class="roomStatus.toLowerCase()"></span>
-            <span x-text="statusText"></span>
+            <span class="status-bar__main">
+              <span class="status-dot" :class="roomStatus.toLowerCase()"></span>
+              <span x-text="statusText"></span>
+            </span>
+            <button class="btn-home" type="button" @click="returnHome()">상담 선택</button>
           </div>
 
           <!-- 메시지 영역 -->
@@ -610,9 +776,6 @@
 
           <!-- 입력 영역 (CLOSED가 아닐 때) -->
           <div class="input-area" x-show="roomStatus !== 'CLOSED'">
-            <div class="quick-actions" x-show="!botStep && roomStatus === 'IDLE'" style="padding: 0 0 8px;">
-              <button class="quick-btn" @click="startCounselFlow()">📋 상담 접수</button>
-            </div>
             <div class="input-area__row">
               <textarea
                 class="chat-input"
@@ -661,6 +824,7 @@ function chatApp() {
     categories: [],
     activeCategory: '',
     faqOpen: false,
+    currentView: 'home', // home | chat
 
     messages: [],
     input: '',
@@ -725,6 +889,7 @@ function chatApp() {
 
       this.roomId = typeof data.id === 'number' ? data.id : Number(data.id);
       this.roomStatus = data.status;
+      this.currentView = 'chat';
 
       const msgRes = await fetch(CTX + '/api/chat/room/' + this.roomId + '/messages?inst=' + this.inst).catch(() => null);
       if (msgRes && msgRes.ok) {
@@ -756,6 +921,41 @@ function chatApp() {
     get filteredFaqs() {
       if (!this.activeCategory) return this.faqs;
       return this.faqs.filter(f => f.category === this.activeCategory);
+    },
+
+    openOnlineConsultation() {
+      this.currentView = 'chat';
+      this.faqOpen = false;
+      this.$nextTick(() => this.$refs.inputEl?.focus());
+    },
+
+    openCounselReception() {
+      this.currentView = 'chat';
+      this.faqOpen = false;
+      if (!this.botStep && this.roomStatus === 'IDLE') {
+        this.startCounselFlow();
+      } else {
+        this.$nextTick(() => this.$refs.inputEl?.focus());
+      }
+    },
+
+    async openCounselorConnection() {
+      this.currentView = 'chat';
+      this.faqOpen = false;
+      if (this.roomId) {
+        this.$nextTick(() => this.scrollBottom());
+        return;
+      }
+      if (!this.roomId) {
+        this.messages.push({ type: 'SYSTEM', text: '상담사 연결을 요청합니다.' });
+      }
+      this.$nextTick(() => this.scrollBottom());
+      await this.connectToCounselor();
+    },
+
+    returnHome() {
+      this.currentView = 'home';
+      this.faqOpen = false;
     },
 
     async sendMessage(event) {
@@ -811,6 +1011,7 @@ function chatApp() {
     },
 
     async connectToCounselor() {
+      this.currentView = 'chat';
       this.sending = true;
       try {
         const res = await fetch(CTX + '/api/chat/room?inst=' + this.inst, { method: 'POST' });
@@ -916,6 +1117,7 @@ function chatApp() {
     },
 
     startCounselFlow() {
+      this.currentView = 'chat';
       this.botStep = 'name';
       this.messages.push({ senderType: 'BOT', senderName: '상담봇', content: '성함을 입력해주세요.' });
       this.$nextTick(() => { this.scrollBottom(); this.$refs.inputEl?.focus(); });
