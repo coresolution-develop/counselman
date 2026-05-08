@@ -37,9 +37,22 @@ public class UserApiController {
     @PostMapping
     @PreAuthorize("hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN') or hasAuthority('ROLE:ASSIGN')")
     public ResponseEntity<?> createUser(@RequestBody Map<String, Object> body, HttpSession session) {
-        String inst = resolveInst(session);
-        if (inst == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        String safe = cs.sanitizeInstPublic(inst);
+        String sessionInst = resolveInst(session);
+        if (sessionInst == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        // PLATFORM_ADMIN(core admin)은 targetInst로 대상 기관 지정 가능
+        String inst = sessionInst;
+        String targetInstFromBody = str(body.get("targetInst"));
+        if (isCoreInst(sessionInst) && !targetInstFromBody.isBlank()) {
+            inst = targetInstFromBody;
+        }
+
+        String safe;
+        try {
+            safe = cs.sanitizeInstPublic(inst);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "유효하지 않은 기관코드입니다."));
+        }
 
         String loginId  = str(body.get("loginId"));
         String password = str(body.get("password"));
@@ -104,9 +117,22 @@ public class UserApiController {
     public ResponseEntity<?> updateUser(@PathVariable int id,
                                         @RequestBody Map<String, Object> body,
                                         HttpSession session) {
-        String inst = resolveInst(session);
-        if (inst == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        String safe = cs.sanitizeInstPublic(inst);
+        String sessionInst = resolveInst(session);
+        if (sessionInst == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        // PLATFORM_ADMIN은 targetInst로 대상 기관 지정 가능
+        String inst = sessionInst;
+        String targetInstFromBody = str(body.get("targetInst"));
+        if (isCoreInst(sessionInst) && !targetInstFromBody.isBlank()) {
+            inst = targetInstFromBody;
+        }
+
+        String safe;
+        try {
+            safe = cs.sanitizeInstPublic(inst);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "유효하지 않은 기관코드입니다."));
+        }
 
         Userdata ud = cs.userInfo(id, inst);
         if (ud == null) return ResponseEntity.notFound().build();
@@ -145,9 +171,17 @@ public class UserApiController {
     // ─────────────────────────────────────────────────
     @PostMapping("/{id}/reset-password")
     @PreAuthorize("hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN') or hasAuthority('ROLE:ASSIGN')")
-    public ResponseEntity<?> resetPassword(@PathVariable int id, HttpSession session) {
-        String inst = resolveInst(session);
-        if (inst == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    public ResponseEntity<?> resetPassword(@PathVariable int id,
+                                           @RequestBody(required = false) Map<String, Object> body,
+                                           HttpSession session) {
+        String sessionInst = resolveInst(session);
+        if (sessionInst == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        String inst = sessionInst;
+        if (body != null && isCoreInst(sessionInst)) {
+            String targetInstFromBody = str(body.get("targetInst"));
+            if (!targetInstFromBody.isBlank()) inst = targetInstFromBody;
+        }
 
         Userdata ud = cs.userInfo(id, inst);
         if (ud == null) return ResponseEntity.notFound().build();
@@ -188,9 +222,16 @@ public class UserApiController {
     // ─────────────────────────────────────────────────
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
-    public ResponseEntity<?> deleteUser(@PathVariable int id, HttpSession session) {
-        String inst = resolveInst(session);
-        if (inst == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    public ResponseEntity<?> deleteUser(@PathVariable int id,
+                                        @RequestParam(required = false) String targetInst,
+                                        HttpSession session) {
+        String sessionInst = resolveInst(session);
+        if (sessionInst == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        String inst = sessionInst;
+        if (isCoreInst(sessionInst) && targetInst != null && !targetInst.isBlank()) {
+            inst = targetInst;
+        }
 
         Userdata ud = cs.userInfo(id, inst);
         if (ud == null) return ResponseEntity.notFound().build();
@@ -235,6 +276,10 @@ public class UserApiController {
     private String resolveInst(HttpSession session) {
         Object v = session.getAttribute("inst");
         return v instanceof String s ? s : null;
+    }
+
+    private boolean isCoreInst(String inst) {
+        return inst != null && "core".equalsIgnoreCase(inst.trim());
     }
 
     private String str(Object v) {

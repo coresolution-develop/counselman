@@ -246,7 +246,7 @@
             </div>
             <div class="field">
               <label class="field__label">연락처</label>
-              <input type="text" class="input" placeholder="010-0000-0000" x-model="form.phone" />
+              <input type="tel" class="input" placeholder="010-0000-0000" maxlength="13" x-model="form.phone" @input="formatPhoneInput()" />
             </div>
             <div class="field">
               <label class="field__label">보호자명</label>
@@ -310,10 +310,12 @@ function intakePage() {
     return { editId: null, name:'', phone:'', guardian:'', prio:'3', status:'접수', time: nowLocal(), note:'', inquiry:'' };
   }
   function formatPhone(v) {
-    const d = (v || '').replace(/\D/g, '');
-    if (d.length === 11) return d.slice(0,3) + '-' + d.slice(3,7) + '-' + d.slice(7);
+    const d = (v || '').replace(/\D/g, '').slice(0, 11);
+    if (!d) return '';
+    if (d.length <= 3) return d;
+    if (d.length <= 7) return d.slice(0,3) + '-' + d.slice(3);
     if (d.length === 10) return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
-    return v || '';
+    return d.slice(0,3) + '-' + d.slice(3,7) + '-' + d.slice(7);
   }
   function postForm(url, params) {
     const c = csrf();
@@ -344,6 +346,10 @@ function intakePage() {
       if (f === 'linked')  return this.rows.filter(r => r.status === '입원상담 연계').length;
       if (f === 'cancel')  return this.rows.filter(r => r.status === '취소').length;
       return 0;
+    },
+
+    formatPhoneInput() {
+      this.form.phone = formatPhone(this.form.phone);
     },
 
     async save() {

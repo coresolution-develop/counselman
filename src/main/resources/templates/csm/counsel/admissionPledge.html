@@ -90,24 +90,13 @@
       .ap-terms-block p { line-height: 1.7; margin: 0 0 4px 0; word-break: keep-all; }
       .ap-terms-block p:empty { min-height: 0.5em; }
       .ap-terms-block strong { font-weight: 700; }
-      .ap-terms-block input.field-input {
-        display: inline-block;
-        min-width: 80px;
-        padding: 1px 6px;
-        font-size: inherit;
-        font-family: inherit;
-        color: #222;
-        background: #eef6fb;
-        border: 1px solid #b8d9ef;
-        border-radius: 3px;
-        outline: none;
-        vertical-align: baseline;
-        line-height: 1.4;
-      }
-      .ap-terms-block input.field-input:focus {
-        border-color: #4a9fd4;
-        background: #fff;
-      }
+      .ap-terms-block table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+      .ap-terms-block table td, .ap-terms-block table th { border: 1px solid #c7c7c7; padding: 6px 10px; min-width: 40px; vertical-align: top; }
+      .ap-terms-block table th { background-color: #fafafa; font-weight: 600; }
+      .ap-terms-block h1 { text-align: center; font-size: 24pt; margin-bottom: 16px; }
+      .ap-terms-block h2 { font-size: 16pt; margin: 16px 0 8px; }
+      .ap-terms-block h3 { font-size: 14pt; margin: 12px 0 6px; }
+      .ap-terms-block hr { border: none; border-top: 1px solid #c7c7c7; margin: 12px 0; }
     </style>
 </head>
 <body class="ap-body">
@@ -152,7 +141,7 @@
             <textarea id="ap_pledge_text" class="ap-hidden-text"
                       th:text="${pledgeTemplateContent}"></textarea>
 
-            <h1 style="text-align: center; font-size: 30pt; padding-top: 70px;">입 원 서 약 서</h1>
+            <h1 style="text-align: center; font-size: 30pt; padding-top: 70px;" th:text="${docType}">입원서약서</h1>
 
             <div class="bold" style="font-size: 16pt; color:#303030; display: flex; align-items: start; margin: 0 auto; width: 966px;">※ 환자의 인적사항</div>
             <div style="text-align: center; margin-bottom: 20px;">
@@ -198,6 +187,7 @@
             <div class="light ap-terms-block" style="font-size:14pt; color:#222222; width:966px; margin: 0 auto;" th:utext="${pledgeTemplateContent}"></div>
             <br>
 
+            <th:block th:if="${docType == '입원서약서'}">
             <div style="text-align: center; margin-bottom: 27px;">
                 <table class="ap-guardian-table" style="text-align: center; width: 966px; margin-left: auto; margin-right: auto; border: 1px solid #c7c7c7;" >
                     <colgroup>
@@ -379,6 +369,7 @@
                     </table>
                 </div>
             </div>
+            </th:block>
 
             <div style="position: relative;">
                 <div class="normal" style="text-align: right; position: relative; z-index: 1; color: #222222; width: 966px; height: 42px; margin: 0 auto; display: flex; justify-content: flex-end; align-items: center;">
@@ -465,21 +456,14 @@ window.ADMISSION_PLEDGE_BOOTSTRAP = {
   function injectFields() {
     var block = document.querySelector('.ap-terms-block');
     if (!block) return;
-    block.querySelectorAll('span[data-field-key]').forEach(function (chip) {
-      var key = chip.dataset.fieldKey;
-      var label = chip.dataset.label || chip.textContent.replace(/[{}]/g, '').trim();
+    block.querySelectorAll('[data-field-key]').forEach(function (wrapper) {
+      var key = wrapper.dataset.fieldKey;
       var value = getValue(key);
-
-      var input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'field-input';
-      input.value = value;
-      input.placeholder = label;
-      input.dataset.fieldKey = key;
-      // size adapts to content width (approx)
-      input.size = Math.max(label.length + 2, value.length + 2, 8);
-
-      chip.parentNode.replaceChild(input, chip);
+      if (!value) return;
+      var target = wrapper.querySelector('.doc-el-text, .doc-el-box, .doc-el-sign span');
+      if (target) {
+        target.textContent = value;
+      }
     });
   }
 

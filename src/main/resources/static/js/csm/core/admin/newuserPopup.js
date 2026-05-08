@@ -53,39 +53,40 @@ $(document).ready(function() {
 	});
 	$('#submit-btn').click(function() {
 		var us_col_02 = $('#us_col_02').val();
-//		var us_col_05 = $('#us_col_05 option:selected');
-		
+		var us_col_03 = $('#us_col_03').val();
+		var us_col_12 = $('#us_col_12').val();
+
+		if (!us_col_02 || !us_col_02.trim()) {
+			alert('아이디를 입력해주세요.');
+			return;
+		}
+		if (!us_col_03 || !us_col_03.trim()) {
+			alert('비밀번호를 입력해주세요.');
+			return;
+		}
+		if (!us_col_12 || !us_col_12.trim()) {
+			alert('이름을 입력해주세요.');
+			return;
+		}
+
 		var select = document.getElementById('us_col_05');
 		var selectedOption = select.options[select.selectedIndex];
 		var us_col_04 = selectedOption.getAttribute('data-col-03');
-		
-//		var us_col_08 = $('#us_col_08 option:selected');
-//		var us_col_07 = $('#us_col_07 option:selected');
-//		var us_col_11 = $('#us_col_11').val();
-//		var us_col_06 = $('#us_col_06').val();
-		
+
+		if (!us_col_04 || !us_col_04.trim()) {
+			alert('소속기관을 선택해주세요.');
+			return;
+		}
+
 		var us_col_05 = $('#us_col_05').val();
-		var us_col_08 = $('#us_col_08').val();
-		var us_col_07 = $('#us_col_07').val();
-		var us_col_11 = $('#us_col_11').val();
 		var us_col_06 = $('#us_col_06').val();
-		var us_col_12 = $('#us_col_12').val();
+		var us_col_08 = $('#us_col_08').val();
+		var us_col_10 = $('#us_col_10').val();
+		var us_col_11 = $('#us_col_11').val();
 		var us_col_13 = $('#us_col_13').val();
 		var us_col_14 = $('#us_col_14').val();
-		var us_col_10 = $('#us_col_10').val();
-	    var id_col_07 = $('#id_col_07').val();
-		console.log('사용자명(로그인 아이디) :'+ us_col_02);
-		console.log('소속기관 : ' + us_col_05);
-		console.log('소속기관코드 : ' + us_col_04);
-		console.log('사용권한 : ' + us_col_08);
-		console.log('사용상태 : ' + us_col_07);
-		console.log('Email : ' + us_col_11);
-		console.log('이름 : ' + us_col_12);
-		console.log('직급 : ' + us_col_14);
-		console.log('연락처 : ' + us_col_10);
-		console.log('비고 : ' +  us_col_06);
-		console.log('부서 : ' +  us_col_13);
-		console.log('기관코드: '+id_col_07);
+		var id_col_07 = $('#id_col_07').val();
+
 		spinner();
 		$.ajax({
 			url : '/csm/core/newuser/post',
@@ -93,10 +94,10 @@ $(document).ready(function() {
 			dataType: 'json',
 			data: {
 				'us_col_02': us_col_02,
+				'us_col_03': us_col_03,
 				'us_col_04': us_col_04,
 				'us_col_05': us_col_05,
 				'us_col_06': us_col_06,
-				'us_col_07': us_col_07,
 				'us_col_08': us_col_08,
 				'us_col_10': us_col_10,
 				'us_col_11': us_col_11,
@@ -107,12 +108,16 @@ $(document).ready(function() {
 			},
 			success: function(response) {
 				hideSpinner();
-				console.log('Success: ', response);
-				showSuccessModal('이메일로 비밀번호 설정 링크를 전송하였습니다.');
+				if (response && response.result === true) {
+					showSuccessModal('사용자 등록이 완료되었습니다.');
+				} else {
+					alert(response && response.msg ? response.msg : '사용자 등록에 실패했습니다.');
+				}
 			},
 			error: function(error) {
+				hideSpinner();
 				console.log('Error: ', error);
-
+				alert('서버 오류가 발생했습니다.');
 			}
 		});
 	});

@@ -1507,6 +1507,8 @@ public class CsmAuthService {
         }
         String safe = sanitizeInst(inst);
         ensureAdmissionPledgeTable(safe);
+        ensureTableColumn("csm", "counsel_admission_pledge_" + safe, "document_type",
+                "ALTER TABLE csm.counsel_admission_pledge_" + safe + " ADD COLUMN document_type varchar(50) DEFAULT '입원서약서'");
 
         String patientName = safeText(pledge == null ? null : pledge.get("patient_name"), 100);
         String patientPhone = safeText(pledge == null ? null : pledge.get("patient_phone"), 50);
@@ -1530,6 +1532,8 @@ public class CsmAuthService {
         String pledgeText = safeText(pledge == null ? null : pledge.get("pledge_text"), 5000);
         String signatureData = safeText(pledge == null ? null : pledge.get("signature_data"), 4_000_000);
         String pageInkData = safeText(pledge == null ? null : pledge.get("page_ink_data"), 3_000_000);
+        String documentType = safeText(pledge == null ? null : pledge.get("document_type"), 50);
+        if (documentType.isBlank()) documentType = "입원서약서";
         signatureData = normalizeAdmissionSignatureData(signatureData);
         pageInkData = normalizePngData(pageInkData, 3_000_000);
 
@@ -1538,8 +1542,8 @@ public class CsmAuthService {
                 + "agreed_yn, signer_name, signer_relation, "
                 + "guardian_name, guardian_relation, guardian_addr, guardian_phone, guardian_cost_yn, "
                 + "sub_guardian_name, sub_guardian_relation, sub_guardian_addr, sub_guardian_phone, sub_guardian_cost_yn, "
-                + "signed_at, pledge_text, signature_data, page_ink_data) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                + "signed_at, pledge_text, signature_data, page_ink_data, document_type) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
                 + "ON DUPLICATE KEY UPDATE "
                 + "patient_name = VALUES(patient_name), "
                 + "patient_phone = VALUES(patient_phone), "
@@ -1562,13 +1566,14 @@ public class CsmAuthService {
                 + "signed_at = VALUES(signed_at), "
                 + "pledge_text = VALUES(pledge_text), "
                 + "signature_data = VALUES(signature_data), "
-                + "page_ink_data = VALUES(page_ink_data)";
+                + "page_ink_data = VALUES(page_ink_data), "
+                + "document_type = VALUES(document_type)";
         try {
             return jdbcTemplate.update(sql, csIdx, patientName, patientPhone, patientBirth, room, chartNo,
                     agreedYn, signerName, signerRelation,
                     guardianName, guardianRelation, guardianAddr, guardianPhone, guardianCostYn,
                     subGuardianName, subGuardianRelation, subGuardianAddr, subGuardianPhone, subGuardianCostYn,
-                    signedAt, pledgeText, signatureData, pageInkData);
+                    signedAt, pledgeText, signatureData, pageInkData, documentType);
         } catch (Exception e) {
             log.warn("[admission-pledge] upsert fail inst={}, cs_idx={}, err={}", safe, csIdx, e.toString());
             return 0;
@@ -1597,6 +1602,7 @@ public class CsmAuthService {
         String sql = "SELECT p.cs_idx, p.patient_name, p.patient_phone, p.patient_birth, p.room, p.chart_no, "
                 + "p.agreed_yn, p.signer_name, p.signer_relation, "
                 + "p.guardian_name, p.guardian_phone, p.signed_at, p.created_at, p.updated_at, "
+                + "COALESCE(p.document_type, '입원서약서') AS document_type, "
                 + "CASE WHEN p.signature_data IS NOT NULL AND LENGTH(p.signature_data) > 0 THEN 'Y' ELSE 'N' END AS signed_yn, "
                 + "CASE WHEN p.page_ink_data IS NOT NULL AND LENGTH(p.page_ink_data) > 0 THEN 'Y' ELSE 'N' END AS ink_yn, "
                 + "d.cs_col_01, d.cs_col_03, d.cs_col_16, d.cs_col_17, d.cs_col_19, d.cs_col_21 "

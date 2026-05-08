@@ -911,6 +911,10 @@ public class PageController {
         if (ud.getUs_col_09() == 0) {
             ud.setUs_col_09(1);
         }
+        // 이 폼으로는 PLATFORM_ADMIN(0) 계정 생성 불가 — 최소 기관관리자(1)로 제한
+        if (ud.getUs_col_08() <= 0) {
+            ud.setUs_col_08(1);
+        }
         int ins = cs.userInsert(ud);
         if (ins <= 0) {
             return Map.of("result", false, "msg", "사용자 생성 실패");
@@ -5664,6 +5668,7 @@ public class PageController {
             @RequestParam(value = "draftKey", required = false) String draftKey,
             @RequestParam(value = "returnUrl", required = false) String returnUrl,
             @RequestParam(value = "standalone", defaultValue = "false") boolean standalone,
+            @RequestParam(value = "docType", defaultValue = "입원서약서") String docType,
             @RequestParam(value = "patientName", required = false) String patientName,
             @RequestParam(value = "gender", required = false) String gender,
             @RequestParam(value = "birth", required = false) String birth,
@@ -5697,21 +5702,49 @@ public class PageController {
         String storedChartNo = safeObjectString(admissionPledge.get("chart_no"));
         String storedRoom = safeObjectString(admissionPledge.get("room"));
 
+        String effectiveName    = !storedPatientName.isBlank() ? storedPatientName : safeString(patientName).trim();
+        String effectiveRoom    = !storedRoom.isBlank() ? storedRoom : safeString(room).trim();
+        String effectiveChartNo = !storedChartNo.isBlank() ? storedChartNo : safeString(chartNo).trim();
+        String effectiveBirth   = !storedPatientBirth.isBlank() ? storedPatientBirth : safeString(birth).trim();
+        String effectivePhone   = !storedPatientPhone.isBlank() ? storedPatientPhone : safeString(phone).trim();
+
         model.addAttribute("inst", inst);
         model.addAttribute("csIdx", csIdx);
         model.addAttribute("draftKey", safeString(draftKey).trim());
         model.addAttribute("returnUrl", normalizeInternalReturnUrl(returnUrl));
-        model.addAttribute("patientName", !storedPatientName.isBlank() ? storedPatientName : safeString(patientName).trim());
+        model.addAttribute("docType", safeString(docType).trim().isBlank() ? "입원서약서" : safeString(docType).trim());
+        model.addAttribute("patientName", effectiveName);
         model.addAttribute("gender", safeString(gender).trim());
-        model.addAttribute("birth", !storedPatientBirth.isBlank() ? storedPatientBirth : safeString(birth).trim());
-        model.addAttribute("chartNo", !storedChartNo.isBlank() ? storedChartNo : safeString(chartNo).trim());
-        model.addAttribute("room", !storedRoom.isBlank() ? storedRoom : safeString(room).trim());
-        model.addAttribute("phone", !storedPatientPhone.isBlank() ? storedPatientPhone : safeString(phone).trim());
+        model.addAttribute("birth", effectiveBirth);
+        model.addAttribute("chartNo", effectiveChartNo);
+        model.addAttribute("room", effectiveRoom);
+        model.addAttribute("phone", effectivePhone);
         String savedPledgeText = safeObjectString(admissionPledge.get("pledge_text"));
-        String activeTemplate = cs.getActivePledgeTemplateContent(inst);
+        String activeTemplate = cs.getActivePledgeTemplateContent(inst, docType);
         String pledgeTemplateContent = !savedPledgeText.isBlank()
                 ? savedPledgeText
                 : (activeTemplate != null && !activeTemplate.isBlank() ? activeTemplate : DEFAULT_PLEDGE_TEMPLATE_CONTENT);
+
+        java.util.Map<String, String> fieldValues = new java.util.LinkedHashMap<>();
+        fieldValues.put("환자명",         effectiveName);
+        fieldValues.put("생년월일",        effectiveBirth);
+        fieldValues.put("환자 연락처",     effectivePhone);
+        fieldValues.put("병실",           effectiveRoom);
+        fieldValues.put("차트번호",        effectiveChartNo);
+        fieldValues.put("주보호자 성명",   safeObjectString(admissionPledge.get("guardian_name")));
+        fieldValues.put("주보호자 연락처", safeObjectString(admissionPledge.get("guardian_phone")));
+        fieldValues.put("주보호자 관계",   safeObjectString(admissionPledge.get("guardian_relation")));
+        fieldValues.put("주보호자 주소",   safeObjectString(admissionPledge.get("guardian_addr")));
+        fieldValues.put("부보호자 성명",   safeObjectString(admissionPledge.get("sub_guardian_name")));
+        fieldValues.put("부보호자 연락처", safeObjectString(admissionPledge.get("sub_guardian_phone")));
+        fieldValues.put("부보호자 관계",   safeObjectString(admissionPledge.get("sub_guardian_relation")));
+        fieldValues.put("부보호자 주소",   safeObjectString(admissionPledge.get("sub_guardian_addr")));
+        for (java.util.Map.Entry<String, String> entry : fieldValues.entrySet()) {
+            if (!entry.getValue().isBlank()) {
+                pledgeTemplateContent = pledgeTemplateContent.replace("{{" + entry.getKey() + "}}", entry.getValue());
+            }
+        }
+
         model.addAttribute("defaultAdmissionPledgeText", DEFAULT_ADMISSION_PLEDGE_TEXT);
         model.addAttribute("pledgeTemplateContent", pledgeTemplateContent);
         model.addAttribute("admissionPledge", admissionPledge);

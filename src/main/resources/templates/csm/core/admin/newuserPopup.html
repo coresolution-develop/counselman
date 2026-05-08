@@ -25,6 +25,8 @@
   <div class="user-header"><h3>새로운 사용자 정보를 입력해 주세요.</h3></div>
   <label>아이디 <font color="red">*</font></label>
   <input type="text" class="user-area" id="us_col_02" name="us_col_02" required="required" />
+  <label>비밀번호 <font color="red">*</font></label>
+  <input type="password" class="user-area" id="us_col_03" name="us_col_03" autocomplete="new-password" required="required" />
   <label>이름 <font color="red">*</font></label>
   <input type="text" class="user-area" id="us_col_12" name="us_col_12" required="required" />
   <label>소속기관 <font color="red">*</font></label>
@@ -45,8 +47,13 @@
   <input type="text" class="user-area" id="us_col_11" name="us_col_11" required="required" />
   <label>연락처 <font color="red">*</font></label>
   <input type="text" class="user-area" id="us_col_10" name="us_col_10" required="required" />
-  <label>비고 <font color="red">*</font></label>
-  <input type="text" class="user-area" id="us_col_06" name="us_col_06" required="required" />
+  <label>권한</label>
+  <select class="user-area" id="us_col_08" name="us_col_08">
+    <option value="1">기관 관리자</option>
+    <option value="2" selected="selected">일반 사용자</option>
+  </select>
+  <label>비고</label>
+  <input type="text" class="user-area" id="us_col_06" name="us_col_06" />
   <div class="btn-area">
     <button class="blue-btn" id="submit-btn" type="button">등록</button>
     <button class="gray-btn" type="button" onclick="window.close()">취소</button>

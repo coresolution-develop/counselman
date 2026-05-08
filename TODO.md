@@ -115,11 +115,13 @@
 - [x] `PlatformStoreService.institutionExists()` / `setInstitutionUseYn()` 추가
 - [x] 신규 기관 저장 시 COUNSELMAN 자동 활성화
 - [x] `POST /admin/institutions/status` (활성/비활성), `POST /api/admin/institutions` (JSON API)
+- [ ] 기관 관리자 사용자 권한 저장 오류 조사 — `/admin/user-access` 저장 시 오류 발생. 기관 관리자 권한 범위, `instCode` resolve, `enabledServiceCodes` null/empty 처리, DB update/insert 조건 확인 필요
 
 ---
 
 ## 🔍 검증 필요 (브라우저 확인 미완료)
 
+- [ ] **MediPlat 기관 관리자 사용자 권한 저장 오류** — `https://dev.sosyge.net/admin`에서 기관 관리자로 로그인 후 사용자 권한을 수정하고 저장할 때 오류 발생. 서버 검증 환경에서 재현됨. 요청 URL/응답 코드/서버 로그 확인 후 `MediplatController.saveUserAccess()` / `PlatformStoreService.saveUserServiceAccess()` 흐름 점검 필요
 - [ ] **CSM 허용 버튼** (`/csm/access`) — toggle POST가 `mp_user_service` 행을 실제로 생성/수정하는지 확인 필요 (현재 FALH 데이터 없어 모두 비활성 상태로 표시됨)
 - [ ] **서류관리 TipTap 에디터** — 표 삽입·필드 칩 삽입 → 저장 → 입원서약서(`admissionPledge.html`) 렌더링 흐름 브라우저 E2E 검증
 - [ ] **채팅 페이지 폰트 CORS** — `common.css`의 `fonts.gstatic.com/ea/notosanskr/v2/` URL이 deprecated되어 CORS 에러 발생. `https://fonts.googleapis.com/css2?family=Noto+Sans+KR` CDN 또는 로컬 폰트로 교체 필요

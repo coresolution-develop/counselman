@@ -193,6 +193,35 @@
     }
     .tpl-toast.is-success { border-color: #10b981; color: #065f46; }
     .tpl-toast.is-error   { border-color: #ef4444; color: #991b1b; }
+
+    /* ── AI 생성 모달 ── */
+    .ai-modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,.4);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 10000;
+    }
+    .ai-modal {
+      background: #fff; border-radius: 12px; padding: 28px 28px 20px;
+      width: 540px; max-width: calc(100vw - 32px);
+      box-shadow: 0 8px 32px rgba(0,0,0,.18);
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .ai-modal-title {
+      font-size: 16px; font-weight: 700; color: var(--text-primary);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .ai-modal-desc {
+      font-size: 13px; color: var(--text-secondary); line-height: 1.6;
+    }
+    .ai-modal textarea {
+      width: 100%; height: 120px; padding: 10px 12px; font-size: 13px;
+      border: 1px solid var(--border-default); border-radius: 6px;
+      resize: vertical; font-family: inherit; line-height: 1.6;
+      box-sizing: border-box;
+    }
+    .ai-modal textarea:focus { outline: none; border-color: var(--brand); }
+    .ai-modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .ai-generating-hint { font-size: 12px; color: var(--text-tertiary); }
   </style>
 </head>
 <body>
@@ -213,9 +242,20 @@
           <h1 class="page__title">서류관리</h1>
           <p class="page__subtitle">입원서약서와 상담 문서의 작성 상태를 확인하고 연결합니다</p>
         </div>
-        <button class="btn btn--primary" @click="openNewPledge()">
-          <svg><use href="#i-edit"/></svg> 입원서약서 작성
-        </button>
+        <div style="position:relative;">
+          <button class="btn btn--primary" @click="showNewDocMenu = !showNewDocMenu" @click.outside="showNewDocMenu = false">
+            <svg><use href="#i-edit"/></svg> 문서 작성 <span style="font-size:10px;margin-left:2px;">▾</span>
+          </button>
+          <div x-show="showNewDocMenu" x-cloak @click.outside="showNewDocMenu = false"
+               style="position:absolute;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid var(--border-default);border-radius:6px;padding:4px;min-width:160px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:200;">
+            <template x-for="type in allDocTypes" :key="type">
+              <button type="button"
+                      style="display:block;width:100%;text-align:left;padding:7px 12px;font-size:13px;border:none;background:none;cursor:pointer;border-radius:4px;"
+                      @mouseenter="$el.style.background='#f1f5f9'" @mouseleave="$el.style.background=''"
+                      @click="openNewPledge(type)" x-text="type + ' 작성'"></button>
+            </template>
+          </div>
+        </div>
       </div>
 
       <!-- ── 탭 + 탭 패널 ── -->
@@ -396,6 +436,7 @@
 
               <div class="tpl-save-row">
                 <p class="tpl-hint">서약서 내용을 자유롭게 작성하세요. <strong>+ 필드 삽입</strong>으로 환자명·병실 등 자동입력 항목을 추가할 수 있습니다.</p>
+                <button class="btn btn--outline" @click="openAiModal()" style="background:#f0fdf4;border-color:#86efac;color:#166534;">✨ AI로 생성</button>
                 <button class="btn btn--outline" @click="saveAsNew()">새 템플릿으로 저장</button>
                 <button class="btn btn--primary" :disabled="saving" @click="saveTemplate()">
                   <span x-show="saving">저장 중…</span>
@@ -409,6 +450,28 @@
           <div class="tpl-toast" x-show="toast.visible" x-transition
                :class="toast.ok ? 'is-success' : 'is-error'"
                x-text="toast.message">
+          </div>
+
+          <!-- AI 생성 모달 -->
+          <div class="ai-modal-backdrop" x-show="aiModal" x-cloak @click.self="aiModal = false">
+            <div class="ai-modal">
+              <div class="ai-modal-title">✨ AI 템플릿 생성</div>
+              <p class="ai-modal-desc">
+                어떤 종류의 서약서 템플릿을 만들고 싶은지 설명해 주세요.<br>
+                예: "요양병원용 기본 입원서약서", "동의서 형식으로 주요 항목 포함"
+              </p>
+              <textarea id="aiPromptTextarea" x-model="aiPrompt" placeholder="서약서 형식, 포함할 항목 등을 자유롭게 입력하세요…"
+                        @keydown.meta.enter.prevent="generateWithAI()"
+                        @keydown.ctrl.enter.prevent="generateWithAI()"></textarea>
+              <div class="ai-modal-actions">
+                <span class="ai-generating-hint" x-show="aiGenerating">AI가 생성 중입니다…</span>
+                <button class="btn btn--outline" @click="aiModal = false" :disabled="aiGenerating">취소</button>
+                <button class="btn btn--primary" @click="generateWithAI()" :disabled="aiGenerating || !aiPrompt.trim()">
+                  <span x-show="aiGenerating">생성 중…</span>
+                  <span x-show="!aiGenerating">생성</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -473,11 +536,16 @@ function docPageState() {
     textAlign: 'left',
     textColor: '#222222',
     isInTable: false,
+    showNewDocMenu: false,
     showFieldMenu: false,
     fieldList: _TIPTAP_FIELDS,
     toast: { visible: false, ok: true, message: '' },
+    aiModal: false,
+    aiPrompt: '',
+    aiGenerating: false,
     _onTiptapReady: null,
     _onMessage: null,
+    _onBeforeCache: null,
 
     init() {
       this.$watch('tab', val => {
@@ -494,19 +562,28 @@ function docPageState() {
           window.location.reload();
         }
       };
+      this._onBeforeCache = () => {
+        if (_editorInstance) { _editorInstance.destroy(); _editorInstance = null; }
+        var el = document.getElementById('tiptapEditor');
+        if (el) el.innerHTML = '';
+      };
       window.addEventListener('tiptap:ready', this._onTiptapReady);
       window.addEventListener('message', this._onMessage);
+      document.addEventListener('turbo:before-cache', this._onBeforeCache);
     },
 
     destroy() {
       if (this._onTiptapReady) window.removeEventListener('tiptap:ready', this._onTiptapReady);
       if (this._onMessage) window.removeEventListener('message', this._onMessage);
+      if (this._onBeforeCache) document.removeEventListener('turbo:before-cache', this._onBeforeCache);
       if (_editorInstance) { _editorInstance.destroy(); _editorInstance = null; }
     },
 
-    openNewPledge() {
+    openNewPledge(docType) {
+      docType = docType || '입원서약서';
+      this.showNewDocMenu = false;
       var ctx = this._ctx();
-      var url = ctx + '/counsel/admission-pledge?standalone=true';
+      var url = ctx + '/counsel/admission-pledge?standalone=true&docType=' + encodeURIComponent(docType);
       var popup = window.open(url, 'csmAdmissionPledge',
         'width=1400,height=920,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no');
       if (!popup) {
@@ -565,6 +642,7 @@ function docPageState() {
       if (_editorInstance) return;
       var el = document.getElementById('tiptapEditor');
       if (!el || !window._TipTapEditor) return;
+      el.innerHTML = '';
       var self = this;
       var active = this.filteredTemplates().find(t => String(t.is_active) === 'Y');
       var initialContent = active
@@ -648,11 +726,51 @@ function docPageState() {
     mergeCells() {
       if (!_editorInstance) return;
       _editorInstance.chain().focus().mergeCells().run();
+      this._syncMarks();
     },
 
     splitCell() {
       if (!_editorInstance) return;
       _editorInstance.chain().focus().splitCell().run();
+      this._syncMarks();
+    },
+
+    openAiModal() {
+      this.aiPrompt = '';
+      this.aiModal = true;
+      this.$nextTick(() => {
+        var ta = document.getElementById('aiPromptTextarea');
+        if (ta) ta.focus();
+      });
+    },
+
+    async generateWithAI() {
+      var prompt = this.aiPrompt.trim();
+      if (!prompt || this.aiGenerating) return;
+      this.aiGenerating = true;
+      try {
+        var res = await fetch(this._ctx() + '/api/pledge-templates/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            [this._csrfHeader()]: this._csrf()
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({ prompt })
+        });
+        var data = await res.json();
+        if (data.ok && data.html) {
+          this.aiModal = false;
+          this._loadEditorContent(data.html);
+          this.showToast(true, 'AI가 템플릿을 생성했습니다. 내용을 확인 후 저장하세요.');
+        } else {
+          this.showToast(false, data.error || 'AI 생성에 실패했습니다.');
+        }
+      } catch {
+        this.showToast(false, '서버 오류가 발생했습니다.');
+      } finally {
+        this.aiGenerating = false;
+      }
     },
 
     insertField(f) {
@@ -873,6 +991,16 @@ import TableCell from 'https://esm.sh/@tiptap/extension-table-cell@2.11.5';
 import TableHeader from 'https://esm.sh/@tiptap/extension-table-header@2.11.5';
 import { Node, mergeAttributes } from 'https://esm.sh/@tiptap/core@2.11.5';
 
+const FIELD_KEY_LABEL_MAP = {
+  patient_name: '환자명', patient_birth: '생년월일', patient_phone: '환자 연락처',
+  room: '병실', chart_no: '차트번호',
+  guardian_name: '주보호자 성명', guardian_phone: '주보호자 연락처',
+  guardian_relation: '주보호자 관계', guardian_addr: '주보호자 주소',
+  sub_guardian_name: '부보호자 성명', sub_guardian_phone: '부보호자 연락처',
+  sub_guardian_relation: '부보호자 관계', sub_guardian_addr: '부보호자 주소',
+  signed_at: '서명일시',
+};
+
 const FieldChip = Node.create({
   name: 'fieldChip',
   group: 'inline',
@@ -886,7 +1014,10 @@ const FieldChip = Node.create({
       },
       label: {
         default: '',
-        parseHTML: el => el.getAttribute('data-label') || '',
+        parseHTML: el => {
+          var key = el.getAttribute('data-field-key') || '';
+          return el.getAttribute('data-label') || FIELD_KEY_LABEL_MAP[key] || key;
+        },
       },
     };
   },
@@ -894,12 +1025,13 @@ const FieldChip = Node.create({
     return [{ tag: 'span[data-field-key]' }];
   },
   renderHTML({ node }) {
+    var label = node.attrs.label || FIELD_KEY_LABEL_MAP[node.attrs.fieldKey] || node.attrs.fieldKey;
     return ['span', {
       'data-field-key': node.attrs.fieldKey,
-      'data-label':     node.attrs.label,
+      'data-label': label,
       class: 'tiptap-field-chip',
       contenteditable: 'false',
-    }, '{{' + node.attrs.label + '}}'];
+    }, '{{' + label + '}}'];
   },
 });
 

@@ -800,6 +800,7 @@
       sub_guardian_cost_yn: subGuardianCostYn,
       signed_at: signedAt,
       pledge_text: pledgeText,
+      document_type: String(bootstrap.docType || '입원서약서').trim(),
       signature_data: String(signatureInput.value || '').trim(),
       page_ink_data: String(pageInkInput.value || '').trim(),
       pen_color: penState.color,

@@ -38,15 +38,20 @@ $(document).ready(function() {
 		var id_col_07 = $('#id_col_07').val();
 		var id_col_08 = $('#id_col_08').val();
 		var id_col_05 = $('#id_col_05').val();
-		
-		console.log('기관명 :'+ id_col_02);
-		console.log('기관코드 : ' + id_col_03);
-		console.log('사업자등록번호 : ' + id_col_09);
-		console.log('연락처1 : ' + id_col_06);
-		console.log('연락처2 : ' + id_col_07);
-		console.log('주소 : ' + id_col_08);
-		console.log('비고 : ' +  id_col_05);
-		console.log('');
+
+		if (!id_col_02 || !id_col_02.trim()) {
+			alert('기관명을 입력해주세요.');
+			return;
+		}
+		if (!id_col_03 || !id_col_03.trim()) {
+			alert('기관코드를 입력해주세요.');
+			return;
+		}
+		if (!/^[A-Za-z0-9_]{2,20}$/.test(id_col_03.trim())) {
+			alert('기관코드는 영문/숫자/밑줄(_)만 사용 가능하며 2~20자이어야 합니다.');
+			return;
+		}
+
 		spinner();
 		$.ajax({
 			url : '/csm/core/inst/post',
@@ -63,12 +68,16 @@ $(document).ready(function() {
 			},
 			success: function(response) {
 				hideSpinner();
-				console.log('Success: ', response);
-				showSuccessModal('기관생성이 완료되었습니다.');
+				if (response && response.result === '1') {
+					showSuccessModal('기관생성이 완료되었습니다.');
+				} else {
+					alert(response && response.msg ? response.msg : '기관 생성에 실패했습니다. 기관코드가 중복되거나 유효하지 않을 수 있습니다.');
+				}
 			},
 			error: function(error) {
+				hideSpinner();
 				console.log('Error: ', error);
-
+				alert('서버 오류가 발생했습니다.');
 			}
 		});
 	});

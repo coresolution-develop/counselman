@@ -189,6 +189,13 @@ curl -I http://127.0.0.1:8082/login
 
 루트에서 한 번에 `csm WAR`와 `mediplat JAR`를 같이 만들 수 있습니다.
 
+PROD 배포 전에는 [`docs/prod-deploy-checklist.md`](docs/prod-deploy-checklist.md)를 먼저 확인하고,
+운영 서버에서 아래 사전 점검 스크립트를 실행합니다.
+
+```bash
+./scripts/prod-preflight.sh
+```
+
 DEV 배포 묶음:
 
 ```bash
