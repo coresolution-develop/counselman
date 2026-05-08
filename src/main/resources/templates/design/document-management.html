@@ -354,9 +354,9 @@
 
               <!-- TipTap 툴바 -->
               <div class="tiptap-toolbar" role="toolbar" aria-label="서약서 템플릿 도구">
-                <button type="button" class="tiptap-tool-btn" :class="{ 'is-active': marks.bold }" @click="cmd('bold')" title="굵게">B</button>
-                <button type="button" class="tiptap-tool-btn" :class="{ 'is-active': marks.italic }" @click="cmd('italic')" title="기울임"><em>I</em></button>
-                <button type="button" class="tiptap-tool-btn" :class="{ 'is-active': marks.underline }" @click="cmd('underline')" title="밑줄"><u>U</u></button>
+                <button type="button" class="tiptap-tool-btn" :class="{ 'is-active': marks.bold }" @mousedown.prevent="cmd('bold')" title="굵게">B</button>
+                <button type="button" class="tiptap-tool-btn" :class="{ 'is-active': marks.italic }" @mousedown.prevent="cmd('italic')" title="기울임"><em>I</em></button>
+                <button type="button" class="tiptap-tool-btn" :class="{ 'is-active': marks.underline }" @mousedown.prevent="cmd('underline')" title="밑줄"><u>U</u></button>
                 <div class="tiptap-tool-sep"></div>
                 <select class="tiptap-tool-select" @change="setHeading(+$event.target.value)" :value="headingLevel">
                   <option value="0">본문</option>
@@ -365,19 +365,19 @@
                   <option value="3">제목 3</option>
                 </select>
                 <div class="tiptap-tool-sep"></div>
-                <button type="button" class="tiptap-tool-btn" :class="{ 'is-active': textAlign === 'left' }" @click="cmd('alignLeft')" title="왼쪽 정렬">&#8676;</button>
-                <button type="button" class="tiptap-tool-btn" :class="{ 'is-active': textAlign === 'center' }" @click="cmd('alignCenter')" title="가운데 정렬">&#8803;</button>
-                <button type="button" class="tiptap-tool-btn" :class="{ 'is-active': textAlign === 'right' }" @click="cmd('alignRight')" title="오른쪽 정렬">&#8677;</button>
+                <button type="button" class="tiptap-tool-btn" :class="{ 'is-active': textAlign === 'left' }" @mousedown.prevent="cmd('alignLeft')" title="왼쪽 정렬">&#8676;</button>
+                <button type="button" class="tiptap-tool-btn" :class="{ 'is-active': textAlign === 'center' }" @mousedown.prevent="cmd('alignCenter')" title="가운데 정렬">&#8803;</button>
+                <button type="button" class="tiptap-tool-btn" :class="{ 'is-active': textAlign === 'right' }" @mousedown.prevent="cmd('alignRight')" title="오른쪽 정렬">&#8677;</button>
                 <div class="tiptap-tool-sep"></div>
                 <input type="color" class="tiptap-tool-color" x-model="textColor" @change="setTextColor(textColor)" title="글자 색상" />
                 <div class="tiptap-tool-sep"></div>
-                <button type="button" class="tiptap-tool-btn" @click="insertTable()" title="표 삽입">⊞ 표</button>
+                <button type="button" class="tiptap-tool-btn" @mousedown.prevent="insertTable()" title="표 삽입">⊞ 표</button>
                 <div class="tiptap-tool-sep"></div>
                 <div style="position:relative;">
-                  <button type="button" class="tiptap-field-btn" @click="showFieldMenu = !showFieldMenu">+ 필드 삽입</button>
+                  <button type="button" class="tiptap-field-btn" @mousedown.prevent="showFieldMenu = !showFieldMenu">+ 필드 삽입</button>
                   <div class="tiptap-field-menu" x-show="showFieldMenu" @click.outside="showFieldMenu = false" x-cloak>
                     <template x-for="f in fieldList" :key="f.key">
-                      <button type="button" class="tiptap-field-menu-item" @click="insertField(f)" x-text="f.label"></button>
+                      <button type="button" class="tiptap-field-menu-item" @mousedown.prevent="insertField(f)" x-text="f.label"></button>
                     </template>
                   </div>
                 </div>
