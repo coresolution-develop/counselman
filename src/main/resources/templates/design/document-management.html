@@ -725,14 +725,24 @@ function docPageState() {
 
     mergeCells() {
       if (!_editorInstance) return;
-      _editorInstance.chain().focus().mergeCells().run();
-      this._syncMarks();
+      var ed = _editorInstance;
+      setTimeout(() => {
+        if (!ed || ed.isDestroyed) return;
+        ed.view.focus();
+        ed.chain().mergeCells().run();
+        this._syncMarks();
+      }, 0);
     },
 
     splitCell() {
       if (!_editorInstance) return;
-      _editorInstance.chain().focus().splitCell().run();
-      this._syncMarks();
+      var ed = _editorInstance;
+      setTimeout(() => {
+        if (!ed || ed.isDestroyed) return;
+        ed.view.focus();
+        ed.chain().splitCell().run();
+        this._syncMarks();
+      }, 0);
     },
 
     openAiModal() {
