@@ -556,10 +556,6 @@ function docPageState() {
       var el = document.getElementById('tiptapEditor');
       if (!el || !window._TipTapEditor) return;
       var self = this;
-      this._editor = window._TipTapEditor.create(el, {
-        onUpdate() { self._syncMarks(); },
-        onSelectionUpdate() { self._syncMarks(); },
-      });
       var active = this.filteredTemplates().find(t => String(t.is_active) === 'Y');
       var initialContent = active
         ? (active.content || '')
@@ -568,8 +564,11 @@ function docPageState() {
         this.editingId = active.id;
         this.editingName = active.template_name || '';
       }
-      // defer setContent by one tick so the editor view finishes its initial render
-      setTimeout(() => this._loadEditorContent(initialContent), 0);
+      this._editor = window._TipTapEditor.create(el, {
+        content: initialContent,
+        onUpdate() { self._syncMarks(); },
+        onSelectionUpdate() { self._syncMarks(); },
+      });
     },
 
     _syncMarks() {
@@ -880,9 +879,10 @@ const FieldChip = Node.create({
 });
 
 window._TipTapEditor = {
-  create(el, { onUpdate, onSelectionUpdate }) {
+  create(el, { content, onUpdate, onSelectionUpdate }) {
     return new Editor({
       element: el,
+      content: content || '',
       extensions: [
         StarterKit,
         Underline,
