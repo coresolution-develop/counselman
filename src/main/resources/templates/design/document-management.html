@@ -374,7 +374,7 @@
                 <button type="button" class="tiptap-tool-btn" @mousedown.prevent="insertTable()" title="표 삽입">⊞ 표</button>
                 <div class="tiptap-tool-sep"></div>
                 <div style="position:relative;">
-                  <button type="button" class="tiptap-field-btn" @mousedown.prevent="showFieldMenu = !showFieldMenu">+ 필드 삽입</button>
+                  <button type="button" class="tiptap-field-btn" @mousedown.prevent="showFieldMenu = !showFieldMenu" @click.stop>+ 필드 삽입</button>
                   <div class="tiptap-field-menu" x-show="showFieldMenu" @click.outside="showFieldMenu = false" x-cloak>
                     <template x-for="f in fieldList" :key="f.key">
                       <button type="button" class="tiptap-field-menu-item" @mousedown.prevent="insertField(f)" x-text="f.label"></button>
