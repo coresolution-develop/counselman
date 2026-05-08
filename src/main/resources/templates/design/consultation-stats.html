@@ -950,6 +950,8 @@
 <script>
 function statsPage() {
   let _charts = [];
+  let _resizeHandler = null;
+  let _mutationObs = null;
 
   return {
     loading: true,
@@ -1155,11 +1157,19 @@ function statsPage() {
       this.readPageState();
       if (this.hasData) this.loadStatistics();
       this.$nextTick(() => {
-        window.addEventListener('resize', () => this.resizeAll());
-        const obs = new MutationObserver(() => this.resizeAll());
+        _resizeHandler = () => this.resizeAll();
+        window.addEventListener('resize', _resizeHandler);
+        _mutationObs = new MutationObserver(() => this.resizeAll());
         const app = document.querySelector('.app');
-        if (app) obs.observe(app, { attributes: true, attributeFilter: ['data-sidebar'] });
+        if (app) _mutationObs.observe(app, { attributes: true, attributeFilter: ['data-sidebar'] });
       });
+    },
+
+    destroy() {
+      _charts.forEach(c => c?.dispose?.());
+      _charts = [];
+      if (_resizeHandler) { window.removeEventListener('resize', _resizeHandler); _resizeHandler = null; }
+      if (_mutationObs) { _mutationObs.disconnect(); _mutationObs = null; }
     },
 
     // ===== Deltas =====
@@ -1214,6 +1224,7 @@ function statsPage() {
       _charts.forEach(c => c?.dispose?.());
       _charts = [];
       if (!window.echarts || !this.periodCols.length) return;
+      if (!this.$refs.chart1 || !this.$refs.chart2 || !this.$refs.chart3area || !this.$refs.chart3donut) return;
       const baseAxis = {
         axisLine: { lineStyle: { color: '#cbd5e1' } },
         axisTick: { show: false },

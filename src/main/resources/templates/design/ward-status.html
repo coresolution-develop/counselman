@@ -732,40 +732,50 @@ function wardStatus() {
     ],
     onlyAvailable: false,
 
+    _pageshowHandler: null,
+
     init() {
       if (sessionStorage.getItem('wardboard_stale') === '1') {
         sessionStorage.removeItem('wardboard_stale');
         location.reload();
         return;
       }
-      window.addEventListener('pageshow', e => {
-        if (e.persisted) location.reload();
-      });
+      this._pageshowHandler = e => { if (e.persisted) location.reload(); };
+      window.addEventListener('pageshow', this._pageshowHandler);
+    },
+
+    destroy() {
+      if (this._pageshowHandler) {
+        window.removeEventListener('pageshow', this._pageshowHandler);
+        this._pageshowHandler = null;
+      }
     },
 
     get totals() {
-      const L = this.wards.reduce((s, w) => s + w.licensed, 0);
-      const O = this.wards.reduce((s, w) => s + w.occupied, 0);
-      const A = this.wards.reduce((s, w) => s + w.available, 0);
-      const D = this.wards.reduce((s, w) => s + w.discharge, 0);
-      const P = this.wards.reduce((s, w) => s + w.afternoon, 0);
+      const ws = Array.isArray(this.wards) ? this.wards : [];
+      const L = ws.reduce((s, w) => s + (w?.licensed  || 0), 0);
+      const O = ws.reduce((s, w) => s + (w?.occupied  || 0), 0);
+      const A = ws.reduce((s, w) => s + (w?.available || 0), 0);
+      const D = ws.reduce((s, w) => s + (w?.discharge || 0), 0);
+      const P = ws.reduce((s, w) => s + (w?.afternoon || 0), 0);
       return { licensed: L, occupied: O, available: A, occupancy: L > 0 ? Math.round((O / L) * 100) : 0, discharge: D, afternoon: P };
     },
 
     get filteredWards() {
-      const activeKeys = this.filters.filter(f => f.on).map(f => f.key);
+      const ws = Array.isArray(this.wards) ? this.wards : [];
+      const activeKeys = (this.filters || []).filter(f => f.on).map(f => f.key);
       const labelMap = { diaper: '기저귀', oxygen: '산소', suction: '석션', walk: '보행' };
-      let wards = this.wards;
+      let wards = ws;
       if (activeKeys.length) {
         wards = wards.map(w => ({
           ...w,
-          rooms: w.rooms.filter(r => activeKeys.every(k => r.care.includes(labelMap[k]))),
+          rooms: (w?.rooms || []).filter(r => activeKeys.every(k => (r?.care || []).includes(labelMap[k]))),
         })).filter(w => w.rooms.length > 0);
       }
       if (this.onlyAvailable) {
         wards = wards.map(w => ({
           ...w,
-          rooms: w.rooms.filter(r => r.available > 0 || r.afternoon > 0),
+          rooms: (w?.rooms || []).filter(r => (r?.available || 0) > 0 || (r?.afternoon || 0) > 0),
         })).filter(w => w.rooms.length > 0);
       }
       return wards;
