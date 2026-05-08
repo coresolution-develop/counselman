@@ -444,6 +444,7 @@ var _TIPTAP_FIELDS = [
 ];
 
 function docPageState() {
+  var _editorInstance = null; // NOT reactive — must stay outside Alpine's proxy
   return {
     tab: location.hash === '#template' ? 'template' : 'list',
     templates: Array.isArray(_pledgeTemplates) ? _pledgeTemplates : [],
@@ -461,7 +462,6 @@ function docPageState() {
     editingId: null,
     editingName: '',
     saving: false,
-    _editor: null,
     marks: {},
     headingLevel: 0,
     textAlign: 'left',
@@ -494,7 +494,7 @@ function docPageState() {
     destroy() {
       if (this._onTiptapReady) window.removeEventListener('tiptap:ready', this._onTiptapReady);
       if (this._onMessage) window.removeEventListener('message', this._onMessage);
-      if (this._editor) { this._editor.destroy(); this._editor = null; }
+      if (_editorInstance) { _editorInstance.destroy(); _editorInstance = null; }
     },
 
     openNewPledge() {
@@ -519,7 +519,7 @@ function docPageState() {
     switchDocType(type) {
       if (this.docType === type) return;
       this.docType = type;
-      if (!this._editor) return;
+      if (!_editorInstance) return;
       var active = this.filteredTemplates().find(t => String(t.is_active) === 'Y');
       if (active) {
         this.editingId = active.id;
@@ -555,7 +555,7 @@ function docPageState() {
     },
 
     _initEditor() {
-      if (this._editor) return;
+      if (_editorInstance) return;
       var el = document.getElementById('tiptapEditor');
       if (!el || !window._TipTapEditor) return;
       var self = this;
@@ -567,7 +567,7 @@ function docPageState() {
         this.editingId = active.id;
         this.editingName = active.template_name || '';
       }
-      this._editor = window._TipTapEditor.create(el, {
+      _editorInstance = window._TipTapEditor.create(el, {
         content: initialContent,
         onUpdate() { self._syncMarks(); },
         onSelectionUpdate() { self._syncMarks(); },
@@ -575,21 +575,21 @@ function docPageState() {
     },
 
     _syncMarks() {
-      if (!this._editor) return;
+      if (!_editorInstance) return;
       this.marks = {
-        bold:      this._editor.isActive('bold'),
-        italic:    this._editor.isActive('italic'),
-        underline: this._editor.isActive('underline'),
+        bold:      _editorInstance.isActive('bold'),
+        italic:    _editorInstance.isActive('italic'),
+        underline: _editorInstance.isActive('underline'),
       };
-      this.headingLevel = [1,2,3].find(n => this._editor.isActive('heading', { level: n })) || 0;
-      this.textAlign = ['left','center','right','justify'].find(a => this._editor.isActive({ textAlign: a })) || 'left';
+      this.headingLevel = [1,2,3].find(n => _editorInstance.isActive('heading', { level: n })) || 0;
+      this.textAlign = ['left','center','right','justify'].find(a => _editorInstance.isActive({ textAlign: a })) || 'left';
     },
 
     cmd(name) {
-      if (!this._editor) return;
-      var ed = this._editor;
+      if (!_editorInstance) return;
+      var ed = _editorInstance;
       setTimeout(() => {
-        if (!ed) return;
+        if (!ed || ed.isDestroyed) return;
         var chain = ed.chain();
         if (name === 'bold')             chain.toggleBold();
         else if (name === 'italic')      chain.toggleItalic();
@@ -604,10 +604,10 @@ function docPageState() {
     },
 
     setHeading(level) {
-      if (!this._editor) return;
-      var ed = this._editor;
+      if (!_editorInstance) return;
+      var ed = _editorInstance;
       setTimeout(() => {
-        if (!ed) return;
+        if (!ed || ed.isDestroyed) return;
         var chain = ed.chain();
         if (level === 0) chain.setParagraph();
         else chain.toggleHeading({ level });
@@ -618,46 +618,43 @@ function docPageState() {
     },
 
     setTextColor(color) {
-      if (!this._editor) return;
-      var ed = this._editor;
+      if (!_editorInstance) return;
+      var ed = _editorInstance;
       setTimeout(() => {
-        if (!ed) return;
+        if (!ed || ed.isDestroyed) return;
         ed.chain().setColor(color).run();
         ed.view.focus();
       }, 0);
     },
 
     insertTable() {
-      if (!this._editor) return;
-      var ed = this._editor;
+      if (!_editorInstance) return;
+      var ed = _editorInstance;
       setTimeout(() => {
-        if (!ed) return;
+        if (!ed || ed.isDestroyed) return;
         ed.chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
         ed.view.focus();
       }, 0);
     },
 
     insertField(f) {
-      if (!this._editor) return;
+      if (!_editorInstance) return;
       var key = f.key;
       var label = f.label;
       this.showFieldMenu = false;
-      // setTimeout defers TipTap command until Alpine finishes its DOM update for showFieldMenu,
-      // preventing "mismatched transaction" from overlapping state changes
       setTimeout(() => {
-        if (!this._editor) return;
-        this._editor.commands.insertContent({ type: 'fieldChip', attrs: { fieldKey: key, label: label } });
+        if (!_editorInstance || _editorInstance.isDestroyed) return;
+        _editorInstance.commands.insertContent({ type: 'fieldChip', attrs: { fieldKey: key, label: label } });
       }, 0);
     },
 
     _loadEditorContent(html) {
-      if (!this._editor) return;
-      var ed = this._editor;
+      if (!_editorInstance) return;
+      var ed = _editorInstance;
       var content = String(html || '').trim();
       setTimeout(() => {
-        if (!ed) return;
+        if (!ed || ed.isDestroyed) return;
         if (!content) { ed.commands.setContent('<p></p>'); return; }
-        // 구형 캔버스 HTML → 일반 텍스트로 변환
         if (content.includes('doc-free-layout') || content.includes('doc-free-element')) {
           var tmp = document.createElement('div');
           tmp.innerHTML = content;
@@ -670,11 +667,11 @@ function docPageState() {
     },
 
     _getEditorContent() {
-      return this._editor ? this._editor.getHTML() : '';
+      return _editorInstance ? _editorInstance.getHTML() : '';
     },
 
     loadPreset() {
-      if (!this._editor) return;
+      if (!_editorInstance) return;
       var label = this.docType === '입원서약서' ? '표준 서약서 내용' : '빈 캔버스';
       if (!confirm('현재 편집 중인 내용을 ' + label + '으로 교체할까요?')) return;
       this._loadEditorContent(this.docType === '입원서약서' ? (_defaultPledgeTemplateContent || '') : '');
@@ -694,7 +691,7 @@ function docPageState() {
     },
 
     async saveTemplate() {
-      if (!this._editor) return;
+      if (!_editorInstance) return;
       var content = this._getEditorContent();
       if (!content || content === '<p></p>') {
         this.showToast(false, '내용을 입력해 주세요.');
