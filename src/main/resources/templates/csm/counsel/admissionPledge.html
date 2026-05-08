@@ -90,6 +90,24 @@
       .ap-terms-block p { line-height: 1.7; margin: 0 0 4px 0; word-break: keep-all; }
       .ap-terms-block p:empty { min-height: 0.5em; }
       .ap-terms-block strong { font-weight: 700; }
+      .ap-terms-block input.field-input {
+        display: inline-block;
+        min-width: 80px;
+        padding: 1px 6px;
+        font-size: inherit;
+        font-family: inherit;
+        color: #222;
+        background: #eef6fb;
+        border: 1px solid #b8d9ef;
+        border-radius: 3px;
+        outline: none;
+        vertical-align: baseline;
+        line-height: 1.4;
+      }
+      .ap-terms-block input.field-input:focus {
+        border-color: #4a9fd4;
+        background: #fff;
+      }
     </style>
 </head>
 <body class="ap-body">
@@ -447,14 +465,21 @@ window.ADMISSION_PLEDGE_BOOTSTRAP = {
   function injectFields() {
     var block = document.querySelector('.ap-terms-block');
     if (!block) return;
-    block.querySelectorAll('[data-field-key]').forEach(function (wrapper) {
-      var key = wrapper.dataset.fieldKey;
+    block.querySelectorAll('span[data-field-key]').forEach(function (chip) {
+      var key = chip.dataset.fieldKey;
+      var label = chip.dataset.label || chip.textContent.replace(/[{}]/g, '').trim();
       var value = getValue(key);
-      if (!value) return;
-      var target = wrapper.querySelector('.doc-el-text, .doc-el-box, .doc-el-sign span');
-      if (target) {
-        target.textContent = value;
-      }
+
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'field-input';
+      input.value = value;
+      input.placeholder = label;
+      input.dataset.fieldKey = key;
+      // size adapts to content width (approx)
+      input.size = Math.max(label.length + 2, value.length + 2, 8);
+
+      chip.parentNode.replaceChild(input, chip);
     });
   }
 

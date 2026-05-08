@@ -880,8 +880,14 @@ const FieldChip = Node.create({
   atom: true,
   addAttributes() {
     return {
-      fieldKey: { default: '' },
-      label:    { default: '' },
+      fieldKey: {
+        default: '',
+        parseHTML: el => el.getAttribute('data-field-key') || '',
+      },
+      label: {
+        default: '',
+        parseHTML: el => el.getAttribute('data-label') || '',
+      },
     };
   },
   parseHTML() {
@@ -890,6 +896,7 @@ const FieldChip = Node.create({
   renderHTML({ node }) {
     return ['span', {
       'data-field-key': node.attrs.fieldKey,
+      'data-label':     node.attrs.label,
       class: 'tiptap-field-chip',
       contenteditable: 'false',
     }, '{{' + node.attrs.label + '}}'];
