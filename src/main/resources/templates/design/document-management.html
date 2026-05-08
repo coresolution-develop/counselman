@@ -469,6 +469,8 @@ function docPageState() {
     showFieldMenu: false,
     fieldList: _TIPTAP_FIELDS,
     toast: { visible: false, ok: true, message: '' },
+    _onTiptapReady: null,
+    _onMessage: null,
 
     init() {
       this.$watch('tab', val => {
@@ -477,21 +479,22 @@ function docPageState() {
       if (this.tab === 'template') {
         this.$nextTick(() => this._initEditor());
       }
-      var _onTiptapReady = () => {
+      this._onTiptapReady = () => {
         if (this.tab === 'template') this._initEditor();
       };
-      var _onMessage = (e) => {
+      this._onMessage = (e) => {
         if (e.data?.type === 'csm-admission-pledge') {
           window.location.reload();
         }
       };
-      window.addEventListener('tiptap:ready', _onTiptapReady);
-      window.addEventListener('message', _onMessage);
-      this.$cleanup(() => {
-        window.removeEventListener('tiptap:ready', _onTiptapReady);
-        window.removeEventListener('message', _onMessage);
-        if (this._editor) { this._editor.destroy(); this._editor = null; }
-      });
+      window.addEventListener('tiptap:ready', this._onTiptapReady);
+      window.addEventListener('message', this._onMessage);
+    },
+
+    destroy() {
+      if (this._onTiptapReady) window.removeEventListener('tiptap:ready', this._onTiptapReady);
+      if (this._onMessage) window.removeEventListener('message', this._onMessage);
+      if (this._editor) { this._editor.destroy(); this._editor = null; }
     },
 
     openNewPledge() {
