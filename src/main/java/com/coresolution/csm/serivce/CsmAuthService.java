@@ -1936,18 +1936,8 @@ public class CsmAuthService {
         reservation.setCompleted_at(safeText(row.get("completed_at"), 19));
         reservation.setCreated_at(safeText(row.get("created_at"), 19));
         reservation.setUpdated_at(safeText(row.get("updated_at"), 19));
-        String openedAt = safeText(row.get("opened_at"), 19);
-        reservation.setOpened_at(openedAt);
-        if (!openedAt.isBlank()) {
-            try {
-                LocalDateTime openedTime = LocalDateTime.parse(openedAt,
-                        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-                reservation.setBeingWorkedOn(
-                        openedTime.isAfter(LocalDateTime.now().minusMinutes(60)));
-            } catch (Exception ignored) {
-                reservation.setBeingWorkedOn(false);
-            }
-        }
+        reservation.setOpened_at(safeText(row.get("opened_at"), 19));
+        reservation.setBeingWorkedOn(false);
         return reservation;
     }
 

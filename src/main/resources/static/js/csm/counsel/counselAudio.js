@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function () {
+(function () {
   const startRecordingBtn = document.getElementById('startRecordingBtn');
   const stopRecordingBtn = document.getElementById('stopRecordingBtn');
   const uploadAudioFileBtn = document.getElementById('uploadAudioFileBtn');
@@ -1183,4 +1183,4 @@ document.addEventListener('DOMContentLoaded', function () {
 
   ensureAudioTempKey();
   fetchAudioList();
-});
+})();

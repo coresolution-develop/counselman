@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function () {
+(function () {
   const uploadBtn = document.getElementById('uploadCounselFileBtn');
   const fileInput = document.getElementById('counselFileInput');
   const fileDropZoneEl = document.getElementById('counselFileDropZone');
@@ -941,4 +941,4 @@ document.addEventListener('DOMContentLoaded', function () {
 
   ensureFileTempKey();
   fetchCounselFileList();
-});
+})();

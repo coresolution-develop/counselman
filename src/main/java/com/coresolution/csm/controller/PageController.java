@@ -6062,7 +6062,6 @@ public class PageController {
         Map<String, Object> reservationLink = Collections.emptyMap();
         String prefillReservedTime = ""; // 예정시간 (HH:mm)
         if (reservationId != null && reservationId > 0) {
-            cs.touchOpenedAt(inst, reservationId);
             CounselReservation reservation = cs.getCounselReservationById(inst, reservationId);
             if (reservation != null) {
                 prefill.setCs_col_01(safeString(reservation.getPatient_name()));
@@ -8144,7 +8143,7 @@ public class PageController {
         }
         if (reservationId != null && reservationId > 0) {
             reservation = cs.getCounselReservationById(inst, reservationId);
-            if (reservation != null) cs.touchOpenedAt(inst, reservationId);
+            // touchOpenedAt removed: 30분 락 개념 삭제
         }
 
         Map<String, Object> categoryDataMap = Optional.ofNullable(cs.getCategoryData(inst))
