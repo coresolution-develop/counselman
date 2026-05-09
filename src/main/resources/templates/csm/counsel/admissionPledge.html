@@ -97,6 +97,19 @@
       .ap-terms-block h2 { font-size: 16pt; margin: 16px 0 8px; }
       .ap-terms-block h3 { font-size: 14pt; margin: 12px 0 6px; }
       .ap-terms-block hr { border: none; border-top: 1px solid #c7c7c7; margin: 12px 0; }
+      /* 서약서 페이지에서는 템플릿 미리보기용 섹션을 숨김 (실제 입력 섹션이 아래 별도로 존재) */
+      .ap-terms-block .ap-guardian-section,
+      .ap-terms-block .ap-consent-section,
+      .ap-terms-block .ap-vip-section,
+      .ap-terms-block .ap-signer-section { display: none !important; }
+      /* 라디오/체크박스 항상 클릭 가능하도록 보장 */
+      input[type=radio],
+      input[type=checkbox]:not(.checkbox-wrapper-13 input) {
+        cursor: pointer;
+        pointer-events: auto;
+        position: relative;
+        z-index: 1;
+      }
     </style>
 </head>
 <body class="ap-body">
@@ -218,8 +231,9 @@
                     <tr style="height: 56px;">
                         <td style="border: 1px solid #dadada;" class="normal">주 소</td>
                         <td colspan="3" style="text-align: left; border: 1px solid #dadada; border-right: inherit;">
-                            <input class="light ap-address-input" id="ap_guardian_addr" style="margin-left: 20px; width:640px;" type="text"
-                                   th:value="${admissionPledge != null and admissionPledge['guardian_addr'] != null ? admissionPledge['guardian_addr'] : ''}"/>
+                            <textarea class="light ap-address-input" id="ap_guardian_addr" rows="2"
+                                      style="margin-left: 20px; width:640px; resize: none; border: none; background: transparent; line-height: 1.4; vertical-align: middle; font-family: inherit; font-size: inherit;"
+                                      th:text="${admissionPledge != null and admissionPledge['guardian_addr'] != null ? admissionPledge['guardian_addr'] : ''}"></textarea>
                         </td>
                     </tr>
                     <tr style="height: 56px;">
@@ -269,8 +283,9 @@
                     <tr style="height: 56px;" class="normal">
                         <td style="border: 1px solid #dadada;">주 소 </td>
                         <td colspan="3" style="text-align: left; border: 1px solid #dadada; border-right: inherit;">
-                            <input class="light ap-address-input" id="ap_sub_guardian_addr" style="margin-left: 20px; width:640px;" type="text"
-                                   th:value="${admissionPledge != null and admissionPledge['sub_guardian_addr'] != null ? admissionPledge['sub_guardian_addr'] : ''}"/>
+                            <textarea class="light ap-address-input" id="ap_sub_guardian_addr" rows="2"
+                                      style="margin-left: 20px; width:640px; resize: none; border: none; background: transparent; line-height: 1.4; vertical-align: middle; font-family: inherit; font-size: inherit;"
+                                      th:text="${admissionPledge != null and admissionPledge['sub_guardian_addr'] != null ? admissionPledge['sub_guardian_addr'] : ''}"></textarea>
                         </td>
                     </tr>
                     <tr style="height: 56px;" class="normal">
@@ -467,10 +482,31 @@ window.ADMISSION_PLEDGE_BOOTSTRAP = {
     });
   }
 
+  // 구형 pledge_text가 저장된 경우 terms-block 내 중복 섹션 제거
+  function cleanTermsBlock() {
+    var block = document.querySelector('.ap-terms-block');
+    if (!block) return;
+    // CSS 클래스가 있는 섹션 제거
+    block.querySelectorAll('.ap-guardian-section, .ap-consent-section, .ap-vip-section, .ap-signer-section').forEach(function (el) { el.remove(); });
+    // 클래스 없는 구형 저장 포맷 테이블 제거
+    block.querySelectorAll('table').forEach(function (tbl) {
+      var text = tbl.textContent;
+      if (text.includes('주보호자') || text.includes('부보호자') || text.includes('동의사유') || text.includes('상급병실')) {
+        var wrapper = tbl.closest('div');
+        if (wrapper && wrapper !== block) { wrapper.remove(); }
+        else { tbl.remove(); }
+      }
+    });
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', injectFields);
+    document.addEventListener('DOMContentLoaded', function () {
+      injectFields();
+      cleanTermsBlock();
+    });
   } else {
     injectFields();
+    cleanTermsBlock();
   }
 })();
 </script>

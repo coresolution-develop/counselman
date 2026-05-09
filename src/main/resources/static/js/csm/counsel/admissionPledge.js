@@ -753,6 +753,24 @@
     }
   }
 
+  // 저장 전 pledge_text에서 중복 섹션(보호자/동의/상급병실/서명) 제거
+  function sanitizePledgeText(html) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    // CSS 클래스가 있는 섹션 제거
+    tmp.querySelectorAll('.ap-guardian-section, .ap-consent-section, .ap-vip-section, .ap-signer-section').forEach(function (el) { el.remove(); });
+    // 클래스 없는 구형 저장 포맷 테이블 제거 (주보호자/부보호자/동의사유/상급병실 텍스트 포함 테이블)
+    tmp.querySelectorAll('table').forEach(function (tbl) {
+      var text = tbl.textContent;
+      if (text.includes('주보호자') || text.includes('부보호자') || text.includes('동의사유') || text.includes('상급병실')) {
+        var wrapper = tbl.parentElement;
+        if (wrapper && wrapper !== tmp) { wrapper.remove(); }
+        else { tbl.remove(); }
+      }
+    });
+    return tmp.innerHTML;
+  }
+
   function buildPayload() {
     const signerName = String(signerNameInput?.value || '').trim() || String(patientNameInput?.value || '').trim();
     const signerRelation = String(signerRelationInput?.value || '').trim() || '본인';
@@ -767,7 +785,7 @@
     const subGuardianPhone = String(subGuardianPhoneInput?.value || '').trim();
     const subGuardianCostYn = subGuardianCostInput?.checked ? 'Y' : 'N';
     const signedAt = String(signedAtInput?.value || '').trim() || nowDateTime();
-    const pledgeText = String(termsBlock?.innerHTML || pledgeTextInput?.value || '').trim() || defaultPledgeText;
+    const pledgeText = sanitizePledgeText(String(termsBlock?.innerHTML || pledgeTextInput?.value || '').trim()) || defaultPledgeText;
     const csIdxValue = /^-?\d+$/.test(String(bootstrap.csIdx || '').trim()) ? Number(bootstrap.csIdx) : 0;
 
     if (signerNameInput) signerNameInput.value = signerName;

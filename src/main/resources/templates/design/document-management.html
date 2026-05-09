@@ -575,20 +575,28 @@ function docPageState() {
           window.location.reload();
         }
       };
+      this._onTurboLoad = () => {
+        if (this.tab === 'template' && !_editorInstance && window._TipTapEditor) {
+          this._initEditor();
+        }
+      };
       this._onBeforeCache = () => {
         if (_editorInstance) { _editorInstance.destroy(); _editorInstance = null; }
         var el = document.getElementById('tiptapEditor');
         if (el) el.innerHTML = '';
+        document.removeEventListener('turbo:load', this._onTurboLoad);
       };
       window.addEventListener('tiptap:ready', this._onTiptapReady);
       window.addEventListener('message', this._onMessage);
       document.addEventListener('turbo:before-cache', this._onBeforeCache);
+      document.addEventListener('turbo:load', this._onTurboLoad);
     },
 
     destroy() {
       if (this._onTiptapReady) window.removeEventListener('tiptap:ready', this._onTiptapReady);
       if (this._onMessage) window.removeEventListener('message', this._onMessage);
       if (this._onBeforeCache) document.removeEventListener('turbo:before-cache', this._onBeforeCache);
+      if (this._onTurboLoad) document.removeEventListener('turbo:load', this._onTurboLoad);
       if (_editorInstance) { _editorInstance.destroy(); _editorInstance = null; }
     },
 
@@ -984,86 +992,106 @@ function docPageState() {
   };
 }
 </script>
-<script type="module" data-turbo-eval="false">
-import { Editor } from 'https://esm.sh/@tiptap/core@2.11.5';
-import StarterKit from 'https://esm.sh/@tiptap/starter-kit@2.11.5';
-import Underline from 'https://esm.sh/@tiptap/extension-underline@2.11.5';
-import TextStyle from 'https://esm.sh/@tiptap/extension-text-style@2.11.5';
-import { Color } from 'https://esm.sh/@tiptap/extension-color@2.11.5';
-import TextAlign from 'https://esm.sh/@tiptap/extension-text-align@2.11.5';
-import Table from 'https://esm.sh/@tiptap/extension-table@2.11.5';
-import TableRow from 'https://esm.sh/@tiptap/extension-table-row@2.11.5';
-import TableCell from 'https://esm.sh/@tiptap/extension-table-cell@2.11.5';
-import TableHeader from 'https://esm.sh/@tiptap/extension-table-header@2.11.5';
-import { Node, mergeAttributes } from 'https://esm.sh/@tiptap/core@2.11.5';
+<script>
+(function() {
+  if (window._TipTapEditor) {
+    setTimeout(function() { window.dispatchEvent(new Event('tiptap:ready')); }, 0);
+    return;
+  }
+  Promise.all([
+    import('https://esm.sh/@tiptap/core@2.11.5'),
+    import('https://esm.sh/@tiptap/starter-kit@2.11.5'),
+    import('https://esm.sh/@tiptap/extension-underline@2.11.5'),
+    import('https://esm.sh/@tiptap/extension-text-style@2.11.5'),
+    import('https://esm.sh/@tiptap/extension-color@2.11.5'),
+    import('https://esm.sh/@tiptap/extension-text-align@2.11.5'),
+    import('https://esm.sh/@tiptap/extension-table@2.11.5'),
+    import('https://esm.sh/@tiptap/extension-table-row@2.11.5'),
+    import('https://esm.sh/@tiptap/extension-table-cell@2.11.5'),
+    import('https://esm.sh/@tiptap/extension-table-header@2.11.5'),
+  ]).then(function(mods) {
+    var Editor = mods[0].Editor;
+    var Node = mods[0].Node;
+    var StarterKit = mods[1].default;
+    var Underline = mods[2].default;
+    var TextStyle = mods[3].default;
+    var Color = mods[4].Color;
+    var TextAlign = mods[5].default;
+    var Table = mods[6].default;
+    var TableRow = mods[7].default;
+    var TableCell = mods[8].default;
+    var TableHeader = mods[9].default;
 
-const FIELD_KEY_LABEL_MAP = {
-  patient_name: '환자명', patient_birth: '생년월일', patient_phone: '환자 연락처',
-  room: '병실', chart_no: '차트번호',
-  guardian_name: '주보호자 성명', guardian_phone: '주보호자 연락처',
-  guardian_relation: '주보호자 관계', guardian_addr: '주보호자 주소',
-  sub_guardian_name: '부보호자 성명', sub_guardian_phone: '부보호자 연락처',
-  sub_guardian_relation: '부보호자 관계', sub_guardian_addr: '부보호자 주소',
-  signed_at: '서명일시',
-};
+    var FIELD_KEY_LABEL_MAP = {
+      patient_name: '환자명', patient_birth: '생년월일', patient_phone: '환자 연락처',
+      room: '병실', chart_no: '차트번호',
+      guardian_name: '주보호자 성명', guardian_phone: '주보호자 연락처',
+      guardian_relation: '주보호자 관계', guardian_addr: '주보호자 주소',
+      sub_guardian_name: '부보호자 성명', sub_guardian_phone: '부보호자 연락처',
+      sub_guardian_relation: '부보호자 관계', sub_guardian_addr: '부보호자 주소',
+      signed_at: '서명일시',
+    };
 
-const FieldChip = Node.create({
-  name: 'fieldChip',
-  group: 'inline',
-  inline: true,
-  atom: true,
-  addAttributes() {
-    return {
-      fieldKey: {
-        default: '',
-        parseHTML: el => el.getAttribute('data-field-key') || '',
+    var FieldChip = Node.create({
+      name: 'fieldChip',
+      group: 'inline',
+      inline: true,
+      atom: true,
+      addAttributes: function() {
+        return {
+          fieldKey: {
+            default: '',
+            parseHTML: function(el) { return el.getAttribute('data-field-key') || ''; },
+          },
+          label: {
+            default: '',
+            parseHTML: function(el) {
+              var key = el.getAttribute('data-field-key') || '';
+              return el.getAttribute('data-label') || FIELD_KEY_LABEL_MAP[key] || key;
+            },
+          },
+        };
       },
-      label: {
-        default: '',
-        parseHTML: el => {
-          var key = el.getAttribute('data-field-key') || '';
-          return el.getAttribute('data-label') || FIELD_KEY_LABEL_MAP[key] || key;
-        },
+      parseHTML: function() {
+        return [{ tag: 'span[data-field-key]' }];
+      },
+      renderHTML: function(_ref) {
+        var node = _ref.node;
+        var label = node.attrs.label || FIELD_KEY_LABEL_MAP[node.attrs.fieldKey] || node.attrs.fieldKey;
+        return ['span', {
+          'data-field-key': node.attrs.fieldKey,
+          'data-label': label,
+          class: 'tiptap-field-chip',
+          contenteditable: 'false',
+        }, '{{' + label + '}}'];
+      },
+    });
+
+    window._TipTapEditor = {
+      create: function(el, opts) {
+        return new Editor({
+          element: el,
+          content: opts.content || '',
+          extensions: [
+            StarterKit,
+            Underline,
+            TextStyle,
+            Color,
+            TextAlign.configure({ types: ['heading', 'paragraph'] }),
+            Table.configure({ resizable: true }),
+            TableRow,
+            TableCell,
+            TableHeader,
+            FieldChip,
+          ],
+          onUpdate: opts.onUpdate,
+          onSelectionUpdate: opts.onSelectionUpdate,
+        });
       },
     };
-  },
-  parseHTML() {
-    return [{ tag: 'span[data-field-key]' }];
-  },
-  renderHTML({ node }) {
-    var label = node.attrs.label || FIELD_KEY_LABEL_MAP[node.attrs.fieldKey] || node.attrs.fieldKey;
-    return ['span', {
-      'data-field-key': node.attrs.fieldKey,
-      'data-label': label,
-      class: 'tiptap-field-chip',
-      contenteditable: 'false',
-    }, '{{' + label + '}}'];
-  },
-});
-
-window._TipTapEditor = {
-  create(el, { content, onUpdate, onSelectionUpdate }) {
-    return new Editor({
-      element: el,
-      content: content || '',
-      extensions: [
-        StarterKit,
-        Underline,
-        TextStyle,
-        Color,
-        TextAlign.configure({ types: ['heading', 'paragraph'] }),
-        Table.configure({ resizable: true }),
-        TableRow,
-        TableCell,
-        TableHeader,
-        FieldChip,
-      ],
-      onUpdate,
-      onSelectionUpdate,
-    });
-  },
-};
-window.dispatchEvent(new Event('tiptap:ready'));
+    window.dispatchEvent(new Event('tiptap:ready'));
+  }).catch(function(err) { console.error('[Tiptap] load failed:', err); });
+})();
 </script>
 </body>
 </html>

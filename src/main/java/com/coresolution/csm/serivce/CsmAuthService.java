@@ -2504,6 +2504,10 @@ public class CsmAuthService {
                 safeInst,
                 "sub_guardian_cost_yn",
                 "ALTER TABLE csm.counsel_admission_pledge_" + safeInst + " ADD COLUMN sub_guardian_cost_yn char(1) not null default 'N'");
+        ensureAdmissionPledgeColumn(
+                safeInst,
+                "document_type",
+                "ALTER TABLE csm.counsel_admission_pledge_" + safeInst + " ADD COLUMN document_type varchar(50) DEFAULT '입원서약서'");
     }
 
     private void ensureAdmissionPledgeColumn(String safeInst, String columnName, String alterSql) {
