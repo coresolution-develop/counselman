@@ -101,10 +101,14 @@
       .ap-terms-block .ap-signer-section { display: none !important; }
       /* 템플릿 field chip이 활성화된 입력 요소 스타일 */
       .ap-terms-block .ap-field-input {
-        display: inline;
+        display: inline-block;
         border: none; border-bottom: 1px solid #aaa; background: transparent;
         font-family: inherit; font-size: inherit;
         min-width: 60px; padding: 0 2px; vertical-align: baseline; outline: none;
+        text-overflow: ellipsis; overflow: hidden; white-space: nowrap;
+      }
+      .ap-terms-block .ap-field-input::placeholder {
+        text-overflow: ellipsis; overflow: hidden; color: #b0b8c4;
       }
       .ap-terms-block .ap-field-textarea {
         border: none; border-bottom: 1px solid #aaa; background: transparent;
@@ -386,6 +390,7 @@ window.ADMISSION_PLEDGE_BOOTSTRAP = {
         el.rows = 2;
         el.value = val;
         el.placeholder = chipLabel;
+        el.title = chipLabel;
       } else {
         el = document.createElement('input');
         el.type = 'text';
@@ -394,6 +399,7 @@ window.ADMISSION_PLEDGE_BOOTSTRAP = {
         if (chipWidth) el.style.width = chipWidth;
         el.value = val;
         el.placeholder = chipLabel;
+        el.title = chipLabel;
       }
       chip.parentNode.replaceChild(el, chip);
     });
