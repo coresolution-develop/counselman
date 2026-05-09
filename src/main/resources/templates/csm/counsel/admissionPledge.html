@@ -256,6 +256,22 @@ window.ADMISSION_PLEDGE_BOOTSTRAP = {
     if (!block) return;
     var h1 = block.querySelector('h1');
     if (h1) h1.parentNode && h1.parentNode.removeChild(h1);
+
+    // 신청인 섹션 제거 (정적 신청인 영역에서 별도 렌더링하므로 중복 방지)
+    // 1) class="ap-signer-section" 래퍼가 있으면 제거
+    block.querySelectorAll('.ap-signer-section').forEach(function (el) {
+      el.parentNode && el.parentNode.removeChild(el);
+    });
+    // 2) 래퍼 없이 signer 칩만 있는 케이스: 칩이 속한 .ap-terms-block 직계 자식 노드를 제거
+    block.querySelectorAll('[data-field-key="signer_relation"], [data-field-key="signer_name"]').forEach(function (chip) {
+      var node = chip;
+      while (node && node.parentNode && node.parentNode !== block) {
+        node = node.parentNode;
+      }
+      if (node && node !== block && node.parentNode === block) {
+        block.removeChild(node);
+      }
+    });
   }
 
   function convertUnicodeCheckboxes() {
