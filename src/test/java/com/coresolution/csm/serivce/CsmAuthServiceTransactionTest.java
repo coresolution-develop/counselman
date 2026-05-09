@@ -138,9 +138,10 @@ class CsmAuthServiceTransactionTest {
 
     @Test
     void savePledgeTemplate_existingMissingRow_returnsZero() {
-        when(jdbcTemplate.update(contains("SET is_active='N'"))).thenReturn(1);
+        when(jdbcTemplate.update(contains("SET is_active='N'"), eq("입원서약서"))).thenReturn(1);
         when(jdbcTemplate.update(
-                contains("SET template_name=?, content=?, is_active='Y' WHERE id=?"),
+                contains("SET doc_type=?, template_name=?, content=?, is_active='Y' WHERE id=?"),
+                eq("입원서약서"),
                 eq("수정 템플릿"),
                 eq("<div>내용</div>"),
                 eq(99L)))
@@ -153,9 +154,10 @@ class CsmAuthServiceTransactionTest {
 
     @Test
     void savePledgeTemplate_existingUpdatedRow_returnsId() {
-        when(jdbcTemplate.update(contains("SET is_active='N'"))).thenReturn(1);
+        when(jdbcTemplate.update(contains("SET is_active='N'"), eq("입원서약서"))).thenReturn(1);
         when(jdbcTemplate.update(
                 anyString(),
+                eq("입원서약서"),
                 eq("수정 템플릿"),
                 eq("<div>내용</div>"),
                 eq(7L)))

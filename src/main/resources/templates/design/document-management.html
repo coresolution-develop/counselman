@@ -172,6 +172,19 @@
       vertical-align: top; min-width: 48px; position: relative;
     }
     .ProseMirror table th { background: #fafafa; font-weight: 600; text-align: center; }
+    .ProseMirror .column-resize-handle {
+      position: absolute;
+      top: 0;
+      right: -2px;
+      bottom: -2px;
+      width: 4px;
+      background-color: #93c5fd;
+      pointer-events: none;
+    }
+    .resize-cursor {
+      cursor: ew-resize;
+      cursor: col-resize;
+    }
     .ProseMirror .selectedCell::after {
       content: ''; position: absolute; inset: 0;
       background: rgba(37,99,235,.12); pointer-events: none;
@@ -668,14 +681,23 @@ function docPageState() {
       };
       this.headingLevel = [1,2,3].find(n => _editorInstance.isActive('heading', { level: n })) || 0;
       this.textAlign = ['left','center','right','justify'].find(a => _editorInstance.isActive({ textAlign: a })) || 'left';
+      this.textColor = _editorInstance.getAttributes('textStyle').color || '#222222';
       this.isInTable = _editorInstance.isActive('table');
     },
 
-    cmd(name) {
+    _runEditorCommand(command, options) {
       if (!_editorInstance) return;
       var ed = _editorInstance;
-      setTimeout(() => {
-        if (!ed || ed.isDestroyed) return;
+      if (!ed || ed.isDestroyed) return;
+      ed.view.focus();
+      command(ed);
+      if (!options || options.sync !== false) {
+        this._syncMarks();
+      }
+    },
+
+    cmd(name) {
+      this._runEditorCommand((ed) => {
         var chain = ed.chain();
         if (name === 'bold')             chain.toggleBold();
         else if (name === 'italic')      chain.toggleItalic();
@@ -684,65 +706,40 @@ function docPageState() {
         else if (name === 'alignCenter') chain.setTextAlign('center');
         else if (name === 'alignRight')  chain.setTextAlign('right');
         chain.run();
-        ed.view.focus();
-        this._syncMarks();
-      }, 0);
+      });
     },
 
     setHeading(level) {
-      if (!_editorInstance) return;
-      var ed = _editorInstance;
-      setTimeout(() => {
-        if (!ed || ed.isDestroyed) return;
+      this._runEditorCommand((ed) => {
         var chain = ed.chain();
         if (level === 0) chain.setParagraph();
         else chain.toggleHeading({ level });
         chain.run();
-        ed.view.focus();
-        this._syncMarks();
-      }, 0);
+      });
     },
 
     setTextColor(color) {
-      if (!_editorInstance) return;
-      var ed = _editorInstance;
-      setTimeout(() => {
-        if (!ed || ed.isDestroyed) return;
+      this._runEditorCommand((ed) => {
         ed.chain().setColor(color).run();
-        ed.view.focus();
-      }, 0);
+      });
     },
 
     insertTable() {
-      if (!_editorInstance) return;
-      var ed = _editorInstance;
-      setTimeout(() => {
-        if (!ed || ed.isDestroyed) return;
+      this._runEditorCommand((ed) => {
         ed.chain().insertTable({ rows: 3, cols: 4, withHeaderRow: false }).run();
-        ed.view.focus();
-      }, 0);
+      });
     },
 
     mergeCells() {
-      if (!_editorInstance) return;
-      var ed = _editorInstance;
-      setTimeout(() => {
-        if (!ed || ed.isDestroyed) return;
-        ed.view.focus();
+      this._runEditorCommand((ed) => {
         ed.chain().mergeCells().run();
-        this._syncMarks();
-      }, 0);
+      });
     },
 
     splitCell() {
-      if (!_editorInstance) return;
-      var ed = _editorInstance;
-      setTimeout(() => {
-        if (!ed || ed.isDestroyed) return;
-        ed.view.focus();
+      this._runEditorCommand((ed) => {
         ed.chain().splitCell().run();
-        this._syncMarks();
-      }, 0);
+      });
     },
 
     openAiModal() {
@@ -788,10 +785,9 @@ function docPageState() {
       var key = f.key;
       var label = f.label;
       this.showFieldMenu = false;
-      setTimeout(() => {
-        if (!_editorInstance || _editorInstance.isDestroyed) return;
-        _editorInstance.commands.insertContent({ type: 'fieldChip', attrs: { fieldKey: key, label: label } });
-      }, 0);
+      this._runEditorCommand((ed) => {
+        ed.commands.insertContent({ type: 'fieldChip', attrs: { fieldKey: key, label: label } });
+      });
     },
 
     _loadEditorContent(html) {
