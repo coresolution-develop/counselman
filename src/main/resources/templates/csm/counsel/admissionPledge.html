@@ -111,6 +111,12 @@
         font-family: inherit; font-size: inherit;
         width: 100%; resize: none; padding: 0 2px; vertical-align: middle; outline: none;
       }
+      /* 환자 인적사항 입력 필드 스타일 */
+      #ap_patient_name, #ap_chart_no, #ap_room, #ap_birth, #ap_phone {
+        display: block; border: none; border-bottom: 1px solid #aaa; background: transparent;
+        font-family: inherit; font-size: 14pt; outline: none;
+        width: calc(100% - 12px); padding: 0 4px; margin: 0;
+      }
       /* 라디오/체크박스 항상 클릭 가능하도록 보장 */
       input[type=radio],
       input[type=checkbox]:not(.checkbox-wrapper-13 input) {
@@ -165,50 +171,13 @@
 
             <h1 style="text-align: center; font-size: 30pt; padding-top: 70px;" th:text="${docType}">입원서약서</h1>
 
-            <div class="bold" style="font-size: 16pt; color:#303030; display: flex; align-items: start; margin: 0 auto; width: 966px;">※ 환자의 인적사항</div>
-            <div style="text-align: center; margin-bottom: 20px;">
-                <table border="1" style="border-collapse: collapse; text-align: center; width: 966px; margin-left: auto; margin-right: auto;" >
-                    <tr>
-                        <td class="normal" width="170px" height="56px">성명</td>
-                        <td class="light" style="text-align: left;">
-                            <input id="ap_patient_name" style="margin-left: 33px;" type="text" th:value="${patientName}">
-                        </td>
-                        <td class="normal" width="170px" height="56px">차트번호</td>
-                        <td class="light" colspan="2" style="text-align: left;">
-                            <input id="ap_chart_no" style="margin-left: 33px;" type="text" th:value="${chartNo}">
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="normal" height="56px">입원병실</td>
-                        <td class="light" style="text-align: left;">
-                            <input id="ap_room" style="margin-left: 33px;" type="text" th:value="${room}">
-                        </td>
-                        <td class="normal" height="56px">성별 </td>
-                        <td class="light" style="cursor: pointer;">
-                            <input type="radio" name="ap_gender" value="남성" id="ap_gender_m"
-                                   th:checked="${gender == '남성' or gender == '남'}"><label for="ap_gender_m" style="cursor: pointer;">남</label>
-                        </td>
-                        <td class="light" style="cursor: pointer;">
-                            <input type="radio" name="ap_gender" value="여성" id="ap_gender_f"
-                                   th:checked="${gender == '여성' or gender == '여'}"><label for="ap_gender_f" style="cursor: pointer;">여</label>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="normal" height="56px">생년월일</td>
-                        <td class="light" style="text-align: left;">
-                            <input id="ap_birth" style="margin-left: 33px;" type="text" th:value="${birth}">
-                        </td>
-                        <td class="normal" height="56px">전화</td>
-                        <td class="light" colspan="2" style="text-align: left;">
-                            <input id="ap_phone" style="margin-left: 33px;" type="text" th:value="${phone}">
-                        </td>
-                    </tr>
-                </table>
-            </div>
+            <input type="hidden" id="ap_patient_name_data" th:value="${patientName}">
+            <input type="hidden" id="ap_chart_no_data" th:value="${chartNo}">
+            <input type="hidden" id="ap_room_data" th:value="${room}">
+            <input type="hidden" id="ap_birth_data" th:value="${birth}">
+            <input type="hidden" id="ap_phone_data" th:value="${phone}">
 
             <div class="light ap-terms-block" style="font-size:14pt; color:#222222; width:966px; margin: 0 auto;" th:utext="${pledgeTemplateContent}"></div>
-            <br>
-
 
             <div style="position: relative;">
                 <div class="normal" style="text-align: right; position: relative; z-index: 1; color: #222222; width: 966px; height: 42px; margin: 0 auto; display: flex; justify-content: flex-end; align-items: center;">
@@ -223,7 +192,7 @@
                     </div>
                 </div>
             </div>
-            <div class="ap-signed-at normal">서명일시: <span id="ap_signed_at_view"></span></div>
+            <div class="ap-signed-at normal" style="width:966px; margin:0 auto; text-align:right; padding:4px 0 8px; color:#444; font-size:12pt;">서명일시: <span id="ap_signed_at_view"></span></div>
             <br><br><br><br>
         </section>
         <canvas id="ap_page_ink_canvas" aria-label="문서 전체 필기"></canvas>
@@ -267,54 +236,128 @@ window.ADMISSION_PLEDGE_BOOTSTRAP = {
   var apData = ((window.ADMISSION_PLEDGE_BOOTSTRAP || {}).admissionPledge) || {};
 
   var CHIP_MAP = {
+    patient_name:          { id: 'ap_patient_name',          type: 'text',     dataKey: 'patient_name',          defaultEl: 'ap_patient_name_data' },
+    patient_birth:         { id: 'ap_birth',                 type: 'text',     dataKey: 'patient_birth',         defaultEl: 'ap_birth_data' },
+    patient_phone:         { id: 'ap_phone',                 type: 'text',     dataKey: 'patient_phone',         defaultEl: 'ap_phone_data' },
+    room:                  { id: 'ap_room',                  type: 'text',     dataKey: 'room',                  defaultEl: 'ap_room_data' },
+    chart_no:              { id: 'ap_chart_no',              type: 'text',     dataKey: 'chart_no',              defaultEl: 'ap_chart_no_data' },
     guardian_name:         { id: 'ap_guardian_name',         type: 'text',     dataKey: 'guardian_name',         w: '200px' },
     guardian_relation:     { id: 'ap_guardian_relation',     type: 'text',     dataKey: 'guardian_relation',     w: '120px' },
     guardian_addr:         { id: 'ap_guardian_addr',         type: 'textarea', dataKey: 'guardian_addr' },
     guardian_phone:        { id: 'ap_guardian_phone',        type: 'text',     dataKey: 'guardian_phone',        w: '180px' },
-    guardian_cost:         { id: 'ap_guardian_cost',         type: 'checkbox', dataKey: 'guardian_cost_yn',      label: '비용안내' },
     sub_guardian_name:     { id: 'ap_sub_guardian_name',     type: 'text',     dataKey: 'sub_guardian_name',     w: '200px' },
     sub_guardian_relation: { id: 'ap_sub_guardian_relation', type: 'text',     dataKey: 'sub_guardian_relation', w: '120px' },
     sub_guardian_addr:     { id: 'ap_sub_guardian_addr',     type: 'textarea', dataKey: 'sub_guardian_addr' },
     sub_guardian_phone:    { id: 'ap_sub_guardian_phone',    type: 'text',     dataKey: 'sub_guardian_phone',    w: '180px' },
-    sub_guardian_cost:     { id: 'ap_sub_guardian_cost',     type: 'checkbox', dataKey: 'sub_guardian_cost_yn',  label: '비용안내' },
   };
+
+  function stripDuplicateHeader() {
+    var block = document.querySelector('.ap-terms-block');
+    if (!block) return;
+    var h1 = block.querySelector('h1');
+    if (h1) h1.parentNode && h1.parentNode.removeChild(h1);
+  }
+
+  function convertUnicodeCheckboxes() {
+    var block = document.querySelector('.ap-terms-block');
+    if (!block) return;
+    var vipNames = ['특실', '1인실', '2인실'];
+    var radioGroupSeq = 0;
+    block.querySelectorAll('td, p, li, div').forEach(function (el) {
+      var text = el.textContent;
+      var hasCheckbox = text.includes('☐');
+      var hasRadio = text.includes('◉');
+      if (!hasCheckbox && !hasRadio) return;
+      var html = el.innerHTML;
+      if (hasCheckbox) {
+        var isVip = vipNames.some(function (n) { return text.includes(n); });
+        if (isVip) {
+          var vipIdx = 0;
+          html = html.replace(/☐\s*/g, function () {
+            return '<input type="radio" name="ap_vip_room" id="ap_vip_' + (vipIdx++) + '" style="cursor:pointer;margin-right:4px;"> ';
+          });
+        } else {
+          html = html.replace(/☐\s*/g, '<input type="checkbox" style="cursor:pointer;margin-right:4px;"> ');
+        }
+      }
+      if (hasRadio) {
+        var groupName = 'ap_radio_' + (radioGroupSeq++);
+        var radioIdx = 0;
+        html = html.replace(/◉\s*/g, function () {
+          return '<input type="radio" name="' + groupName + '" id="' + groupName + '_' + (radioIdx++) + '" style="cursor:pointer;margin-right:4px;"> ';
+        });
+      }
+      el.innerHTML = html;
+    });
+  }
 
   function activateFieldChips() {
     var block = document.querySelector('.ap-terms-block');
     if (!block) return;
     block.querySelectorAll('.tiptap-field-chip[data-field-key]').forEach(function (chip) {
       var key = chip.dataset.fieldKey;
-      var cfg = CHIP_MAP[key];
-      if (!cfg) return;
-      var val = String(apData[cfg.dataKey] || '').trim();
+      var cfg = CHIP_MAP[key] || {};
+      // data-field-type on the chip takes precedence over CHIP_MAP type
+      var type = chip.dataset.fieldType || cfg.type || 'text';
+      var id = cfg.id || ('ap_chip_' + key);
+      var dataKey = cfg.dataKey || key;
+      var chipLabel = chip.dataset.fieldLabel || chip.dataset.label || cfg.label || key;
+      var val = String(apData[dataKey] || '').trim();
+      if (!val && cfg.defaultVal) val = cfg.defaultVal;
+      if (!val && cfg.defaultEl) {
+        var defEl = document.getElementById(cfg.defaultEl);
+        val = defEl ? String(defEl.value || '').trim() : '';
+      }
+      if (!val) {
+        var chipText = chip.textContent.trim();
+        if (chipText && !chipText.includes('{{')) val = chipText;
+      }
       var el;
-      if (cfg.type === 'checkbox') {
+      if (type === 'checkbox') {
         var wrapper = document.createElement('div');
         wrapper.className = 'checkbox-wrapper-13';
         wrapper.style.cssText = 'display:inline-flex;align-items:center;margin-right:21px;';
         el = document.createElement('input');
         el.type = 'checkbox';
         el.className = 'normal';
-        el.id = cfg.id;
+        el.id = id;
         el.checked = val === 'Y';
         var lbl = document.createElement('label');
-        lbl.htmlFor = cfg.id;
-        lbl.textContent = cfg.label;
+        lbl.htmlFor = id;
+        lbl.textContent = chipLabel;
         wrapper.appendChild(el);
         wrapper.appendChild(lbl);
         chip.parentNode.replaceChild(wrapper, chip);
         return;
-      } else if (cfg.type === 'textarea') {
+      } else if (type === 'radio') {
+        var radioName = 'ap_radio_' + key;
+        var wrapper2 = document.createElement('span');
+        wrapper2.style.cssText = 'display:inline-flex;align-items:center;margin-right:12px;cursor:pointer;';
+        el = document.createElement('input');
+        el.type = 'radio';
+        el.name = radioName;
+        el.id = id;
+        el.value = val || 'Y';
+        el.style.cssText = 'cursor:pointer;margin-right:4px;';
+        var lbl2 = document.createElement('label');
+        lbl2.htmlFor = id;
+        lbl2.textContent = chipLabel;
+        lbl2.style.cursor = 'pointer';
+        wrapper2.appendChild(el);
+        wrapper2.appendChild(lbl2);
+        chip.parentNode.replaceChild(wrapper2, chip);
+        return;
+      } else if (type === 'textarea') {
         el = document.createElement('textarea');
         el.className = 'light ap-field-textarea';
-        el.id = cfg.id;
+        el.id = id;
         el.rows = 2;
         el.value = val;
       } else {
         el = document.createElement('input');
         el.type = 'text';
         el.className = 'light ap-field-input';
-        el.id = cfg.id;
+        el.id = id;
         if (cfg.w) el.style.width = cfg.w;
         el.value = val;
       }
@@ -322,10 +365,16 @@ window.ADMISSION_PLEDGE_BOOTSTRAP = {
     });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', activateFieldChips);
-  } else {
+  function initPage() {
+    stripDuplicateHeader();
     activateFieldChips();
+    convertUnicodeCheckboxes();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPage);
+  } else {
+    initPage();
   }
 })();
 </script>

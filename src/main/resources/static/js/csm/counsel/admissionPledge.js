@@ -8,8 +8,6 @@
   const agreeCheckbox = document.getElementById('ap_agree');
   const pledgeTextInput = document.getElementById('ap_pledge_text');
   const termsBlock = document.querySelector('.ap-terms-block');
-  const signerNameInput = document.getElementById('ap_signer_name');
-  const signerRelationInput = document.getElementById('ap_signer_relation');
   const signedAtInput = document.getElementById('ap_signed_at');
   const signedAtView = document.getElementById('ap_signed_at_view');
   const patientNameInput = document.getElementById('ap_patient_name');
@@ -568,12 +566,7 @@
       sub_guardian_name: 'ap_sub_guardian_name',
       sub_guardian_relation: 'ap_sub_guardian_relation',
       sub_guardian_addr: 'ap_sub_guardian_addr',
-      sub_guardian_phone: 'ap_sub_guardian_phone',
-      patient_name: 'ap_patient_name',
-      patient_birth: 'ap_birth',
-      patient_phone: 'ap_phone',
-      room: 'ap_room',
-      chart_no: 'ap_chart_no'
+      sub_guardian_phone: 'ap_sub_guardian_phone'
     };
 
     block.querySelectorAll('.tiptap-field-chip[data-field-key]').forEach(function (chip) {
@@ -648,10 +641,12 @@
     }
 
     const signerName = String(payload.signer_name || '').trim();
-    if (signerName && signerNameInput) signerNameInput.value = signerName;
+    const signerNameEl = document.getElementById('ap_signer_name');
+    if (signerName && signerNameEl) signerNameEl.value = signerName;
 
     const signerRelation = String(payload.signer_relation || '').trim();
-    if (signerRelation && signerRelationInput) signerRelationInput.value = signerRelation;
+    const signerRelationEl = document.getElementById('ap_signer_relation');
+    if (signerRelation && signerRelationEl) signerRelationEl.value = signerRelation;
 
     if (patientNameInput) patientNameInput.value = String(payload.patient_name || patientNameInput.value || '').trim();
     if (patientPhoneInput) patientPhoneInput.value = String(payload.patient_phone || patientPhoneInput.value || '').trim();
@@ -842,8 +837,8 @@
   }
 
   function buildPayload() {
-    const signerName = String(signerNameInput?.value || '').trim() || String(patientNameInput?.value || '').trim();
-    const signerRelation = String(signerRelationInput?.value || '').trim() || '본인';
+    const signerName = String(document.getElementById('ap_signer_name')?.value || '').trim() || String(patientNameInput?.value || '').trim();
+    const signerRelation = String(document.getElementById('ap_signer_relation')?.value || '').trim() || '본인';
     const guardianName = String(document.getElementById('ap_guardian_name')?.value || '').trim();
     const guardianRelation = String(document.getElementById('ap_guardian_relation')?.value || '').trim();
     const guardianAddr = String(document.getElementById('ap_guardian_addr')?.value || '').trim();
@@ -860,8 +855,6 @@
     const pledgeText = sanitizePledgeText(String(termsBlock?.innerHTML || pledgeTextInput?.value || '').trim()) || defaultPledgeText;
     const csIdxValue = /^-?\d+$/.test(String(bootstrap.csIdx || '').trim()) ? Number(bootstrap.csIdx) : 0;
 
-    if (signerNameInput) signerNameInput.value = signerName;
-    if (signerRelationInput) signerRelationInput.value = signerRelation;
     if (signedAtInput) signedAtInput.value = signedAt;
     if (pledgeTextInput) pledgeTextInput.value = pledgeText;
     syncSignedAtView();
@@ -907,7 +900,7 @@
     }
 
     if (!payload.signer_name) {
-      signerNameInput?.focus();
+      document.getElementById('ap_signer_name')?.focus();
       return;
     }
 
