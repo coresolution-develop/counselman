@@ -317,17 +317,17 @@ window.ADMISSION_PLEDGE_BOOTSTRAP = {
       var type = chip.dataset.fieldType || cfg.type || 'text';
       var id = cfg.id || ('ap_chip_' + key);
       var dataKey = cfg.dataKey || key;
-      var chipLabel = chip.dataset.fieldLabel || chip.dataset.label || cfg.label || key;
+      var rawLabel = chip.dataset.fieldLabel || chip.dataset.label || cfg.label || key;
+      // 칩 텍스트나 라벨에 들어가 있을 수 있는 아이콘 prefix 제거
+      var chipLabel = String(rawLabel).replace(/^[\s✏¶☐○◉☑]+/, '').trim() || key;
       var val = String(apData[dataKey] || '').trim();
       if (!val && cfg.defaultVal) val = cfg.defaultVal;
       if (!val && cfg.defaultEl) {
         var defEl = document.getElementById(cfg.defaultEl);
         val = defEl ? String(defEl.value || '').trim() : '';
       }
-      if (!val) {
-        var chipText = chip.textContent.trim();
-        if (chipText && !chipText.includes('{{')) val = chipText;
-      }
+      // 칩 inline style.width 또는 data-field-width 우선, 없으면 CHIP_MAP의 w
+      var chipWidth = chip.style.width || chip.dataset.fieldWidth || cfg.w || '';
       var el;
       if (type === 'checkbox') {
         var wrapper = document.createElement('div');
@@ -369,13 +369,15 @@ window.ADMISSION_PLEDGE_BOOTSTRAP = {
         el.id = id;
         el.rows = 2;
         el.value = val;
+        el.placeholder = chipLabel;
       } else {
         el = document.createElement('input');
         el.type = 'text';
         el.className = 'light ap-field-input';
         el.id = id;
-        if (cfg.w) el.style.width = cfg.w;
+        if (chipWidth) el.style.width = chipWidth;
         el.value = val;
+        el.placeholder = chipLabel;
       }
       chip.parentNode.replaceChild(el, chip);
     });

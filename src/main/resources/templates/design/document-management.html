@@ -191,11 +191,23 @@
     }
     .tpl-save-row { display: flex; justify-content: flex-end; gap: 8px; align-items: center; }
     .tpl-hint { font-size: 12px; color: var(--text-tertiary); flex: 1; }
+    /* 칩을 폼 페이지의 input과 동일한 시각으로 (밑줄 입력칸) */
     .tiptap-field-chip {
-      display: inline-block; padding: 1px 8px; border-radius: 12px;
-      background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd;
-      font-size: 11px; font-weight: 600; white-space: nowrap;
-      vertical-align: middle; user-select: none; cursor: default;
+      display: inline-block;
+      border: none; border-bottom: 1px solid #aaa; background: transparent;
+      color: #94a3b8;
+      font-family: inherit; font-size: inherit; font-weight: 400;
+      padding: 0 4px; min-width: 60px;
+      vertical-align: baseline; user-select: none; cursor: default;
+      white-space: nowrap;
+    }
+    .tiptap-field-chip--textarea {
+      display: block; width: 100%; white-space: normal; min-height: 1.6em;
+    }
+    .tiptap-field-chip--checkbox,
+    .tiptap-field-chip--radio {
+      border-bottom: none; min-width: 0; padding: 0 4px 0 0;
+      color: #475569;
     }
 
     .tpl-toast {
@@ -1083,7 +1095,17 @@ function docPageState() {
       signed_at: '서명일시',
     };
 
-    var FIELD_TYPE_ICON = { text: '✏', textarea: '¶', checkbox: '☑', radio: '◉' };
+    // 폼 페이지의 input 폭과 동일하게 유지 (admissionPledge.html CHIP_MAP의 w 값)
+    // 환자 인적사항 필드는 셀 전체 폭 사용
+    var FIELD_WIDTH_MAP = {
+      patient_name: '100%', patient_birth: '100%', patient_phone: '100%',
+      room: '100%', chart_no: '100%',
+      guardian_name: '200px', guardian_relation: '120px', guardian_phone: '180px',
+      sub_guardian_name: '200px', sub_guardian_relation: '120px', sub_guardian_phone: '180px',
+      signer_name: '100px', signer_relation: '175px',
+    };
+
+    var FIELD_TYPE_ICON = { text: '', textarea: '', checkbox: '☐', radio: '○' };
 
     var FieldChip = Node.create({
       name: 'fieldChip',
@@ -1100,12 +1122,19 @@ function docPageState() {
             default: '',
             parseHTML: function(el) {
               var key = el.getAttribute('data-field-key') || '';
-              return el.getAttribute('data-label') || FIELD_KEY_LABEL_MAP[key] || key;
+              var raw = el.getAttribute('data-label') || FIELD_KEY_LABEL_MAP[key] || key;
+              return String(raw).replace(/^[\s✏¶☐○◉☑]+/, '').trim() || key;
             },
           },
           fieldType: {
             default: 'text',
             parseHTML: function(el) { return el.getAttribute('data-field-type') || 'text'; },
+          },
+          width: {
+            default: null,
+            parseHTML: function(el) {
+              return el.style.width || el.getAttribute('data-field-width') || null;
+            },
           },
         };
       },
@@ -1115,16 +1144,24 @@ function docPageState() {
       renderHTML: function(_ref) {
         var node = _ref.node;
         var label = node.attrs.label || FIELD_KEY_LABEL_MAP[node.attrs.fieldKey] || node.attrs.fieldKey;
+        label = String(label).replace(/^[\s✏¶☐○◉☑]+/, '').trim() || node.attrs.fieldKey;
         var fType = node.attrs.fieldType || 'text';
         var icon = FIELD_TYPE_ICON[fType] || '';
-        return ['span', {
+        var w = node.attrs.width || FIELD_WIDTH_MAP[node.attrs.fieldKey];
+        var attrs = {
           'data-field-key': node.attrs.fieldKey,
           'data-field-type': fType,
           'data-field-label': label,
           'data-label': label,
-          class: 'tiptap-field-chip',
+          class: 'tiptap-field-chip tiptap-field-chip--' + fType,
           contenteditable: 'false',
-        }, icon + ' ' + label];
+        };
+        if (w) {
+          attrs.style = 'width:' + w + ';';
+          attrs['data-field-width'] = w;
+        }
+        var content = (fType === 'checkbox' || fType === 'radio') ? (icon + ' ' + label) : label;
+        return ['span', attrs, content];
       },
     });
 
@@ -1154,7 +1191,7 @@ function docPageState() {
 
     window._TipTapEditor = {
       create: function(el, opts) {
-        return new Editor({
+        var editor = new Editor({
           element: el,
           content: opts.content || '',
           extensions: [
@@ -1172,6 +1209,34 @@ function docPageState() {
           onUpdate: opts.onUpdate,
           onSelectionUpdate: opts.onSelectionUpdate,
         });
+
+        // 칩 더블클릭 → 너비 조정 prompt
+        editor.view.dom.addEventListener('dblclick', function(e) {
+          var chipDom = e.target.closest && e.target.closest('.tiptap-field-chip');
+          if (!chipDom) return;
+          e.preventDefault();
+          var fType = chipDom.getAttribute('data-field-type') || 'text';
+          if (fType === 'checkbox' || fType === 'radio') return;
+          var current = chipDom.style.width || chipDom.getAttribute('data-field-width') || '';
+          var input = window.prompt(
+            '입력 박스 너비 (예: 120px, 200px, 100% / 비워두면 기본값):',
+            current
+          );
+          if (input === null) return;
+          var newW = String(input).trim() || null;
+          if (newW && !/^(auto|\d+(\.\d+)?(px|%|em|rem))$/.test(newW)) {
+            window.alert('유효한 값이 아닙니다. 예: 120px, 100%, 15em'); return;
+          }
+          var pos;
+          try { pos = editor.view.posAtDOM(chipDom, 0); } catch (err) { return; }
+          var node = editor.state.doc.nodeAt(pos);
+          if (!node || node.type.name !== 'fieldChip') return;
+          var tr = editor.state.tr.setNodeMarkup(pos, undefined,
+            Object.assign({}, node.attrs, { width: newW }));
+          editor.view.dispatch(tr);
+          editor.view.focus();
+        });
+        return editor;
       },
     };
     window.dispatchEvent(new Event('tiptap:ready'));
