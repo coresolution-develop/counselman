@@ -432,11 +432,24 @@
                   <button type="button" class="tiptap-tool-btn" @mousedown.prevent="splitCell()" title="셀 나누기">⊞ 나누기</button>
                 </template>
                 <div class="tiptap-tool-sep"></div>
+                <button type="button" class="tiptap-tool-btn" @mousedown.prevent="insertPlainInput('checkbox')" title="체크박스 삽입">☐</button>
+                <button type="button" class="tiptap-tool-btn" @mousedown.prevent="insertPlainInput('radio')" title="라디오 삽입">◉</button>
+                <div class="tiptap-tool-sep"></div>
                 <div style="position:relative;">
                   <button type="button" class="tiptap-field-btn" @mousedown.prevent="showFieldMenu = !showFieldMenu" @click.stop>+ 필드 삽입</button>
                   <div class="tiptap-field-menu" x-show="showFieldMenu" @click.outside="showFieldMenu = false" x-cloak>
+                    <div style="padding:6px 10px 4px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:6px;">
+                      <span style="font-size:11px;color:#64748b;white-space:nowrap;">기본 유형:</span>
+                      <select x-model="fieldInsertType" style="font-size:11px;padding:2px 4px;border:1px solid #cbd5e1;border-radius:3px;background:#fff;">
+                        <option value="text">✏ 텍스트</option>
+                        <option value="textarea">¶ 텍스트 영역</option>
+                      </select>
+                    </div>
                     <template x-for="f in fieldList" :key="f.key">
-                      <button type="button" class="tiptap-field-menu-item" @mousedown.prevent="insertField(f)" x-text="f.label"></button>
+                      <button type="button" class="tiptap-field-menu-item" @mousedown.prevent="insertField(f)">
+                        <span x-text="f.type ? {'checkbox':'☑','radio':'◉','textarea':'¶'}[f.type] || '✏' : {'text':'✏','textarea':'¶','checkbox':'☑','radio':'◉'}[fieldInsertType] || '✏'" style="margin-right:4px;opacity:.7;"></span>
+                        <span x-text="f.label"></span>
+                      </button>
                     </template>
                   </div>
                 </div>
@@ -535,6 +548,8 @@ var _TIPTAP_FIELDS = [
   { key: 'sub_guardian_phone',    label: '부보호자 연락처' },
   { key: 'sub_guardian_relation', label: '부보호자 관계' },
   { key: 'sub_guardian_addr',     label: '부보호자 주소' },
+  { key: 'signer_name',           label: '신청인 성명' },
+  { key: 'signer_relation',       label: '신청인 관계' },
   { key: 'signed_at',             label: '서명일시' },
 ];
 
@@ -564,6 +579,7 @@ function docPageState() {
     isInTable: false,
     showNewDocMenu: false,
     showFieldMenu: false,
+    fieldInsertType: 'text',
     fieldList: _TIPTAP_FIELDS,
     toast: { visible: false, ok: true, message: '' },
     confirmModal: { open: false, message: '', _resolve: null },
@@ -806,9 +822,18 @@ function docPageState() {
       if (!_editorInstance) return;
       var key = f.key;
       var label = f.label;
+      var fieldType = f.type || this.fieldInsertType || 'text';
       this.showFieldMenu = false;
       this._runEditorCommand((ed) => {
-        ed.commands.insertContent({ type: 'fieldChip', attrs: { fieldKey: key, label: label } });
+        ed.commands.insertContent({ type: 'fieldChip', attrs: { fieldKey: key, label: label, fieldType: fieldType } });
+      });
+    },
+
+    insertPlainInput(inputType) {
+      if (!_editorInstance) return;
+      var char = inputType === 'radio' ? '◉ ' : '☐ ';
+      this._runEditorCommand((ed) => {
+        ed.commands.insertContent(char);
       });
     },
 
@@ -881,7 +906,6 @@ function docPageState() {
           this.editingId = data.id;
           this._applyTemplates(data.templates, data.docTypes);
           if (!Array.isArray(data.templates)) await this._reloadTemplates();
-          this._syncEditorWithTemplate(data.id);
           this.showToast(true, '저장되었습니다. 서약서에 즉시 적용됩니다.');
         } else {
           this.showToast(false, data.error || '저장 실패');
@@ -1055,8 +1079,11 @@ function docPageState() {
       guardian_relation: '주보호자 관계', guardian_addr: '주보호자 주소',
       sub_guardian_name: '부보호자 성명', sub_guardian_phone: '부보호자 연락처',
       sub_guardian_relation: '부보호자 관계', sub_guardian_addr: '부보호자 주소',
+      signer_name: '신청인 성명', signer_relation: '신청인 관계',
       signed_at: '서명일시',
     };
+
+    var FIELD_TYPE_ICON = { text: '✏', textarea: '¶', checkbox: '☑', radio: '◉' };
 
     var FieldChip = Node.create({
       name: 'fieldChip',
@@ -1076,6 +1103,10 @@ function docPageState() {
               return el.getAttribute('data-label') || FIELD_KEY_LABEL_MAP[key] || key;
             },
           },
+          fieldType: {
+            default: 'text',
+            parseHTML: function(el) { return el.getAttribute('data-field-type') || 'text'; },
+          },
         };
       },
       parseHTML: function() {
@@ -1084,12 +1115,40 @@ function docPageState() {
       renderHTML: function(_ref) {
         var node = _ref.node;
         var label = node.attrs.label || FIELD_KEY_LABEL_MAP[node.attrs.fieldKey] || node.attrs.fieldKey;
+        var fType = node.attrs.fieldType || 'text';
+        var icon = FIELD_TYPE_ICON[fType] || '';
         return ['span', {
           'data-field-key': node.attrs.fieldKey,
+          'data-field-type': fType,
+          'data-field-label': label,
           'data-label': label,
           class: 'tiptap-field-chip',
           contenteditable: 'false',
-        }, '{{' + label + '}}'];
+        }, icon + ' ' + label];
+      },
+    });
+
+    var StyledTableCell = TableCell.extend({
+      addAttributes: function() {
+        return Object.assign({}, this.parent?.() || {}, {
+          style: {
+            default: null,
+            parseHTML: function(el) { return el.getAttribute('style') || null; },
+            renderHTML: function(attrs) { return attrs.style ? { style: attrs.style } : {}; },
+          },
+        });
+      },
+    });
+
+    var StyledTableHeader = TableHeader.extend({
+      addAttributes: function() {
+        return Object.assign({}, this.parent?.() || {}, {
+          style: {
+            default: null,
+            parseHTML: function(el) { return el.getAttribute('style') || null; },
+            renderHTML: function(attrs) { return attrs.style ? { style: attrs.style } : {}; },
+          },
+        });
       },
     });
 
@@ -1106,8 +1165,8 @@ function docPageState() {
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
             Table.configure({ resizable: true }),
             TableRow,
-            TableCell,
-            TableHeader,
+            StyledTableCell,
+            StyledTableHeader,
             FieldChip,
           ],
           onUpdate: opts.onUpdate,
