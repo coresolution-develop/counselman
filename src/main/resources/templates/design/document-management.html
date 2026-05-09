@@ -438,10 +438,17 @@
                 <div class="tiptap-tool-sep"></div>
                 <button type="button" class="tiptap-tool-btn" @mousedown.prevent="insertTable()" title="표 삽입">⊞ 표</button>
                 <template x-if="isInTable">
-                  <button type="button" class="tiptap-tool-btn" @mousedown.prevent="mergeCells()" title="셀 합치기">⊟ 합치기</button>
-                </template>
-                <template x-if="isInTable">
-                  <button type="button" class="tiptap-tool-btn" @mousedown.prevent="splitCell()" title="셀 나누기">⊞ 나누기</button>
+                  <span style="display:inline-flex;gap:2px;">
+                    <button type="button" class="tiptap-tool-btn" @mousedown.prevent="addRowBefore()" title="위에 행 추가">↑행+</button>
+                    <button type="button" class="tiptap-tool-btn" @mousedown.prevent="addRowAfter()" title="아래에 행 추가">↓행+</button>
+                    <button type="button" class="tiptap-tool-btn" @mousedown.prevent="addColBefore()" title="왼쪽에 열 추가">←열+</button>
+                    <button type="button" class="tiptap-tool-btn" @mousedown.prevent="addColAfter()" title="오른쪽에 열 추가">열+→</button>
+                    <button type="button" class="tiptap-tool-btn" @mousedown.prevent="deleteRow()" title="행 삭제">행✕</button>
+                    <button type="button" class="tiptap-tool-btn" @mousedown.prevent="deleteCol()" title="열 삭제">열✕</button>
+                    <button type="button" class="tiptap-tool-btn" @mousedown.prevent="mergeCells()" title="셀 합치기">⊟ 합치기</button>
+                    <button type="button" class="tiptap-tool-btn" @mousedown.prevent="splitCell()" title="셀 나누기 (합쳐진 셀만 가능)">⊞ 나누기</button>
+                    <button type="button" class="tiptap-tool-btn" @mousedown.prevent="deleteTable()" title="표 삭제" style="color:#b91c1c;">⊠ 표</button>
+                  </span>
                 </template>
                 <div class="tiptap-tool-sep"></div>
                 <button type="button" class="tiptap-tool-btn" @mousedown.prevent="insertPlainInput('checkbox')" title="체크박스 삽입">☐</button>
@@ -788,8 +795,37 @@ function docPageState() {
 
     splitCell() {
       this._runEditorCommand((ed) => {
-        ed.chain().splitCell().run();
+        var ok = ed.chain().splitCell().run();
+        if (!ok) this.showToast(false, '합쳐진 셀에서만 나누기가 가능합니다. (행/열 추가 버튼을 사용하세요)');
       });
+    },
+
+    addRowBefore() {
+      this._runEditorCommand((ed) => { ed.chain().addRowBefore().run(); });
+    },
+
+    addRowAfter() {
+      this._runEditorCommand((ed) => { ed.chain().addRowAfter().run(); });
+    },
+
+    addColBefore() {
+      this._runEditorCommand((ed) => { ed.chain().addColumnBefore().run(); });
+    },
+
+    addColAfter() {
+      this._runEditorCommand((ed) => { ed.chain().addColumnAfter().run(); });
+    },
+
+    deleteRow() {
+      this._runEditorCommand((ed) => { ed.chain().deleteRow().run(); });
+    },
+
+    deleteCol() {
+      this._runEditorCommand((ed) => { ed.chain().deleteColumn().run(); });
+    },
+
+    deleteTable() {
+      this._runEditorCommand((ed) => { ed.chain().deleteTable().run(); });
     },
 
     openAiModal() {
