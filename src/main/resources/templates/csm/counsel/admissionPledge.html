@@ -97,233 +97,50 @@
       .ap-terms-block h2 { font-size: 16pt; margin: 16px 0 8px; }
       .ap-terms-block h3 { font-size: 14pt; margin: 12px 0 6px; }
       .ap-terms-block hr { border: none; border-top: 1px solid #c7c7c7; margin: 12px 0; }
-      /* 라디오/체크박스 항상 클릭 가능하도록 보장 */
-      input[type=radio],
-      input[type=checkbox]:not(.checkbox-wrapper-13 input) {
-        cursor: pointer;
-        pointer-events: auto;
-        position: relative;
-        z-index: 1;
-      }
-      .ap-terms-block .ap-field-input {
-        display: inline;
-        border: none;
-        border-bottom: 1px solid #aaa;
-        background: transparent;
-        font-family: inherit;
-        font-size: inherit;
-        min-width: 60px;
-        padding: 0 2px;
-        vertical-align: baseline;
-      }
-      .ap-terms-block .ap-field-textarea {
-        border: none;
-        border-bottom: 1px solid #aaa;
-        background: transparent;
-        font-family: inherit;
-        font-size: inherit;
-        width: 100%;
-        resize: none;
-        padding: 0 2px;
-        vertical-align: middle;
-      }
-    </style>
-</head>
-<body class="ap-body">
-<main class="ap-page">
-    <section class="ap-toolbar normal">
-        <div class="checkbox-wrapper-13 ap-agree-wrap">
-            <input id="ap_agree" type="checkbox"
-                   th:checked="${admissionPledge != null and admissionPledge['agreed_yn'] == 'Y'}">
-            <label for="ap_agree">위 내용을 확인했고 입원 연계에 동의합니다.</label>
-        </div>
-        <div class="ap-pen-controls">
-            <label class="ap-pen-control">
-                펜 색상
-                <input type="color" id="ap_pen_color" value="#111827">
-            </label>
-            <label class="ap-pen-control">
-                펜 굵기
-                <input type="range" id="ap_pen_size" min="1" max="10" step="1" value="2">
-                <span id="ap_pen_size_view">2px</span>
-            </label>
-        </div>
-        <div class="ap-toolbar-actions">
-            <button type="button" class="ap-btn ap-btn-gray" id="ap_ink_mode_toggle">전체 필기: OFF</button>
-            <button type="button" class="ap-btn ap-btn-gray" id="ap_ink_clear">전체 필기 지우기</button>
-        </div>
-    </section>
-
-    <div id="ap_document_stage" class="ap-document-stage">
-        <section class="ap-paper" style="background-repeat: no-repeat;
-            background-position: center 0;
-            background-image: url('/img/background4.png');
-            background-size: 1246px;
-            min-width: 1280px;
-            margin: 0 auto;">
-
-            <input type="hidden" id="ap_signature_data"
-                   th:value="${admissionPledge != null and admissionPledge['signature_data'] != null ? admissionPledge['signature_data'] : ''}">
-            <input type="hidden" id="ap_page_ink_data"
-                   th:value="${admissionPledge != null and admissionPledge['page_ink_data'] != null ? admissionPledge['page_ink_data'] : ''}">
-            <input type="hidden" id="ap_signed_at"
-                   th:value="${admissionPledge != null and admissionPledge['signed_at'] != null ? admissionPledge['signed_at'] : ''}">
-            <textarea id="ap_pledge_text" class="ap-hidden-text"
-                      th:text="${pledgeTemplateContent}"></textarea>
-
-            <th:block th:if="${docType == '입원서약서'}">
-            <input type="hidden" id="ap_patient_name" th:value="${patientName}">
-            <input type="hidden" id="ap_birth" th:value="${birth}">
-            <input type="hidden" id="ap_room" th:value="${room}">
-            <input type="hidden" id="ap_chart_no" th:value="${chartNo}">
-            <input type="hidden" id="ap_phone" th:value="${phone}">
-            <input type="hidden" id="ap_guardian_name" th:value="${admissionPledge != null and admissionPledge['guardian_name'] != null ? admissionPledge['guardian_name'] : ''}">
-            <input type="hidden" id="ap_guardian_relation" th:value="${admissionPledge != null and admissionPledge['guardian_relation'] != null ? admissionPledge['guardian_relation'] : ''}">
-            <input type="hidden" id="ap_guardian_addr" th:value="${admissionPledge != null and admissionPledge['guardian_addr'] != null ? admissionPledge['guardian_addr'] : ''}">
-            <input type="hidden" id="ap_guardian_phone" th:value="${admissionPledge != null and admissionPledge['guardian_phone'] != null ? admissionPledge['guardian_phone'] : phone}">
-            <input type="hidden" id="ap_guardian_cost" th:value="${admissionPledge != null and admissionPledge['guardian_cost_yn'] == 'Y' ? 'Y' : 'N'}">
-            <input type="hidden" id="ap_sub_guardian_name" th:value="${admissionPledge != null and admissionPledge['sub_guardian_name'] != null ? admissionPledge['sub_guardian_name'] : ''}">
-            <input type="hidden" id="ap_sub_guardian_relation" th:value="${admissionPledge != null and admissionPledge['sub_guardian_relation'] != null ? admissionPledge['sub_guardian_relation'] : ''}">
-            <input type="hidden" id="ap_sub_guardian_addr" th:value="${admissionPledge != null and admissionPledge['sub_guardian_addr'] != null ? admissionPledge['sub_guardian_addr'] : ''}">
-            <input type="hidden" id="ap_sub_guardian_phone" th:value="${admissionPledge != null and admissionPledge['sub_guardian_phone'] != null ? admissionPledge['sub_guardian_phone'] : ''}">
-            <input type="hidden" id="ap_sub_guardian_cost" th:value="${admissionPledge != null and admissionPledge['sub_guardian_cost_yn'] == 'Y' ? 'Y' : 'N'}">
-            </th:block>
-            <th:block th:unless="${docType == '입원서약서'}">
-            <input type="hidden" id="ap_patient_name" th:value="${patientName}">
-            <input type="hidden" id="ap_birth" th:value="${birth}">
-            <input type="hidden" id="ap_room" th:value="${room}">
-            <input type="hidden" id="ap_chart_no" th:value="${chartNo}">
-            <input type="hidden" id="ap_phone" th:value="${phone}">
-            <input type="hidden" id="ap_guardian_name" th:value="${admissionPledge != null and admissionPledge['guardian_name'] != null ? admissionPledge['guardian_name'] : ''}">
-            <input type="hidden" id="ap_guardian_relation" th:value="${admissionPledge != null and admissionPledge['guardian_relation'] != null ? admissionPledge['guardian_relation'] : ''}">
-            <input type="hidden" id="ap_guardian_phone" th:value="${admissionPledge != null and admissionPledge['guardian_phone'] != null ? admissionPledge['guardian_phone'] : ''}">
-            <input type="hidden" id="ap_guardian_addr" th:value="${admissionPledge != null and admissionPledge['guardian_addr'] != null ? admissionPledge['guardian_addr'] : ''}">
-            <input type="hidden" id="ap_sub_guardian_name" th:value="${admissionPledge != null and admissionPledge['sub_guardian_name'] != null ? admissionPledge['sub_guardian_name'] : ''}">
-            <input type="hidden" id="ap_sub_guardian_relation" th:value="${admissionPledge != null and admissionPledge['sub_guardian_relation'] != null ? admissionPledge['sub_guardian_relation'] : ''}">
-            <input type="hidden" id="ap_sub_guardian_phone" th:value="${admissionPledge != null and admissionPledge['sub_guardian_phone'] != null ? admissionPledge['sub_guardian_phone'] : ''}">
-            <input type="hidden" id="ap_sub_guardian_addr" th:value="${admissionPledge != null and admissionPledge['sub_guardian_addr'] != null ? admissionPledge['sub_guardian_addr'] : ''}">
-            </th:block>
-
-            <div class="light ap-terms-block" style="font-size:14pt; color:#222222; width:966px; margin: 0 auto;" th:utext="${pledgeTemplateContent}"></div>
-            <br>
-
-
-            <div style="position: relative;">
-                <div class="normal" style="text-align: right; position: relative; z-index: 1; color: #222222; width: 966px; height: 42px; margin: 0 auto; display: flex; justify-content: flex-end; align-items: center;">
-                    신청인 ( 관계 :
-                    <input id="ap_signer_relation" style="width:175px;" type="text"
-                           th:value="${admissionPledge != null and admissionPledge['signer_relation'] != null and !#strings.isEmpty(admissionPledge['signer_relation']) ? admissionPledge['signer_relation'] : '본인'}"/>) :
-                    <input id="ap_signer_name" style="width:100px;" type="text"
-                           th:value="${admissionPledge != null and admissionPledge['signer_name'] != null and !#strings.isEmpty(admissionPledge['signer_name']) ? admissionPledge['signer_name'] : patientName}"/>
-                    &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-                    <div style="display: inline-block; position: relative;" id="end" class="ap-sign-trigger" data-signature-key="primary">
-                        ( 서&emsp;<img id="canvasImg" class="ap-sign-image ap-sign-image-final" src="" alt="신청인 서명">명 )
-                    </div>
-                </div>
-            </div>
-            <div class="ap-signed-at normal">서명일시: <span id="ap_signed_at_view"></span></div>
-            <br><br><br><br>
-        </section>
-        <canvas id="ap_page_ink_canvas" aria-label="문서 전체 필기"></canvas>
-        <img id="ap_page_ink_print_img" alt="문서 전체 필기 인쇄 레이어">
-    </div>
-
-    <div class="ap-action-row normal">
-        <button type="button" class="ap-btn ap-btn-gray" id="ap_clear_signature">서명 전체 지우기</button>
-        <button type="button" class="ap-btn ap-btn-gray" id="ap_cancel">취소</button>
-        <button type="button" class="ap-btn ap-btn-gray" id="ap_print">인쇄</button>
-        <button type="button" class="ap-btn ap-btn-primary" id="ap_apply">서명 완료 후 적용</button>
-    </div>
-</main>
-
-<div id="ap_signature_modal" class="ap-sign-modal" aria-hidden="true">
-    <div class="ap-sign-modal-body">
-        <div class="ap-sign-modal-title" id="ap_signature_modal_title">서명</div>
-        <div class="ap-sign-modal-desc">아래 공간에 서명하신 후 확인을 눌러 주세요.</div>
-        <canvas id="ap_signature_modal_canvas" width="780" height="340"></canvas>
-        <div class="ap-sign-modal-actions">
-            <button type="button" class="ap-btn ap-btn-gray" id="ap_signature_modal_clear">지우기</button>
-            <button type="button" class="ap-btn ap-btn-gray" id="ap_signature_modal_cancel">취소</button>
-            <button type="button" class="ap-btn ap-btn-primary" id="ap_signature_modal_apply">확인</button>
-        </div>
-    </div>
-</div>
-
-<script th:inline="javascript">
-window.ADMISSION_PLEDGE_BOOTSTRAP = {
-  csIdx: [[${csIdx}]],
-  draftKey: [[${draftKey}]],
-  returnUrl: [[${returnUrl}]],
-  docType: [[${docType}]],
-  defaultAdmissionPledgeText: [[${defaultAdmissionPledgeText}]],
-  admissionPledge: [[${admissionPledge}]]
-};
-</script>
-<script th:src="@{/js/csm/counsel/admissionPledge.js}"></script>
-<script>
-(function () {
-  var FIELD_INPUT_IDS = {
-    patient_name:          'ap_patient_name',
-    patient_birth:         'ap_birth',
-    patient_phone:         'ap_phone',
-    room:                  'ap_room',
-    chart_no:              'ap_chart_no',
-    guardian_name:         'ap_guardian_name',
-    guardian_phone:        'ap_guardian_phone',
-    guardian_relation:     'ap_guardian_relation',
-    guardian_addr:         'ap_guardian_addr',
-    sub_guardian_name:     'ap_sub_guardian_name',
-    sub_guardian_phone:    'ap_sub_guardian_phone',
-    sub_guardian_relation: 'ap_sub_guardian_relation',
-    sub_guardian_addr:     'ap_sub_guardian_addr',
-    signed_at:             'ap_signed_at',
-  };
-
-  function getValue(key) {
-    var inputId = FIELD_INPUT_IDS[key];
-    if (!inputId) return '';
-    var el = document.getElementById(inputId);
-    var val = el ? (el.value || '').trim() : '';
-    if (key === 'signed_at' && !val) {
-      var now = new Date();
-      return now.getFullYear() + '년 ' + (now.getMonth() + 1) + '월 ' + now.getDate() + '일';
-    }
-    return val;
-  }
-
-  function injectFields() {
-    var block = document.querySelector('.ap-terms-block');
-    if (!block) return;
-    block.querySelectorAll('[data-field-key]').forEach(function (wrapper) {
-      var key = wrapper.dataset.fieldKey;
-      var value = getValue(key);
-      if (wrapper.classList.contains('tiptap-field-chip')) {
-        wrapper.textContent = value;
+    block.querySelectorAll('.tiptap-field-chip[data-field-key]').forEach(function (chip) {
+      var key = chip.dataset.fieldKey;
+      var cfg = CHIP_MAP[key];
+      if (!cfg) return;
+      var val = String(apData[cfg.dataKey] || '').trim();
+      var el;
+      if (cfg.type === 'checkbox') {
+        var wrapper = document.createElement('div');
+        wrapper.className = 'checkbox-wrapper-13';
+        wrapper.style.cssText = 'display:inline-flex;align-items:center;margin-right:21px;';
+        el = document.createElement('input');
+        el.type = 'checkbox';
+        el.className = 'normal';
+        el.id = cfg.id;
+        el.checked = val === 'Y';
+        var lbl = document.createElement('label');
+        lbl.htmlFor = cfg.id;
+        lbl.textContent = cfg.label;
+        wrapper.appendChild(el);
+        wrapper.appendChild(lbl);
+        chip.parentNode.replaceChild(wrapper, chip);
         return;
+      } else if (cfg.type === 'textarea') {
+        el = document.createElement('textarea');
+        el.className = 'light ap-field-textarea';
+        el.id = cfg.id;
+        el.rows = 2;
+        el.value = val;
+      } else {
+        el = document.createElement('input');
+        el.type = 'text';
+        el.className = 'light ap-field-input';
+        el.id = cfg.id;
+        if (cfg.w) el.style.width = cfg.w;
+        el.value = val;
       }
-      if (!value) return;
-      var target = wrapper.querySelector('.doc-el-text, .doc-el-box, .doc-el-sign span');
-      if (target) {
-        target.textContent = value;
-      }
-    });
-  }
-
-  function attachLiveUpdate() {
-    Object.values(FIELD_INPUT_IDS).forEach(function (inputId) {
-      var el = document.getElementById(inputId);
-      if (el) el.addEventListener('input', injectFields);
+      chip.parentNode.replaceChild(el, chip);
     });
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () {
-      injectFields();
-      attachLiveUpdate();
-    });
+    document.addEventListener('DOMContentLoaded', activateFieldChips);
   } else {
-    injectFields();
-    attachLiveUpdate();
+    activateFieldChips();
   }
 })();
 </script>
