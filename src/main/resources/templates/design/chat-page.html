@@ -27,8 +27,11 @@
     .app {
       display: flex;
       flex-direction: column;
-      height: 100vh;
-      height: 100dvh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
     }
 
     /* ── Header ── */
@@ -584,6 +587,7 @@
     .input-area {
       flex-shrink: 0;
       padding: 12px 16px;
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
       border-top: 1px solid #e5e7eb;
       background: #fff;
       display: flex;
@@ -673,12 +677,6 @@
       .user-nickname { display: none; }
       .chat-header__right { gap: 6px; }
       .btn-logout { padding: 6px 10px; }
-
-      /* On mobile, .app height is set dynamically via visualViewport JS.
-         Input stays in normal flex flow — no fixed positioning needed. */
-      .input-area {
-        padding-bottom: env(safe-area-inset-bottom, 0px);
-      }
     }
 
     @media (min-width: 768px) {
@@ -1071,16 +1069,26 @@ function chatApp() {
         }
       }
 
-      // KakaoTalk-style keyboard handling:
-      // Shrink .app to visualViewport.height so messages area compresses,
-      // then scroll to bottom so latest message stays just above fixed input.
+      // Keyboard handling for iOS Safari and Android Chrome:
+      // - iOS: keyboard scrolls the visual viewport (offsetTop changes)
+      // - Android: keyboard shrinks the visual viewport (height changes, offsetTop stays 0)
+      // We reposition the fixed .app to match the visual viewport exactly in both cases.
       if (window.visualViewport) {
         const onVV = () => {
+          const vv = window.visualViewport;
           const app = document.querySelector('.app');
-          if (app) app.style.height = window.visualViewport.height + 'px';
+          if (app) {
+            app.style.top = vv.offsetTop + 'px';
+            app.style.left = vv.offsetLeft + 'px';
+            app.style.width = vv.width + 'px';
+            app.style.height = vv.height + 'px';
+            app.style.right = 'auto';
+            app.style.bottom = 'auto';
+          }
           this.$nextTick(() => this.scrollBottom());
         };
         window.visualViewport.addEventListener('resize', onVV);
+        window.visualViewport.addEventListener('scroll', onVV);
         onVV();
       }
     },

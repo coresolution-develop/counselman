@@ -1,6 +1,6 @@
 # MediPlat 작업 현황
 
-> 최종 업데이트: 2026-05-08
+> 최종 업데이트: 2026-05-10
 
 ---
 
@@ -87,7 +87,7 @@
 - [x] 관리자 채팅 수신 연동
 - [x] **FAQ 우선 응답 흐름** — 첫 메시지 전송 시 키워드 검색 → 결과 표시 → [도움이 됐어요 / 상담사에게 연결] 선택
 - [x] **챗봇 상담 접수 플로우** — 이름→연락처→내용→확인 순서, `counsel_reservation` 테이블 자동 저장 (created_by: 챗봇)
-- [x] **iOS Chrome 키보드 UX** — `font-size: 16px` 확대 방지, `visualViewport` API로 카카오톡 스타일 높이 동적 조정
+- [x] **모바일 키보드 UX (iOS · Android 통합 대응)** — `font-size: 16px` 확대 방지, `.app { position: fixed }` + `visualViewport` API로 iOS offsetTop 스크롤 및 Android 뷰포트 축소 양쪽 대응, `resize` · `scroll` 이벤트 모두 구독, `env(safe-area-inset-bottom)` 제스처 바 여백 적용
 - [x] **홈 화면 추가** — 온라인 상담 / 상담 접수 / 상담사 연결 선택 카드
 - [x] **상담 접수 폼** — 성함·연락처·상담 내용 입력 후 서버 제출, 접수 완료 화면
 - [x] **브라우저 알림(Notification API)** — 새 채팅·상담 요청 수신 시 Push Notification
