@@ -5808,12 +5808,12 @@ public class PageController {
         model.addAttribute("chartNo", effectiveChartNo);
         model.addAttribute("room", effectiveRoom);
         model.addAttribute("phone", effectivePhone);
-        String savedPledgeText = safeObjectString(admissionPledge.get("pledge_text"));
+        // 항상 활성 템플릿(또는 DEFAULT)을 사용해 신규/기존 진입 모두 동일한 레이아웃을 보장.
+        // 사용자 입력값은 별도 컬럼(guardian_name 등)에서 fieldValues로 채워넣음.
         String activeTemplate = cs.getActivePledgeTemplateContent(inst, docType);
-        boolean savedHasChips = savedPledgeText.contains("tiptap-field-chip");
-        String pledgeTemplateContent = (!savedPledgeText.isBlank() && savedHasChips)
-                ? savedPledgeText
-                : (activeTemplate != null && !activeTemplate.isBlank() ? activeTemplate : DEFAULT_PLEDGE_TEMPLATE_CONTENT);
+        String pledgeTemplateContent = (activeTemplate != null && !activeTemplate.isBlank())
+                ? activeTemplate
+                : DEFAULT_PLEDGE_TEMPLATE_CONTENT;
 
         java.util.Map<String, String> fieldValues = new java.util.LinkedHashMap<>();
         fieldValues.put("환자명",         effectiveName);
