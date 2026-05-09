@@ -17,17 +17,6 @@
   const patientBirthInput = document.getElementById('ap_birth');
   const roomInput = document.getElementById('ap_room');
   const chartNoInput = document.getElementById('ap_chart_no');
-  const guardianNameInput = document.getElementById('ap_guardian_name');
-  const guardianRelationInput = document.getElementById('ap_guardian_relation');
-  const guardianAddrInput = document.getElementById('ap_guardian_addr');
-  const guardianPhoneInput = document.getElementById('ap_guardian_phone');
-  const guardianCostInput = document.getElementById('ap_guardian_cost');
-  const subGuardianNameInput = document.getElementById('ap_sub_guardian_name');
-  const subGuardianRelationInput = document.getElementById('ap_sub_guardian_relation');
-  const subGuardianAddrInput = document.getElementById('ap_sub_guardian_addr');
-  const subGuardianPhoneInput = document.getElementById('ap_sub_guardian_phone');
-  const subGuardianCostInput = document.getElementById('ap_sub_guardian_cost');
-
   const signatureInput = document.getElementById('ap_signature_data');
   const clearSignatureBtn = document.getElementById('ap_clear_signature');
 
@@ -567,6 +556,65 @@
     closeSignatureModal();
   }
 
+  function activateFieldChips() {
+    var block = document.querySelector('.ap-terms-block');
+    if (!block) return;
+
+    var inputIdMap = {
+      guardian_name: 'ap_guardian_name',
+      guardian_relation: 'ap_guardian_relation',
+      guardian_addr: 'ap_guardian_addr',
+      guardian_phone: 'ap_guardian_phone',
+      sub_guardian_name: 'ap_sub_guardian_name',
+      sub_guardian_relation: 'ap_sub_guardian_relation',
+      sub_guardian_addr: 'ap_sub_guardian_addr',
+      sub_guardian_phone: 'ap_sub_guardian_phone',
+      patient_name: 'ap_patient_name',
+      patient_birth: 'ap_birth',
+      patient_phone: 'ap_phone',
+      room: 'ap_room',
+      chart_no: 'ap_chart_no'
+    };
+
+    block.querySelectorAll('.tiptap-field-chip[data-field-key]').forEach(function (chip) {
+      var key = chip.dataset.fieldKey;
+      if (!key) return;
+
+      var inputId = inputIdMap[key];
+      if (!inputId) return;
+
+      var isAddr = key.includes('addr');
+      var inp = document.createElement(isAddr ? 'textarea' : 'input');
+      if (!isAddr) inp.type = 'text';
+      inp.className = isAddr ? 'ap-field-textarea' : 'ap-field-input';
+      inp.id = inputId;
+
+      // Get initial value from hidden input
+      var hidden = document.getElementById(inputId);
+      if (hidden && hidden !== chip) {
+        inp.value = hidden.value || '';
+        hidden.remove();
+      }
+
+      if (isAddr) {
+        inp.rows = 2;
+      }
+
+      chip.parentNode.replaceChild(inp, chip);
+    });
+
+    // Handle ☐ checkboxes in ap-consent-section
+    block.querySelectorAll('.ap-consent-section').forEach(function (section) {
+      var html = section.innerHTML;
+      var checkboxValues = ['환자의 신체적 정신적 장애로 의사결정 불가', '환자위임', '응급 상황', '내용 설명 시 환자의 심신에 중대한 영향 우려', '미성년자'];
+      checkboxValues.forEach(function (val, idx) {
+        var id = 'ap_reason_' + (idx + 1);
+        html = html.replace('☐', '<input type="checkbox" id="' + id + '" value="' + val + '" style="margin-right:4px;">');
+      });
+      section.innerHTML = html;
+    });
+  }
+
   function setupVipRoomToggle() {
     const vipCheckbox = document.getElementById('ap_vip_room');
     const roomNoInput = document.getElementById('ap_vip_room_no');
@@ -610,16 +658,38 @@
     if (patientBirthInput) patientBirthInput.value = String(payload.patient_birth || patientBirthInput.value || '').trim();
     if (roomInput) roomInput.value = String(payload.room || roomInput.value || '').trim();
     if (chartNoInput) chartNoInput.value = String(payload.chart_no || chartNoInput.value || '').trim();
-    if (guardianNameInput) guardianNameInput.value = String(payload.guardian_name || '').trim();
-    if (guardianRelationInput) guardianRelationInput.value = String(payload.guardian_relation || '').trim();
-    if (guardianAddrInput) guardianAddrInput.value = String(payload.guardian_addr || '').trim();
-    if (guardianPhoneInput) guardianPhoneInput.value = String(payload.guardian_phone || '').trim();
-    if (guardianCostInput) guardianCostInput.checked = String(payload.guardian_cost_yn || '').trim() === 'Y';
-    if (subGuardianNameInput) subGuardianNameInput.value = String(payload.sub_guardian_name || '').trim();
-    if (subGuardianRelationInput) subGuardianRelationInput.value = String(payload.sub_guardian_relation || '').trim();
-    if (subGuardianAddrInput) subGuardianAddrInput.value = String(payload.sub_guardian_addr || '').trim();
-    if (subGuardianPhoneInput) subGuardianPhoneInput.value = String(payload.sub_guardian_phone || '').trim();
-    if (subGuardianCostInput) subGuardianCostInput.checked = String(payload.sub_guardian_cost_yn || '').trim() === 'Y';
+    const gn = document.getElementById('ap_guardian_name');
+    if (gn) gn.value = String(payload.guardian_name || '').trim();
+    const gr = document.getElementById('ap_guardian_relation');
+    if (gr) gr.value = String(payload.guardian_relation || '').trim();
+    const ga = document.getElementById('ap_guardian_addr');
+    if (ga) ga.value = String(payload.guardian_addr || '').trim();
+    const gp = document.getElementById('ap_guardian_phone');
+    if (gp) gp.value = String(payload.guardian_phone || '').trim();
+    const gc = document.getElementById('ap_guardian_cost');
+    if (gc) {
+      if (gc.type === 'checkbox') {
+        gc.checked = String(payload.guardian_cost_yn || '').trim() === 'Y';
+      } else {
+        gc.value = String(payload.guardian_cost_yn || '').trim() === 'Y' ? 'Y' : 'N';
+      }
+    }
+    const sgn = document.getElementById('ap_sub_guardian_name');
+    if (sgn) sgn.value = String(payload.sub_guardian_name || '').trim();
+    const sgr = document.getElementById('ap_sub_guardian_relation');
+    if (sgr) sgr.value = String(payload.sub_guardian_relation || '').trim();
+    const sga = document.getElementById('ap_sub_guardian_addr');
+    if (sga) sga.value = String(payload.sub_guardian_addr || '').trim();
+    const sgp = document.getElementById('ap_sub_guardian_phone');
+    if (sgp) sgp.value = String(payload.sub_guardian_phone || '').trim();
+    const sgc = document.getElementById('ap_sub_guardian_cost');
+    if (sgc) {
+      if (sgc.type === 'checkbox') {
+        sgc.checked = String(payload.sub_guardian_cost_yn || '').trim() === 'Y';
+      } else {
+        sgc.value = String(payload.sub_guardian_cost_yn || '').trim() === 'Y' ? 'Y' : 'N';
+      }
+    }
 
     const signedAt = String(payload.signed_at || '').trim();
     if (signedAt && signedAtInput) {
@@ -774,16 +844,18 @@
   function buildPayload() {
     const signerName = String(signerNameInput?.value || '').trim() || String(patientNameInput?.value || '').trim();
     const signerRelation = String(signerRelationInput?.value || '').trim() || '본인';
-    const guardianName = String(guardianNameInput?.value || '').trim();
-    const guardianRelation = String(guardianRelationInput?.value || '').trim();
-    const guardianAddr = String(guardianAddrInput?.value || '').trim();
-    const guardianPhone = String(guardianPhoneInput?.value || '').trim();
-    const guardianCostYn = guardianCostInput?.checked ? 'Y' : 'N';
-    const subGuardianName = String(subGuardianNameInput?.value || '').trim();
-    const subGuardianRelation = String(subGuardianRelationInput?.value || '').trim();
-    const subGuardianAddr = String(subGuardianAddrInput?.value || '').trim();
-    const subGuardianPhone = String(subGuardianPhoneInput?.value || '').trim();
-    const subGuardianCostYn = subGuardianCostInput?.checked ? 'Y' : 'N';
+    const guardianName = String(document.getElementById('ap_guardian_name')?.value || '').trim();
+    const guardianRelation = String(document.getElementById('ap_guardian_relation')?.value || '').trim();
+    const guardianAddr = String(document.getElementById('ap_guardian_addr')?.value || '').trim();
+    const guardianPhone = String(document.getElementById('ap_guardian_phone')?.value || '').trim();
+    const guardianCostEl = document.getElementById('ap_guardian_cost');
+    const guardianCostYn = guardianCostEl?.type === 'checkbox' ? (guardianCostEl.checked ? 'Y' : 'N') : (guardianCostEl?.value === 'Y' ? 'Y' : 'N');
+    const subGuardianName = String(document.getElementById('ap_sub_guardian_name')?.value || '').trim();
+    const subGuardianRelation = String(document.getElementById('ap_sub_guardian_relation')?.value || '').trim();
+    const subGuardianAddr = String(document.getElementById('ap_sub_guardian_addr')?.value || '').trim();
+    const subGuardianPhone = String(document.getElementById('ap_sub_guardian_phone')?.value || '').trim();
+    const subGuardianCostEl = document.getElementById('ap_sub_guardian_cost');
+    const subGuardianCostYn = subGuardianCostEl?.type === 'checkbox' ? (subGuardianCostEl.checked ? 'Y' : 'N') : (subGuardianCostEl?.value === 'Y' ? 'Y' : 'N');
     const signedAt = String(signedAtInput?.value || '').trim() || nowDateTime();
     const pledgeText = sanitizePledgeText(String(termsBlock?.innerHTML || pledgeTextInput?.value || '').trim()) || defaultPledgeText;
     const csIdxValue = /^-?\d+$/.test(String(bootstrap.csIdx || '').trim()) ? Number(bootstrap.csIdx) : 0;
@@ -892,6 +964,7 @@
 
   setPledgeTextIfEmpty();
   setInkMode(false);
+  activateFieldChips();
   setupVipRoomToggle();
   syncSignedAtView();
   syncPenControlView();
