@@ -329,9 +329,15 @@
 
     function pointerPoint(event) {
       const rect = canvas.getBoundingClientRect();
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      const logicalW = canvas.width / ratio;
+      const logicalH = canvas.height / ratio;
+      // canvas의 CSS 크기와 internal 크기 비율이 다르면 좌표 보정
+      const sx = rect.width > 0 ? logicalW / rect.width : 1;
+      const sy = rect.height > 0 ? logicalH / rect.height : 1;
       return {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top
+        x: (event.clientX - rect.left) * sx,
+        y: (event.clientY - rect.top) * sy
       };
     }
 
