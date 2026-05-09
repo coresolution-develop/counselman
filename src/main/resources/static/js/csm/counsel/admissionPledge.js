@@ -17,16 +17,8 @@
   const patientBirthInput = document.getElementById('ap_birth');
   const roomInput = document.getElementById('ap_room');
   const chartNoInput = document.getElementById('ap_chart_no');
-  const guardianNameInput = document.getElementById('ap_guardian_name');
-  const guardianRelationInput = document.getElementById('ap_guardian_relation');
-  const guardianAddrInput = document.getElementById('ap_guardian_addr');
-  const guardianPhoneInput = document.getElementById('ap_guardian_phone');
-  const guardianCostInput = document.getElementById('ap_guardian_cost');
-  const subGuardianNameInput = document.getElementById('ap_sub_guardian_name');
-  const subGuardianRelationInput = document.getElementById('ap_sub_guardian_relation');
-  const subGuardianAddrInput = document.getElementById('ap_sub_guardian_addr');
-  const subGuardianPhoneInput = document.getElementById('ap_sub_guardian_phone');
-  const subGuardianCostInput = document.getElementById('ap_sub_guardian_cost');
+  // guardian inputs are created dynamically by activateFieldChips() in inline script;
+  // use document.getElementById() at call time in buildPayload/applyPayload
 
   const signatureInput = document.getElementById('ap_signature_data');
   const clearSignatureBtn = document.getElementById('ap_clear_signature');
@@ -610,16 +602,16 @@
     if (patientBirthInput) patientBirthInput.value = String(payload.patient_birth || patientBirthInput.value || '').trim();
     if (roomInput) roomInput.value = String(payload.room || roomInput.value || '').trim();
     if (chartNoInput) chartNoInput.value = String(payload.chart_no || chartNoInput.value || '').trim();
-    if (guardianNameInput) guardianNameInput.value = String(payload.guardian_name || '').trim();
-    if (guardianRelationInput) guardianRelationInput.value = String(payload.guardian_relation || '').trim();
-    if (guardianAddrInput) guardianAddrInput.value = String(payload.guardian_addr || '').trim();
-    if (guardianPhoneInput) guardianPhoneInput.value = String(payload.guardian_phone || '').trim();
-    if (guardianCostInput) guardianCostInput.checked = String(payload.guardian_cost_yn || '').trim() === 'Y';
-    if (subGuardianNameInput) subGuardianNameInput.value = String(payload.sub_guardian_name || '').trim();
-    if (subGuardianRelationInput) subGuardianRelationInput.value = String(payload.sub_guardian_relation || '').trim();
-    if (subGuardianAddrInput) subGuardianAddrInput.value = String(payload.sub_guardian_addr || '').trim();
-    if (subGuardianPhoneInput) subGuardianPhoneInput.value = String(payload.sub_guardian_phone || '').trim();
-    if (subGuardianCostInput) subGuardianCostInput.checked = String(payload.sub_guardian_cost_yn || '').trim() === 'Y';
+    const gnEl = document.getElementById('ap_guardian_name'); if (gnEl) gnEl.value = String(payload.guardian_name || '').trim();
+    const grEl = document.getElementById('ap_guardian_relation'); if (grEl) grEl.value = String(payload.guardian_relation || '').trim();
+    const gaEl = document.getElementById('ap_guardian_addr'); if (gaEl) gaEl.value = String(payload.guardian_addr || '').trim();
+    const gpEl = document.getElementById('ap_guardian_phone'); if (gpEl) gpEl.value = String(payload.guardian_phone || '').trim();
+    const gcEl = document.getElementById('ap_guardian_cost'); if (gcEl) gcEl.checked = String(payload.guardian_cost_yn || '').trim() === 'Y';
+    const sgnEl = document.getElementById('ap_sub_guardian_name'); if (sgnEl) sgnEl.value = String(payload.sub_guardian_name || '').trim();
+    const sgrEl = document.getElementById('ap_sub_guardian_relation'); if (sgrEl) sgrEl.value = String(payload.sub_guardian_relation || '').trim();
+    const sgaEl = document.getElementById('ap_sub_guardian_addr'); if (sgaEl) sgaEl.value = String(payload.sub_guardian_addr || '').trim();
+    const sgpEl = document.getElementById('ap_sub_guardian_phone'); if (sgpEl) sgpEl.value = String(payload.sub_guardian_phone || '').trim();
+    const sgcEl = document.getElementById('ap_sub_guardian_cost'); if (sgcEl) sgcEl.checked = String(payload.sub_guardian_cost_yn || '').trim() === 'Y';
 
     const signedAt = String(payload.signed_at || '').trim();
     if (signedAt && signedAtInput) {
@@ -774,16 +766,16 @@
   function buildPayload() {
     const signerName = String(signerNameInput?.value || '').trim() || String(patientNameInput?.value || '').trim();
     const signerRelation = String(signerRelationInput?.value || '').trim() || '본인';
-    const guardianName = String(guardianNameInput?.value || '').trim();
-    const guardianRelation = String(guardianRelationInput?.value || '').trim();
-    const guardianAddr = String(guardianAddrInput?.value || '').trim();
-    const guardianPhone = String(guardianPhoneInput?.value || '').trim();
-    const guardianCostYn = guardianCostInput?.checked ? 'Y' : 'N';
-    const subGuardianName = String(subGuardianNameInput?.value || '').trim();
-    const subGuardianRelation = String(subGuardianRelationInput?.value || '').trim();
-    const subGuardianAddr = String(subGuardianAddrInput?.value || '').trim();
-    const subGuardianPhone = String(subGuardianPhoneInput?.value || '').trim();
-    const subGuardianCostYn = subGuardianCostInput?.checked ? 'Y' : 'N';
+    const guardianName = String(document.getElementById('ap_guardian_name')?.value || '').trim();
+    const guardianRelation = String(document.getElementById('ap_guardian_relation')?.value || '').trim();
+    const guardianAddr = String(document.getElementById('ap_guardian_addr')?.value || '').trim();
+    const guardianPhone = String(document.getElementById('ap_guardian_phone')?.value || '').trim();
+    const guardianCostYn = document.getElementById('ap_guardian_cost')?.checked ? 'Y' : 'N';
+    const subGuardianName = String(document.getElementById('ap_sub_guardian_name')?.value || '').trim();
+    const subGuardianRelation = String(document.getElementById('ap_sub_guardian_relation')?.value || '').trim();
+    const subGuardianAddr = String(document.getElementById('ap_sub_guardian_addr')?.value || '').trim();
+    const subGuardianPhone = String(document.getElementById('ap_sub_guardian_phone')?.value || '').trim();
+    const subGuardianCostYn = document.getElementById('ap_sub_guardian_cost')?.checked ? 'Y' : 'N';
     const signedAt = String(signedAtInput?.value || '').trim() || nowDateTime();
     const pledgeText = sanitizePledgeText(String(termsBlock?.innerHTML || pledgeTextInput?.value || '').trim()) || defaultPledgeText;
     const csIdxValue = /^-?\d+$/.test(String(bootstrap.csIdx || '').trim()) ? Number(bootstrap.csIdx) : 0;
