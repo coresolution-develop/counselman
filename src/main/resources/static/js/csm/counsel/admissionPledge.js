@@ -564,43 +564,9 @@
     var block = document.querySelector('.ap-terms-block');
     if (!block) return;
 
-    var inputIdMap = {
-      guardian_name: 'ap_guardian_name',
-      guardian_relation: 'ap_guardian_relation',
-      guardian_addr: 'ap_guardian_addr',
-      guardian_phone: 'ap_guardian_phone',
-      sub_guardian_name: 'ap_sub_guardian_name',
-      sub_guardian_relation: 'ap_sub_guardian_relation',
-      sub_guardian_addr: 'ap_sub_guardian_addr',
-      sub_guardian_phone: 'ap_sub_guardian_phone'
-    };
-
-    block.querySelectorAll('.tiptap-field-chip[data-field-key]').forEach(function (chip) {
-      var key = chip.dataset.fieldKey;
-      if (!key) return;
-
-      var inputId = inputIdMap[key];
-      if (!inputId) return;
-
-      var isAddr = key.includes('addr');
-      var inp = document.createElement(isAddr ? 'textarea' : 'input');
-      if (!isAddr) inp.type = 'text';
-      inp.className = isAddr ? 'ap-field-textarea' : 'ap-field-input';
-      inp.id = inputId;
-
-      // Get initial value from hidden input
-      var hidden = document.getElementById(inputId);
-      if (hidden && hidden !== chip) {
-        inp.value = hidden.value || '';
-        hidden.remove();
-      }
-
-      if (isAddr) {
-        inp.rows = 2;
-      }
-
-      chip.parentNode.replaceChild(inp, chip);
-    });
+    // 모든 chip 변환은 admissionPledge.html의 inline activateFieldChips에서 처리한다.
+    // (chip width와 placeholder를 일관되게 적용하기 위해)
+    // 여기서는 .ap-consent-section 같은 별도 영역만 처리한다.
 
     // Handle ☐ checkboxes in ap-consent-section
     block.querySelectorAll('.ap-consent-section').forEach(function (section) {
