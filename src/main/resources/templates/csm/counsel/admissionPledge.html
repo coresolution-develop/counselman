@@ -154,48 +154,28 @@
             <textarea id="ap_pledge_text" class="ap-hidden-text"
                       th:text="${pledgeTemplateContent}"></textarea>
 
-            <h1 style="text-align: center; font-size: 30pt; padding-top: 70px;" th:text="${docType}">입원서약서</h1>
-
-            <div class="bold" style="font-size: 16pt; color:#303030; display: flex; align-items: start; margin: 0 auto; width: 966px;">※ 환자의 인적사항</div>
-            <div style="text-align: center; margin-bottom: 20px;">
-                <table border="1" style="border-collapse: collapse; text-align: center; width: 966px; margin-left: auto; margin-right: auto;" >
-                    <tr>
-                        <td class="normal" width="170px" height="56px">성명</td>
-                        <td class="light" style="text-align: left;">
-                            <input id="ap_patient_name" style="margin-left: 33px;" type="text" th:value="${patientName}">
-                        </td>
-                        <td class="normal" width="170px" height="56px">차트번호</td>
-                        <td class="light" colspan="2" style="text-align: left;">
-                            <input id="ap_chart_no" style="margin-left: 33px;" type="text" th:value="${chartNo}">
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="normal" height="56px">입원병실</td>
-                        <td class="light" style="text-align: left;">
-                            <input id="ap_room" style="margin-left: 33px;" type="text" th:value="${room}">
-                        </td>
-                        <td class="normal" height="56px">성별 </td>
-                        <td class="light" style="cursor: pointer;">
-                            <input type="radio" name="ap_gender" value="남성" id="ap_gender_m"
-                                   th:checked="${gender == '남성' or gender == '남'}"><label for="ap_gender_m" style="cursor: pointer;">남</label>
-                        </td>
-                        <td class="light" style="cursor: pointer;">
-                            <input type="radio" name="ap_gender" value="여성" id="ap_gender_f"
-                                   th:checked="${gender == '여성' or gender == '여'}"><label for="ap_gender_f" style="cursor: pointer;">여</label>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="normal" height="56px">생년월일</td>
-                        <td class="light" style="text-align: left;">
-                            <input id="ap_birth" style="margin-left: 33px;" type="text" th:value="${birth}">
-                        </td>
-                        <td class="normal" height="56px">전화</td>
-                        <td class="light" colspan="2" style="text-align: left;">
-                            <input id="ap_phone" style="margin-left: 33px;" type="text" th:value="${phone}">
-                        </td>
-                    </tr>
-                </table>
-            </div>
+            <th:block th:if="${docType == '입원서약서'}">
+            <input type="hidden" id="ap_patient_name" th:value="${patientName}">
+            <input type="hidden" id="ap_birth" th:value="${birth}">
+            <input type="hidden" id="ap_room" th:value="${room}">
+            <input type="hidden" id="ap_chart_no" th:value="${chartNo}">
+            <input type="hidden" id="ap_phone" th:value="${phone}">
+            </th:block>
+            <th:block th:unless="${docType == '입원서약서'}">
+            <input type="hidden" id="ap_patient_name" th:value="${patientName}">
+            <input type="hidden" id="ap_birth" th:value="${birth}">
+            <input type="hidden" id="ap_room" th:value="${room}">
+            <input type="hidden" id="ap_chart_no" th:value="${chartNo}">
+            <input type="hidden" id="ap_phone" th:value="${phone}">
+            <input type="hidden" id="ap_guardian_name" th:value="${admissionPledge != null and admissionPledge['guardian_name'] != null ? admissionPledge['guardian_name'] : ''}">
+            <input type="hidden" id="ap_guardian_relation" th:value="${admissionPledge != null and admissionPledge['guardian_relation'] != null ? admissionPledge['guardian_relation'] : ''}">
+            <input type="hidden" id="ap_guardian_phone" th:value="${admissionPledge != null and admissionPledge['guardian_phone'] != null ? admissionPledge['guardian_phone'] : ''}">
+            <input type="hidden" id="ap_guardian_addr" th:value="${admissionPledge != null and admissionPledge['guardian_addr'] != null ? admissionPledge['guardian_addr'] : ''}">
+            <input type="hidden" id="ap_sub_guardian_name" th:value="${admissionPledge != null and admissionPledge['sub_guardian_name'] != null ? admissionPledge['sub_guardian_name'] : ''}">
+            <input type="hidden" id="ap_sub_guardian_relation" th:value="${admissionPledge != null and admissionPledge['sub_guardian_relation'] != null ? admissionPledge['sub_guardian_relation'] : ''}">
+            <input type="hidden" id="ap_sub_guardian_phone" th:value="${admissionPledge != null and admissionPledge['sub_guardian_phone'] != null ? admissionPledge['sub_guardian_phone'] : ''}">
+            <input type="hidden" id="ap_sub_guardian_addr" th:value="${admissionPledge != null and admissionPledge['sub_guardian_addr'] != null ? admissionPledge['sub_guardian_addr'] : ''}">
+            </th:block>
 
             <div class="light ap-terms-block" style="font-size:14pt; color:#222222; width:966px; margin: 0 auto;" th:utext="${pledgeTemplateContent}"></div>
             <br>
@@ -432,6 +412,7 @@ window.ADMISSION_PLEDGE_BOOTSTRAP = {
   csIdx: [[${csIdx}]],
   draftKey: [[${draftKey}]],
   returnUrl: [[${returnUrl}]],
+  docType: [[${docType}]],
   defaultAdmissionPledgeText: [[${defaultAdmissionPledgeText}]],
   admissionPledge: [[${admissionPledge}]]
 };
@@ -474,6 +455,10 @@ window.ADMISSION_PLEDGE_BOOTSTRAP = {
     block.querySelectorAll('[data-field-key]').forEach(function (wrapper) {
       var key = wrapper.dataset.fieldKey;
       var value = getValue(key);
+      if (wrapper.classList.contains('tiptap-field-chip')) {
+        wrapper.textContent = value;
+        return;
+      }
       if (!value) return;
       var target = wrapper.querySelector('.doc-el-text, .doc-el-box, .doc-el-sign span');
       if (target) {
@@ -486,9 +471,7 @@ window.ADMISSION_PLEDGE_BOOTSTRAP = {
   function cleanTermsBlock() {
     var block = document.querySelector('.ap-terms-block');
     if (!block) return;
-    // CSS 클래스가 있는 섹션 제거
     block.querySelectorAll('.ap-guardian-section, .ap-consent-section, .ap-vip-section, .ap-signer-section').forEach(function (el) { el.remove(); });
-    // 클래스 없는 구형 저장 포맷 테이블 제거
     block.querySelectorAll('table').forEach(function (tbl) {
       var text = tbl.textContent;
       if (text.includes('주보호자') || text.includes('부보호자') || text.includes('동의사유') || text.includes('상급병실')) {
@@ -499,14 +482,23 @@ window.ADMISSION_PLEDGE_BOOTSTRAP = {
     });
   }
 
+  function attachLiveUpdate() {
+    Object.values(FIELD_INPUT_IDS).forEach(function (inputId) {
+      var el = document.getElementById(inputId);
+      if (el) el.addEventListener('input', injectFields);
+    });
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       injectFields();
       cleanTermsBlock();
+      attachLiveUpdate();
     });
   } else {
     injectFields();
     cleanTermsBlock();
+    attachLiveUpdate();
   }
 })();
 </script>

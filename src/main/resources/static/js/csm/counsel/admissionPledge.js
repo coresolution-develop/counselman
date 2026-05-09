@@ -830,19 +830,16 @@
     const payload = buildPayload();
 
     if (payload.agreed_yn !== 'Y') {
-      alert('서약 동의 체크가 필요합니다.');
       agreeCheckbox?.focus();
       return;
     }
 
     if (!payload.signer_name) {
-      alert('신청인 성명을 입력해 주세요.');
       signerNameInput?.focus();
       return;
     }
 
     if (ENABLE_INDIVIDUAL_SIGNATURE && !hasPrimarySignature(payload.signature_data)) {
-      alert('신청인 서명을 작성해 주세요.');
       return;
     }
 
@@ -884,7 +881,6 @@
       window.location.href = returnUrl;
       return;
     }
-    alert('서약서 정보를 저장했습니다. 이전 화면에서 저장을 진행해 주세요.');
   });
 
   const draftPayload = consumeDraftPayloadByKey(bootstrap.draftKey);

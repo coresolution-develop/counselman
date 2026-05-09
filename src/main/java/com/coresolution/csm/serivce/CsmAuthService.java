@@ -1656,9 +1656,14 @@ public class CsmAuthService {
     }
 
     public int nextStandaloneAdmissionPledgeCsIdx(String inst) {
+        return nextStandaloneAdmissionPledgeCsIdx(inst, "입원서약서");
+    }
+
+    public int nextStandaloneAdmissionPledgeCsIdx(String inst, String docType) {
         String safe = sanitizeInst(inst);
         ensureAdmissionPledgeTable(safe);
         String table = "csm.counsel_admission_pledge_" + safe;
+        String safeDocType = (docType == null || docType.isBlank()) ? "입원서약서" : docType.trim();
         int candidate = -1;
         for (int attempt = 0; attempt < 10; attempt++) {
             try {
@@ -1666,7 +1671,8 @@ public class CsmAuthService {
                         "SELECT COALESCE(MIN(cs_idx), 0) FROM " + table + " WHERE cs_idx < 0",
                         Integer.class);
                 candidate = minCsIdx == null || minCsIdx >= 0 ? -1 : minCsIdx - 1;
-                jdbcTemplate.update("INSERT INTO " + table + " (cs_idx) VALUES (?)", candidate);
+                jdbcTemplate.update("INSERT INTO " + table + " (cs_idx, document_type) VALUES (?, ?)",
+                        candidate, safeDocType);
                 return candidate;
             } catch (Exception e) {
                 log.warn("[admission-pledge] reserve standalone key retry inst={}, cs_idx={}, err={}",

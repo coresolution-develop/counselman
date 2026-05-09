@@ -192,20 +192,29 @@ public class PageController {
     private static final String DEFAULT_ADMISSION_PLEDGE_TEXT = "본인은 입원 연계 및 상담을 위해 제공한 정보가 병원 입원 진행에 활용되는 것에 동의합니다. "
             + "또한 상담 과정에서 안내받은 내용을 확인하였으며, 안내된 절차에 따라 성실히 협조할 것을 서약합니다.";
     static final String DEFAULT_PLEDGE_TEMPLATE_CONTENT =
-            "<p>&nbsp;본인(환자의 주보호자)은 귀 의료기관에서 제시한 제반 규칙을 준수함은 물론, 치료와 퇴원 등 의사 및 간호사(또는 직원)의 정당한 지시에 따르며, 아래의 내용을 읽고 서약 및 동의합니다.</p>"
+            "<h1 style=\"text-align:center;font-size:22pt;padding:24px 0 14px;\">입원서약서</h1>"
+            + "<p><strong>※ 환자의 인적사항</strong></p>"
+            + "<table style=\"width:100%;border-collapse:collapse;margin-bottom:16px;\">"
+            + "<tbody><tr>"
+            + "<td style=\"border:1px solid #b0b0b0;padding:8px 12px;background:#f5f5f5;font-weight:500;text-align:center;width:120px;\">성명</td>"
+            + "<td style=\"border:1px solid #b0b0b0;padding:8px 12px;\"><span data-field-key=\"patient_name\" data-label=\"환자명\" class=\"tiptap-field-chip\" contenteditable=\"false\">{{환자명}}</span></td>"
+            + "<td style=\"border:1px solid #b0b0b0;padding:8px 12px;background:#f5f5f5;font-weight:500;text-align:center;width:120px;\">차트번호</td>"
+            + "<td style=\"border:1px solid #b0b0b0;padding:8px 12px;\"><span data-field-key=\"chart_no\" data-label=\"차트번호\" class=\"tiptap-field-chip\" contenteditable=\"false\">{{차트번호}}</span></td>"
+            + "</tr><tr>"
+            + "<td style=\"border:1px solid #b0b0b0;padding:8px 12px;background:#f5f5f5;font-weight:500;text-align:center;\">입원병실</td>"
+            + "<td style=\"border:1px solid #b0b0b0;padding:8px 12px;\"><span data-field-key=\"room\" data-label=\"병실\" class=\"tiptap-field-chip\" contenteditable=\"false\">{{병실}}</span></td>"
+            + "<td style=\"border:1px solid #b0b0b0;padding:8px 12px;background:#f5f5f5;font-weight:500;text-align:center;\">성별</td>"
+            + "<td style=\"border:1px solid #b0b0b0;padding:8px 12px;\">○남 &nbsp;&nbsp; ○여</td>"
+            + "</tr><tr>"
+            + "<td style=\"border:1px solid #b0b0b0;padding:8px 12px;background:#f5f5f5;font-weight:500;text-align:center;\">생년월일</td>"
+            + "<td style=\"border:1px solid #b0b0b0;padding:8px 12px;\"><span data-field-key=\"patient_birth\" data-label=\"생년월일\" class=\"tiptap-field-chip\" contenteditable=\"false\">{{생년월일}}</span></td>"
+            + "<td style=\"border:1px solid #b0b0b0;padding:8px 12px;background:#f5f5f5;font-weight:500;text-align:center;\">전화</td>"
+            + "<td style=\"border:1px solid #b0b0b0;padding:8px 12px;\"><span data-field-key=\"patient_phone\" data-label=\"환자 연락처\" class=\"tiptap-field-chip\" contenteditable=\"false\">{{환자 연락처}}</span></td>"
+            + "</tr></tbody></table>"
+            + "<p>&nbsp;본인(환자의 주보호자)은 귀 의료기관에서 제시한 제반 규칙을 준수함은 물론, 치료와 퇴원 등 의사 및 간호사(또는 직원)의 정당한 지시에 따르며, 아래의 내용을 읽고 서약 및 동의합니다.</p>"
             + "<p><span style=\"color: rgb(248, 123, 12);\">1. 입원 기간 중 예기치 않은 사고(골절, 타박상, 개방성 상처 등)나 응급상황 시 본원에서 치료할 수 없는 상태이거나 의료진 판단으로 응급처치 가능한 병원으로 전원을 요구할 수 있으며 또한 환자 및 보호자가 원할 경우 담당의사와 상의 후 타 병원으로 전원 할 수 있습니다.</span></p>"
             + "<p><span style=\"color: rgb(248, 123, 12);\">2. 노인은 골다공증, 피부의 약화로 쉽게 골절 또는 멍이 들 수 있으므로 의료기관의 정당한 진료지침이나 교육에 반하는 무단 외출·외박 등으로 인하여 발생하는 환자의 손해에 대한 책임은 원칙적으로 모두 환자에게 있습니다.</span></p>"
             + "<p>3. 진료 상 발생하는 모든 문제에 대하여 분쟁이 생겼을 때에는 『의료사고 피해구제 및 의료분쟁 조정 등에 관한 법률』에 의한 한국 의료분쟁조정중재원에 그 조정을 신청할 수 있음에 동의합니다.</p>"
-            + "<p>4. 입원기간 동안 발생하는 진료비는 귀 의료기관에서 정하는 납부기한 내에 납부(연대보증인이 있는 경우에는 환자와 연대보증인이 연대하여 납부)하겠으며, 정당한 이유 없이 체납될 때에는 채권확보를 위한 법적조치에 이의가 없고, 만일 본건을 기초로 의료분쟁 등으로 소송을 제기할 경우 관할법원의 민사소송법에 따릅니다.</p>"
-            + "<p>5. 입원기간 중에 환자 및 보호자가 귀 의료기관의 비품이나 기물을 고의 또는 과실로 파괴, 망실, 훼손한 때에는 이를 변상(현물, 현금)합니다.</p>"
-            + "<p><span style=\"color: rgb(248, 123, 12);\">6. 입원기간 중 환자 또는 보호자 등이 소지 중인 현금, 기타 귀중품 및 개인소지품(완전틀니, 부분틀니 포함, 안경, 보청기등)은 귀 의료기관이 지정한 보관 장소가 있는 경우에는 보관 장소에 보관하고, 보관 장소가 따로 없는 경우에는 귀 의료기관이 지정한 직원에게 보관을 의뢰합니다. 이를 이행치 아니하여 분실 및 훼손되어 발생한 손해에 대하여는 귀 의료기관은 책임이 없습니다.</span></p>"
-            + "<p>7. 개인정보 수집 및 활용 동의</p>"
-            + "<p>본원은 진료 등을 위해 아래와 같은 최소한의 개인정보를 수집함. 진료를 위한 필요정보는 의료법에 따라 별도의 동의 없이 수집되며, 동의를 하지 않더라도 진료에는 불이익이 없음.</p>"
-            + "<p>(1) 개인정보 수집항목 : (필수항목) 성명, 주소, 전화번호, 주민등록번호, 보험정보</p>"
-            + "<p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(선택항목) 이메일, 문자메세지 서비스 수신 동의여부</p>"
-            + "<p>(2) 개인정보 수집방법 : 진료 목적은 별도로 받지 않으며, 진료목적 외는 서면으로 수집</p>"
-            + "<p>(3) 개인정보의 수집 및 이용목적 : 진단/검진 예약, 조회 및 진료를 위한 본인 확인 절차 등</p>"
-            + "<p>(4) 개인정보의 보유 및 이용기간 : 개인정보의 수집목적 또는 제공받은 목적이 달성될 때 파기</p>"
             + "<p><br></p>"
             + "<p><strong><span style=\"font-size: 1.2em; color: rgb(48, 48, 48);\">※ 환자본인, 주보호자 및 부보호자에 대한 안내</span></strong></p>"
             + "<p>1. 주보호자는 환자의 입원과 전원, 퇴원 등의 절차상 동의인 이며, 환자 상태의 급격한 변화, 낙상 등의 안전사고, 사망 등 환자입원생활에 관련된 사항에 대해 <strong>일차적 연락대상</strong>이며 타보호자는 <strong>상담이 제한</strong>됩니다. 주보호자 변경 시에는 주보호자변경요청서를 통해서만 가능합니다.</p>"
@@ -213,74 +222,62 @@ public class PageController {
             + "<p>3. 주보호자는 환자의 입원기록 외 사본 발급 및 제증명 발급의 주체가 되며, 수혈동의서, 신체 보호대 동의서, 심폐소생술거부동의서, 낙상관련설명안내서, 병원비 등의 규정상 동의절차가 필요한 경우 <strong>서명 대상자</strong>가 됩니다.</p>"
             + "<p>4. 입원생활에 관련 법적 분쟁 발생 시 원칙적으로 환자 본인이 의료기관의 소송 상대방이 되며, 불가피할 경우 주보호자가 <strong>법적 대리인</strong>이 됩니다.</p>"
             + "<p><br></p>"
-            + "<div class=\"ap-guardian-section\">"
-            + "<div style=\"font-size:15pt;font-weight:bold;color:#303030;width:966px;margin:0 auto 4px;\">※ 주보호자</div>"
-            + "<table style=\"width:966px;border-collapse:collapse;margin:0 auto 20px;border:1px solid #c7c7c7;\">"
-            + "<colgroup><col style=\"width:65px;\"><col style=\"width:100px;\"><col style=\"width:300px;\"><col style=\"width:420px;\"><col style=\"width:81px;\"></colgroup>"
-            + "<tbody>"
-            + "<tr style=\"height:56px;\">"
-            + "<td rowspan=\"3\" style=\"width:65px;text-align:center;background-color:#fafafa;border:1px solid #c7c7c7;\">주<br>보<br>호<br>자</td>"
-            + "<td style=\"border:1px solid #dadada;\">성 명</td>"
-            + "<td style=\"text-align:left;border:1px solid #dadada;\"><span data-field-key=\"guardian_name\" data-field-label=\"주보호자 성명\" class=\"tiptap-field-chip\">{{주보호자 성명}}</span></td>"
-            + "<td style=\"border:1px solid #dadada;\">(관계 : <span data-field-key=\"guardian_relation\" data-field-label=\"주보호자 관계\" class=\"tiptap-field-chip\">{{주보호자 관계}}</span>)</td>"
-            + "<td style=\"text-align:center;border:1px solid #dadada;\">(서&nbsp;&nbsp;&nbsp;명)</td>"
-            + "</tr>"
-            + "<tr style=\"height:56px;\">"
-            + "<td style=\"border:1px solid #dadada;\">주 소</td>"
-            + "<td colspan=\"3\" style=\"text-align:left;border:1px solid #dadada;\"><span data-field-key=\"guardian_addr\" data-field-label=\"주보호자 주소\" class=\"tiptap-field-chip\">{{주보호자 주소}}</span></td>"
-            + "</tr>"
-            + "<tr style=\"height:56px;\">"
-            + "<td style=\"border:1px solid #dadada;\">휴대폰 번호</td>"
-            + "<td style=\"text-align:left;border:1px solid #dadada;\"><span data-field-key=\"guardian_phone\" data-field-label=\"주보호자 연락처\" class=\"tiptap-field-chip\">{{주보호자 연락처}}</span></td>"
-            + "<td colspan=\"2\" style=\"border:1px solid #dadada;\"></td>"
-            + "</tr>"
-            + "</tbody></table>"
+            + "<table style=\"width:100%;border-collapse:collapse;margin-bottom:16px;\">"
+            + "<tbody><tr>"
+            + "<td rowspan=\"3\" style=\"border:1px solid #c7c7c7;padding:8px;background:#fafafa;font-weight:500;text-align:center;width:50px;\">주<br>보<br>호<br>자</td>"
+            + "<td style=\"border:1px solid #dadada;padding:8px 12px;background:#fafafa;font-weight:500;text-align:center;width:100px;\">성 명</td>"
+            + "<td style=\"border:1px solid #dadada;padding:8px 12px;\"><span data-field-key=\"guardian_name\" data-label=\"주보호자 성명\" class=\"tiptap-field-chip\" contenteditable=\"false\">{{주보호자 성명}}</span></td>"
+            + "<td style=\"border:1px solid #dadada;padding:8px 12px;width:220px;\">(관계 : <span data-field-key=\"guardian_relation\" data-label=\"주보호자 관계\" class=\"tiptap-field-chip\" contenteditable=\"false\">{{주보호자 관계}}</span>&nbsp;)</td>"
+            + "<td style=\"border:1px solid #dadada;padding:8px 12px;text-align:center;width:80px;\">(서 명)</td>"
+            + "</tr><tr>"
+            + "<td style=\"border:1px solid #dadada;padding:8px 12px;background:#fafafa;font-weight:500;text-align:center;\">주 소</td>"
+            + "<td colspan=\"3\" style=\"border:1px solid #dadada;padding:8px 12px;\"><span data-field-key=\"guardian_addr\" data-label=\"주보호자 주소\" class=\"tiptap-field-chip\" contenteditable=\"false\">{{주보호자 주소}}</span></td>"
+            + "</tr><tr>"
+            + "<td style=\"border:1px solid #dadada;padding:8px 12px;background:#fafafa;font-weight:500;text-align:center;\">휴대폰 번호</td>"
+            + "<td style=\"border:1px solid #dadada;padding:8px 12px;\"><span data-field-key=\"guardian_phone\" data-label=\"주보호자 연락처\" class=\"tiptap-field-chip\" contenteditable=\"false\">{{주보호자 연락처}}</span></td>"
+            + "<td colspan=\"2\" style=\"border:1px solid #dadada;padding:8px 12px;text-align:right;\">☐ 비용안내</td>"
+            + "</tr></tbody></table>"
             + "</div>"
             + "<div class=\"ap-guardian-section\">"
-            + "<div style=\"font-size:15pt;font-weight:bold;color:#303030;width:966px;margin:0 auto 4px;\">※ 부보호자</div>"
-            + "<table style=\"width:966px;border-collapse:collapse;margin:0 auto 20px;border:1px solid #c7c7c7;\">"
-            + "<colgroup><col style=\"width:65px;\"><col style=\"width:100px;\"><col style=\"width:300px;\"><col style=\"width:420px;\"><col style=\"width:81px;\"></colgroup>"
-            + "<tbody>"
-            + "<tr style=\"height:56px;\">"
-            + "<td rowspan=\"3\" style=\"width:65px;text-align:center;background-color:#fafafa;border:1px solid #c7c7c7;\">부<br>보<br>호<br>자</td>"
-            + "<td style=\"border:1px solid #dadada;\">성 명</td>"
-            + "<td style=\"text-align:left;border:1px solid #dadada;\"><span data-field-key=\"sub_guardian_name\" data-field-label=\"부보호자 성명\" class=\"tiptap-field-chip\">{{부보호자 성명}}</span></td>"
-            + "<td style=\"border:1px solid #dadada;\">(관계 : <span data-field-key=\"sub_guardian_relation\" data-field-label=\"부보호자 관계\" class=\"tiptap-field-chip\">{{부보호자 관계}}</span>)</td>"
-            + "<td style=\"text-align:center;border:1px solid #dadada;\">(서&nbsp;&nbsp;&nbsp;명)</td>"
-            + "</tr>"
-            + "<tr style=\"height:56px;\">"
-            + "<td style=\"border:1px solid #dadada;\">주 소</td>"
-            + "<td colspan=\"3\" style=\"text-align:left;border:1px solid #dadada;\"><span data-field-key=\"sub_guardian_addr\" data-field-label=\"부보호자 주소\" class=\"tiptap-field-chip\">{{부보호자 주소}}</span></td>"
-            + "</tr>"
-            + "<tr style=\"height:56px;\">"
-            + "<td style=\"border:1px solid #dadada;\">휴대폰 번호</td>"
-            + "<td style=\"text-align:left;border:1px solid #dadada;\"><span data-field-key=\"sub_guardian_phone\" data-field-label=\"부보호자 연락처\" class=\"tiptap-field-chip\">{{부보호자 연락처}}</span></td>"
-            + "<td colspan=\"2\" style=\"border:1px solid #dadada;\"></td>"
-            + "</tr>"
-            + "</tbody></table>"
+            + "<table style=\"width:100%;border-collapse:collapse;margin-bottom:16px;\">"
+            + "<tbody><tr>"
+            + "<td rowspan=\"3\" style=\"border:1px solid #c7c7c7;padding:8px;background:#fafafa;font-weight:500;text-align:center;width:50px;\">부<br>보<br>호<br>자</td>"
+            + "<td style=\"border:1px solid #dadada;padding:8px 12px;background:#fafafa;font-weight:500;text-align:center;width:100px;\">성 명</td>"
+            + "<td style=\"border:1px solid #dadada;padding:8px 12px;\"><span data-field-key=\"sub_guardian_name\" data-label=\"부보호자 성명\" class=\"tiptap-field-chip\" contenteditable=\"false\">{{부보호자 성명}}</span></td>"
+            + "<td style=\"border:1px solid #dadada;padding:8px 12px;width:220px;\">(관계 : <span data-field-key=\"sub_guardian_relation\" data-label=\"부보호자 관계\" class=\"tiptap-field-chip\" contenteditable=\"false\">{{부보호자 관계}}</span>&nbsp;)</td>"
+            + "<td style=\"border:1px solid #dadada;padding:8px 12px;text-align:center;width:80px;\">(서 명)</td>"
+            + "</tr><tr>"
+            + "<td style=\"border:1px solid #dadada;padding:8px 12px;background:#fafafa;font-weight:500;text-align:center;\">주 소</td>"
+            + "<td colspan=\"3\" style=\"border:1px solid #dadada;padding:8px 12px;\"><span data-field-key=\"sub_guardian_addr\" data-label=\"부보호자 주소\" class=\"tiptap-field-chip\" contenteditable=\"false\">{{부보호자 주소}}</span></td>"
+            + "</tr><tr>"
+            + "<td style=\"border:1px solid #dadada;padding:8px 12px;background:#fafafa;font-weight:500;text-align:center;\">휴대폰 번호</td>"
+            + "<td style=\"border:1px solid #dadada;padding:8px 12px;\"><span data-field-key=\"sub_guardian_phone\" data-label=\"부보호자 연락처\" class=\"tiptap-field-chip\" contenteditable=\"false\">{{부보호자 연락처}}</span></td>"
+            + "<td colspan=\"2\" style=\"border:1px solid #dadada;padding:8px 12px;text-align:right;\">☐ 비용안내</td>"
+            + "</tr></tbody></table>"
             + "</div>"
             + "<div class=\"ap-consent-section\">"
-            + "<table style=\"width:966px;border-collapse:collapse;margin:0 auto 16px;border:1px solid #c7c7c7;\">"
-            + "<tbody>"
-            + "<tr><td style=\"background-color:#fafafa;border:1px solid #c7c7c7;padding:8px 12px;font-weight:bold;\">동의사유</td></tr>"
-            + "<tr><td style=\"border:1px solid #c7c7c7;padding:10px 16px;\">"
-            + "☐ 본인이 원함 &nbsp;&nbsp; ☐ 가족 및 보호자가 원함 &nbsp;&nbsp; ☐ 치료에 필요함 &nbsp;&nbsp; ☐ 기타"
-            + "</td></tr>"
+            + "<table style=\"width:100%;border-collapse:collapse;margin-bottom:16px;\">"
+            + "<tbody><tr><td colspan=\"3\" style=\"border:1px solid #c7c7c7;padding:10px 14px;background:#fafafa;font-weight:500;\">환자가 아닌 보호자의 동의사유</td></tr>"
+            + "<tr><td colspan=\"3\" style=\"border:1px solid #dadada;padding:10px 14px;\">☐ 환자의 신체적 정신적 장애로 의사결정 불가 &nbsp;&nbsp;&nbsp; ☐ 환자위임 &nbsp;&nbsp;&nbsp; ☐ 응급 상황 &nbsp;&nbsp;&nbsp; ☐ 내용 설명 시 환자의 심신에 중대한 영향 우려 &nbsp;&nbsp;&nbsp; ☐ 미성년자</td></tr>"
             + "</tbody></table>"
             + "</div>"
             + "<div class=\"ap-vip-section\">"
-            + "<table style=\"width:966px;border-collapse:collapse;margin:0 auto 16px;border:1px solid #c7c7c7;\">"
-            + "<tbody>"
-            + "<tr><td style=\"background-color:#fafafa;border:1px solid #c7c7c7;padding:8px 12px;font-weight:bold;\">상급병실 사용 동의</td></tr>"
-            + "<tr><td style=\"border:1px solid #c7c7c7;padding:10px 16px;\">"
-            + "☐ 동의함 &nbsp;&nbsp; ☐ 동의하지 않음"
-            + "</td></tr>"
+            + "<table style=\"width:100%;border-collapse:collapse;margin-bottom:8px;\">"
+            + "<tbody><tr><td colspan=\"3\" style=\"border:1px solid #c7c7c7;padding:10px 14px;\">☐ 상급병실(특실, 1인실, 2인실)의 이용 시 병실차액이 발생할 수 있습니다.</td></tr>"
+            + "<tr>"
+            + "<td style=\"border:1px solid #dadada;padding:8px 12px;background:#fafafa;font-weight:500;text-align:center;width:130px;\">병실</td>"
+            + "<td style=\"border:1px solid #dadada;padding:8px 12px;width:200px;\"></td>"
+            + "<td style=\"border:1px solid #dadada;padding:8px 12px;text-align:right;\">☐ 특실 &nbsp; ☐ 1인실 &nbsp; ☐ 2인실</td>"
+            + "</tr><tr>"
+            + "<td style=\"border:1px solid #dadada;padding:8px 12px;background:#fafafa;font-weight:500;text-align:center;\">비용</td>"
+            + "<td colspan=\"2\" style=\"border:1px solid #dadada;padding:8px 12px;\">1일당 :</td>"
+            + "</tr><tr><td colspan=\"3\" style=\"border:1px solid #dadada;padding:10px 14px;\">상급병실 사용에 관련한 차액발생부분 설명을 듣고 동의함.</td></tr>"
             + "</tbody></table>"
             + "</div>"
-            + "<div class=\"ap-signer-section\" style=\"text-align:right;padding:12px 0;color:#222;font-size:14pt;width:966px;margin:0 auto;\">"
+            + "<div class=\"ap-signer-section\" style=\"text-align:right;padding:12px 0;color:#222;font-size:14pt;\">"
             + "신청인 &nbsp;( 관계 : _____________ ) : _________________&emsp;&emsp;&emsp;&emsp;( 서 명 )"
             + "</div>"
-            + "<div class=\"ap-signer-section\" style=\"font-size:12pt;color:#555;padding-bottom:16px;width:966px;margin:0 auto;\">"
+            + "<div class=\"ap-signer-section\" style=\"font-size:12pt;color:#555;padding-bottom:16px;\">"
             + "서명일시: ________________________"
             + "</div>";
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -5758,7 +5755,7 @@ public class PageController {
 
         int csIdx = csIdxParam == null ? 0 : csIdxParam;
         if (csIdx == 0 && standalone) {
-            csIdx = cs.nextStandaloneAdmissionPledgeCsIdx(inst);
+            csIdx = cs.nextStandaloneAdmissionPledgeCsIdx(inst, safeString(docType).trim());
             if (csIdx == 0) {
                 throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "입원서약서 문서번호를 생성하지 못했습니다.");
             }
@@ -5779,11 +5776,15 @@ public class PageController {
         String effectiveBirth   = !storedPatientBirth.isBlank() ? storedPatientBirth : safeString(birth).trim();
         String effectivePhone   = !storedPatientPhone.isBlank() ? storedPatientPhone : safeString(phone).trim();
 
+        String savedDocType = safeObjectString(admissionPledge.get("document_type"));
+        String effectiveDocType = !savedDocType.isBlank() ? savedDocType
+                : (safeString(docType).trim().isBlank() ? "입원서약서" : safeString(docType).trim());
+
         model.addAttribute("inst", inst);
         model.addAttribute("csIdx", csIdx);
         model.addAttribute("draftKey", safeString(draftKey).trim());
         model.addAttribute("returnUrl", normalizeInternalReturnUrl(returnUrl));
-        model.addAttribute("docType", safeString(docType).trim().isBlank() ? "입원서약서" : safeString(docType).trim());
+        model.addAttribute("docType", effectiveDocType);
         model.addAttribute("patientName", effectiveName);
         model.addAttribute("gender", safeString(gender).trim());
         model.addAttribute("birth", effectiveBirth);
@@ -5867,6 +5868,8 @@ public class PageController {
         pledge.put("pledge_text",           str.apply("pledge_text"));
         pledge.put("signature_data",        signatureData);
         pledge.put("page_ink_data",         pageInkData);
+        String docTypeBody = str.apply("document_type");
+        pledge.put("document_type",         docTypeBody.isBlank() ? "입원서약서" : docTypeBody);
         cs.upsertAdmissionPledge(inst, csIdx, pledge);
         return Map.of("ok", true, "csIdx", csIdx);
     }
@@ -6081,7 +6084,8 @@ public class PageController {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("csIdx", csIdx);
             row.put("linked", csIdx > 0);
-            row.put("documentType", "입원서약서");
+            String docTypeVal = safeObjectString(raw.get("document_type"));
+            row.put("documentType", docTypeVal.isBlank() ? "입원서약서" : docTypeVal);
             row.put("patientName", patientName);
             String birth = safeObjectString(raw.get("cs_col_03"));
             row.put("birth", !birth.isBlank() ? birth : safeObjectString(raw.get("patient_birth")));
