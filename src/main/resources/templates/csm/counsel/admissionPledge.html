@@ -263,13 +263,29 @@ window.ADMISSION_PLEDGE_BOOTSTRAP = {
       el.parentNode && el.parentNode.removeChild(el);
     });
     // 2) 래퍼 없이 signer 칩만 있는 케이스: 칩이 속한 .ap-terms-block 직계 자식 노드를 제거
-    block.querySelectorAll('[data-field-key="signer_relation"], [data-field-key="signer_name"]').forEach(function (chip) {
+    block.querySelectorAll('[data-field-key="signer_relation"], [data-field-key="signer_name"], [data-field-key="signed_at"], [id="ap_signed_at_view"]').forEach(function (chip) {
       var node = chip;
       while (node && node.parentNode && node.parentNode !== block) {
         node = node.parentNode;
       }
       if (node && node !== block && node.parentNode === block) {
         block.removeChild(node);
+      }
+    });
+    // 3) 옛 plain-text 저장 잔여물 ("서명일시:" 단독 라벨) 제거
+    block.querySelectorAll('p, div').forEach(function (el) {
+      if (el.children.length > 1) return;
+      var t = el.textContent.trim();
+      if (t === '서명일시:' || t === '서명일시:-' || /^서명일시\s*:\s*-?\s*$/.test(t)) {
+        el.parentNode && el.parentNode.removeChild(el);
+      }
+    });
+    // 4) 옛 plain-text 저장 잔여물 (신청인 라인) 제거 — chip은 사라지고 텍스트만 남은 경우
+    block.querySelectorAll('p, div').forEach(function (el) {
+      if (el.querySelector('table') || el.querySelector('input')) return;
+      var t = el.textContent.replace(/\s+/g, ' ').trim();
+      if (/^신청인\s*\(?\s*관계.*서.*명/.test(t) && t.length < 100) {
+        el.parentNode && el.parentNode.removeChild(el);
       }
     });
   }
