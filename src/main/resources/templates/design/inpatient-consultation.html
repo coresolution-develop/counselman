@@ -491,14 +491,16 @@
 
     .app[data-screen-label="Inpatient Consultation"] .page { max-width: 100%; padding-bottom: 32px; }
 
-    .ic-date-wrap { display: flex; align-items: center; height: 34px; border: 1px solid var(--border-default); border-radius: 8px; background: #fff; transition: all .15s; overflow: hidden; }
+    .ic-date-wrap { display: flex; align-items: center; height: 34px; border: 1px solid var(--border-default); border-radius: 8px; background: #fff; transition: all .15s; overflow: hidden; position: relative; }
     .ic-date-wrap:focus-within { border-color: var(--brand-400); box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-500) 14%, transparent); }
     .ic-date-wrap .ic-date-text { flex: 1 1 auto; height: 100%; border: 0; background: transparent; padding: 0 10px; font-size: 13px; color: var(--text-primary); outline: none; min-width: 0; font-variant-numeric: tabular-nums; }
     .ic-date-wrap .ic-date-text::placeholder { color: var(--text-tertiary); }
     .ic-date-wrap .ic-date-trigger { flex: 0 0 32px; display: flex; align-items: center; justify-content: center; height: 100%; border: 0; border-left: 1px solid var(--border-subtle); background: var(--gray-50); color: var(--text-tertiary); cursor: pointer; padding: 0; }
     .ic-date-wrap .ic-date-trigger:hover { background: var(--gray-100); color: var(--text-secondary); }
     .ic-date-wrap .ic-date-trigger svg { width: 14px; height: 14px; pointer-events: none; }
-    .ic-date-hidden { visibility: hidden; position: absolute; width: 0; height: 0; }
+    .ic-date-hidden { visibility: hidden; position: absolute; top: 0; left: 0; width: 0 !important; height: 0 !important; min-width: 0 !important; min-height: 0 !important; overflow: hidden; padding: 0 !important; border: 0 !important; pointer-events: none; }
+    .ic-date-hidden::-webkit-calendar-picker-indicator { display: none !important; }
+    .ic-date-hidden::-webkit-inner-spin-button { display: none !important; }
 
     .ic-field__inline { display: flex; gap: 6px; align-items: center; min-width: 0; }
     .ic-field__inline .ic-select { flex: 1 1 auto; width: auto; min-width: 0; }
