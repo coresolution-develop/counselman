@@ -77,6 +77,7 @@
   class DatePicker {
     constructor(input, opts = {}) {
       this.input = input;
+      this.isEditable = opts.editable === true || input.dataset.mpDpEditable === 'true' || input.hasAttribute('data-mp-dp-editable');
       this.isTime = input.type === 'time' || opts.mode === 'time';
       this.isDateTime = input.type === 'datetime-local' || opts.mode === 'datetime';
       this.opts = opts;
@@ -92,13 +93,32 @@
 
       this._build();
       this._bind();
+      this._bindSourceSync();
       this._syncDisplay();
     }
 
     _build() {
       const orig = this.input;
       const wrap = document.createElement('div');
-      wrap.className = 'mp-dp-input';
+      wrap.className = 'mp-dp-input' + (this.isEditable ? ' is-editable' : '');
+
+      if (this.isEditable) {
+        const icon = document.createElement('span');
+        icon.className = 'mp-dp-input__icon';
+        icon.setAttribute('role', 'button');
+        icon.setAttribute('tabindex', '0');
+        icon.setAttribute('aria-label', '날짜 선택');
+        icon.innerHTML = (this.isTime || this.isDateTime) ? SVG_CLOCK : SVG_CALENDAR;
+
+        orig.parentNode.insertBefore(wrap, orig);
+        wrap.appendChild(orig);
+        wrap.appendChild(icon);
+
+        this.wrap = wrap;
+        this.display = orig;
+        this.icon = icon;
+        return;
+      }
 
       const display = document.createElement('input');
       display.type = 'text';
@@ -121,9 +141,26 @@
 
       this.wrap = wrap;
       this.display = display;
+      this.icon = icon;
     }
 
     _bind() {
+      if (this.isEditable) {
+        this.icon.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.toggle();
+        });
+        this.icon.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.toggle(); }
+          else if (e.key === 'Escape') { this.close(); }
+        });
+        this.display.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') this.close();
+        });
+        return;
+      }
+
       this.display.addEventListener('mousedown', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -133,11 +170,34 @@
     }
 
     _syncDisplay() {
+      if (this.isEditable) {
+        if (this.isTime) {
+          this.display.value = toISOTime(this.selectedTime);
+        } else {
+          this.display.value = this.selected ? (this.isDateTime ? toISODateTime(this.selected) : toISO(this.selected)) : '';
+        }
+        return;
+      }
+
       if (this.isTime) {
         this.display.value = formatTime(this.selectedTime);
       } else {
         this.display.value = this.isDateTime ? formatDateTime(this.selected) : formatDate(this.selected);
       }
+    }
+
+    _syncFromSource(updateDisplay = true) {
+      if (this.isTime) {
+        this.selectedTime = parseTime(this.input.value);
+      } else {
+        this.selected = this.isDateTime ? parseISODateTime(this.input.value) : parseISO(this.input.value);
+      }
+      if (updateDisplay) this._syncDisplay();
+    }
+
+    _bindSourceSync() {
+      this.input.addEventListener('input', () => this._syncFromSource(!this.isEditable));
+      this.input.addEventListener('change', () => this._syncFromSource());
     }
 
     _onKey(e) {
@@ -156,6 +216,10 @@
       this._syncDisplay();
       this.input.dispatchEvent(new Event('input', { bubbles: true }));
       this.input.dispatchEvent(new Event('change', { bubbles: true }));
+      this.input.dispatchEvent(new CustomEvent('mp-datepicker-change', {
+        bubbles: true,
+        detail: { value: this.input.value }
+      }));
     }
 
     setDate(d) {
@@ -198,6 +262,7 @@
       if (this.popEl) return;
       if (activePicker && activePicker !== this) activePicker.close();
       activePicker = this;
+      if (this.isEditable) this._syncFromSource(false);
 
       if (this.isTime) {
         // Nothing to initialize for calendar
@@ -612,7 +677,7 @@
 
     init(root) {
       const scope = root || document;
-      scope.querySelectorAll('input[type="date"]:not([data-native]):not([data-mp-dp]), input[type="datetime-local"]:not([data-native]):not([data-mp-dp]), input[type="time"]:not([data-native]):not([data-mp-dp])').forEach(el => {
+      scope.querySelectorAll('input[type="date"]:not([data-native]):not([data-mp-dp]), input[type="datetime-local"]:not([data-native]):not([data-mp-dp]), input[type="time"]:not([data-native]):not([data-mp-dp]), input[data-mp-dp-editable]:not([data-native]):not([data-mp-dp])').forEach(el => {
         this.mount(el);
       });
     },
@@ -623,8 +688,8 @@
         for (const m of muts) {
           m.addedNodes.forEach(n => {
             if (n.nodeType !== 1) return;
-            const sel = 'input[type="date"]:not([data-mp-dp]), input[type="datetime-local"]:not([data-mp-dp]), input[type="time"]:not([data-mp-dp])';
-            if (n.matches && (n.matches('input[type="date"]') || n.matches('input[type="datetime-local"]') || n.matches('input[type="time"]'))) this.mount(n);
+            const sel = 'input[type="date"]:not([data-mp-dp]), input[type="datetime-local"]:not([data-mp-dp]), input[type="time"]:not([data-mp-dp]), input[data-mp-dp-editable]:not([data-mp-dp])';
+            if (n.matches && (n.matches('input[type="date"]') || n.matches('input[type="datetime-local"]') || n.matches('input[type="time"]') || n.matches('input[data-mp-dp-editable]'))) this.mount(n);
             if (n.querySelectorAll) n.querySelectorAll(sel).forEach(el => this.mount(el));
           });
         }

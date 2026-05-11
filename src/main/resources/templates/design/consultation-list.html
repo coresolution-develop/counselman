@@ -14,6 +14,73 @@
   <link rel="stylesheet" th:href="@{/assets/css/tweaks.css}" />
   <link rel="stylesheet" th:href="@{/assets/css/datepicker.css}" />
   <style>
+    [x-cloak] { display: none !important; }
+    .consultation-help-popover {
+      position: fixed;
+      top: 64px;
+      right: 88px;
+      z-index: 120;
+      width: min(340px, calc(100vw - 32px));
+      padding: 16px;
+      border: 1px solid var(--border-subtle, #e5e7eb);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, .98);
+      box-shadow: 0 18px 42px rgba(15, 23, 42, .16);
+      backdrop-filter: blur(12px);
+      color: var(--text-primary, #111827);
+    }
+    .consultation-help-popover[hidden] {
+      display: none;
+    }
+    .consultation-help-popover__title {
+      margin: 0 0 10px;
+      font-size: 14px;
+      font-weight: 800;
+    }
+    .consultation-help-popover__section {
+      padding-top: 10px;
+      margin-top: 10px;
+      border-top: 1px solid var(--border-subtle, #e5e7eb);
+    }
+    .consultation-help-popover__section:first-of-type {
+      padding-top: 0;
+      margin-top: 0;
+      border-top: 0;
+    }
+    .consultation-help-popover__heading {
+      margin: 0 0 6px;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--brand-700, #047857);
+    }
+    .consultation-help-popover__list {
+      margin: 0;
+      padding-left: 16px;
+      color: var(--text-secondary, #475569);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .consultation-help-popover__list li + li {
+      margin-top: 3px;
+    }
+    .consultation-help-popover__kbd {
+      display: inline-flex;
+      align-items: center;
+      min-height: 18px;
+      padding: 0 5px;
+      border: 1px solid var(--border-default, #e5e7eb);
+      border-radius: 5px;
+      background: var(--gray-50, #f9fafb);
+      color: var(--text-primary, #111827);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    @media (max-width: 768px) {
+      .consultation-help-popover {
+        top: 58px;
+        right: 16px;
+      }
+    }
     @keyframes pulse-soft {
       0%, 100% { opacity: 1; }
       50%       { opacity: .55; }
@@ -111,26 +178,70 @@
       width: 16px; height: 16px; accent-color: var(--brand-500); cursor: pointer; vertical-align: middle;
     }
 
-    /* ── 상담기록 섹션: 상단 도달 시 sticky 고정, 테이블이 나머지 높이 채움 ── */
+    /* ── 상담기록 섹션: 페이지는 고정하고 테이블 본문만 스크롤 ── */
+    .app[data-screen-label="Consultation List"] .main {
+      overflow: hidden;
+      padding-bottom: 24px;
+    }
+    .app[data-screen-label="Consultation List"] .page {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .app[data-screen-label="Consultation List"] .page__header,
+    .app[data-screen-label="Consultation List"] .search-bar,
+    .app[data-screen-label="Consultation List"] .queue-section {
+      flex-shrink: 0;
+    }
     .list-sticky-section {
-      position: sticky;
-      top: 0;
-      height: calc(100vh - var(--header-height, 64px));
+      position: static;
+      flex: 1;
+      min-height: 0;
       display: flex;
       flex-direction: column;
       background: var(--page-bg, #f3f4f6);
       padding-top: 8px;
+      overflow: hidden;
     }
     .list-sticky-section .table-wrap {
       flex: 1;
       min-height: 0;
       overflow-y: auto;
       overflow-x: auto;
+      border-bottom: 0;
+      border-radius: var(--radius-xl, 20px) var(--radius-xl, 20px) 0 0;
+      box-shadow: none;
     }
     .list-sticky-section .footer-bar {
       position: static !important;
+      z-index: 15;
       flex-shrink: 0;
-      margin-top: 8px;
+      margin-top: 0;
+      padding: 12px 16px;
+      border-color: var(--border-subtle, #e5e7eb);
+      border-radius: 0 0 var(--radius-xl, 20px) var(--radius-xl, 20px);
+      border-top-color: var(--border-default, #e5e7eb);
+      box-shadow: 0 -8px 18px rgba(15, 23, 42, 0.04);
+    }
+    .list-sticky-section .footer-bar .btn:first-child {
+      margin-right: auto;
+    }
+    .list-sticky-section .calendar-panel {
+      border-bottom: 0;
+      border-radius: var(--radius-xl, 20px) var(--radius-xl, 20px) 0 0;
+    }
+    .queue-section.is-collapsed .section-head {
+      margin-bottom: 8px;
+    }
+    .queue-toggle-btn {
+      min-width: 72px;
+    }
+    .queue-toggle-btn svg {
+      transition: transform var(--dur-fast, 150ms) var(--ease-smooth, ease);
+    }
+    .queue-section:not(.is-collapsed) .queue-toggle-btn svg {
+      transform: rotate(180deg);
     }
 
     /* ── 좌측 고정 (freeze) ── */
@@ -204,7 +315,7 @@
       min-height: 0;
       display: grid;
       grid-template-columns: repeat(7, minmax(0, 1fr));
-      grid-auto-rows: minmax(118px, 1fr);
+      grid-template-rows: 34px repeat(6, minmax(88px, 1fr));
       overflow: auto;
     }
     .calendar-weekday,
@@ -216,12 +327,15 @@
       position: sticky;
       top: 0;
       z-index: 2;
-      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      padding: 0 10px;
       background: var(--gray-50, #f9fafb);
       color: var(--text-secondary, #6b7280);
       font-size: 12px;
       font-weight: 700;
-      text-align: center;
     }
     .calendar-day {
       position: relative;
@@ -341,9 +455,12 @@
       }
       .app[data-screen-label="Consultation List"] .main {
         padding: 16px;
+        overflow-y: auto;
       }
       .app[data-screen-label="Consultation List"] .page {
         max-width: 100%;
+        height: auto;
+        display: block;
       }
       .app[data-screen-label="Consultation List"] .page__header,
       .app[data-screen-label="Consultation List"] .section-head {
@@ -373,7 +490,7 @@
       }
       .app[data-screen-label="Consultation List"] .calendar-grid {
         grid-template-columns: repeat(7, minmax(0, 1fr));
-        grid-auto-rows: minmax(92px, auto);
+        grid-template-rows: 30px repeat(6, minmax(92px, auto));
         overflow-x: hidden;
       }
       .app[data-screen-label="Consultation List"] .calendar-day {
@@ -698,44 +815,53 @@
       </form>
 
       <!-- Priority queue -->
-      <div class="section-head">
-        <span class="section-head__title">상담 접수 대기</span>
-        <span class="badge badge--warn">우선순위순</span>
-        <span class="section-head__hint" x-text="queue.length + '건 대기'"></span>
-        <div style="flex:1"></div>
-        <button type="button" class="btn-xs" :disabled="queueLoading" @click="refreshQueue()">
-          <svg><use href="#i-refresh"/></svg><span x-text="queueLoading ? '새로고침 중' : '새로고침'"></span>
-        </button>
-        <button type="button" class="btn-xs btn-xs--brand" @click="visit('/counsel/intake')">접수 관리</button>
-      </div>
+      <div class="queue-section" :class="{ 'is-collapsed': queueCollapsed }">
+        <div class="section-head">
+          <span class="section-head__title">상담 접수 대기</span>
+          <span class="badge badge--warn">우선순위순</span>
+          <span class="section-head__hint" x-text="queue.length + '건 대기'"></span>
+          <div style="flex:1"></div>
+          <button type="button"
+                  class="btn-xs queue-toggle-btn"
+                  aria-controls="consultationQueue"
+                  :aria-expanded="String(!queueCollapsed)"
+                  @click="toggleQueueCollapsed()">
+            <svg><use href="#i-chevron-down"/></svg><span x-text="queueCollapsed ? '펼치기' : '접기'"></span>
+          </button>
+          <button type="button" class="btn-xs" :disabled="queueLoading" @click="refreshQueue()">
+            <svg><use href="#i-refresh"/></svg><span x-text="queueLoading ? '새로고침 중' : '새로고침'"></span>
+          </button>
+          <button type="button" class="btn-xs btn-xs--brand" @click="visit('/counsel/intake')">접수 관리</button>
+        </div>
 
-      <div class="queue">
-        <template x-for="(q, i) in queue" :key="q.id">
-          <div class="queue-card" style="cursor:pointer;"
-               @click="visit('/counsel/inpatient?reservationId=' + q.id)">
-            <div class="queue-card__head">
-              <span class="prio" :class="'prio--' + q.prio" x-text="'P' + q.prio"></span>
-              <span class="queue-card__name" x-text="q.name || '(이름 없음)'"></span>
+        <div class="queue" id="consultationQueue" x-show="!queueCollapsed" x-cloak>
+          <template x-for="(q, i) in queue" :key="q.id">
+            <div class="queue-card" style="cursor:pointer;"
+                 @click="visit('/counsel/inpatient?reservationId=' + q.id)">
+              <div class="queue-card__head">
+                <span class="prio" :class="'prio--' + q.prio" x-text="'P' + q.prio"></span>
+                <span class="queue-card__name" x-text="q.name || '(이름 없음)'"></span>
+              </div>
+              <div class="queue-card__phone">
+                <span x-show="q.phone" x-text="q.phone"></span>
+                <span x-show="!q.phone" style="color:var(--text-tertiary);font-style:italic;">연락처 없음</span>
+              </div>
+              <div class="queue-card__time" x-text="q.time"></div>
+              <div x-show="q.note" class="queue-card__note" x-text="q.note"></div>
+              <div class="queue-card__actions">
+                <button class="btn-xs btn-xs--brand" style="flex:1;justify-content:center;"
+                  @click.stop="visit('/counsel/intake?reservationId=' + q.id)">상세보기</button>
+              </div>
             </div>
-            <div class="queue-card__phone">
-              <span x-show="q.phone" x-text="q.phone"></span>
-              <span x-show="!q.phone" style="color:var(--text-tertiary);font-style:italic;">연락처 없음</span>
-            </div>
-            <div class="queue-card__time" x-text="q.time"></div>
-            <div x-show="q.note" class="queue-card__note" x-text="q.note"></div>
-            <div class="queue-card__actions">
-              <button class="btn-xs btn-xs--brand" style="flex:1;justify-content:center;"
-                @click.stop="visit('/counsel/intake?reservationId=' + q.id)">상세보기</button>
-            </div>
-          </div>
-        </template>
+          </template>
+        </div>
       </div>
 
       <!-- Records table -->
       <div class="list-sticky-section">
       <div class="section-head">
         <span class="section-head__title">상담 기록 목록</span>
-        <span class="section-head__hint" x-text="filtered.length + '건'"></span>
+        <span class="section-head__hint" x-text="viewMode === 'calendar' ? calendarMonthCount + '건' : filtered.length + '건'"></span>
         <div style="flex:1"></div>
         <div class="filter-pills">
           <button class="pill" :class="{ 'is-active': activeFilter === 'all' }" @click="setFilter('all')">
@@ -1009,12 +1135,14 @@ function listPage() {
     activeCalendarDate: '',
     mobileFilterOpen: false,
     mobileActionsOpen: false,
+    queueCollapsed: true,
     selectedIds:  new Set(),
     columns,
     phOptions:    phOpts,
     saving:       false,
 
     init() {
+      this.loadQueueCollapsedState();
       this.$nextTick(() => {
         if (typeof window.applyFreezePositions === 'function') window.applyFreezePositions();
         this.refreshQueue({ silent: true });
@@ -1047,6 +1175,24 @@ function listPage() {
         window.Turbo.visit(url);
       } else {
         window.location.href = url;
+      }
+    },
+
+    loadQueueCollapsedState() {
+      try {
+        const saved = localStorage.getItem('mp-consultation-list-queue-collapsed');
+        this.queueCollapsed = saved == null ? true : saved === 'true';
+      } catch (e) {
+        this.queueCollapsed = true;
+      }
+    },
+
+    toggleQueueCollapsed() {
+      this.queueCollapsed = !this.queueCollapsed;
+      try {
+        localStorage.setItem('mp-consultation-list-queue-collapsed', String(this.queueCollapsed));
+      } catch (e) {
+        // localStorage may be unavailable in restricted browser contexts.
       }
     },
 
@@ -1467,7 +1613,89 @@ function listPage() {
 <script th:src="@{/assets/js/datepicker.js}"></script>
 <script th:src="@{/assets/js/chrome.js}" data-page="list" th:attr="data-ctx=@{/}"></script>
 <script>
-  document.addEventListener('turbo:load', () => { MPChrome.mount({ parent: '상담 업무', current: '상담리스트' }); }, { once: true });
+  document.addEventListener('turbo:load', () => {
+    MPChrome.mount({ parent: '상담 업무', current: '상담리스트' });
+    initConsultationHelpPopover();
+  }, { once: true });
+
+  function initConsultationHelpPopover() {
+    const helpButton = document.querySelector('.header__icon-btn[aria-label="도움말"]');
+    if (!helpButton) return;
+
+    document.getElementById('consultationHelpPopover')?.remove();
+
+    const popover = document.createElement('div');
+    popover.id = 'consultationHelpPopover';
+    popover.className = 'consultation-help-popover';
+    popover.hidden = true;
+    popover.setAttribute('role', 'dialog');
+    popover.setAttribute('aria-label', '상담 리스트 도움말');
+    popover.innerHTML = `
+      <p class="consultation-help-popover__title">상담 리스트 도움말</p>
+      <div class="consultation-help-popover__section">
+        <p class="consultation-help-popover__heading">대기 상담</p>
+        <ul class="consultation-help-popover__list">
+          <li>접기/펼치기로 기록 목록 영역을 넓게 볼 수 있습니다.</li>
+          <li>새로고침은 상담 접수 대기 목록만 다시 불러옵니다.</li>
+          <li>접수 관리는 대기 상담 전체 관리 화면으로 이동합니다.</li>
+        </ul>
+      </div>
+      <div class="consultation-help-popover__section">
+        <p class="consultation-help-popover__heading">기록 목록</p>
+        <ul class="consultation-help-popover__list">
+          <li>행을 <span class="consultation-help-popover__kbd">더블클릭</span>하면 상담 상세로 이동합니다.</li>
+          <li>체크한 환자는 하단에서 일괄 문자 발송을 할 수 있습니다.</li>
+          <li>항목 설정에서 표시 컬럼과 고정 컬럼을 조정합니다.</li>
+        </ul>
+      </div>
+      <div class="consultation-help-popover__section">
+        <p class="consultation-help-popover__heading">월별 캘린더</p>
+        <ul class="consultation-help-popover__list">
+          <li>월별 상담 건수를 날짜별로 확인합니다.</li>
+          <li>상담 건수 버튼에 마우스를 올리거나 클릭하면 해당 날짜 목록이 열립니다.</li>
+        </ul>
+      </div>
+    `;
+    document.body.appendChild(popover);
+
+    function positionPopover() {
+      const rect = helpButton.getBoundingClientRect();
+      const gap = 10;
+      const width = popover.offsetWidth || 340;
+      const left = Math.max(16, Math.min(window.innerWidth - width - 16, rect.right - width));
+      popover.style.left = left + 'px';
+      popover.style.right = 'auto';
+      popover.style.top = (rect.bottom + gap) + 'px';
+    }
+
+    function closePopover() {
+      popover.hidden = true;
+      helpButton.setAttribute('aria-expanded', 'false');
+    }
+
+    function openPopover() {
+      popover.hidden = false;
+      helpButton.setAttribute('aria-expanded', 'true');
+      positionPopover();
+    }
+
+    helpButton.setAttribute('aria-haspopup', 'dialog');
+    helpButton.setAttribute('aria-expanded', 'false');
+    helpButton.addEventListener('click', function (event) {
+      event.stopPropagation();
+      popover.hidden ? openPopover() : closePopover();
+    });
+    popover.addEventListener('click', function (event) {
+      event.stopPropagation();
+    });
+    document.addEventListener('click', closePopover);
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') closePopover();
+    });
+    window.addEventListener('resize', function () {
+      if (!popover.hidden) positionPopover();
+    });
+  }
 </script>
 <script data-turbo-eval="false" src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 <script>

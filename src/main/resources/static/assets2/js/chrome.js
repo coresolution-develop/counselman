@@ -81,11 +81,6 @@
         <strong>${crumb.current}</strong>
       </div>
       <div class="header__spacer"></div>
-      <div class="header__search">
-        ${icon('search')}
-        <input type="text" placeholder="검색" />
-        <kbd>⌘K</kbd>
-      </div>
       <button class="header__icon-btn" aria-label="알림">${icon('bell')}<span class="dot"></span></button>
       <button class="header__icon-btn" aria-label="도움말">${icon('help')}</button>
       <button class="header__user">

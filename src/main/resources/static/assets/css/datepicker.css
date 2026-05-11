@@ -39,6 +39,13 @@
   transition: color .15s;
 }
 .mp-dp-input.is-open .mp-dp-input__icon { color: var(--brand-500); }
+.mp-dp-input.is-editable .mp-dp-input__icon {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.mp-dp-input.is-editable > input {
+  cursor: text;
+}
 
 /* Popover */
 .mp-dp-pop {

@@ -147,11 +147,6 @@
         <strong>${crumb.current}</strong>
       </div>
       <div class="header__spacer"></div>
-      <div class="header__search">
-        ${icon('search')}
-        <input type="text" placeholder="검색" />
-        <kbd>⌘K</kbd>
-      </div>
       <div class="notif-wrap" id="js-notif-wrap">
         <button class="header__icon-btn" id="js-bell-btn" aria-label="알림">${icon('bell')}<span class="notif-badge" id="js-notif-badge" style="display:none">0</span></button>
         <div class="notif-panel" id="js-notif-panel" style="display:none"></div>
