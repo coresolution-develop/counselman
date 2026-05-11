@@ -495,6 +495,23 @@
     .ic-field__inline .ic-select { flex: 1 1 auto; width: auto; min-width: 0; }
     .ic-field__inline .ic-input  { flex: 1 1 auto; width: auto; min-width: 0; }
 
+    /* ===== Sticky page header ===== */
+    .app[data-screen-label="Inpatient Consultation"] .page__header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: var(--page-bg);
+      /* extend to cover .main padding (24px top, 32px sides) */
+      margin-top: -24px;
+      padding-top: 20px;
+      padding-bottom: 16px;
+      margin-left: -32px;
+      margin-right: -32px;
+      padding-left: 32px;
+      padding-right: 32px;
+      box-shadow: 0 1px 0 var(--border-subtle), 0 2px 8px rgba(15,23,42,.06);
+    }
+
     /* 입원상담 모바일 보강: 기존 데스크톱 구조는 유지하고 좁은 화면에서만 재배치 */
     @media (max-width: 768px) {
       .app[data-screen-label="Inpatient Consultation"] {
@@ -511,6 +528,14 @@
         align-items: flex-start;
         gap: 12px;
         flex-wrap: wrap;
+        /* mobile: .main padding is 16px */
+        margin-top: -16px;
+        padding-top: 14px;
+        padding-bottom: 12px;
+        margin-left: -16px;
+        margin-right: -16px;
+        padding-left: 16px;
+        padding-right: 16px;
       }
       .app[data-screen-label="Inpatient Consultation"] .page__header > div:last-child {
         width: 100%;
