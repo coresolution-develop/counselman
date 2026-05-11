@@ -43,7 +43,7 @@
     .lh-subtitle { margin: 8px 0 0; color: var(--lh-muted); font-size: 14px; }
     .lh-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 360px;
+      grid-template-columns: minmax(0, 1fr) 280px 320px;
       gap: 18px;
       align-items: start;
     }
@@ -343,7 +343,7 @@
       .lh-head { align-items: start; flex-direction: column; }
       .lh-grid { grid-template-columns: 1fr; }
       .lh-shell { width: min(100% - 24px, 720px); padding-top: 20px; }
-      .lh-grid > aside { display: none; }
+      .lh-grid > aside, .lh-panel--list { display: none; }
     }
     @media (max-width: 640px) {
       :root { --lh-link-columns: 1; }
@@ -449,9 +449,14 @@
           </div>
         </div>
 
+      </aside>
+
+      <div class="lh-panel lh-panel--list">
+        <div class="lh-panel__head">관리 목록</div>
         <div class="lh-manage-search" th:if="${links != null and !#lists.isEmpty(links)}">
           <input class="lh-input" type="search" id="manageSearch" placeholder="이름 또는 분류 검색" autocomplete="off" aria-label="링크 검색" />
         </div>
+        <div class="lh-empty" th:if="${links == null or #lists.isEmpty(links)}">등록된 링크가 없습니다.</div>
 
         <div class="lh-manage-groups" th:if="${linkGroups != null and !linkGroups.isEmpty()}">
           <details class="lh-manage-group" th:each="entry : ${linkGroups}" open>
@@ -508,7 +513,7 @@
             </div>
           </details>
         </div>
-      </aside>
+      </div>
     </section>
   </main>
   <script>
