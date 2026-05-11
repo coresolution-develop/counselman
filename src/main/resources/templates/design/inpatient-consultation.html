@@ -496,14 +496,16 @@
     .ic-field__inline .ic-input  { flex: 1 1 auto; width: auto; min-width: 0; }
 
     /* ===== Sticky page header ===== */
+    /* Remove top padding from .main so sticky activates at scroll origin */
+    .app[data-screen-label="Inpatient Consultation"] .main {
+      padding-top: 0;
+    }
     .app[data-screen-label="Inpatient Consultation"] .page__header {
       position: sticky;
       top: 0;
-      z-index: 20;
+      z-index: 100;
       background: var(--page-bg);
-      /* extend to cover .main padding (24px top, 32px sides) */
-      margin-top: -24px;
-      padding-top: 20px;
+      padding-top: 24px;
       padding-bottom: 16px;
       margin-left: -32px;
       margin-right: -32px;
@@ -518,7 +520,7 @@
         overflow-x: hidden;
       }
       .app[data-screen-label="Inpatient Consultation"] .main {
-        padding: 16px;
+        padding: 0 16px 48px;
       }
       .app[data-screen-label="Inpatient Consultation"] .page {
         max-width: 100%;
@@ -528,9 +530,7 @@
         align-items: flex-start;
         gap: 12px;
         flex-wrap: wrap;
-        /* mobile: .main padding is 16px */
-        margin-top: -16px;
-        padding-top: 14px;
+        padding-top: 16px;
         padding-bottom: 12px;
         margin-left: -16px;
         margin-right: -16px;
@@ -588,7 +588,14 @@
 
     @media (max-width: 480px) {
       .app[data-screen-label="Inpatient Consultation"] .main {
-        padding: 12px;
+        padding: 0 12px 48px;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .page__header {
+        margin-left: -12px;
+        margin-right: -12px;
+        padding-left: 12px;
+        padding-right: 12px;
+        padding-top: 12px;
       }
       .app[data-screen-label="Inpatient Consultation"] .page__title {
         font-size: 22px;
