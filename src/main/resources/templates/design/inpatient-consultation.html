@@ -2335,6 +2335,7 @@ function inpatientForm() {
       popup.document.open();
       popup.document.write('<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>상담일지</title><style>' + css + '</style></head><body>' + bodyHtml + '</body></html>');
       popup.document.close();
+      popup.onafterprint = function() { popup.close(); };
       popup.focus();
       popup.print();
     },
