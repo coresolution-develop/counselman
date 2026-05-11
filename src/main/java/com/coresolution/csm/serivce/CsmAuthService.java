@@ -3227,17 +3227,8 @@ public class CsmAuthService {
             + "created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,"
             + "updated_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
             + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-        // Add status column to existing tables that predate this schema (MySQL-compatible)
-        Integer statusColCount = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS"
-            + " WHERE TABLE_SCHEMA='csm' AND TABLE_NAME=? AND COLUMN_NAME='status'",
-            Integer.class,
-            "inst_notice_" + safe);
-        if (statusColCount == null || statusColCount == 0) {
-            jdbcTemplate.execute(
-                "ALTER TABLE csm.inst_notice_" + safe
-                + " ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'PUBLISHED'");
-        }
+        ensureTableColumn("csm", "inst_notice_" + safe, "status",
+            "ALTER TABLE csm.inst_notice_" + safe + " ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'PUBLISHED'");
     }
 
     public List<Map<String, Object>> listInstNotices(String inst) {
