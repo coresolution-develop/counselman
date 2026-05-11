@@ -345,17 +345,6 @@
     }
     .ic-textarea:focus { outline: none; border-color: var(--brand-400); box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-500) 14%, transparent); }
 
-    /* ===== Bottom action bar ===== */
-    .ic-footer {
-      display: flex; justify-content: flex-end; gap: 10px;
-      padding: 14px 18px;
-      margin-top: 22px;
-      background: #fff;
-      border: 1px solid var(--border-default);
-      border-radius: var(--radius-lg);
-      box-shadow: 0 2px 8px rgba(15,23,42,.06), 0 1px 2px rgba(0,0,0,.04);
-    }
-    .ic-footer .spacer { flex: 1; font-size: 12px; color: var(--text-tertiary); align-self: center; }
     .ic-mobile-fab { display: none; }
 
     /* Guardian rows */
@@ -489,7 +478,7 @@
     .sms-foot .btn--primary:disabled { background: var(--gray-300); cursor: not-allowed; }
     .sms-foot .btn--primary svg { width: 14px; height: 14px; }
 
-    .app[data-screen-label="Inpatient Consultation"] .page { max-width: 100%; padding-bottom: 32px; }
+    .app[data-screen-label="Inpatient Consultation"] .page { max-width: 100%; }
 
     .ic-date-wrap { display: flex; align-items: center; height: 34px; border: 1px solid var(--border-default); border-radius: 8px; background: #fff; transition: all .15s; overflow: hidden; position: relative; }
     .ic-date-wrap:focus-within { border-color: var(--brand-400); box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-500) 14%, transparent); }
@@ -689,9 +678,6 @@
       .app[data-screen-label="Inpatient Consultation"] .ic-history__row {
         min-width: 440px;
       }
-      .app[data-screen-label="Inpatient Consultation"] .ic-footer {
-        display: none;
-      }
       .app[data-screen-label="Inpatient Consultation"] .ic-mobile-fab {
         position: fixed;
         right: 16px;
@@ -820,6 +806,16 @@
         <div>
           <h1 class="page__title">입원상담</h1>
           <p class="page__subtitle">환자 상세 정보와 상담 기록을 한 화면에서 관리합니다</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <label class="ic-toggle">
+            <span class="ic-switch" :class="{ 'is-on': stayOnPage }"
+                  @click="stayOnPage=!stayOnPage; localStorage.setItem('ic_stay_on_page', stayOnPage)"></span>
+            <span style="font-size:12px;color:var(--text-secondary);" x-text="stayOnPage ? '저장 후 이 페이지 유지' : '저장 후 목록으로'"></span>
+          </label>
+          <button type="button" class="btn btn--outline" @click="printJournal()"><svg><use href="#i-download"/></svg>일지 출력</button>
+          <button type="button" class="btn btn--outline" @click="printAdmission()"><svg><use href="#i-download"/></svg>입원서식 출력</button>
+          <button type="button" class="btn btn--primary" @click="save()" :disabled="loading"><svg><use href="#i-check"/></svg><span x-text="loading ? '저장 중...' : '환자정보 저장'"></span></button>
         </div>
       </div>
 
@@ -1350,19 +1346,8 @@
 
       </div>
 
-      <!-- Footer actions -->
-      <div class="ic-footer">
-        <label class="ic-toggle" style="margin-right:4px;">
-          <span class="ic-switch" :class="{ 'is-on': stayOnPage }"
-                @click="stayOnPage=!stayOnPage; localStorage.setItem('ic_stay_on_page', stayOnPage)"></span>
-          <span style="font-size:12px;color:var(--text-secondary);" x-text="stayOnPage ? '저장 후 이 페이지 유지' : '저장 후 목록으로'"></span>
-        </label>
-        <button type="button" class="btn btn--outline" @click="printJournal()"><svg><use href="#i-download"/></svg>일지 출력</button>
-        <button type="button" class="btn btn--outline" @click="printAdmission()"><svg><use href="#i-download"/></svg>입원서식 출력</button>
-        <button type="button" class="btn btn--primary" @click="save()" :disabled="loading"><svg><use href="#i-check"/></svg><span x-text="loading ? '저장 중...' : '환자정보 저장'"></span></button>
-      </div>
 
-      <div class="ic-mobile-fab" :class="{ 'is-open': mobileActionsOpen }" @keydown.escape.window="mobileActionsOpen = false">
+<div class="ic-mobile-fab" :class="{ 'is-open': mobileActionsOpen }" @keydown.escape.window="mobileActionsOpen = false">
         <div class="ic-mobile-fab__menu" x-show="mobileActionsOpen" x-transition @click.outside="mobileActionsOpen = false">
           <button type="button" class="btn btn--outline ic-mobile-fab__action" @click="printJournal()"><svg><use href="#i-download"/></svg>일지 출력</button>
           <button type="button" class="btn btn--outline ic-mobile-fab__action" @click="printAdmission()"><svg><use href="#i-download"/></svg>입원서식 출력</button>
