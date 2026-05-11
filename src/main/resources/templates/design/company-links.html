@@ -307,6 +307,17 @@
     }
     .lh-alert--ok { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
     .lh-alert--err { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .lh-btn--ghost { background: #fff; color: var(--lh-muted); border-color: var(--lh-border); }
+    .lh-btn--ghost:hover { background: #f9fafb; }
+    .lh-delete-wrap { display: flex; flex-direction: column; gap: 6px; }
+    .lh-delete-confirm { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .lh-delete-confirm[hidden] { display: none; }
+    .lh-actions--panel { padding: 0 16px 14px; }
+    .lh-manage-edit > summary:focus-visible {
+      outline: 2px solid var(--lh-brand);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
     @media (max-width: 900px) {
       .lh-head { align-items: start; flex-direction: column; }
       .lh-grid { grid-template-columns: 1fr; }
@@ -354,12 +365,14 @@
               <span class="lh-category__count" th:text="|${#lists.size(entry.value)}개|">0개</span>
             </div>
             <div class="lh-list">
-              <a class="lh-link" th:each="link : ${entry.value}" th:href="${link.url}" target="_blank" rel="noopener noreferrer">
+              <a class="lh-link" th:each="link : ${entry.value}" th:href="${link.url}" target="_blank" rel="noopener noreferrer"
+                 th:aria-label="|${link.title} 열기|">
                 <span class="lh-link__top">
                   <span class="lh-link__title" th:text="${link.title}">서비스명</span>
+                  <span class="lh-link__category" th:if="${link.category != null and !#strings.isEmpty(link.category)}" th:text="${link.category}">분류</span>
                 </span>
-                <span class="lh-link__desc" th:text="${link.description != null and !#strings.isEmpty(link.description) ? link.description : '설명 없음'}">설명</span>
-                <span class="lh-link__url" th:text="${link.url}">https://example.com</span>
+                <span class="lh-link__desc" th:text="${link.description}">설명</span>
+                <span class="lh-link__url" th:text="${link.url}" aria-hidden="true">https://example.com</span>
               </a>
             </div>
           </section>
@@ -406,7 +419,7 @@
                      th:data-cat="${cat.category_name}" />
             </div>
           </div>
-          <div class="lh-actions" style="padding: 0 16px 14px;">
+          <div class="lh-actions lh-actions--panel">
             <span id="catOrderMsg" style="font-size:12px;color:var(--lh-brand);display:none;">저장됐습니다.</span>
             <button class="lh-btn lh-btn--primary" type="button"
                     th:data-url="@{/admin/company-links/category-order}"
@@ -449,11 +462,16 @@
                 </div>
               </form>
             </details>
-            <form th:action="@{/admin/company-links/{id}/delete(id=${link.id})}" method="post"
-                  onsubmit="return confirm('이 링크를 삭제하시겠습니까?');">
-              <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-              <button class="lh-btn lh-btn--danger" type="submit">삭제</button>
-            </form>
+            <div class="lh-delete-wrap">
+              <button class="lh-btn lh-btn--danger" type="button"
+                      onclick="this.hidden=true;this.nextElementSibling.hidden=false">삭제</button>
+              <form class="lh-delete-confirm" th:action="@{/admin/company-links/{id}/delete(id=${link.id})}" method="post" hidden>
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                <button class="lh-btn lh-btn--danger" type="submit">확인</button>
+                <button class="lh-btn lh-btn--ghost" type="button"
+                        onclick="this.closest('.lh-delete-confirm').hidden=true;this.closest('.lh-delete-confirm').previousElementSibling.hidden=false">취소</button>
+              </form>
+            </div>
           </div>
         </div>
       </aside>

@@ -29,8 +29,8 @@ public class CompanyLinkController {
 
     private final CompanyLinkService companyLinkService;
 
-    @GetMapping({ "links", "/links" })
-    public String links(Model model, HttpSession session) {
+    @GetMapping("/links")
+    public String links(Model model) {
         List<CompanyLink> links = companyLinkService.listActiveLinks();
         model.addAttribute("links", links);
         model.addAttribute("linkGroups", groupByCategory(links));
@@ -39,11 +39,10 @@ public class CompanyLinkController {
         return "design/company-links";
     }
 
-    @PostMapping({ "admin/company-links/category-order", "/admin/company-links/category-order" })
+    @PostMapping("/admin/company-links/category-order")
     @ResponseBody
     public Map<String, Object> saveCategoryOrder(
-            @RequestParam Map<String, String> params,
-            HttpSession session) {
+            @RequestParam Map<String, String> params) {
         try {
             params.forEach((key, value) -> {
                 if (key.startsWith("cat_")) {
@@ -59,7 +58,7 @@ public class CompanyLinkController {
         }
     }
 
-    @PostMapping({ "admin/company-links", "/admin/company-links" })
+    @PostMapping("/admin/company-links")
     public String createLink(
             @RequestParam("title") String title,
             @RequestParam("url") String url,
@@ -77,7 +76,7 @@ public class CompanyLinkController {
         return "redirect:/links";
     }
 
-    @PostMapping({ "admin/company-links/{id}", "/admin/company-links/{id}" })
+    @PostMapping("/admin/company-links/{id}")
     public String updateLink(
             @PathVariable("id") long id,
             @RequestParam("title") String title,
@@ -98,7 +97,7 @@ public class CompanyLinkController {
         return "redirect:/links";
     }
 
-    @PostMapping({ "admin/company-links/{id}/delete", "/admin/company-links/{id}/delete" })
+    @PostMapping("/admin/company-links/{id}/delete")
     public String deleteLink(
             @PathVariable("id") long id,
             HttpSession session,
@@ -110,7 +109,7 @@ public class CompanyLinkController {
         return "redirect:/links";
     }
 
-    @GetMapping({ "api/company-links", "/api/company-links" })
+    @GetMapping("/api/company-links")
     @ResponseBody
     public Map<String, Object> listLinks() {
         return Map.of("links", companyLinkService.listActiveLinks());
