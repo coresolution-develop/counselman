@@ -260,7 +260,11 @@
     if (!checkbox) return;
     const textInput = document.querySelector(`input[name='${base}_text'], input[name='${base}_details']`);
     const selectBox = document.querySelector(`select[name='${base}_select']`);
-    checkbox.checked = hasValue(textInput) || hasValue(selectBox) || checkbox.checked;
+    const shouldCheck = hasValue(textInput) || hasValue(selectBox) || checkbox.checked;
+    if (shouldCheck && !checkbox.checked) {
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+    }
   }
 
   function isDiseaseTarget(target) {
@@ -404,10 +408,12 @@
 
       if (target.checkbox && !target.checkbox.checked) {
         target.checkbox.checked = true;
+        target.checkbox.dispatchEvent(new Event('change', { bubbles: true }));
         touched = true;
       }
       if (target.radio && !target.radio.checked) {
         target.radio.checked = true;
+        target.radio.dispatchEvent(new Event('change', { bubbles: true }));
         touched = true;
       }
 
