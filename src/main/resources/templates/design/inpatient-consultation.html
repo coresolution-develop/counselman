@@ -491,6 +491,12 @@
     .sms-foot .btn--primary:disabled { background: var(--gray-300); cursor: not-allowed; }
     .sms-foot .btn--primary svg { width: 14px; height: 14px; }
 
+    .app[data-screen-label="Inpatient Consultation"] .page { max-width: 100%; }
+
+    .ic-field__inline { display: flex; gap: 6px; align-items: center; min-width: 0; }
+    .ic-field__inline .ic-select { flex: 0 0 auto; width: auto; min-width: 0; }
+    .ic-field__inline .ic-input  { flex: 1 1 auto;  width: auto; min-width: 0; }
+
     /* 입원상담 모바일 보강: 기존 데스크톱 구조는 유지하고 좁은 화면에서만 재배치 */
     @media (max-width: 768px) {
       .app[data-screen-label="Inpatient Consultation"] {
@@ -830,10 +836,12 @@
                 <label class="ic-field__label">성별</label>
                 <select class="ic-select" x-model="patient.gender"><option value="">선택하세요</option><option>남</option><option>여</option></select>
               </div>
-              <div class="ic-field">
+              <div class="ic-field ic-field--wide">
                 <label class="ic-field__label">현재 계신곳</label>
-                <select class="ic-select" x-model="patient.location"><option value="">선택하세요</option><option>자택</option><option>요양원</option><option>요양병원</option><option>급성기병원</option><option>기타</option></select>
-                <input type="text" class="ic-input" x-show="patient.location !== ''" x-model="patient.locationEtc" placeholder="상세 입력" style="margin-top:4px;" />
+                <div class="ic-field__inline">
+                  <select class="ic-select" x-model="patient.location"><option value="">선택하세요</option><option>자택</option><option>요양원</option><option>요양병원</option><option>급성기병원</option><option>기타</option></select>
+                  <input type="text" class="ic-input" x-show="patient.location !== ''" x-model="patient.locationEtc" placeholder="상세 입력" />
+                </div>
               </div>
               <div class="ic-field">
                 <label class="ic-field__label">보험유형</label>
@@ -848,7 +856,7 @@
               </div>
               <div class="ic-field">
                 <label class="ic-field__label">생년월일</label>
-                <input type="date" class="ic-input" x-model="patient.birth" />
+                <input type="date" class="ic-input" x-model="patient.birth" @change="calcAge()" />
               </div>
               <div class="ic-field">
                 <label class="ic-field__label">나이</label>
@@ -856,12 +864,14 @@
               </div>
               <div class="ic-field ic-field--wide">
                 <label class="ic-field__label">상담유입경로</label>
-                <select class="ic-select" x-model="patient.pathType">
-                  <option value="">선택하세요</option>
-                  <option>인터넷</option><option>대외협력</option><option>협력병원</option>
-                  <option>직원유치</option><option>입원환자소개</option><option>재입원</option><option>기타</option>
-                </select>
-                <input type="text" class="ic-input" x-show="patient.pathType !== ''" x-model="patient.pathTypeEtc" placeholder="상세 입력" style="margin-top:4px;" />
+                <div class="ic-field__inline">
+                  <select class="ic-select" x-model="patient.pathType">
+                    <option value="">선택하세요</option>
+                    <option>인터넷</option><option>대외협력</option><option>협력병원</option>
+                    <option>직원유치</option><option>입원환자소개</option><option>재입원</option><option>기타</option>
+                  </select>
+                  <input type="text" class="ic-input" x-show="patient.pathType !== ''" x-model="patient.pathTypeEtc" placeholder="상세 입력" />
+                </div>
               </div>
               <div class="ic-field">
                 <label class="ic-field__label">잠재고객</label>
@@ -1833,6 +1843,17 @@ function inpatientForm() {
         if (this.hasControl(v, 'radio')) v.checked = false;
       });
       value.checked = true;
+    },
+    calcAge() {
+      const birth = this.patient.birth;
+      if (!birth) { this.patient.age = ''; return; }
+      const b = new Date(birth);
+      if (isNaN(b.getTime())) { this.patient.age = ''; return; }
+      const today = new Date();
+      let age = today.getFullYear() - b.getFullYear();
+      const m = today.getMonth() - b.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < b.getDate())) age--;
+      this.patient.age = age >= 0 ? String(age) : '';
     },
     appendDynamicFields(body) {
       if (this.dynamicItems.length > 0) {
