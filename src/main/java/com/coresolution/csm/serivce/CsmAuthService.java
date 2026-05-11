@@ -2402,7 +2402,7 @@ public class CsmAuthService {
         ensureTableColumn("csm", "core_notice", "status",
                 "ALTER TABLE csm.core_notice ADD COLUMN status varchar(20) not null default 'DRAFT'");
         ensureTableColumn("csm", "core_notice_target_inst", "inst_code",
-                "ALTER TABLE csm.core_notice_target_inst ADD COLUMN inst_code varchar(32) not null");
+                "ALTER TABLE csm.core_notice_target_inst ADD COLUMN inst_code varchar(32) not null default ''");
         ensureTableColumn("csm", "core_notice_read", "user_id",
                 "ALTER TABLE csm.core_notice_read ADD COLUMN user_id varchar(100) not null default ''");
     }
