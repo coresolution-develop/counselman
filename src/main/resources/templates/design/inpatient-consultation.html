@@ -500,7 +500,7 @@
     .ic-date-wrap .ic-date-trigger { flex: 0 0 32px; display: flex; align-items: center; justify-content: center; height: 100%; border: 0; border-left: 1px solid var(--border-subtle); background: var(--gray-50); color: var(--text-tertiary); cursor: pointer; padding: 0; }
     .ic-date-wrap .ic-date-trigger:hover { background: var(--gray-100); color: var(--text-secondary); }
     .ic-date-wrap .ic-date-trigger svg { width: 14px; height: 14px; pointer-events: none; }
-    .ic-date-wrap .ic-date-hidden { position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; }
+    .ic-date-hidden { position: fixed; left: -9999px; top: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
     .ic-field__inline { display: flex; gap: 6px; align-items: center; min-width: 0; }
     .ic-field__inline .ic-select { flex: 1 1 auto; width: auto; min-width: 0; }
@@ -875,10 +875,10 @@
                       <rect x="1.5" y="2.5" width="13" height="12" rx="2"/><path d="M5 1v3M11 1v3M1.5 6.5h13"/>
                     </svg>
                   </button>
-                  <input type="date" class="ic-date-hidden" x-ref="birthPicker"
-                         :value="patient.birth"
-                         @change="patient.birth = $event.target.value; calcAge()" />
                 </div>
+                <input type="date" class="ic-date-hidden" x-ref="birthPicker"
+                       :value="patient.birth"
+                       @change="patient.birth = $event.target.value; calcAge()" />
               </div>
               <div class="ic-field">
                 <label class="ic-field__label">나이</label>
