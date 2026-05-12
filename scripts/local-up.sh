@@ -5,8 +5,10 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CSM_PORT="${CSM_PORT:-8081}"
 MEDIPLAT_PORT="${MEDIPLAT_PORT:-8082}"
+CANCER_TREATMENT_PORT="${CANCER_TREATMENT_PORT:-8083}"
 CSM_PID=""
 MEDIPLAT_PID=""
+CANCER_TREATMENT_PID=""
 
 load_local_env() {
   local env_file="${ROOT_DIR}/.env.local"
@@ -22,22 +24,35 @@ load_local_env() {
 }
 
 init_local_defaults() {
-  export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-local}"
+  if [[ -n "${LOCAL_UP_FORCE_PROFILE:-}" ]]; then
+    export SPRING_PROFILES_ACTIVE="${LOCAL_UP_FORCE_PROFILE}"
+  else
+    export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-local}"
+  fi
 
-  export LOCAL_DB_HOST="${LOCAL_DB_HOST:-49.247.42.59}"
-  export LOCAL_DB_PORT="${LOCAL_DB_PORT:-3306}"
-  export LOCAL_DB_NAME="${LOCAL_DB_NAME:-csm}"
-  export LOCAL_DB_USERNAME="${LOCAL_DB_USERNAME:-csdev}"
-  export LOCAL_DB_PASSWORD="${LOCAL_DB_PASSWORD:-Core0220!_!@@}"
+  export DEV_DB_HOST="${DEV_DB_HOST:-49.247.42.59}"
+  if [[ -n "${LOCAL_UP_FORCE_DB_HOST:-}" ]]; then
+    export DEV_DB_HOST="${LOCAL_UP_FORCE_DB_HOST}"
+    unset SPRING_DATASOURCE_URL
+  fi
+  export DEV_DB_PORT="${DEV_DB_PORT:-3306}"
+  export DEV_DB_NAME="${DEV_DB_NAME:-csm}"
+  export DEV_DB_USERNAME="${DEV_DB_USERNAME:-csdev}"
+  export DEV_DB_PASSWORD="${DEV_DB_PASSWORD:-Core0220!_!@@}"
 
-  # csm/mediplat 모두 동일한 DB를 기본으로 사용 (필요 시 환경변수로 로컬 DB로 오버라이드)
-  export SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL:-jdbc:mysql://${LOCAL_DB_HOST}:${LOCAL_DB_PORT}/${LOCAL_DB_NAME}?serverTimezone=Asia/Seoul&useSSL=false&characterEncoding=UTF-8&allowPublicKeyRetrieval=true}"
-  export SPRING_DATASOURCE_USERNAME="${SPRING_DATASOURCE_USERNAME:-${LOCAL_DB_USERNAME}}"
-  export SPRING_DATASOURCE_PASSWORD="${SPRING_DATASOURCE_PASSWORD:-${LOCAL_DB_PASSWORD}}"
+  # 로컬 실행 시에도 기본 DB는 DEV DB를 사용한다. 필요하면 SPRING_DATASOURCE_*로 명시 오버라이드한다.
+  export SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL:-jdbc:mysql://${DEV_DB_HOST}:${DEV_DB_PORT}/${DEV_DB_NAME}?serverTimezone=Asia/Seoul&useSSL=false&characterEncoding=UTF-8&allowPublicKeyRetrieval=true}"
+  export SPRING_DATASOURCE_USERNAME="${SPRING_DATASOURCE_USERNAME:-${DEV_DB_USERNAME}}"
+  export SPRING_DATASOURCE_PASSWORD="${SPRING_DATASOURCE_PASSWORD:-${DEV_DB_PASSWORD}}"
 
   export MEDIPLAT_DATASOURCE_URL="${MEDIPLAT_DATASOURCE_URL:-${SPRING_DATASOURCE_URL}}"
   export MEDIPLAT_DATASOURCE_USERNAME="${MEDIPLAT_DATASOURCE_USERNAME:-${SPRING_DATASOURCE_USERNAME}}"
   export MEDIPLAT_DATASOURCE_PASSWORD="${MEDIPLAT_DATASOURCE_PASSWORD:-${SPRING_DATASOURCE_PASSWORD}}"
+  export CANCER_TREATMENT_DATASOURCE_URL="${CANCER_TREATMENT_DATASOURCE_URL:-${SPRING_DATASOURCE_URL}}"
+  export CANCER_TREATMENT_DATASOURCE_USERNAME="${CANCER_TREATMENT_DATASOURCE_USERNAME:-${SPRING_DATASOURCE_USERNAME}}"
+  export CANCER_TREATMENT_DATASOURCE_PASSWORD="${CANCER_TREATMENT_DATASOURCE_PASSWORD:-${SPRING_DATASOURCE_PASSWORD}}"
+  export CANCER_TREATMENT_SQL_INIT_MODE="${CANCER_TREATMENT_SQL_INIT_MODE:-always}"
+  export CANCER_TREATMENT_BASE_URL="${CANCER_TREATMENT_BASE_URL:-http://localhost:${CANCER_TREATMENT_PORT}}"
 
   # 빈 로컬 DB에서 csm 기동 실패를 유발하는 bootstrap 기본값 OFF
   export PLATFORM_ADMIN_BOOTSTRAP_ENABLED="${PLATFORM_ADMIN_BOOTSTRAP_ENABLED:-false}"
@@ -98,6 +113,9 @@ cleanup() {
   if [[ -n "${MEDIPLAT_PID}" ]] && kill -0 "${MEDIPLAT_PID}" >/dev/null 2>&1; then
     kill "${MEDIPLAT_PID}" >/dev/null 2>&1 || true
   fi
+  if [[ -n "${CANCER_TREATMENT_PID}" ]] && kill -0 "${CANCER_TREATMENT_PID}" >/dev/null 2>&1; then
+    kill "${CANCER_TREATMENT_PID}" >/dev/null 2>&1 || true
+  fi
 
   wait >/dev/null 2>&1 || true
   exit "${exit_code}"
@@ -123,6 +141,16 @@ start_mediplat() {
   MEDIPLAT_PID=$!
 }
 
+start_cancer_treatment() {
+  (
+    cd "${ROOT_DIR}/cancer-treatment"
+    exec ../gradlew bootRun --console=plain
+  ) \
+    > >(sed -u 's/^/[cancer-treatment] /') \
+    2> >(sed -u 's/^/[cancer-treatment] /' >&2) &
+  CANCER_TREATMENT_PID=$!
+}
+
 monitor_processes() {
   while true; do
     if ! kill -0 "${CSM_PID}" >/dev/null 2>&1; then
@@ -132,6 +160,11 @@ monitor_processes() {
 
     if ! kill -0 "${MEDIPLAT_PID}" >/dev/null 2>&1; then
       wait "${MEDIPLAT_PID}"
+      return $?
+    fi
+
+    if ! kill -0 "${CANCER_TREATMENT_PID}" >/dev/null 2>&1; then
+      wait "${CANCER_TREATMENT_PID}"
       return $?
     fi
 
@@ -146,14 +179,17 @@ load_local_env
 init_local_defaults
 kill_port "${CSM_PORT}" "csm"
 kill_port "${MEDIPLAT_PORT}" "mediplat"
+kill_port "${CANCER_TREATMENT_PORT}" "cancer-treatment"
 
 echo "Starting local services..."
-echo "- CounselMan : http://localhost:${CSM_PORT}/csm/login"
-echo "- MediPlat   : http://localhost:${MEDIPLAT_PORT}/login"
-echo "- JAVA_HOME  : ${JAVA_HOME}"
-echo "- SPRING_PROFILE : ${SPRING_PROFILES_ACTIVE}"
-echo "- DB_URL      : ${SPRING_DATASOURCE_URL}"
+echo "- CounselMan       : http://localhost:${CSM_PORT}/csm/login"
+echo "- MediPlat         : http://localhost:${MEDIPLAT_PORT}/login"
+echo "- Cancer Treatment : http://localhost:${CANCER_TREATMENT_PORT}/login-required"
+echo "- JAVA_HOME        : ${JAVA_HOME}"
+echo "- SPRING_PROFILE   : ${SPRING_PROFILES_ACTIVE}"
+echo "- DB_URL           : ${SPRING_DATASOURCE_URL}"
 
 start_csm
 start_mediplat
+start_cancer_treatment
 monitor_processes

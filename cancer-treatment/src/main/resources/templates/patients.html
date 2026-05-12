@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>환자 관리</title>
+    <link rel="stylesheet" th:href="@{/css/treatment.css}">
+    <link rel="stylesheet" th:href="@{/css/layout.css}">
+    <script th:src="@{/js/patients.js}" defer></script>
+</head>
+<body>
+<nav th:replace="~{fragments/layout :: topnav(${user}, ${activeMenu}, ${mediplatPortalUrl})}"></nav>
+<div class="layout">
+    <aside th:replace="~{fragments/layout :: sidebar(${activeMenu})}"></aside>
+    <main class="main">
+        <div class="page-header">
+            <div>
+                <div class="page-title">환자 관리</div>
+                <div class="page-subtitle">환자명부, 입퇴원 정보, 치료정보, 환자별 치료 이력을 관리합니다.</div>
+            </div>
+            <div class="header-right">
+                <button type="button" class="btn-primary" id="patient-create-open">+ 환자 등록</button>
+            </div>
+        </div>
+        <div class="page-body">
+            <form class="patient-create-panel" id="patient-create-form" hidden>
+                <div class="form-grid">
+                    <label>
+                        <span>환자명</span>
+                        <input type="text" id="patient-name" name="name" maxlength="100" required>
+                    </label>
+                    <label>
+                        <span>차트번호</span>
+                        <input type="text" id="patient-chart-no" name="chartNo" maxlength="50">
+                    </label>
+                    <label>
+                        <span>병실/외래</span>
+                        <input type="text" id="patient-room" name="room" maxlength="50" placeholder="예: 102, 외래">
+                    </label>
+                    <label>
+                        <span>병동</span>
+                        <select id="patient-create-ward" name="ward">
+                            <option value="">선택 안함</option>
+                            <option value="1병동">1병동</option>
+                            <option value="외래">외래</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>입원일</span>
+                        <input type="date" id="patient-admission-date" name="admissionDate">
+                    </label>
+                    <label>
+                        <span>퇴원일</span>
+                        <input type="date" id="patient-discharge-date" name="dischargeDate">
+                    </label>
+                    <label class="form-grid-wide">
+                        <span>치료정보</span>
+                        <textarea id="patient-treatment-info" name="treatmentInfo" rows="3"></textarea>
+                    </label>
+                    <label class="form-grid-wide">
+                        <span>참고사항</span>
+                        <textarea id="patient-note" name="note" rows="3"></textarea>
+                    </label>
+                </div>
+                <p class="form-message" id="patient-form-message" role="status"></p>
+                <div class="form-actions">
+                    <button type="button" class="secondary-button" id="patient-create-cancel">취소</button>
+                    <button type="submit">저장</button>
+                </div>
+            </form>
+            <form class="filter-bar patient-filter-bar" id="patient-filter">
+                <input type="search" id="patient-keyword" placeholder="환자명, 차트번호, 병실 검색">
+                <select id="patient-ward">
+                    <option value="">전체 병동</option>
+                    <option value="1병동">1병동</option>
+                    <option value="외래">외래</option>
+                </select>
+                <button type="submit">조회</button>
+            </form>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>환자명</th>
+                            <th>차트번호</th>
+                            <th>병실/외래</th>
+                            <th>입원일</th>
+                            <th>퇴원일</th>
+                            <th>치료정보</th>
+                            <th>참고사항</th>
+                        </tr>
+                    </thead>
+                    <tbody id="patient-body">
+                        <tr>
+                            <td colspan="7" class="empty">환자명부 데이터 연동 전 기본 화면입니다.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>

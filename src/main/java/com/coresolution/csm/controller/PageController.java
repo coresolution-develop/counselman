@@ -8643,9 +8643,13 @@ public class PageController {
         String inst = ensureInst(session);
         if (inst == null) return new ModelAndView("redirect:/login");
         try {
-            String json = counselListService.getLogSettings(inst);
-            mv.addObject("settingsJson", json != null && !json.isBlank() ? json : "[]");
+            Map<String, Object> categoryData = cs.getCategoryData(inst);
+            @SuppressWarnings("unchecked")
+            List<Category1WithSubcategoriesAndOptions> items =
+                (List<Category1WithSubcategoriesAndOptions>) categoryData.get("categoryData");
+            mv.addObject("settingsJson", categoryTreeToLogSettingsJson(items));
         } catch (Exception e) {
+            log.warn("[counsel/log-settings] load fail inst={}: {}", inst, e.toString());
             mv.addObject("settingsJson", "[]");
         }
         return mv;
@@ -8667,13 +8671,93 @@ public class PageController {
         String inst = ensureInst(session);
         if (inst == null) return Map.of("ok", false, "error", "로그인이 필요합니다.");
         try {
-            String json = objectMapper.writeValueAsString(items);
-            counselListService.saveLogSettings(inst, json);
+            // 기존 카테고리 전체 삭제 후 재삽입
+            List<Category1> existing = cs.selectCategory1(inst);
+            for (Category1 c1 : Optional.ofNullable(existing).orElse(Collections.emptyList())) {
+                cs.deleteCategory(inst, "parent", c1.getCc_col_01());
+            }
+            for (Map<String, Object> item : Optional.ofNullable(items).orElse(Collections.emptyList())) {
+                String itemName = safeString((String) item.get("name"));
+                if (itemName.isBlank()) continue;
+                Category1 c1 = cs.insertCategory1(inst, itemName);
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> values = (List<Map<String, Object>>) item.get("values");
+                for (Map<String, Object> value : Optional.ofNullable(values).orElse(Collections.emptyList())) {
+                    String valName = safeString((String) value.get("name"));
+                    if (valName.isBlank()) continue;
+                    List<String> kinds = toKindList(value.get("kind"));
+                    int chk = kinds.contains("checkbox") ? 1 : 0;
+                    int rad = kinds.contains("radio")    ? 1 : 0;
+                    int txt = kinds.contains("text")     ? 1 : 0;
+                    int sel = kinds.contains("select")   ? 1 : 0;
+                    Category2 c2 = cs.insertCategory2(inst, c1.getCc_col_01(), valName, chk, rad, txt, sel);
+                    if (sel == 1) {
+                        @SuppressWarnings("unchecked")
+                        List<Map<String, Object>> opts = (List<Map<String, Object>>) value.get("options");
+                        List<String> optNames = Optional.ofNullable(opts).orElse(Collections.emptyList())
+                            .stream()
+                            .map(o -> safeString((String) o.get("name")).trim())
+                            .filter(n -> !n.isBlank())
+                            .toList();
+                        if (!optNames.isEmpty()) cs.insertCategory3(inst, c2.getCc_col_01(), null, optNames);
+                    }
+                }
+            }
             return Map.of("ok", true);
         } catch (Exception e) {
             log.error("[design/log-settings] save fail inst={}", inst, e);
             return Map.of("ok", false, "error", "저장 실패");
         }
+    }
+
+    private String categoryTreeToLogSettingsJson(List<Category1WithSubcategoriesAndOptions> items) throws Exception {
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Category1WithSubcategoriesAndOptions c1w : Optional.ofNullable(items).orElse(Collections.emptyList())) {
+            if (c1w == null || c1w.getCategory1() == null) continue;
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("name", c1w.getCategory1().getCc_col_02());
+            List<Map<String, Object>> values = new ArrayList<>();
+            for (Category2WithOptions c2w : Optional.ofNullable(c1w.getSubcategories()).orElse(Collections.emptyList())) {
+                if (c2w == null || c2w.getCategory2() == null) continue;
+                Category2 c2 = c2w.getCategory2();
+                List<String> kinds = new ArrayList<>();
+                if (c2.getCc_col_04() == 1) kinds.add("checkbox");
+                if (c2.getCc_col_05() == 1) kinds.add("radio");
+                if (c2.getCc_col_06() == 1) kinds.add("text");
+                if (c2.getCc_col_07() == 1) kinds.add("select");
+                if (kinds.isEmpty()) kinds.add("text");
+                List<Map<String, Object>> options = new ArrayList<>();
+                for (Category3 opt : Optional.ofNullable(c2w.getOptions()).orElse(Collections.emptyList())) {
+                    if (opt == null) continue;
+                    List<String> optNames = opt.getCc_col_03();
+                    if (optNames == null || optNames.isEmpty()) {
+                        String fallback = opt.getCc_col_02();
+                        if (fallback != null && !fallback.isBlank()) optNames = List.of(fallback);
+                        else continue;
+                    }
+                    for (String optName : optNames) {
+                        if (optName != null && !optName.isBlank()) {
+                            options.add(Map.of("name", optName.trim()));
+                        }
+                    }
+                }
+                Map<String, Object> value = new LinkedHashMap<>();
+                value.put("name", c2.getCc_col_02());
+                value.put("kind", kinds.size() == 1 ? kinds.get(0) : kinds);
+                value.put("options", options);
+                values.add(value);
+            }
+            item.put("values", values);
+            result.add(item);
+        }
+        return objectMapper.writeValueAsString(result);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> toKindList(Object raw) {
+        if (raw instanceof List) return (List<String>) raw;
+        if (raw instanceof String s && !s.isBlank()) return List.of(s);
+        return Collections.emptyList();
     }
 
     private String toDynamicCategoryJson(
@@ -8877,7 +8961,7 @@ public class PageController {
     }
 
     @GetMapping({ "chat-admin", "/chat-admin" })
-    @PreAuthorize("hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN') or hasRole('COUNSELOR')")
+    @PreAuthorize("hasAuthority('CHAT:ADMIN') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN') or hasRole('COUNSELOR')")
     public String chatAdmin() {
         return "design/chat-admin";
     }

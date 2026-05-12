@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>치료 캘린더</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" th:href="@{/css/layout.css}">
+<script th:src="@{/js/treatment-calendar.js}" defer></script>
+<style>
+/* ── Design Tokens (Light) ───────────────────────────────────── */
+:root {
+  --bg:             #f4f5f7;
+  --bg-panel:       #ffffff;
+  --bg-surface:     #eef0f3;
+  --bg-elevated:    #e3e5e9;
+  --fg1:            #111318;
+  --fg2:            #2c3038;
+  --fg3:            #5c636f;
+  --fg4:            #9097a3;
+  --brand:          #5e6ad2;
+  --accent:         #4f4ee8;
+  --accent-hover:   #4343d4;
+  --success:        #1e9938;
+  --success-alt:    #0b9166;
+  --warn:           #b07c0d;
+  --border:         rgba(0,0,0,0.09);
+  --border-subtle:  rgba(0,0,0,0.06);
+  --font-sans:      'Inter', -apple-system, system-ui, sans-serif;
+  --font-mono:      ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+/* ── Calendar Page Layout ─────────────────────────────────── */
+.content-area {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  gap: 0;
+}
+
+/* ── Cal Main ─────────────────────────────────────────────── */
+.cal-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.cal-main::-webkit-scrollbar { width: 4px; }
+.cal-main::-webkit-scrollbar-track { background: transparent; }
+.cal-main::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 2px; }
+
+/* ── Page Header ──────────────────────────────────────────── */
+.page-header {
+  padding: 18px 24px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  gap: 12px;
+}
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--fg1);
+  letter-spacing: -0.3px;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Calendar Title ───────────────────────────────────────── */
+.cal-title-text {
+  font-size: 14px;
+  font-weight: 590;
+  color: var(--fg1);
+  min-width: 120px;
+  text-align: center;
+}
+
+/* ── Segmented Control ────────────────────────────────────── */
+.segmented-control {
+  display: flex;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 2px;
+  gap: 2px;
+}
+.segmented-control button {
+  height: 26px;
+  padding: 0 12px;
+  border: none;
+  background: transparent;
+  color: var(--fg3);
+  font-size: 12px;
+  font-weight: 510;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: background 0.12s, color 0.12s;
+}
+.segmented-control button:hover { color: var(--fg1); background: rgba(0,0,0,0.04); }
+.segmented-control button.is-active {
+  background: var(--bg-panel);
+  color: var(--fg1);
+  font-weight: 590;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+
+/* ── Nav Button ───────────────────────────────────────────── */
+.btn-nav {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-panel);
+  color: var(--fg3);
+  font-size: 12px;
+  font-weight: 510;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: background 0.12s, color 0.12s;
+}
+.btn-nav:hover { background: var(--bg-surface); color: var(--fg1); }
+
+/* ── Filter Bar ───────────────────────────────────────────── */
+.cal-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 14px;
+}
+.cal-filter select {
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-panel);
+  color: var(--fg1);
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 510;
+  font-family: var(--font-sans);
+  outline: none;
+  transition: border-color 0.12s;
+}
+.cal-filter select:focus { border-color: rgba(94,106,210,0.5); }
+.cal-filter select option { background: var(--bg-panel); }
+
+/* ── Weekday Header ───────────────────────────────────────── */
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.calendar-weekdays span {
+  font-size: 11px;
+  font-weight: 590;
+  color: var(--fg4);
+  text-align: center;
+  padding: 4px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── Calendar Grid ────────────────────────────────────────── */
+#calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+
+/* ── Calendar Day Cell ────────────────────────────────────── */
+.calendar-day-cell {
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 8px;
+  min-height: 80px;
+  cursor: pointer;
+  background: var(--bg-panel);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-family: var(--font-sans);
+  text-align: left;
+  transition: background 0.12s, border-color 0.12s;
+}
+.calendar-day-cell:hover {
+  background: rgba(0,0,0,0.02);
+  border-color: rgba(0,0,0,0.1);
+}
+.calendar-day-cell.is-selected {
+  background: rgba(94,106,210,0.1);
+  border-color: rgba(94,106,210,0.4);
+}
+.calendar-day-cell.is-outside {
+  opacity: 0.4;
+}
+
+/* ── Day Number ───────────────────────────────────────────── */
+.calendar-day-number {
+  font-size: 13px;
+  font-weight: 590;
+  color: var(--fg1);
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+/* ── Day Empty ────────────────────────────────────────────── */
+.calendar-day-empty {
+  font-size: 11px;
+  color: var(--fg4);
+}
+
+/* ── Event List ───────────────────────────────────────────── */
+.calendar-event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+}
+
+/* ── Event Line ───────────────────────────────────────────── */
+.calendar-event-line {
+  display: block;
+  font-size: 11px;
+  color: var(--fg3);
+  background: var(--bg-surface);
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+.calendar-event-line.is-candidate {
+  color: var(--fg4);
+  background: transparent;
+  border: 1px dashed var(--border);
+}
+
+/* ── More ─────────────────────────────────────────────────── */
+.calendar-more {
+  font-size: 10px;
+  color: var(--fg4);
+  margin-top: 2px;
+}
+
+/* ── Load Error ───────────────────────────────────────────── */
+.calendar-load-error {
+  grid-column: 1 / -1;
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--fg4);
+  font-size: 13px;
+}
+
+/* ── Right Panel (Selected Date) ──────────────────────────── */
+.right-panel {
+  width: 280px;
+  border-left: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.right-panel::-webkit-scrollbar { width: 4px; }
+.right-panel::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 2px; }
+
+.right-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+#selected-date-title {
+  font-size: 14px;
+  font-weight: 590;
+  color: var(--fg1);
+}
+
+#selected-date-count {
+  font-size: 12px;
+  color: var(--fg4);
+  background: var(--bg-surface);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Day Event List ───────────────────────────────────────── */
+#selected-date-list {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.day-event {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.day-event time {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--fg4);
+  min-width: 36px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.day-event > div {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.day-event strong {
+  font-size: 13px;
+  font-weight: 590;
+  color: var(--fg1);
+  display: block;
+}
+
+.day-event span {
+  font-size: 11px;
+  color: var(--fg3);
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.day-event em {
+  font-style: normal;
+  flex-shrink: 0;
+  align-self: flex-start;
+  padding-top: 2px;
+}
+
+/* ── Status Badges ────────────────────────────────────────── */
+.day-event .is-reserved {
+  font-size: 10px;
+  color: var(--success);
+  background: rgba(30,153,56,0.1);
+  padding: 1px 6px;
+  border-radius: 9999px;
+}
+
+.day-event .is-completed {
+  font-size: 10px;
+  color: var(--success-alt);
+  background: rgba(11,145,102,0.1);
+  padding: 1px 6px;
+  border-radius: 9999px;
+}
+
+.day-event .is-canceled {
+  font-size: 10px;
+  color: var(--fg4);
+  background: var(--bg-surface);
+  padding: 1px 6px;
+  border-radius: 9999px;
+}
+
+.day-event .is-candidate {
+  font-size: 10px;
+  color: #b07c0d;
+  background: rgba(176,124,13,0.1);
+  padding: 1px 6px;
+  border-radius: 9999px;
+}
+
+/* ── Empty ────────────────────────────────────────────────── */
+.empty {
+  padding: 52px 16px;
+  text-align: center;
+  color: var(--fg4);
+  font-size: 13px;
+}
+</style>
+</head>
+<body>
+
+<nav th:replace="~{fragments/layout :: topnav(${user}, ${activeMenu}, ${mediplatPortalUrl})}"></nav>
+
+<div class="layout">
+  <aside th:replace="~{fragments/layout :: sidebar(${activeMenu})}"></aside>
+
+  <main class="main">
+
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="page-title">치료 캘린더</div>
+      <div class="header-right">
+        <div class="segmented-control" role="tablist" aria-label="캘린더 보기">
+          <button type="button" class="is-active" data-calendar-view="month" role="tab" aria-selected="true">월간</button>
+          <button type="button" data-calendar-view="week" role="tab" aria-selected="false">주간</button>
+        </div>
+        <button type="button" class="btn-nav" id="calendar-prev" aria-label="이전">&#8249;</button>
+        <strong id="calendar-title" class="cal-title-text">-</strong>
+        <button type="button" class="btn-nav" id="calendar-next" aria-label="다음">&#8250;</button>
+      </div>
+    </div>
+
+    <!-- Content Area -->
+    <div class="content-area">
+
+      <!-- Cal Main -->
+      <div class="cal-main">
+
+        <!-- Filter Bar -->
+        <div class="cal-filter">
+          <select id="calendar-treatment-filter" aria-label="치료명 필터">
+            <option value="">전체 치료</option>
+            <option value="고주파(온코)">고주파(온코)</option>
+            <option value="도수">도수</option>
+            <option value="림프1">림프1</option>
+            <option value="파동">파동</option>
+            <option value="페인잼머">페인잼머</option>
+          </select>
+        </div>
+
+        <!-- Weekday Header -->
+        <div class="calendar-weekdays" aria-hidden="true">
+          <span>월</span>
+          <span>화</span>
+          <span>수</span>
+          <span>목</span>
+          <span>금</span>
+        </div>
+
+        <!-- Calendar Grid -->
+        <div id="calendar-grid" role="grid" aria-label="치료 캘린더"></div>
+
+      </div><!-- /cal-main -->
+
+      <!-- Right Panel -->
+      <aside class="right-panel" aria-label="선택 날짜 일정">
+        <div class="right-panel-head">
+          <h2 id="selected-date-title">선택 날짜</h2>
+          <span id="selected-date-count">0건</span>
+        </div>
+        <div id="selected-date-list">
+          <p class="empty">날짜를 선택해 주세요.</p>
+        </div>
+      </aside>
+
+    </div><!-- /content-area -->
+  </main>
+
+</div><!-- /layout -->
+
+</body>
+</html>

@@ -46,7 +46,7 @@ public class CounselManSsoLinkService {
         String resolvedTargetPath = StringUtils.hasText(targetPath)
                 ? targetPath.trim()
                 : (user.isPlatformAdmin() ? service.getAdminTarget() : service.getUserTarget());
-        String resolvedBaseUrl = resolveBaseUrl(service.getBaseUrl());
+        String resolvedBaseUrl = resolveBaseUrl(service);
         String normalizedTargetPath = stripContextPath(resolvedTargetPath, resolvedBaseUrl);
         String targetToken = Base64.getUrlEncoder()
                 .withoutPadding()
@@ -83,11 +83,14 @@ public class CounselManSsoLinkService {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
-    private String resolveBaseUrl(String baseUrl) {
-        String normalizedBaseUrl = trimTrailingSlash(baseUrl);
+    private String resolveBaseUrl(PlatformService service) {
+        String normalizedBaseUrl = trimTrailingSlash(service == null ? null : service.getBaseUrl());
         HttpServletRequest request = currentRequest();
         String upgradedBaseUrl = upgradeToHttpsWhenNeeded(normalizedBaseUrl, request);
         if (!isLoopbackUrl(upgradedBaseUrl)) {
+            return upgradedBaseUrl;
+        }
+        if (!usesCounselManHostFallback(service)) {
             return upgradedBaseUrl;
         }
 
@@ -120,6 +123,15 @@ public class CounselManSsoLinkService {
             rebuilt.append(original.getPath());
         }
         return rebuilt.toString();
+    }
+
+    private boolean usesCounselManHostFallback(PlatformService service) {
+        if (service == null || !StringUtils.hasText(service.getServiceCode())) {
+            return false;
+        }
+        String serviceCode = service.getServiceCode().trim();
+        return "COUNSELMAN".equalsIgnoreCase(serviceCode)
+                || "ROOM_BOARD".equalsIgnoreCase(serviceCode);
     }
 
     private HttpServletRequest currentRequest() {

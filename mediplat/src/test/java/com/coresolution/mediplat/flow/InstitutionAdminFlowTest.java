@@ -57,7 +57,7 @@ class InstitutionAdminFlowTest {
                 "AdminPass1!",
                 adminSession,
                 new RedirectAttributesModelMap());
-        assertEquals("redirect:/services", loginView);
+        assertEquals("redirect:/portal", loginView);
 
         PlatformSessionUser adminUser = (PlatformSessionUser) adminSession.getAttribute(SESSION_USER);
         assertNotNull(adminUser);
@@ -107,7 +107,7 @@ class InstitutionAdminFlowTest {
         verify(counselManSsoLinkService).createLaunchUrl(any(), eq(normalUser));
 
         String launchRoomBoardView = controller.launchService("ROOM_BOARD", userSession);
-        assertEquals("redirect:/services", launchRoomBoardView);
+        assertEquals("redirect:/portal", launchRoomBoardView);
         verify(counselManSsoLinkService, never()).createLaunchUrl(any(), eq(normalUser), any(), any());
     }
 
@@ -124,6 +124,7 @@ class InstitutionAdminFlowTest {
         ReflectionTestUtils.setField(storeService, "bootstrapAdminPassword", "ChangeMe123!");
         ReflectionTestUtils.setField(storeService, "bootstrapAdminName", "Platform Admin");
         ReflectionTestUtils.setField(storeService, "bootstrapCounselmanBaseUrl", "http://localhost:8081/csm");
+        ReflectionTestUtils.setField(storeService, "bootstrapCancerTreatmentBaseUrl", "http://localhost:8083");
         ReflectionTestUtils.setField(storeService, "configuredRuntimeEnv", "LOCAL");
         ReflectionTestUtils.setField(storeService, "activeProfiles", "local");
         storeService.initialize();

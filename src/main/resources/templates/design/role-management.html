@@ -72,6 +72,47 @@
     .rm-search-box input { width: 100%; height: 36px; padding: 0 12px 0 32px; border: 1px solid var(--border-default); border-radius: 8px; font-size: 13px; }
     .rm-search-box input:focus { outline: none; border-color: var(--brand-400); box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-500) 14%, transparent); }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Icon Picker */
+    .icon-picker {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+      padding: 10px;
+      background: var(--gray-50);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      position: relative;
+      transition: opacity .15s;
+    }
+    .icon-picker--loading { opacity: .5; pointer-events: none; }
+    .icon-picker__item {
+      aspect-ratio: 1;
+      border: 2px solid transparent;
+      border-radius: 8px;
+      background: #fff;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: all .12s;
+      position: relative;
+    }
+    .icon-picker__item svg { width: 18px; height: 18px; }
+    .icon-picker__item:hover { border-color: var(--border-default); color: var(--text-primary); background: #fff; }
+    .icon-picker__item.is-selected {
+      border-color: var(--brand-500);
+      background: color-mix(in oklab, var(--brand-500) 8%, #fff);
+      color: var(--brand-600);
+    }
+    .icon-picker__ai-badge {
+      position: absolute;
+      top: -5px; right: -5px;
+      font-size: 9px; font-weight: 700;
+      background: var(--brand-500); color: #fff;
+      border-radius: 4px; padding: 1px 3px;
+      line-height: 1;
+    }
   </style>
 </head>
 <body>
@@ -207,6 +248,10 @@
                 <svg><use href="#i-edit"/></svg>
                 이름 변경
               </button>
+              <button class="btn btn--outline" style="color:#ef4444;border-color:#fca5a5;" @click="openDelete()" :disabled="current?.is_system == 1" x-show="current?.is_system != 1">
+                <svg><use href="#i-trash"/></svg>
+                삭제
+              </button>
             </div>
           </div>
 
@@ -311,7 +356,7 @@
 
       <!-- ====== Add Role Modal ====== -->
       <div class="rm-overlay" x-show="showAddRole" x-cloak @click.self="showAddRole=false" style="display:none">
-        <div class="rm-modal">
+        <div class="rm-modal rm-modal--lg">
           <div class="rm-modal__head">
             <div class="rm-modal__head-icon"><svg><use href="#i-plus"/></svg></div>
             <div class="rm-modal__title">새 역할 만들기</div>
@@ -319,7 +364,33 @@
           <div class="rm-modal__body">
             <div class="rm-form-group">
               <label>역할 이름 <span style="color:#ef4444">*</span></label>
-              <input type="text" x-model="addRoleForm.role_name" placeholder="예: 시니어 상담사" @keydown.enter="submitAddRole()" />
+              <input type="text" x-model="addRoleForm.role_name" placeholder="예: 시니어 상담사"
+                     @input="onAddRoleNameInput()" @keydown.enter="submitAddRole()" />
+            </div>
+            <div class="rm-form-group">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+                <label style="margin:0">아이콘 선택</label>
+                <span style="font-size:11px;color:var(--text-tertiary);display:flex;align-items:center;gap:4px" x-show="suggestLoading">
+                  <svg style="width:12px;height:12px;animation:spin 1s linear infinite"><use href="#i-refresh"/></svg>
+                  AI 추천 중…
+                </span>
+                <span style="font-size:11px;color:var(--brand-600)" x-show="!suggestLoading && aiSuggestedIcon && aiSuggestedIcon !== suggestedIcon">
+                  AI 추천: <strong x-text="aiSuggestedIcon"></strong>
+                  <button style="font-size:11px;color:var(--brand-600);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline"
+                          @click="suggestedIcon = aiSuggestedIcon">되돌리기</button>
+                </span>
+              </div>
+              <div class="icon-picker" :class="{ 'icon-picker--loading': suggestLoading }">
+                <template x-for="ic in iconList" :key="ic">
+                  <button type="button" class="icon-picker__item"
+                          :class="{ 'is-selected': suggestedIcon === ic }"
+                          :title="ic"
+                          @click="suggestedIcon = ic">
+                    <svg><use :href="'#i-' + ic"/></svg>
+                    <span x-show="aiSuggestedIcon === ic" class="icon-picker__ai-badge">AI</span>
+                  </button>
+                </template>
+              </div>
             </div>
             <div class="rm-form-group">
               <label>설명</label>
@@ -376,6 +447,26 @@
           <div class="rm-modal__footer">
             <button class="btn btn--outline" @click="showCloneRole=false">취소</button>
             <button class="btn btn--primary" @click="submitClone()" :disabled="!cloneForm.role_name.trim()">복제</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== Delete Role Modal ====== -->
+      <div class="rm-overlay" x-show="showDeleteRole" x-cloak @click.self="showDeleteRole=false" style="display:none">
+        <div class="rm-modal">
+          <div class="rm-modal__head">
+            <div class="rm-modal__head-icon" style="background:color-mix(in oklab,#ef4444 10%,#fff);color:#ef4444"><svg><use href="#i-trash"/></svg></div>
+            <div class="rm-modal__title">역할 삭제</div>
+          </div>
+          <div class="rm-modal__body">
+            <div style="font-size:13px;color:var(--text-secondary);line-height:1.6">
+              <strong x-text="current?.role_name"></strong> 역할을 삭제합니다.<br>
+              이 작업은 되돌릴 수 없으며, 해당 역할의 권한 설정과 사용자 배정이 모두 제거됩니다.
+            </div>
+          </div>
+          <div class="rm-modal__footer">
+            <button class="btn btn--outline" @click="showDeleteRole=false">취소</button>
+            <button class="btn btn--primary" style="background:#ef4444;border-color:#ef4444" @click="submitDelete()">삭제</button>
           </div>
         </div>
       </div>
@@ -517,6 +608,13 @@
       // Add role modal
       showAddRole: false,
       addRoleForm: { role_name: '', description: '' },
+      suggestedIcon: 'key',
+      aiSuggestedIcon: null,
+      suggestLoading: false,
+      _suggestTimer: null,
+      iconList: ['bed','bell','briefcase','building','calendar','chart','chat','clipboard',
+                 'eye','headset','inbox','key','list','megaphone','message','notebook',
+                 'phone','send','settings','shield','sliders','users'],
 
       // Rename modal
       showRenameRole: false,
@@ -525,6 +623,9 @@
       // Clone modal
       showCloneRole: false,
       cloneForm: { role_name: '' },
+
+      // Delete modal
+      showDeleteRole: false,
 
       // Add user modal
       showAddUser: false,
@@ -603,6 +704,8 @@
           { id: 'comms', label: '커뮤니케이션', items: [
             { id: 'notice',      name: '공지사항',     desc: '내부 공지 작성 · 조회',   icon: 'megaphone' },
             { id: 'message',     name: '문자관리',     desc: '문자 발송 · 템플릿',      icon: 'chat' },
+            { id: 'CHAT:READ',   name: '채팅 조회',    desc: '채팅 내역 조회',          icon: 'send' },
+            { id: 'CHAT:ADMIN',  name: '채팅 관리자',  desc: '채팅 관리 메뉴 접근',     icon: 'send' },
           ]},
           { id: 'admin', label: '시스템 관리', items: [
             { id: 'admin',       name: '관리자',       desc: '관리자 전용 메뉴 접근',        icon: 'shield' },
@@ -616,6 +719,7 @@
 
       iconForRole(r) {
         if (!r) return 'key';
+        if (r.icon_name) return r.icon_name;
         const n = (r.role_name || '').toLowerCase();
         if (n.includes('관리') || r.is_system == 1) return 'shield';
         if (n.includes('상담')) return 'headset';
@@ -716,7 +820,33 @@
       // ── Role CRUD ────────────────────────────────────
       openAddRole() {
         this.addRoleForm = { role_name: '', description: '' };
+        this.suggestedIcon = 'key';
+        this.aiSuggestedIcon = null;
+        this.suggestLoading = false;
         this.showAddRole = true;
+      },
+      onAddRoleNameInput() {
+        clearTimeout(this._suggestTimer);
+        const name = this.addRoleForm.role_name.trim();
+        if (!name) { this.suggestedIcon = 'key'; this.aiSuggestedIcon = null; return; }
+        this.suggestLoading = true;
+        this._suggestTimer = setTimeout(async () => {
+          try {
+            const res = await fetch(ctx + 'api/roles/suggest-icon', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+              body: JSON.stringify({ role_name: name })
+            });
+            if (res.ok) {
+              const data = await res.json();
+              const icon = data.icon || 'key';
+              this.aiSuggestedIcon = icon;
+              this.suggestedIcon = icon;
+            }
+          } catch(e) { /* silent */ } finally {
+            this.suggestLoading = false;
+          }
+        }, 600);
       },
       async submitAddRole() {
         if (!this.addRoleForm.role_name.trim()) return;
@@ -724,7 +854,7 @@
           const res = await fetch(ctx + 'api/roles', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
-            body: JSON.stringify(this.addRoleForm)
+            body: JSON.stringify({ ...this.addRoleForm, icon_name: this.suggestedIcon })
           });
           if (res.ok) {
             const data = await res.json();
@@ -772,6 +902,34 @@
             await this.selectRole(data.role_id);
           }
         } catch(e) { console.error('submitClone', e); }
+      },
+
+      openDelete() {
+        if (!this.current || this.current.is_system == 1) return;
+        this.showDeleteRole = true;
+      },
+      async submitDelete() {
+        if (!this.activeRole) return;
+        try {
+          const res = await fetch(ctx + 'api/roles/' + this.activeRole, {
+            method: 'DELETE',
+            headers: csrfHeaders()
+          });
+          if (res.ok) {
+            this.showDeleteRole = false;
+            const deletedId = this.activeRole;
+            this.activeRole = null;
+            this.currentPerms = [];
+            this.currentUsers = [];
+            this.dirty = false;
+            await this.loadRoles();
+            if (this.roles.length) await this.selectRole(this.roles[0].role_id);
+            this.$dispatch('toast', { message: '역할이 삭제되었습니다' });
+          } else {
+            const body = await res.json().catch(() => ({}));
+            alert(body.message || '삭제에 실패했습니다');
+          }
+        } catch(e) { console.error('submitDelete', e); }
       },
 
       // ── User assignment ──────────────────────────────

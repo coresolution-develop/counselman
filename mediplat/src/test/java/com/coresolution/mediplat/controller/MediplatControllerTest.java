@@ -57,7 +57,7 @@ class MediplatControllerTest {
 
         String view = controller.launchService("room_board", session);
 
-        assertEquals("redirect:/services", view);
+        assertEquals("redirect:/portal", view);
         verify(storeService, never()).findService(any());
         verify(counselManSsoLinkService, never()).createLaunchUrl(any(), any(), any(), any());
     }
@@ -125,7 +125,7 @@ class MediplatControllerTest {
 
         String view = controller.launchService("room_board", session);
 
-        assertEquals("redirect:/services", view);
+        assertEquals("redirect:/portal", view);
         verify(counselManSsoLinkService, never()).createLaunchUrl(any(), any(), any(), any());
     }
 
@@ -193,6 +193,38 @@ class MediplatControllerTest {
     }
 
     @Test
+    void launchService_cancerTreatment_redirectsLocalPage_whenAccessible() {
+        MockHttpSession session = new MockHttpSession();
+        PlatformSessionUser user = new PlatformSessionUser("FALH", "user1", "User One", "USER");
+        session.setAttribute(SESSION_USER, user);
+        PlatformService cancerTreatmentService = new PlatformService(
+                4L,
+                "CANCER_TREATMENT",
+                "암센터 치료스케줄 관리",
+                "http://localhost:8082",
+                null,
+                null,
+                null,
+                "/mediplat/sso/entry",
+                "/cancer-treatment-schedule",
+                "/cancer-treatment-schedule",
+                "",
+                "Y",
+                4,
+                "Y");
+
+        when(storeService.findService("CANCER_TREATMENT")).thenReturn(cancerTreatmentService);
+        when(storeService.listEnabledServiceCodesForUser(user)).thenReturn(List.of("CANCER_TREATMENT"));
+        when(counselManSsoLinkService.createLaunchUrl(cancerTreatmentService, user))
+                .thenReturn("http://localhost:8083/mediplat/sso/entry?token=ct");
+
+        String view = controller.launchService("cancer_treatment", session);
+
+        assertEquals("redirect:http://localhost:8083/mediplat/sso/entry?token=ct", view);
+        verify(counselManSsoLinkService).createLaunchUrl(cancerTreatmentService, user);
+    }
+
+    @Test
     void adminPage_allowsInstitutionAdmin_andScopesToOwnInstitution() {
         MockHttpSession session = new MockHttpSession();
         PlatformSessionUser user = new PlatformSessionUser("FALH", "instadmin", "기관관리자", "INSTITUTION_ADMIN");
@@ -228,7 +260,7 @@ class MediplatControllerTest {
 
         String view = controller.adminPage("ABCD", null, "user1", null, null, model, session);
 
-        assertEquals("admin", view);
+        assertEquals("design/Institution-admin", view);
         assertEquals("FALH", model.getAttribute("selectedInstCode"));
         @SuppressWarnings("unchecked")
         List<PlatformInstitution> institutions = (List<PlatformInstitution>) model.getAttribute("institutions");

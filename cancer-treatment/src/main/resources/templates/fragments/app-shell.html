@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<header class="topbar" th:fragment="topbar(user)">
+    <div class="topbar-brand">
+        <div class="brand-mark">CT</div>
+        <div>
+            <p class="eyebrow">MediPlat Service</p>
+            <h1>암센터 치료스케줄 관리</h1>
+        </div>
+    </div>
+    <div class="topbar-actions">
+        <div class="user-meta">
+            <strong th:text="${user.username}">user</strong>
+            <span th:text="${user.instCode}">INST</span>
+        </div>
+        <a class="header-button" th:href="${mediplatPortalUrl}">MediPlat</a>
+        <a class="header-button header-button-danger" th:href="@{/logout}">로그아웃</a>
+    </div>
+</header>
+
+<nav class="app-menu" th:fragment="menu(activeMenu)" aria-label="주요 메뉴">
+    <a th:href="@{/cancer-treatment-schedule}"
+       th:classappend="${activeMenu == 'schedule'} ? ' is-active' : ''">치료 스케줄</a>
+    <a th:href="@{/treatment-calendar}"
+       th:classappend="${activeMenu == 'calendar'} ? ' is-active' : ''">치료 캘린더</a>
+    <a th:href="@{/patients}"
+       th:classappend="${activeMenu == 'patients'} ? ' is-active' : ''">환자 관리</a>
+    <a th:href="@{/dashboard}"
+       th:classappend="${activeMenu == 'dashboard'} ? ' is-active' : ''">대시보드</a>
+    <a th:href="@{/treatment-rooms}"
+       th:classappend="${activeMenu == 'rooms'} ? ' is-active' : ''">치료실 현황</a>
+    <a th:href="@{/settings}"
+       th:classappend="${activeMenu == 'settings'} ? ' is-active' : ''">설정 관리</a>
+</nav>
+</body>
+</html>

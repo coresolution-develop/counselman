@@ -35,6 +35,7 @@ public class PlatformStoreService {
     private static final String SERVICE_CODE_COUNSELMAN = "COUNSELMAN";
     private static final String SERVICE_CODE_ROOM_BOARD = "ROOM_BOARD";
     private static final String SERVICE_CODE_SEMINAR_ROOM = "SEMINAR_ROOM";
+    private static final String SERVICE_CODE_CANCER_TREATMENT = "CANCER_TREATMENT";
     private static final String INTEGRATION_CODE_ROOMBOARD_CSM_LINK = "ROOMBOARD_CSM_LINK";
     private static final String DEFAULT_SERVICE_CODE = SERVICE_CODE_COUNSELMAN;
     private static final String VIEWER_ACCOUNT_INST_CODE = "core";
@@ -63,6 +64,9 @@ public class PlatformStoreService {
 
     @Value("${platform.bootstrap.counselman-base-url:http://localhost:8081/csm}")
     private String bootstrapCounselmanBaseUrl;
+
+    @Value("${platform.bootstrap.cancer-treatment-base-url:http://localhost:8083}")
+    private String bootstrapCancerTreatmentBaseUrl;
 
     @Value("${platform.runtime-env:}")
     private String configuredRuntimeEnv;
@@ -1152,6 +1156,9 @@ public class PlatformStoreService {
         String localBaseUrl = ENV_LOCAL.equals(runtimeEnvCode) ? bootstrapCounselmanBaseUrl : null;
         String devBaseUrl = ENV_DEV.equals(runtimeEnvCode) ? bootstrapCounselmanBaseUrl : null;
         String prodBaseUrl = ENV_PROD.equals(runtimeEnvCode) ? bootstrapCounselmanBaseUrl : null;
+        String cancerLocalBaseUrl = ENV_LOCAL.equals(runtimeEnvCode) ? bootstrapCancerTreatmentBaseUrl : null;
+        String cancerDevBaseUrl = ENV_DEV.equals(runtimeEnvCode) ? bootstrapCancerTreatmentBaseUrl : null;
+        String cancerProdBaseUrl = ENV_PROD.equals(runtimeEnvCode) ? bootstrapCancerTreatmentBaseUrl : null;
         saveInstitution(bootstrapAdminInstCode, bootstrapAdminInstName, USE_Y);
         saveUser(
                 bootstrapAdminInstCode,
@@ -1199,9 +1206,22 @@ public class PlatformStoreService {
                 "기관별 세미나실 예약 관리 서비스",
                 USE_Y,
                 3);
+        saveService(
+                SERVICE_CODE_CANCER_TREATMENT,
+                "암센터 치료스케줄 관리",
+                bootstrapCancerTreatmentBaseUrl,
+                cancerLocalBaseUrl,
+                cancerDevBaseUrl,
+                cancerProdBaseUrl,
+                "/mediplat/sso/entry",
+                "/cancer-treatment-schedule",
+                "/cancer-treatment-schedule",
+                "암센터 치료 예약 및 치료상태 실시간 관리 서비스",
+                USE_Y,
+                4);
         saveInstitutionServiceAccess(
                 bootstrapAdminInstCode,
-                List.of(DEFAULT_SERVICE_CODE, SERVICE_CODE_ROOM_BOARD, SERVICE_CODE_SEMINAR_ROOM));
+                List.of(DEFAULT_SERVICE_CODE, SERVICE_CODE_ROOM_BOARD, SERVICE_CODE_SEMINAR_ROOM, SERVICE_CODE_CANCER_TREATMENT));
     }
 
     private PlatformUser findUser(String instCode, String username) {

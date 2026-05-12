@@ -207,6 +207,7 @@ class PlatformStoreServiceTest {
         ReflectionTestUtils.setField(storeService, "bootstrapAdminPassword", "ChangeMe123!");
         ReflectionTestUtils.setField(storeService, "bootstrapAdminName", "Platform Admin");
         ReflectionTestUtils.setField(storeService, "bootstrapCounselmanBaseUrl", "http://localhost:8081/csm");
+        ReflectionTestUtils.setField(storeService, "bootstrapCancerTreatmentBaseUrl", "http://localhost:8083");
         ReflectionTestUtils.setField(storeService, "configuredRuntimeEnv", "LOCAL");
         ReflectionTestUtils.setField(storeService, "activeProfiles", "local");
         storeService.initialize();

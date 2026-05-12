@@ -52,6 +52,22 @@ class CounselManSsoLinkServiceTest {
     }
 
     @Test
+    void createLaunchUrl_preservesExternalServiceLoopbackBaseUrl() {
+        CounselManSsoLinkService linkService = newLinkService("http://localhost:8081/csm");
+        bindRequest("http", "localhost", 8082);
+
+        String launchUrl = linkService.createLaunchUrl(cancerTreatmentService("http://localhost:8083"), normalUser());
+        URI uri = URI.create(launchUrl);
+        Map<String, String> query = parseQuery(uri);
+
+        assertEquals("http", uri.getScheme());
+        assertEquals("localhost", uri.getHost());
+        assertEquals(8083, uri.getPort());
+        assertEquals("/mediplat/sso/entry", uri.getPath());
+        assertEquals("/cancer-treatment-schedule", decodeTarget(query.get("target")));
+    }
+
+    @Test
     void createLaunchUrl_preservesConfiguredCounselManPort_whenRequestPortDiffers() {
         CounselManSsoLinkService linkService = newLinkService("http://localhost:8081/csm");
         bindRequest("http", "dev.sosyge.net", 8082);
@@ -127,6 +143,24 @@ class CounselManSsoLinkServiceTest {
                 "description",
                 "Y",
                 1,
+                "Y");
+    }
+
+    private PlatformService cancerTreatmentService(String baseUrl) {
+        return new PlatformService(
+                2L,
+                "CANCER_TREATMENT",
+                "암센터 치료스케줄 관리",
+                baseUrl,
+                null,
+                null,
+                null,
+                "/mediplat/sso/entry",
+                "/cancer-treatment-schedule",
+                "/cancer-treatment-schedule",
+                "description",
+                "Y",
+                4,
                 "Y");
     }
 

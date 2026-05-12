@@ -66,6 +66,8 @@ public class CsmSchemaBootstrapService {
 
                 try {
                     csmAuthService.createCoreInstSchemaTables(instCode);
+                    ensureTransmissionHistoryColumns(instCode);
+                    ensureRoleIconColumn(instCode);
                     transactionTemplate.executeWithoutResult(status -> {
                         upsertCoreInstitution(instCode, instName, useYn);
                         syncUsersFromPlatform(instCode, instName);
@@ -197,6 +199,7 @@ public class CsmSchemaBootstrapService {
             {"admission",           "입원예약관리", "/admission-reservation", 90},
             {"admin",               "관리자",       "/admin",               100},
             {"faq_manage",          "FAQ 관리",     "/faq-manage",          110},
+            {"chat_admin",          "채팅 관리",    "/chat-admin",          120},
         };
         for (Object[] row : menus) {
             jdbcTemplate.update(upsert, row);
@@ -273,6 +276,9 @@ public class CsmSchemaBootstrapService {
             {"FAQ:CREATE", "faq_manage", "FAQ", "CREATE", "FAQ 등록", 132},
             {"FAQ:EDIT",   "faq_manage", "FAQ", "EDIT",   "FAQ 수정", 133},
             {"FAQ:DELETE", "faq_manage", "FAQ", "DELETE", "FAQ 삭제", 134},
+            // chat_admin
+            {"CHAT:READ",  "chat_admin", "CHAT", "READ",  "채팅 조회",  141},
+            {"CHAT:ADMIN", "chat_admin", "CHAT", "ADMIN", "채팅 관리자", 142},
         };
         for (Object[] row : perms) {
             jdbcTemplate.update(upsert, row);
@@ -367,6 +373,7 @@ public class CsmSchemaBootstrapService {
                     roleCode,
                     username);
             if (updated > 0) {
+                mergeAuthorityWithRoles(safeInst, userTableName, username, authority);
                 if (authInit.autoRoleCode() != null) {
                     assignAutoRole(safeInst, userTableName, username, authInit.autoRoleCode());
                 }
@@ -392,6 +399,40 @@ public class CsmSchemaBootstrapService {
             if (authInit.autoRoleCode() != null) {
                 assignAutoRole(safeInst, userTableName, username, authInit.autoRoleCode());
             }
+        }
+    }
+
+    /**
+     * 플랫폼 동기화 후 CSM 역할 배정을 반영해 us_col_08을 보정한다.
+     * 플랫폼 권한(authority)과 CSM 시스템 역할 권한 중 더 높은 값(숫자가 낮을수록 높은 권한)을 사용한다.
+     *
+     * 예) 플랫폼=USER(2), CSM=시스템역할 보유(1) → LEAST(2,1)=1 → INST_ADMIN 유지
+     *     플랫폼=USER(2), CSM=역할 없음(2)      → LEAST(2,2)=2 → ROLE_USER
+     *     플랫폼=INST_ADMIN(1), CSM=역할 없음  → LEAST(1,2)=1 → INST_ADMIN
+     */
+    private void mergeAuthorityWithRoles(String safeInst, String userTableName, String username, int platformAuthority) {
+        try {
+            List<Long> userIds = jdbcTemplate.queryForList(
+                    "SELECT us_col_01 FROM " + userTableName + " WHERE LOWER(us_col_02) = LOWER(?)",
+                    Long.class, username);
+            if (userIds.isEmpty()) return;
+            long userId = userIds.get(0);
+
+            Integer systemRoleCount = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM csm.user_role_" + safeInst + " ur"
+                    + " JOIN csm.role_" + safeInst + " r ON r.role_id = ur.role_id"
+                    + " WHERE ur.user_id = ? AND r.is_system = 1",
+                    Integer.class, userId);
+
+            int roleAuthority = (systemRoleCount != null && systemRoleCount > 0) ? 1 : 2;
+            int finalAuthority = Math.min(platformAuthority, roleAuthority);
+            if (finalAuthority != platformAuthority) {
+                jdbcTemplate.update("UPDATE " + userTableName + " SET us_col_08 = ? WHERE us_col_01 = ?",
+                        finalAuthority, userId);
+                log.info("[sync] {} authority adjusted {} → {} (has system role)", username, platformAuthority, finalAuthority);
+            }
+        } catch (Exception e) {
+            log.warn("[sync] mergeAuthorityWithRoles failed for {}: {}", username, e.getMessage());
         }
     }
 
@@ -496,5 +537,47 @@ public class CsmSchemaBootstrapService {
 
     private String toCounselmanYn(String platformYn) {
         return "N".equalsIgnoreCase(platformYn) ? "n" : "y";
+    }
+
+    private void ensureRoleIconColumn(String instCode) {
+        String safe = instCode.replaceAll("[^a-zA-Z0-9_]", "_");
+        String tableName = "role_" + safe;
+        try {
+            Integer cnt = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS " +
+                "WHERE TABLE_SCHEMA = 'csm' AND TABLE_NAME = ? AND COLUMN_NAME = 'icon_name'",
+                Integer.class, tableName);
+            if (cnt == null || cnt == 0) {
+                jdbcTemplate.execute("ALTER TABLE csm." + tableName + " ADD COLUMN icon_name VARCHAR(30) DEFAULT NULL");
+                log.info("[schema-bootstrap] added column icon_name to {}", tableName);
+            }
+        } catch (Exception e) {
+            log.warn("[schema-bootstrap] icon_name column migration skipped {}: {}", tableName, e.toString());
+        }
+    }
+
+    private void ensureTransmissionHistoryColumns(String instCode) {
+        String safe = instCode.replaceAll("[^a-zA-Z0-9_]", "_");
+        String tableName = "transmission_history_" + safe;
+        String[] columns = {
+            "reserve_time datetime DEFAULT NULL",
+            "send_type varchar(10) DEFAULT NULL",
+            "refkey varchar(50) DEFAULT NULL"
+        };
+        String[] columnNames = { "reserve_time", "send_type", "refkey" };
+        for (int i = 0; i < columnNames.length; i++) {
+            try {
+                Integer cnt = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS " +
+                    "WHERE TABLE_SCHEMA = 'csm' AND TABLE_NAME = ? AND COLUMN_NAME = ?",
+                    Integer.class, tableName, columnNames[i]);
+                if (cnt == null || cnt == 0) {
+                    jdbcTemplate.execute("ALTER TABLE csm." + tableName + " ADD COLUMN " + columns[i]);
+                    log.info("[schema-bootstrap] added column {} to {}", columnNames[i], tableName);
+                }
+            } catch (Exception e) {
+                log.warn("[schema-bootstrap] column migration skipped {}.{}: {}", tableName, columnNames[i], e.toString());
+            }
+        }
     }
 }
