@@ -67,9 +67,8 @@ public class TreatmentScheduleController {
     }
 
     @GetMapping("/login-required")
-    public String loginRequired(Model model) {
-        model.addAttribute("mediplatPortalUrl", mediplatPortalUrl);
-        return "login-required";
+    public String loginRequired() {
+        return "redirect:" + mediplatPortalUrl;
     }
 
     @GetMapping("/logout")
