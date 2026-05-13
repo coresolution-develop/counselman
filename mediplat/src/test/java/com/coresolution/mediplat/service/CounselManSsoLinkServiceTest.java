@@ -68,6 +68,21 @@ class CounselManSsoLinkServiceTest {
     }
 
     @Test
+    void createLaunchUrl_includesCancerTreatmentContextPath_whenBaseUrlHasContextPath() {
+        CounselManSsoLinkService linkService = newLinkService("http://localhost:8081/csm");
+        bindRequest("http", "localhost", 8082);
+
+        String launchUrl = linkService.createLaunchUrl(
+                cancerTreatmentService("http://localhost:8083/cancer-treatment"), normalUser());
+        URI uri = URI.create(launchUrl);
+
+        assertEquals("http", uri.getScheme());
+        assertEquals("localhost", uri.getHost());
+        assertEquals(8083, uri.getPort());
+        assertEquals("/cancer-treatment/mediplat/sso/entry", uri.getPath());
+    }
+
+    @Test
     void createLaunchUrl_preservesConfiguredCounselManPort_whenRequestPortDiffers() {
         CounselManSsoLinkService linkService = newLinkService("http://localhost:8081/csm");
         bindRequest("http", "dev.sosyge.net", 8082);

@@ -1,4 +1,6 @@
 (function () {
+    const API = (window.__ctx || '/');
+
     const els = {
         total: document.getElementById('dashboard-total'),
         reserved: document.getElementById('dashboard-reserved'),
@@ -17,7 +19,7 @@
     }
 
     function loadDashboard() {
-        fetch('/api/dashboard', { headers: { 'Accept': 'application/json' } })
+        fetch(API + 'api/dashboard', { headers: { 'Accept': 'application/json' } })
             .then(function (response) {
                 if (!response.ok) throw new Error('dashboard-load-failed');
                 return response.json();

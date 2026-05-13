@@ -149,8 +149,7 @@ body {
 
 .hero-card,
 .board-card,
-.summary-card,
-.login-required-card {
+.summary-card {
     background: var(--panel);
     border: 1px solid rgba(26, 116, 191, 0.14);
     border-radius: 18px;
@@ -1176,36 +1175,6 @@ td small {
     font-weight: 800;
 }
 
-.login-required-page {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-}
-
-.login-required-card {
-    width: min(520px, 100%);
-    padding: 32px;
-}
-
-.login-required-card p:last-child {
-    color: var(--sub);
-}
-
-.login-required-link {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 40px;
-    margin-top: 16px;
-    border-radius: 999px;
-    background: #1f3b69;
-    color: #fff;
-    padding: 0 16px;
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 900;
-}
 
 @media (max-width: 960px) {
     .topbar,

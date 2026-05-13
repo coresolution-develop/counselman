@@ -1,4 +1,6 @@
 (function () {
+    const API = (window.__ctx || '/');
+
     const els = {
         body: document.getElementById('room-body'),
         message: document.getElementById('room-message'),
@@ -29,7 +31,7 @@
     }
 
     function loadRooms() {
-        fetch('/api/treatment-rooms', { headers: { Accept: 'application/json' } })
+        fetch(API + 'api/treatment-rooms', { headers: { Accept: 'application/json' } })
             .then(function (response) {
                 if (!response.ok) throw new Error('room-load-failed');
                 return response.json();
@@ -95,7 +97,7 @@
     function saveRoom(event) {
         event.preventDefault();
         const id = els.id.value;
-        const url = id ? '/api/treatment-rooms/' + id : '/api/treatment-rooms';
+        const url = id ? API + 'api/treatment-rooms/' + id : API + 'api/treatment-rooms';
         const method = id ? 'PUT' : 'POST';
         fetch(url, {
             method: method,
@@ -129,7 +131,7 @@
 
     function deleteRoom(room) {
         if (!window.confirm('삭제하시겠습니까?')) return;
-        fetch('/api/treatment-rooms/' + encodeURIComponent(room.id), {
+        fetch(API + 'api/treatment-rooms/' + encodeURIComponent(room.id), {
             method: 'DELETE',
             headers: { Accept: 'application/json' }
         })

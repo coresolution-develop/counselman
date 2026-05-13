@@ -1,4 +1,6 @@
 (function () {
+    const API = (window.__ctx || '/');
+
     const els = {
         form: document.getElementById('patient-filter'),
         keyword: document.getElementById('patient-keyword'),
@@ -33,7 +35,7 @@
         const params = new URLSearchParams();
         if (els.keyword.value.trim()) params.set('keyword', els.keyword.value.trim());
         if (els.ward.value) params.set('ward', els.ward.value);
-        fetch('/api/patients?' + params.toString(), { headers: { 'Accept': 'application/json' } })
+        fetch(API + 'api/patients?' + params.toString(), { headers: { 'Accept': 'application/json' } })
             .then(function (response) {
                 if (!response.ok) throw new Error('patient-load-failed');
                 return response.json();
@@ -67,7 +69,7 @@
         const submitButton = els.createForm.querySelector('button[type="submit"]');
         if (submitButton) submitButton.disabled = true;
 
-        fetch('/api/patients', {
+        fetch(API + 'api/patients', {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
@@ -183,7 +185,7 @@
     }
 
     function saveInlineField(id, field, value) {
-        fetch('/api/patients/' + encodeURIComponent(id) + '/field', {
+        fetch(API + 'api/patients/' + encodeURIComponent(id) + '/field', {
             method: 'PATCH',
             headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
             body: JSON.stringify({ field: field, value: value })
