@@ -1,4 +1,6 @@
 (function () {
+    var API = (window.__ctx || '/');
+
     var state = {
         eventSource: null,
         pollingTimer: null,
@@ -41,7 +43,7 @@
     }
 
     function loadCalendarOverview() {
-        fetch('/api/treatment-schedules', { headers: { Accept: 'application/json' } })
+        fetch(API + 'api/treatment-schedules', { headers: { Accept: 'application/json' } })
             .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
             .then(function (data) {
                 var counts = {};
@@ -70,7 +72,7 @@
     }
 
     function loadSchedules() {
-        return fetch('/api/treatment-schedules?' + queryString(), {
+        return fetch(API + 'api/treatment-schedules?' + queryString(), {
             headers: { 'Accept': 'application/json' }
         })
             .then(function (response) {
@@ -264,7 +266,7 @@
     function handleStatusChange(event) {
         var target = event.target;
         if (!target.classList.contains('status-select')) return;
-        fetch('/api/treatment-schedules/' + encodeURIComponent(target.dataset.id) + '/status', {
+        fetch(API + 'api/treatment-schedules/' + encodeURIComponent(target.dataset.id) + '/status', {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -318,7 +320,7 @@
     }
 
     function saveInlineField(id, field, value, originalValue, cell) {
-        fetch('/api/treatment-schedules/' + encodeURIComponent(id) + '/field', {
+        fetch(API + 'api/treatment-schedules/' + encodeURIComponent(id) + '/field', {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -349,7 +351,7 @@
         }
         clearPollingFallback();
         clearTimeout(state.reconnectTimer);
-        state.eventSource = new EventSource('/api/treatment-schedules/events');
+        state.eventSource = new EventSource(API + 'api/treatment-schedules/events');
         setRealtimeState('connecting', '연결 중');
 
         state.eventSource.addEventListener('connected', function () {
@@ -479,7 +481,7 @@ function saveScheduleModal() {
         alert('날짜, 시작시간, 환자명, 치료종류는 필수입니다.');
         return;
     }
-    var url    = id ? '/api/treatment-schedules/' + encodeURIComponent(id) : '/api/treatment-schedules';
+    var url    = id ? API + 'api/treatment-schedules/' + encodeURIComponent(id) : API + 'api/treatment-schedules';
     var method = id ? 'PUT' : 'POST';
     fetch(url, {
         method: method,
@@ -498,7 +500,7 @@ function saveScheduleModal() {
 function deleteScheduleFromModal() {
     var id = document.getElementById('modal-schedule-id').value;
     if (!id || !confirm('이 스케줄을 삭제하시겠습니까?')) return;
-    fetch('/api/treatment-schedules/' + encodeURIComponent(id), {
+    fetch(API + 'api/treatment-schedules/' + encodeURIComponent(id), {
         method: 'DELETE',
         headers: { 'Accept': 'application/json' }
     })

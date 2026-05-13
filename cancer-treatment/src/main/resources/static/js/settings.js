@@ -1,4 +1,6 @@
 (function () {
+    const API = (window.__ctx || '/');
+
     const categories = {
         'treatment-types': {
             title: '치료 항목',
@@ -55,7 +57,7 @@
     }
 
     function loadSettings() {
-        fetch('/api/settings', { headers: { Accept: 'application/json' } })
+        fetch(API + 'api/settings', { headers: { Accept: 'application/json' } })
             .then(function (response) {
                 if (!response.ok) throw new Error('settings-load-failed');
                 return response.json();
@@ -162,7 +164,7 @@
         const category = els.category.value;
         const id = els.id.value;
         const method = id ? 'PUT' : 'POST';
-        const url = id ? '/api/settings/' + category + '/' + id : '/api/settings/' + category;
+        const url = id ? API + 'api/settings/' + category + '/' + id : API + 'api/settings/' + category;
         fetch(url, {
             method: method,
             headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
@@ -194,7 +196,7 @@
 
     function deleteItem(category, item) {
         if (!window.confirm('삭제하시겠습니까?')) return;
-        fetch('/api/settings/' + category + '/' + item.id, {
+        fetch(API + 'api/settings/' + category + '/' + item.id, {
             method: 'DELETE',
             headers: { Accept: 'application/json' }
         })

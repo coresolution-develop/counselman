@@ -1,4 +1,6 @@
 (function () {
+    const API = (window.__ctx || '/');
+
     const state = {
         view: 'month',
         cursor: startOfDay(new Date()),
@@ -46,9 +48,9 @@
 
     function loadItems() {
         Promise.all([
-            fetch('/api/treatment-schedules', { headers: { Accept: 'application/json' } }).then(json),
-            fetch('/api/patients', { headers: { Accept: 'application/json' } }).then(json),
-            fetch('/api/settings', { headers: { Accept: 'application/json' } }).then(json)
+            fetch(API + 'api/treatment-schedules', { headers: { Accept: 'application/json' } }).then(json),
+            fetch(API + 'api/patients', { headers: { Accept: 'application/json' } }).then(json),
+            fetch(API + 'api/settings', { headers: { Accept: 'application/json' } }).then(json)
         ])
             .then(function (results) {
                 state.schedules = (results[0].items || []).map(function (item) {
