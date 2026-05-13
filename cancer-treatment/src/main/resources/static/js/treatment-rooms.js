@@ -20,6 +20,7 @@
     };
 
     let rooms = [];
+    let packagesByRoom = {};
 
     function init() {
         if (!els.body) return;
@@ -27,42 +28,76 @@
         els.cancel.addEventListener('click', closeDialog);
         els.form.addEventListener('submit', saveRoom);
         els.body.addEventListener('click', onTableClick);
-        loadRooms();
+        loadAll();
     }
 
-    function loadRooms() {
-        fetch(API + 'api/treatment-rooms', { headers: { Accept: 'application/json' } })
-            .then(function (response) {
-                if (!response.ok) throw new Error('room-load-failed');
-                return response.json();
-            })
-            .then(function (payload) {
-                rooms = payload.items || [];
+    function loadAll() {
+        Promise.all([
+            fetch(API + 'api/treatment-rooms',    { headers: { Accept: 'application/json' } }).then(r => r.ok ? r.json() : { items: [] }),
+            fetch(API + 'api/treatment-packages', { headers: { Accept: 'application/json' } }).then(r => r.ok ? r.json() : { items: [] })
+        ])
+            .then(function (results) {
+                rooms = (results[0] && results[0].items) || [];
+                packagesByRoom = {};
+                ((results[1] && results[1].items) || []).forEach(function (p) {
+                    const key = String(p.treatmentRoomId);
+                    if (!packagesByRoom[key]) packagesByRoom[key] = [];
+                    packagesByRoom[key].push(p);
+                });
                 renderRows();
             })
             .catch(function () {
-                els.body.innerHTML = '<tr><td colspan="6" class="empty">치료실 정보를 불러오지 못했습니다.</td></tr>';
+                els.body.innerHTML = '<tr><td colspan="7" class="empty">치료실 정보를 불러오지 못했습니다.</td></tr>';
             });
     }
 
+    function loadRooms() { loadAll(); }
+
     function renderRows() {
         if (rooms.length === 0) {
-            els.body.innerHTML = '<tr><td colspan="6" class="empty">등록된 치료실이 없습니다.</td></tr>';
+            els.body.innerHTML = '<tr><td colspan="7" class="empty">등록된 치료실이 없습니다.</td></tr>';
             return;
         }
         els.body.innerHTML = rooms.map(function (room) {
+            const packages = packagesByRoom[String(room.id)] || [];
             return '<tr data-id="' + escapeHtml(room.id) + '">' +
                 '<td class="time-cell">' + escapeHtml(room.managementNo || '-') + '</td>' +
                 '<td>' + escapeHtml(room.roomName) + '</td>' +
                 '<td>' + renderTreatmentItems(room.treatmentItems || []) + '</td>' +
                 '<td>' + escapeHtml(room.managerName || '-') + '</td>' +
                 '<td class="memo-cell">' + escapeHtml(room.note || '-') + '</td>' +
+                '<td style="text-align:right">' + renderPackagesLink(room.id, packages) + '</td>' +
                 '<td><div class="settings-row-actions">' +
                 '<button type="button" class="secondary-button" data-action="edit">수정</button>' +
                 '<button type="button" class="secondary-button danger-soft-button" data-action="delete">삭제</button>' +
                 '</div></td>' +
-                '</tr>';
+                '</tr>' +
+                (packages.length ? renderPackagesRow(room.id, packages) : '');
         }).join('');
+    }
+
+    function renderPackagesLink(roomId, packages) {
+        const count = packages.length;
+        const total = packages.reduce(function (sum, p) { return sum + (Number(p.unitPrice || 0) * Number(p.frequency || 1)); }, 0);
+        const url = API + 'treatment-packages?roomId=' + encodeURIComponent(roomId);
+        if (!count) {
+            return '<a href="' + url + '" style="color:#5c636f">0개</a>';
+        }
+        return '<a href="' + url + '" style="color:#1f3b69; font-weight:600">' + count + '개</a>' +
+            '<div style="font-size:11px;color:#5c636f">단가합 ' + total.toLocaleString('ko-KR') + '원</div>';
+    }
+
+    function renderPackagesRow(roomId, packages) {
+        const cells = packages.map(function (p) {
+            const unit = p.billingUnit === 'DAY' ? '일' : '주';
+            return '<span class="package-pill">' +
+                escapeHtml(p.categoryName) + ' · ' + escapeHtml(p.packageName) +
+                ' <em>(' + Number(p.unitPrice).toLocaleString('ko-KR') + '원 / ' + unit + ' ' + escapeHtml(p.frequency) + '회)</em>' +
+                '</span>';
+        }).join('');
+        return '<tr class="room-packages-row"><td colspan="7" style="background:#fbfcfe; padding:8px 14px;">' +
+            '<div class="room-packages-list">' + cells + '</div>' +
+            '</td></tr>';
     }
 
     function onTableClick(event) {

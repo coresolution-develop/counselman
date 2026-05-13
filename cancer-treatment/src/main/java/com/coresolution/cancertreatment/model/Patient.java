@@ -1,5 +1,7 @@
 package com.coresolution.cancertreatment.model;
 
+import java.util.List;
+
 public class Patient {
 
     private final Long id;
@@ -11,6 +13,11 @@ public class Patient {
     private final String dischargeDate;
     private final String treatmentInfo;
     private final String note;
+    private final Integer prescriptionWeeks;
+    private final Integer copaymentRate;
+    private final String totalDiscountType;
+    private final Integer totalDiscountValue;
+    private final List<Long> prescriptionItemIds;
 
     public Patient(
             Long id,
@@ -21,7 +28,12 @@ public class Patient {
             String admissionDate,
             String dischargeDate,
             String treatmentInfo,
-            String note) {
+            String note,
+            Integer prescriptionWeeks,
+            Integer copaymentRate,
+            String totalDiscountType,
+            Integer totalDiscountValue,
+            List<Long> prescriptionItemIds) {
         this.id = id;
         this.name = name;
         this.chartNo = chartNo;
@@ -31,6 +43,11 @@ public class Patient {
         this.dischargeDate = dischargeDate;
         this.treatmentInfo = treatmentInfo;
         this.note = note;
+        this.prescriptionWeeks = prescriptionWeeks;
+        this.copaymentRate = copaymentRate;
+        this.totalDiscountType = totalDiscountType;
+        this.totalDiscountValue = totalDiscountValue;
+        this.prescriptionItemIds = prescriptionItemIds == null ? List.of() : List.copyOf(prescriptionItemIds);
     }
 
     public Long getId() {
@@ -67,5 +84,25 @@ public class Patient {
 
     public String getNote() {
         return note;
+    }
+
+    public Integer getPrescriptionWeeks() {
+        return prescriptionWeeks;
+    }
+
+    public Integer getCopaymentRate() {
+        return copaymentRate;
+    }
+
+    public String getTotalDiscountType() {
+        return totalDiscountType;
+    }
+
+    public Integer getTotalDiscountValue() {
+        return totalDiscountValue;
+    }
+
+    public List<Long> getPrescriptionItemIds() {
+        return prescriptionItemIds;
     }
 }

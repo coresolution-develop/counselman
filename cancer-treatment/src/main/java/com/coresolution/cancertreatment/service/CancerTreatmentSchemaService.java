@@ -23,6 +23,29 @@ public class CancerTreatmentSchemaService {
             ensureTreatmentOptionColor();
             relaxTreatmentRoomManagementNo();
             relaxTreatmentRoomTreatmentItem();
+            ensurePatientPrescriptionColumns();
+            ensureTreatmentPackageAbbreviation();
+        }
+    }
+
+    private void ensureTreatmentPackageAbbreviation() {
+        if (!columnExists("ct_treatment_package", "abbreviation")) {
+            jdbcTemplate.execute("ALTER TABLE ct_treatment_package ADD COLUMN abbreviation VARCHAR(50) NULL");
+        }
+    }
+
+    private void ensurePatientPrescriptionColumns() {
+        if (!columnExists("ct_patient", "prescription_weeks")) {
+            jdbcTemplate.execute("ALTER TABLE ct_patient ADD COLUMN prescription_weeks INT NOT NULL DEFAULT 0");
+        }
+        if (!columnExists("ct_patient", "copayment_rate")) {
+            jdbcTemplate.execute("ALTER TABLE ct_patient ADD COLUMN copayment_rate INT NOT NULL DEFAULT 100");
+        }
+        if (!columnExists("ct_patient", "total_discount_type")) {
+            jdbcTemplate.execute("ALTER TABLE ct_patient ADD COLUMN total_discount_type VARCHAR(10) NOT NULL DEFAULT 'NONE'");
+        }
+        if (!columnExists("ct_patient", "total_discount_value")) {
+            jdbcTemplate.execute("ALTER TABLE ct_patient ADD COLUMN total_discount_value INT NOT NULL DEFAULT 0");
         }
     }
 

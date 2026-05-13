@@ -5,6 +5,7 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -15,6 +16,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import com.coresolution.cancertreatment.model.Patient;
@@ -22,9 +24,15 @@ import com.coresolution.cancertreatment.model.Patient;
 @Repository
 public class PatientRepository {
 
+    private static final String SELECT_COLUMNS = """
+            id, patient_name, chart_no, room, ward,
+            admission_date, discharge_date, treatment_info, note,
+            prescription_weeks, copayment_rate, total_discount_type, total_discount_value
+            """;
+
     private final JdbcTemplate jdbcTemplate;
 
-    private final RowMapper<Patient> rowMapper = (rs, rowNum) -> new Patient(
+    private final RowMapper<PatientRow> rowMapper = (rs, rowNum) -> new PatientRow(
             rs.getLong("id"),
             rs.getString("patient_name"),
             rs.getString("chart_no"),
@@ -33,7 +41,11 @@ public class PatientRepository {
             toStringDate(rs.getDate("admission_date")),
             toStringDate(rs.getDate("discharge_date")),
             rs.getString("treatment_info"),
-            rs.getString("note"));
+            rs.getString("note"),
+            rs.getInt("prescription_weeks"),
+            rs.getInt("copayment_rate"),
+            rs.getString("total_discount_type"),
+            rs.getInt("total_discount_value"));
 
     public PatientRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
@@ -41,11 +53,8 @@ public class PatientRepository {
 
     public List<Patient> findPatients(String instCode, String keyword, String ward) {
         List<Object> args = new ArrayList<>();
-        StringBuilder sql = new StringBuilder("""
-                SELECT id, patient_name, chart_no, room, ward, admission_date, discharge_date, treatment_info, note
-                FROM ct_patient
-                WHERE inst_code = ? AND active_yn = 'Y'
-                """);
+        StringBuilder sql = new StringBuilder("SELECT ").append(SELECT_COLUMNS)
+                .append(" FROM ct_patient WHERE inst_code = ? AND active_yn = 'Y' ");
         args.add(instCode);
 
         if (StringUtils.hasText(keyword)) {
@@ -68,9 +77,11 @@ public class PatientRepository {
         }
 
         sql.append("ORDER BY patient_name ASC, id DESC");
-        return jdbcTemplate.query(sql.toString(), rowMapper, args.toArray());
+        List<PatientRow> rows = jdbcTemplate.query(sql.toString(), rowMapper, args.toArray());
+        return hydrate(rows);
     }
 
+    @Transactional
     public Patient createPatient(
             String instCode,
             String name,
@@ -80,13 +91,19 @@ public class PatientRepository {
             LocalDate admissionDate,
             LocalDate dischargeDate,
             String treatmentInfo,
-            String note) {
+            String note,
+            int prescriptionWeeks,
+            int copaymentRate,
+            String totalDiscountType,
+            int totalDiscountValue,
+            List<Long> prescriptionItemIds) {
         String sql = """
                 INSERT INTO ct_patient (
                     inst_code, chart_no, patient_name, room, ward,
-                    admission_date, discharge_date, treatment_info, note
+                    admission_date, discharge_date, treatment_info, note,
+                    prescription_weeks, copayment_rate, total_discount_type, total_discount_value
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
@@ -100,6 +117,10 @@ public class PatientRepository {
             ps.setDate(7, toSqlDate(dischargeDate));
             ps.setString(8, blankToNull(treatmentInfo));
             ps.setString(9, blankToNull(note));
+            ps.setInt(10, prescriptionWeeks);
+            ps.setInt(11, copaymentRate);
+            ps.setString(12, totalDiscountType);
+            ps.setInt(13, totalDiscountValue);
             return ps;
         }, keyHolder);
 
@@ -107,8 +128,59 @@ public class PatientRepository {
         if (key == null) {
             throw new IllegalStateException("환자 등록 결과를 확인할 수 없습니다.");
         }
-        return findById(instCode, key.longValue())
+        Long patientId = key.longValue();
+        replacePrescriptionItems(patientId, prescriptionItemIds);
+        return findById(instCode, patientId)
                 .orElseThrow(() -> new IllegalStateException("등록된 환자를 찾을 수 없습니다."));
+    }
+
+    @Transactional
+    public Patient updatePatient(
+            String instCode,
+            Long id,
+            String name,
+            String chartNo,
+            String room,
+            String ward,
+            LocalDate admissionDate,
+            LocalDate dischargeDate,
+            String treatmentInfo,
+            String note,
+            int prescriptionWeeks,
+            int copaymentRate,
+            String totalDiscountType,
+            int totalDiscountValue,
+            List<Long> prescriptionItemIds) {
+        String sql = """
+                UPDATE ct_patient
+                SET chart_no = ?, patient_name = ?, room = ?, ward = ?,
+                    admission_date = ?, discharge_date = ?, treatment_info = ?, note = ?,
+                    prescription_weeks = ?, copayment_rate = ?,
+                    total_discount_type = ?, total_discount_value = ?
+                WHERE inst_code = ? AND id = ? AND active_yn = 'Y'
+                """;
+        int updated = jdbcTemplate.update(
+                sql,
+                blankToNull(chartNo),
+                name,
+                blankToNull(room),
+                blankToNull(ward),
+                toSqlDate(admissionDate),
+                toSqlDate(dischargeDate),
+                blankToNull(treatmentInfo),
+                blankToNull(note),
+                prescriptionWeeks,
+                copaymentRate,
+                totalDiscountType,
+                totalDiscountValue,
+                instCode,
+                id);
+        if (updated == 0) {
+            throw new IllegalArgumentException("수정할 환자를 찾을 수 없습니다.");
+        }
+        replacePrescriptionItems(id, prescriptionItemIds);
+        return findById(instCode, id)
+                .orElseThrow(() -> new IllegalStateException("수정된 환자를 찾을 수 없습니다."));
     }
 
     public Patient updateTextField(String instCode, Long id, String field, String value) {
@@ -139,6 +211,20 @@ public class PatientRepository {
                 .orElseThrow(() -> new IllegalStateException("수정된 환자를 찾을 수 없습니다."));
     }
 
+    private void replacePrescriptionItems(Long patientId, List<Long> packageIds) {
+        jdbcTemplate.update("DELETE FROM ct_patient_prescription_item WHERE patient_id = ?", patientId);
+        if (packageIds == null || packageIds.isEmpty()) {
+            return;
+        }
+        for (Long packageId : packageIds) {
+            if (packageId == null) continue;
+            jdbcTemplate.update(
+                    "INSERT INTO ct_patient_prescription_item (patient_id, package_id) VALUES (?, ?)",
+                    patientId,
+                    packageId);
+        }
+    }
+
     private Number generatedId(KeyHolder keyHolder) {
         List<Map<String, Object>> keyList = keyHolder.getKeyList();
         if (keyList.isEmpty()) {
@@ -158,12 +244,46 @@ public class PatientRepository {
     }
 
     private Optional<Patient> findById(String instCode, Long id) {
-        String sql = """
-                SELECT id, patient_name, chart_no, room, ward, admission_date, discharge_date, treatment_info, note
-                FROM ct_patient
-                WHERE inst_code = ? AND id = ? AND active_yn = 'Y'
-                """;
-        return jdbcTemplate.query(sql, rowMapper, instCode, id).stream().findFirst();
+        String sql = "SELECT " + SELECT_COLUMNS + " FROM ct_patient WHERE inst_code = ? AND id = ? AND active_yn = 'Y'";
+        return hydrate(jdbcTemplate.query(sql, rowMapper, instCode, id)).stream().findFirst();
+    }
+
+    private List<Patient> hydrate(List<PatientRow> rows) {
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, List<Long>> itemMap = new LinkedHashMap<>();
+        for (PatientRow row : rows) {
+            itemMap.put(row.id(), new ArrayList<>());
+        }
+        String placeholders = String.join(",", rows.stream().map(r -> "?").toList());
+        String sql = "SELECT patient_id, package_id FROM ct_patient_prescription_item "
+                + "WHERE patient_id IN (" + placeholders + ") ORDER BY id ASC";
+        jdbcTemplate.query(sql, rs -> {
+            Long patientId = rs.getLong("patient_id");
+            List<Long> items = itemMap.get(patientId);
+            if (items != null) {
+                items.add(rs.getLong("package_id"));
+            }
+        }, rows.stream().map(PatientRow::id).toArray());
+
+        return rows.stream()
+                .map(row -> new Patient(
+                        row.id(),
+                        row.name(),
+                        row.chartNo(),
+                        row.room(),
+                        row.ward(),
+                        row.admissionDate(),
+                        row.dischargeDate(),
+                        row.treatmentInfo(),
+                        row.note(),
+                        row.prescriptionWeeks(),
+                        row.copaymentRate(),
+                        row.totalDiscountType(),
+                        row.totalDiscountValue(),
+                        itemMap.getOrDefault(row.id(), List.of())))
+                .toList();
     }
 
     private String blankToNull(String value) {
@@ -176,5 +296,21 @@ public class PatientRepository {
 
     private String toStringDate(Date date) {
         return date == null ? "" : date.toLocalDate().toString();
+    }
+
+    private record PatientRow(
+            Long id,
+            String name,
+            String chartNo,
+            String room,
+            String ward,
+            String admissionDate,
+            String dischargeDate,
+            String treatmentInfo,
+            String note,
+            Integer prescriptionWeeks,
+            Integer copaymentRate,
+            String totalDiscountType,
+            Integer totalDiscountValue) {
     }
 }

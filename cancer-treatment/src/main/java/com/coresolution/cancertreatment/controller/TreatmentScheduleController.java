@@ -22,12 +22,14 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.coresolution.cancertreatment.model.SessionUser;
 import com.coresolution.cancertreatment.model.PatientRequest;
+import com.coresolution.cancertreatment.model.TreatmentPackageRequest;
 import com.coresolution.cancertreatment.model.TreatmentScheduleRequest;
 import com.coresolution.cancertreatment.model.SettingItemRequest;
 import com.coresolution.cancertreatment.model.TreatmentRoomRequest;
 import com.coresolution.cancertreatment.service.PatientService;
 import com.coresolution.cancertreatment.service.SettingService;
 import com.coresolution.cancertreatment.service.SsoService;
+import com.coresolution.cancertreatment.service.TreatmentPackageService;
 import com.coresolution.cancertreatment.service.TreatmentRoomService;
 import com.coresolution.cancertreatment.service.TreatmentScheduleService;
 
@@ -44,6 +46,7 @@ public class TreatmentScheduleController {
     private final PatientService patientService;
     private final SettingService settingService;
     private final TreatmentRoomService treatmentRoomService;
+    private final TreatmentPackageService treatmentPackageService;
     private final String mediplatPortalUrl;
 
     public TreatmentScheduleController(
@@ -52,12 +55,14 @@ public class TreatmentScheduleController {
             PatientService patientService,
             SettingService settingService,
             TreatmentRoomService treatmentRoomService,
+            TreatmentPackageService treatmentPackageService,
             @Value("${cancer-treatment.mediplat-portal-url:http://localhost:8082/portal}") String mediplatPortalUrl) {
         this.ssoService = ssoService;
         this.scheduleService = scheduleService;
         this.patientService = patientService;
         this.settingService = settingService;
         this.treatmentRoomService = treatmentRoomService;
+        this.treatmentPackageService = treatmentPackageService;
         this.mediplatPortalUrl = mediplatPortalUrl;
     }
 
@@ -165,6 +170,17 @@ public class TreatmentScheduleController {
         return "settings";
     }
 
+    @GetMapping("/treatment-packages")
+    public String treatmentPackagesPage(Model model, HttpSession session) {
+        SessionUser user = sessionUser(session);
+        if (user == null) {
+            return "redirect:/login-required";
+        }
+        populateShell(model, user);
+        model.addAttribute("activeMenu", "packages");
+        return "treatment-packages";
+    }
+
     @GetMapping("/api/treatment-schedules")
     @ResponseBody
     public ResponseEntity<?> listSchedules(
@@ -207,6 +223,20 @@ public class TreatmentScheduleController {
         try {
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(patientService.createPatient(user.getInstCode(), request));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/api/patients/{id}")
+    @ResponseBody
+    public ResponseEntity<?> updatePatient(
+            @PathVariable("id") Long id,
+            @RequestBody PatientRequest request,
+            HttpSession session) {
+        SessionUser user = requireUser(session);
+        try {
+            return ResponseEntity.ok(patientService.updatePatient(user.getInstCode(), id, request));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -338,6 +368,58 @@ public class TreatmentScheduleController {
         SessionUser user = requireUser(session);
         try {
             treatmentRoomService.deleteRoom(user.getInstCode(), id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/api/treatment-packages")
+    @ResponseBody
+    public ResponseEntity<?> listTreatmentPackages(
+            @RequestParam(name = "roomId", required = false) Long roomId,
+            @RequestParam(name = "categoryId", required = false) Long categoryId,
+            HttpSession session) {
+        SessionUser user = requireUser(session);
+        return ResponseEntity.ok(Map.of("items", treatmentPackageService.listPackages(user.getInstCode(), roomId, categoryId)));
+    }
+
+    @PostMapping("/api/treatment-packages")
+    @ResponseBody
+    public ResponseEntity<?> createTreatmentPackage(
+            @RequestBody TreatmentPackageRequest request,
+            HttpSession session) {
+        SessionUser user = requireUser(session);
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(treatmentPackageService.createPackage(user.getInstCode(), request));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/api/treatment-packages/{id}")
+    @ResponseBody
+    public ResponseEntity<?> updateTreatmentPackage(
+            @PathVariable("id") Long id,
+            @RequestBody TreatmentPackageRequest request,
+            HttpSession session) {
+        SessionUser user = requireUser(session);
+        try {
+            return ResponseEntity.ok(treatmentPackageService.updatePackage(user.getInstCode(), id, request));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/api/treatment-packages/{id}")
+    @ResponseBody
+    public ResponseEntity<?> deleteTreatmentPackage(
+            @PathVariable("id") Long id,
+            HttpSession session) {
+        SessionUser user = requireUser(session);
+        try {
+            treatmentPackageService.deletePackage(user.getInstCode(), id);
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>치료비 카탈로그</title>
+    <link rel="stylesheet" th:href="@{/css/treatment.css}">
+    <link rel="stylesheet" th:href="@{/css/layout.css}">
+    <script th:inline="javascript">window.__ctx = /*[[@{/}]]*/ '/';</script>
+    <script th:src="@{/js/treatment-packages.js}" defer></script>
+</head>
+<body>
+<nav th:replace="~{fragments/layout :: topnav(${user}, ${activeMenu}, ${mediplatPortalUrl})}"></nav>
+<div class="layout">
+    <aside th:replace="~{fragments/layout :: sidebar(${activeMenu})}"></aside>
+    <main class="main">
+        <div class="page-header">
+            <div>
+                <div class="page-title">치료비 카탈로그</div>
+                <div class="page-subtitle">치료실 · 카테고리별 처방 항목과 단가를 관리합니다. 환자 등록 시 이 항목들을 선택해 본인부담 비용을 계산합니다.</div>
+            </div>
+            <div class="header-right">
+                <button type="button" class="btn-primary" id="pkg-create-open">+ 항목 등록</button>
+            </div>
+        </div>
+        <div class="page-body">
+            <p class="form-message" id="pkg-message" role="status"></p>
+            <form class="filter-bar" id="pkg-filter">
+                <select id="pkg-filter-category">
+                    <option value="">전체 카테고리</option>
+                </select>
+                <select id="pkg-filter-room">
+                    <option value="">전체 치료실</option>
+                </select>
+                <button type="submit">조회</button>
+            </form>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>카테고리</th>
+                            <th>치료실</th>
+                            <th>항목명</th>
+                            <th>약어</th>
+                            <th style="text-align:right">단가</th>
+                            <th>주기</th>
+                            <th style="text-align:right">순서</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pkg-body">
+                        <tr><td colspan="8" class="empty">카탈로그를 불러오는 중입니다.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<dialog class="settings-dialog" id="pkg-dialog">
+    <form method="dialog" id="pkg-form">
+        <h3 id="pkg-dialog-title">항목 등록</h3>
+        <input type="hidden" id="pkg-id">
+        <label>
+            <span>카테고리 <span class="req" style="color:#c0392b">*</span></span>
+            <select id="pkg-category" required>
+                <option value="">선택</option>
+            </select>
+        </label>
+        <label>
+            <span>치료실 <span class="req" style="color:#c0392b">*</span></span>
+            <select id="pkg-room" required>
+                <option value="">선택</option>
+            </select>
+        </label>
+        <label>
+            <span>항목명 <span class="req" style="color:#c0392b">*</span></span>
+            <input type="text" id="pkg-name" maxlength="200" required
+                   list="pkg-name-options" autocomplete="off"
+                   placeholder="치료실 선택 후 목록에서 고르거나 직접 입력">
+            <datalist id="pkg-name-options"></datalist>
+            <span class="form-hint" id="pkg-name-hint" style="font-size:11px; color:#5c636f"></span>
+        </label>
+        <label>
+            <span>약어 (직원용 단축 표기)</span>
+            <input type="text" id="pkg-abbreviation" maxlength="50" placeholder="예: 도50, 림50, J 등">
+        </label>
+        <label>
+            <span>단가 (원) <span class="req" style="color:#c0392b">*</span></span>
+            <input type="number" id="pkg-unit-price" min="0" step="1000" value="0" required>
+        </label>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <label>
+                <span>주기 단위</span>
+                <select id="pkg-billing-unit">
+                    <option value="WEEK">주(WEEK)</option>
+                    <option value="DAY">일(DAY)</option>
+                </select>
+            </label>
+            <label>
+                <span>횟수</span>
+                <input type="number" id="pkg-frequency" min="1" step="1" value="1">
+            </label>
+        </div>
+        <label>
+            <span>정렬 순서</span>
+            <input type="number" id="pkg-display-order" value="0">
+        </label>
+        <p class="form-message" id="pkg-dialog-message" role="status"></p>
+        <div class="form-actions">
+            <button type="button" class="secondary-button" id="pkg-cancel">취소</button>
+            <button type="submit">저장</button>
+        </div>
+    </form>
+</dialog>
+</body>
+</html>

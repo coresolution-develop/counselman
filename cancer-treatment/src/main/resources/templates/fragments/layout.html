@@ -24,6 +24,8 @@
        th:classappend="${activeMenu == 'patients'}   ? ' active' : ''">환자</a>
     <a th:href="@{/treatment-rooms}"           class="nav-link"
        th:classappend="${activeMenu == 'rooms'}      ? ' active' : ''">치료실</a>
+    <a th:href="@{/treatment-packages}"        class="nav-link"
+       th:classappend="${activeMenu == 'packages'}   ? ' active' : ''">치료비</a>
     <a th:href="@{/dashboard}"                 class="nav-link"
        th:classappend="${activeMenu == 'dashboard'}  ? ' active' : ''">통계</a>
     <a th:href="@{/settings}"                  class="nav-link"

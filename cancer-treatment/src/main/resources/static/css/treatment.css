@@ -430,6 +430,133 @@ td small {
     line-height: 1.45;
 }
 
+.memo-cell-flagged {
+    color: #c0392b;
+    font-weight: 600;
+}
+
+.package-groups {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    margin: 8px 0 16px;
+}
+
+.package-group {
+    border: 1px solid #dbe7f4;
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: #fbfcfe;
+}
+
+.package-group legend {
+    padding: 0 6px;
+    font-size: 12px;
+    color: #1f3b69;
+}
+
+.package-items {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.package-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 8px;
+    align-items: center;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.package-item:hover {
+    background: #eef4fb;
+}
+
+.package-item input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: #1f3b69;
+}
+
+.package-item .package-name {
+    color: #2c3038;
+}
+
+.package-item .package-meta {
+    color: #5c636f;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.package-summary {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border: 1px solid #c7d6e6;
+    background: #f4f8fc;
+    border-radius: 10px;
+}
+
+.package-summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.package-summary-table th,
+.package-summary-table td {
+    padding: 6px 4px;
+    border-bottom: 1px solid #dbe7f4;
+}
+
+.package-summary-table tfoot td {
+    border-bottom: none;
+    padding-top: 8px;
+}
+
+.package-summary-table .grand-total td {
+    border-top: 1.5px solid #1f3b69;
+    padding-top: 8px;
+    font-size: 15px;
+    color: #1f3b69;
+}
+
+.room-packages-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.package-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    background: #edf4fc;
+    color: #1f3b69;
+    border-radius: 999px;
+    font-size: 12px;
+}
+
+.package-pill em {
+    color: #5c636f;
+    font-style: normal;
+    margin-left: 4px;
+}
+
+.abbrev-chip {
+    display: inline-block;
+    padding: 2px 8px;
+    background: #fff3cd;
+    color: #856404;
+    border-radius: 4px;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 12px;
+    font-weight: 600;
+}
+
 .editable-cell {
     cursor: text;
 }
@@ -1102,7 +1229,11 @@ td small {
 }
 
 .settings-dialog {
+    position: fixed;
+    inset: 0;
+    margin: auto;
     width: min(460px, calc(100% - 32px));
+    max-height: calc(100vh - 32px);
     border: 1px solid #dbe7f4;
     border-radius: 18px;
     padding: 0;
@@ -1127,6 +1258,10 @@ td small {
 .settings-dialog label {
     display: grid;
     gap: 6px;
+}
+
+.settings-dialog label[hidden] {
+    display: none;
 }
 
 .settings-dialog label span {

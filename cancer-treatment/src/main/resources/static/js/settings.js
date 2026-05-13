@@ -9,8 +9,8 @@
         },
         'treatment-options': {
             title: '치료 옵션',
-            fields: { code: true, name: true, detail: false, color: true },
-            labels: { code: '옵션 코드', name: '옵션명', color: '표시 색상' }
+            fields: { code: false, name: true, detail: false, color: true },
+            labels: { name: '옵션명', color: '표시 색상' }
         },
         'treatment-statuses': {
             title: '치료 상태',
@@ -24,8 +24,13 @@
         },
         'wards': {
             title: '병동/외래 구분',
-            fields: { code: true, name: true, detail: false },
-            labels: { code: '병동 코드', name: '병동명' }
+            fields: { code: false, name: true, detail: false },
+            labels: { name: '병동명' }
+        },
+        'package-categories': {
+            title: '치료비 카테고리',
+            fields: { code: false, name: true, detail: false },
+            labels: { name: '카테고리명' }
         }
     };
 
@@ -68,7 +73,8 @@
                     'treatment-options': payload.treatmentOptions || [],
                     'treatment-statuses': payload.treatmentStatuses || [],
                     'time-slots': payload.timeSlots || [],
-                    wards: payload.wards || []
+                    wards: payload.wards || [],
+                    'package-categories': payload.packageCategories || []
                 };
                 renderAll();
             })
@@ -101,7 +107,8 @@
 
     function renderMeta(category, item) {
         const parts = [];
-        if (category !== 'treatment-types' && item.code) parts.push(item.code);
+        const config = categories[category] || { fields: {} };
+        if (config.fields.code && item.code && item.code !== item.name) parts.push(item.code);
         if (item.detail) parts.push(item.detail);
         parts.push('순서 ' + (item.displayOrder || 0));
         return parts.map(escapeHtml).join(' · ');
@@ -144,6 +151,8 @@
         configureField('color', config);
     }
 
+    const DEFAULT_LABELS = { code: '코드', name: '이름', detail: '상세', color: '표시 색상' };
+
     function configureField(key, config) {
         const label = els.form.querySelector('[data-field="' + key + '"]');
         const input = els[key];
@@ -152,7 +161,7 @@
         input.type = key === 'code' && config.labels.codeType === 'time' ? 'time' : 'text';
         if (key === 'color') input.type = 'color';
         const text = document.getElementById('settings-' + key + '-label');
-        if (text && config.labels[key]) text.textContent = config.labels[key];
+        if (text) text.textContent = config.labels[key] || DEFAULT_LABELS[key] || key;
     }
 
     function closeDialog() {
@@ -165,12 +174,15 @@
         const id = els.id.value;
         const method = id ? 'PUT' : 'POST';
         const url = id ? API + 'api/settings/' + category + '/' + id : API + 'api/settings/' + category;
+        const config = categories[category] || { fields: {} };
+        const name = els.name.value.trim();
+        const code = config.fields.code ? els.code.value.trim() : name;
         fetch(url, {
             method: method,
             headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                code: els.code.value.trim(),
-                name: els.name.value.trim(),
+                code: code,
+                name: name,
                 detail: els.detail.value.trim(),
                 color: els.color.value,
                 displayOrder: Number(els.order.value || 0)
