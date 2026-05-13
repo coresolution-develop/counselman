@@ -65,7 +65,7 @@ public class PlatformStoreService {
     @Value("${platform.bootstrap.counselman-base-url:http://localhost:8081/csm}")
     private String bootstrapCounselmanBaseUrl;
 
-    @Value("${platform.bootstrap.cancer-treatment-base-url:http://localhost:8083}")
+    @Value("${platform.bootstrap.cancer-treatment-base-url:http://localhost:8083/cancer-treatment}")
     private String bootstrapCancerTreatmentBaseUrl;
 
     @Value("${platform.runtime-env:}")
