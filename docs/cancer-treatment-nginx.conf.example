@@ -1,0 +1,35 @@
+# Cancer Treatment Schedule Service - nginx reverse proxy snippet
+#
+# Place inside the production server { } block that fronts mediplat / csm.
+# The /cancer-treatment/ prefix MUST be preserved end-to-end because the
+# Spring Boot app sets server.servlet.context-path=/cancer-treatment.
+#
+# Real-time updates rely on Server-Sent Events (SSE) at
+#   GET /cancer-treatment/api/treatment-schedules/events
+# so proxy buffering must be off and timeouts long enough for idle SSE.
+
+location /cancer-treatment/ {
+    proxy_pass         http://127.0.0.1:8083/cancer-treatment/;
+    proxy_http_version 1.1;
+
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host  $host;
+
+    # SSE (real-time schedule sync) ─ disable buffering / long-lived connection
+    proxy_buffering           off;
+    proxy_cache               off;
+    proxy_read_timeout        1h;
+    proxy_send_timeout        1h;
+    chunked_transfer_encoding off;
+
+    # Allow large bodies for future Excel/CSV uploads (adjust as needed)
+    client_max_body_size 50m;
+}
+
+# Optional redirect: bare /cancer-treatment → /cancer-treatment/
+location = /cancer-treatment {
+    return 301 /cancer-treatment/;
+}

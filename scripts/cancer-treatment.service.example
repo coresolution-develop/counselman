@@ -1,0 +1,45 @@
+# Cancer Treatment Schedule Service - systemd unit template
+#
+# Install:
+#   1. Edit User/Group/paths to match your environment
+#   2. Copy to /etc/systemd/system/cancer-treatment.service
+#   3. Create /etc/cancer-treatment/cancer-treatment.env (see cancer-treatment.env.example)
+#   4. Place JAR at ExecStart path:
+#        /opt/cancer-treatment/app/cancer-treatment.jar
+#   5. sudo systemctl daemon-reload
+#   6. sudo systemctl enable cancer-treatment
+#   7. sudo systemctl start cancer-treatment
+#   8. sudo journalctl -u cancer-treatment -f
+#
+# Verify:
+#   curl -I http://127.0.0.1:8083/cancer-treatment/login-required
+#   → 200
+
+[Unit]
+Description=Cancer Treatment Schedule Service
+After=network.target
+
+[Service]
+Type=simple
+User=cancer
+Group=cancer
+EnvironmentFile=/etc/cancer-treatment/cancer-treatment.env
+ExecStart=/usr/bin/java -jar /opt/cancer-treatment/app/cancer-treatment.jar
+Restart=on-failure
+RestartSec=5
+SuccessExitStatus=143
+TimeoutStopSec=30
+
+# JVM tuning (optional - uncomment and adjust to match server resources)
+# Environment="JAVA_OPTS=-Xms256m -Xmx1g -Duser.timezone=Asia/Seoul"
+# ExecStart=/bin/sh -c '/usr/bin/java $JAVA_OPTS -jar /opt/cancer-treatment/app/cancer-treatment.jar'
+
+# Hardening (optional)
+# NoNewPrivileges=true
+# PrivateTmp=true
+# ProtectSystem=strict
+# ProtectHome=true
+# ReadWritePaths=/opt/cancer-treatment
+
+[Install]
+WantedBy=multi-user.target

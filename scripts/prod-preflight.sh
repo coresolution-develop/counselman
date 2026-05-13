@@ -136,9 +136,30 @@ for dir in "$audio_dir" "$file_dir"; do
   fi
 done
 
+print_header "Cancer Treatment"
+# cancer-treatment 앱 자체의 prod env (cancer-treatment.service EnvironmentFile)
+warn_if_unset CANCER_TREATMENT_DATASOURCE_URL
+warn_if_unset CANCER_TREATMENT_DATASOURCE_USERNAME
+warn_if_unset CANCER_TREATMENT_DATASOURCE_PASSWORD
+warn_if_unset CANCER_TREATMENT_MEDIPLAT_PORTAL_URL
+
+# mediplat 가 cancer-treatment 메뉴를 노출하기 위해 필요
+require_env CANCER_TREATMENT_BASE_URL
+if [[ "${CANCER_TREATMENT_BASE_URL:-}" == *localhost* || "${CANCER_TREATMENT_BASE_URL:-}" == *127.0.0.1* ]]; then
+  fail "CANCER_TREATMENT_BASE_URL points to a loopback host"
+fi
+if is_set CANCER_TREATMENT_BASE_URL && [[ "${CANCER_TREATMENT_BASE_URL}" != *"/cancer-treatment"* ]]; then
+  warn "CANCER_TREATMENT_BASE_URL should include the /cancer-treatment context-path"
+fi
+
+# 운영에서 every-boot schema 자동 적용은 위험 — 첫 부팅 후 반드시 never 로 되돌릴 것
+if [[ "${CANCER_TREATMENT_SQL_INIT_MODE:-}" == "always" ]]; then
+  warn "CANCER_TREATMENT_SQL_INIT_MODE=always — schema.sql will run on every boot. Set to 'never' after initial bootstrap."
+fi
+
 print_header "Build Inputs"
-if [[ -f build.gradle && -d mediplat && -f mediplat/build.gradle ]]; then
-  ok "CSM and MediPlat Gradle projects are present"
+if [[ -f build.gradle && -d mediplat && -f mediplat/build.gradle && -d cancer-treatment && -f cancer-treatment/build.gradle ]]; then
+  ok "CSM, MediPlat and CancerTreatment Gradle projects are present"
 else
   fail "Expected Gradle project files are missing"
 fi
