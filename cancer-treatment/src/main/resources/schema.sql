@@ -9,6 +9,10 @@ CREATE TABLE IF NOT EXISTS ct_patient (
     discharge_date DATE,
     treatment_info TEXT,
     note TEXT,
+    prescription_weeks INT NOT NULL DEFAULT 0,
+    copayment_rate INT NOT NULL DEFAULT 100,
+    total_discount_type VARCHAR(10) NOT NULL DEFAULT 'NONE',
+    total_discount_value INT NOT NULL DEFAULT 0,
     active_yn CHAR(1) NOT NULL DEFAULT 'Y',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -88,6 +92,20 @@ CREATE TABLE IF NOT EXISTS ct_ward (
     INDEX idx_ct_ward_order (inst_code, active_yn, display_order)
 );
 
+CREATE TABLE IF NOT EXISTS ct_package_category (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    inst_code VARCHAR(50) NOT NULL,
+    category_code VARCHAR(50) NOT NULL,
+    category_name VARCHAR(100) NOT NULL,
+    display_order INT NOT NULL DEFAULT 0,
+    active_yn CHAR(1) NOT NULL DEFAULT 'Y',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_ct_package_category_code (inst_code, category_code),
+    INDEX idx_ct_package_category_order (inst_code, active_yn, display_order)
+);
+
 CREATE TABLE IF NOT EXISTS ct_treatment_room (
     id BIGINT NOT NULL AUTO_INCREMENT,
     inst_code VARCHAR(50) NOT NULL,
@@ -118,6 +136,41 @@ CREATE TABLE IF NOT EXISTS ct_treatment_room_item (
     UNIQUE KEY uk_ct_treatment_room_item (treatment_room_id, treatment_item),
     INDEX idx_ct_treatment_room_item_order (treatment_room_id, active_yn, display_order),
     CONSTRAINT fk_ct_treatment_room_item_room FOREIGN KEY (treatment_room_id) REFERENCES ct_treatment_room (id)
+);
+
+CREATE TABLE IF NOT EXISTS ct_treatment_package (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    inst_code VARCHAR(50) NOT NULL,
+    category_id BIGINT NOT NULL,
+    treatment_room_id BIGINT NOT NULL,
+    package_name VARCHAR(200) NOT NULL,
+    abbreviation VARCHAR(50),
+    unit_price INT NOT NULL DEFAULT 0,
+    billing_unit VARCHAR(10) NOT NULL DEFAULT 'WEEK',
+    frequency INT NOT NULL DEFAULT 1,
+    display_order INT NOT NULL DEFAULT 0,
+    active_yn CHAR(1) NOT NULL DEFAULT 'Y',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_ct_treatment_package_name (inst_code, treatment_room_id, package_name),
+    INDEX idx_ct_treatment_package_inst (inst_code, active_yn, display_order),
+    INDEX idx_ct_treatment_package_category (category_id),
+    INDEX idx_ct_treatment_package_room (treatment_room_id),
+    CONSTRAINT fk_ct_treatment_package_category FOREIGN KEY (category_id) REFERENCES ct_package_category (id),
+    CONSTRAINT fk_ct_treatment_package_room FOREIGN KEY (treatment_room_id) REFERENCES ct_treatment_room (id)
+);
+
+CREATE TABLE IF NOT EXISTS ct_patient_prescription_item (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    patient_id BIGINT NOT NULL,
+    package_id BIGINT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_ct_patient_prescription_item (patient_id, package_id),
+    INDEX idx_ct_patient_prescription_patient (patient_id),
+    CONSTRAINT fk_ct_patient_prescription_patient FOREIGN KEY (patient_id) REFERENCES ct_patient (id),
+    CONSTRAINT fk_ct_patient_prescription_package FOREIGN KEY (package_id) REFERENCES ct_treatment_package (id)
 );
 
 CREATE TABLE IF NOT EXISTS ct_treatment_schedule (

@@ -30,6 +30,8 @@
        th:classappend="${activeMenu == 'dashboard'} ? ' is-active' : ''">대시보드</a>
     <a th:href="@{/treatment-rooms}"
        th:classappend="${activeMenu == 'rooms'} ? ' is-active' : ''">치료실 현황</a>
+    <a th:href="@{/treatment-packages}"
+       th:classappend="${activeMenu == 'packages'} ? ' is-active' : ''">치료비 카탈로그</a>
     <a th:href="@{/settings}"
        th:classappend="${activeMenu == 'settings'} ? ' is-active' : ''">설정 관리</a>
 </nav>

@@ -1,5 +1,7 @@
 package com.coresolution.cancertreatment.model;
 
+import java.util.List;
+
 public class PatientRequest {
 
     private String name;
@@ -10,6 +12,11 @@ public class PatientRequest {
     private String dischargeDate;
     private String treatmentInfo;
     private String note;
+    private Integer prescriptionWeeks;
+    private Integer copaymentRate;
+    private String totalDiscountType;
+    private Integer totalDiscountValue;
+    private List<Long> prescriptionItemIds;
 
     public String getName() {
         return name;
@@ -73,5 +80,45 @@ public class PatientRequest {
 
     public void setNote(String note) {
         this.note = note;
+    }
+
+    public Integer getPrescriptionWeeks() {
+        return prescriptionWeeks;
+    }
+
+    public void setPrescriptionWeeks(Integer prescriptionWeeks) {
+        this.prescriptionWeeks = prescriptionWeeks;
+    }
+
+    public Integer getCopaymentRate() {
+        return copaymentRate;
+    }
+
+    public void setCopaymentRate(Integer copaymentRate) {
+        this.copaymentRate = copaymentRate;
+    }
+
+    public String getTotalDiscountType() {
+        return totalDiscountType;
+    }
+
+    public void setTotalDiscountType(String totalDiscountType) {
+        this.totalDiscountType = totalDiscountType;
+    }
+
+    public Integer getTotalDiscountValue() {
+        return totalDiscountValue;
+    }
+
+    public void setTotalDiscountValue(Integer totalDiscountValue) {
+        this.totalDiscountValue = totalDiscountValue;
+    }
+
+    public List<Long> getPrescriptionItemIds() {
+        return prescriptionItemIds;
+    }
+
+    public void setPrescriptionItemIds(List<Long> prescriptionItemIds) {
+        this.prescriptionItemIds = prescriptionItemIds;
     }
 }

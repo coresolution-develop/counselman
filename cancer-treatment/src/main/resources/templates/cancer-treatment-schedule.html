@@ -449,6 +449,26 @@ textarea.modal-input { resize: vertical; min-height: 56px; }
 }
 .btn-danger:hover { background: #fce8e8; }
 
+/* ── Combobox (patient search) ───────────────────────────── */
+.combobox-wrap { position: relative; }
+.combobox-dropdown {
+  position: absolute; top: calc(100% + 2px); left: 0; right: 0; z-index: 30;
+  max-height: 220px; overflow-y: auto;
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 6px; box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+}
+.combobox-item {
+  padding: 8px 10px; font-size: 13px; color: var(--fg1);
+  cursor: pointer; display: flex; align-items: baseline; gap: 8px;
+}
+.combobox-item:hover, .combobox-item.is-active { background: var(--bg-surface); }
+.combobox-item .meta { color: var(--fg4); font-size: 12px; }
+.combobox-empty {
+  margin-top: 4px; font-size: 12px; color: var(--fg4);
+}
+.combobox-empty a { color: var(--brand); text-decoration: none; margin-left: 6px; }
+.combobox-empty a:hover { text-decoration: underline; }
+
 /* ── Custom Date / Time Picker ───────────────────────────── */
 .picker-wrap { position: relative; }
 .picker-trigger {
@@ -885,23 +905,37 @@ textarea.modal-input { resize: vertical; min-height: 56px; }
         </div>
       </div>
       <div class="modal-row">
-        <label class="modal-field">
+        <div class="modal-field">
           <span class="modal-label">환자명 <span class="req">*</span></span>
-          <input type="text" id="modal-patient" class="modal-input" maxlength="100" placeholder="홍길동">
-        </label>
+          <div class="combobox-wrap">
+            <input type="text" id="modal-patient" class="modal-input combobox-input"
+                   autocomplete="off" maxlength="100" placeholder="환자명 검색">
+            <div id="modal-patient-dropdown" class="combobox-dropdown" role="listbox" style="display:none"></div>
+            <div id="modal-patient-empty" class="combobox-empty" style="display:none">
+              일치하는 환자가 없습니다.
+              <a th:href="@{/patients}" target="_blank" rel="noopener">환자 관리에서 등록 →</a>
+            </div>
+          </div>
+        </div>
         <label class="modal-field">
           <span class="modal-label">병동</span>
-          <input type="text" id="modal-ward" class="modal-input" maxlength="50" placeholder="1병동, 외래 등">
+          <select id="modal-ward" class="modal-input">
+            <option value="">선택</option>
+          </select>
         </label>
       </div>
       <div class="modal-row">
         <label class="modal-field">
           <span class="modal-label">치료종류 <span class="req">*</span></span>
-          <input type="text" id="modal-treatment" class="modal-input" maxlength="100" placeholder="파동, 고주파 등">
+          <select id="modal-treatment" class="modal-input">
+            <option value="">선택</option>
+          </select>
         </label>
         <label class="modal-field">
           <span class="modal-label">옵션</span>
-          <input type="text" id="modal-option" class="modal-input" maxlength="50" placeholder="J, K 등">
+          <select id="modal-option" class="modal-input">
+            <option value="">선택</option>
+          </select>
         </label>
       </div>
       <label class="modal-field">

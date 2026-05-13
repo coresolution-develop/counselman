@@ -30,7 +30,8 @@ public class SettingService {
                 "treatmentOptions", settingRepository.findItems(SettingCategory.TREATMENT_OPTIONS, normalizedInst),
                 "treatmentStatuses", settingRepository.findItems(SettingCategory.TREATMENT_STATUSES, normalizedInst),
                 "timeSlots", settingRepository.findItems(SettingCategory.TIME_SLOTS, normalizedInst),
-                "wards", settingRepository.findItems(SettingCategory.WARDS, normalizedInst));
+                "wards", settingRepository.findItems(SettingCategory.WARDS, normalizedInst),
+                "packageCategories", settingRepository.findItems(SettingCategory.PACKAGE_CATEGORIES, normalizedInst));
     }
 
     public List<SettingItem> listItems(String instCode, String categoryKey) {
@@ -117,6 +118,10 @@ public class SettingService {
             case WARDS -> {
                 String code = requireMax(request.getCode(), 50, "병동 코드");
                 yield new ValidSetting(code, requireMax(request.getName(), 100, "병동명"), "", "", displayOrder);
+            }
+            case PACKAGE_CATEGORIES -> {
+                String name = requireMax(request.getName(), 100, "카테고리명");
+                yield new ValidSetting(name, name, "", "", displayOrder);
             }
         };
     }

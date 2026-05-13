@@ -39,7 +39,113 @@
         els.body.addEventListener('dblclick', handleInlineEditStart);
         loadSchedules();
         loadCalendarOverview();
+        loadModalMasters();
+        setupPatientCombobox();
         connectSse();
+    }
+
+    function loadModalMasters() {
+        window.__sm = window.__sm || { patients: [], wards: [], types: [], options: [] };
+        fetch(API + 'api/patients', { headers: { Accept: 'application/json' } })
+            .then(function (r) { return r.ok ? r.json() : { items: [] }; })
+            .then(function (data) { window.__sm.patients = data.items || []; });
+        fetch(API + 'api/settings', { headers: { Accept: 'application/json' } })
+            .then(function (r) { return r.ok ? r.json() : {}; })
+            .then(function (data) {
+                window.__sm.wards   = data.wards            || [];
+                window.__sm.types   = data.treatmentTypes   || [];
+                window.__sm.options = data.treatmentOptions || [];
+            });
+    }
+
+    function setupPatientCombobox() {
+        var input    = document.getElementById('modal-patient');
+        var dropdown = document.getElementById('modal-patient-dropdown');
+        var empty    = document.getElementById('modal-patient-empty');
+        if (!input || !dropdown) return;
+
+        function render(list) {
+            if (!list.length) {
+                dropdown.innerHTML = '';
+                dropdown.style.display = 'none';
+                empty.style.display = input.value.trim() ? 'block' : 'none';
+                return;
+            }
+            dropdown.innerHTML = list.slice(0, 30).map(function (p) {
+                var ward = p.ward ? '<span class="meta">' + escapeAttr(p.ward) + '</span>' : '';
+                return '<div class="combobox-item" data-name="' + escapeAttr(p.name) + '" data-ward="' + escapeAttr(p.ward || '') + '">'
+                     + '<strong>' + escapeAttr(p.name) + '</strong>' + ward + '</div>';
+            }).join('');
+            dropdown.style.display = 'block';
+            empty.style.display = 'none';
+        }
+
+        function filter() {
+            var q = input.value.trim().toLowerCase();
+            var src = (window.__sm && window.__sm.patients) || [];
+            if (!q) { render(src); return; }
+            render(src.filter(function (p) { return (p.name || '').toLowerCase().indexOf(q) >= 0; }));
+        }
+
+        input.addEventListener('focus', filter);
+        input.addEventListener('input', filter);
+        input.addEventListener('blur', function () {
+            setTimeout(function () { dropdown.style.display = 'none'; empty.style.display = 'none'; }, 150);
+        });
+        dropdown.addEventListener('mousedown', function (e) {
+            var item = e.target.closest('.combobox-item');
+            if (!item) return;
+            e.preventDefault();
+            input.value = item.dataset.name;
+            var wardSelect = document.getElementById('modal-ward');
+            if (wardSelect && item.dataset.ward) {
+                setSelectValue(wardSelect, item.dataset.ward);
+            }
+            dropdown.style.display = 'none';
+            empty.style.display = 'none';
+        });
+    }
+
+    function escapeAttr(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+        });
+    }
+
+    // Exposed for global modal functions
+    window.__sm_helpers = {
+        populate: populateScheduleSelects,
+        setSelect: setSelectValue
+    };
+
+    function populateScheduleSelects() {
+        var masters = window.__sm || { wards: [], types: [], options: [] };
+        fillSelect(document.getElementById('modal-ward'),      masters.wards,   function (it) { return it.name; }, function (it) { return (it.code && it.code !== it.name) ? it.name + ' (' + it.code + ')' : it.name; });
+        fillSelect(document.getElementById('modal-treatment'), masters.types,   function (it) { return it.name; }, function (it) { return it.name; });
+        fillSelect(document.getElementById('modal-option'),    masters.options, function (it) { return it.name; }, function (it) { return (it.code && it.code !== it.name) ? it.code + ' — ' + it.name : it.name; });
+    }
+
+    function fillSelect(select, items, valueFn, labelFn) {
+        if (!select) return;
+        select.innerHTML = '<option value="">선택</option>'
+            + (items || []).map(function (it) {
+                var v = valueFn(it);
+                return '<option value="' + escapeAttr(v) + '">' + escapeAttr(labelFn(it)) + '</option>';
+            }).join('');
+    }
+
+    function setSelectValue(select, value) {
+        if (!select) return;
+        var v = value == null ? '' : String(value);
+        var exists = Array.prototype.some.call(select.options, function (o) { return o.value === v; });
+        if (!exists && v) {
+            var opt = document.createElement('option');
+            opt.value = v;
+            opt.textContent = '[기타] ' + v;
+            opt.dataset.legacy = '1';
+            select.appendChild(opt);
+        }
+        select.value = v;
     }
 
     function loadCalendarOverview() {
@@ -418,6 +524,7 @@
 /* ── Schedule Modal (global, called from HTML onclick) ──── */
 
 function openScheduleModal() {
+    if (window.__sm_helpers) window.__sm_helpers.populate();
     document.getElementById('modal-title').textContent = '스케줄 등록';
     document.getElementById('modal-schedule-id').value = '';
     document.getElementById('modal-date').value = document.getElementById('filter-date').value || new Date().toISOString().slice(0, 10);
@@ -430,6 +537,8 @@ function openScheduleModal() {
     document.getElementById('modal-info').value = '';
     document.getElementById('modal-note').value = '';
     document.getElementById('modal-delete-btn').style.display = 'none';
+    var emptyHint = document.getElementById('modal-patient-empty');
+    if (emptyHint) emptyHint.style.display = 'none';
     document.getElementById('schedule-modal-overlay').style.display = 'flex';
 }
 
@@ -445,18 +554,23 @@ function selectSession(el) {
     var info      = el.dataset.info      || '';
     var note      = el.dataset.note      || '';
 
+    if (window.__sm_helpers) window.__sm_helpers.populate();
     document.getElementById('modal-title').textContent = '스케줄 수정';
     document.getElementById('modal-schedule-id').value = id;
     document.getElementById('modal-date').value = date;
     document.getElementById('modal-time').value = time;
     document.getElementById('modal-patient').value = patient;
-    document.getElementById('modal-ward').value = ward;
-    document.getElementById('modal-treatment').value = treatment;
-    document.getElementById('modal-option').value = option;
+    if (window.__sm_helpers) {
+        window.__sm_helpers.setSelect(document.getElementById('modal-ward'),      ward);
+        window.__sm_helpers.setSelect(document.getElementById('modal-treatment'), treatment);
+        window.__sm_helpers.setSelect(document.getElementById('modal-option'),    option);
+    }
     document.getElementById('modal-status').value = status;
     document.getElementById('modal-info').value = info;
     document.getElementById('modal-note').value = note;
     document.getElementById('modal-delete-btn').style.display = '';
+    var emptyHint = document.getElementById('modal-patient-empty');
+    if (emptyHint) emptyHint.style.display = 'none';
     document.getElementById('schedule-modal-overlay').style.display = 'flex';
 }
 

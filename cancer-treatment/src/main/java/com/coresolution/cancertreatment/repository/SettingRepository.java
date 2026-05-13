@@ -131,6 +131,12 @@ public class SettingRepository {
                 "ward_code",
                 "ward_name",
                 null,
+                false),
+        PACKAGE_CATEGORIES(
+                "ct_package_category",
+                "category_code",
+                "category_name",
+                null,
                 false);
 
         private final String table;
@@ -166,6 +172,7 @@ public class SettingRepository {
                 case "treatment-statuses" -> TREATMENT_STATUSES;
                 case "time-slots" -> TIME_SLOTS;
                 case "wards" -> WARDS;
+                case "package-categories" -> PACKAGE_CATEGORIES;
                 default -> throw new IllegalArgumentException("지원하지 않는 설정 유형입니다.");
             };
         }

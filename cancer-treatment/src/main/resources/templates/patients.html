@@ -25,6 +25,8 @@
         </div>
         <div class="page-body">
             <form class="patient-create-panel" id="patient-create-form" hidden>
+                <input type="hidden" id="patient-id" name="patientId">
+                <h3 id="patient-form-title" style="margin: 0 0 12px;">환자 등록</h3>
                 <div class="form-grid">
                     <label>
                         <span>환자명</span>
@@ -42,8 +44,6 @@
                         <span>병동</span>
                         <select id="patient-create-ward" name="ward">
                             <option value="">선택 안함</option>
-                            <option value="1병동">1병동</option>
-                            <option value="외래">외래</option>
                         </select>
                     </label>
                     <label>
@@ -55,29 +55,67 @@
                         <input type="date" id="patient-discharge-date" name="dischargeDate">
                     </label>
                     <label class="form-grid-wide">
-                        <span>치료정보</span>
-                        <textarea id="patient-treatment-info" name="treatmentInfo" rows="3"></textarea>
-                    </label>
-                    <label class="form-grid-wide">
                         <span>참고사항</span>
                         <textarea id="patient-note" name="note" rows="3"></textarea>
                     </label>
                 </div>
+
+                <h4 style="margin: 20px 0 8px; color: #1f3b69;">처방 / 본인부담 비용</h4>
+                <div class="form-grid">
+                    <label>
+                        <span>처방 주수</span>
+                        <input type="number" id="patient-weeks" name="prescriptionWeeks" min="0" max="520" value="4">
+                    </label>
+                    <label>
+                        <span>본인부담율 (%)</span>
+                        <input type="number" id="patient-copayment" name="copaymentRate" min="0" max="100" value="100">
+                    </label>
+                    <label>
+                        <span>할인 종류</span>
+                        <select id="patient-discount-type" name="totalDiscountType">
+                            <option value="NONE">할인 없음</option>
+                            <option value="PERCENT">비율 할인 (%)</option>
+                            <option value="AMOUNT">금액 할인 (원)</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>할인 값</span>
+                        <input type="number" id="patient-discount-value" name="totalDiscountValue" min="0" value="0">
+                    </label>
+                </div>
+
+                <h4 style="margin: 20px 0 8px; color: #1f3b69;">치료정보</h4>
+                <p class="page-subtitle" style="margin: 0 0 12px;">치료실 → 카테고리 순으로 그룹화된 카탈로그 항목입니다. 체크박스로 선택하면 우측 요약에 자동 계산됩니다.</p>
+                <div id="patient-package-groups" class="package-groups"></div>
+
+                <div class="package-summary" id="patient-package-summary">
+                    <table class="package-summary-table">
+                        <thead>
+                            <tr><th style="text-align:left">카테고리</th><th style="text-align:right">소계</th></tr>
+                        </thead>
+                        <tbody id="patient-package-summary-body"></tbody>
+                        <tfoot>
+                            <tr><td><strong>할인 전 합계</strong></td><td style="text-align:right" id="patient-subtotal">0 원</td></tr>
+                            <tr><td><strong>할인</strong></td><td style="text-align:right" id="patient-discount-display">-</td></tr>
+                            <tr class="grand-total"><td><strong>본인부담 총액</strong></td><td style="text-align:right" id="patient-grand-total"><strong>0 원</strong></td></tr>
+                        </tfoot>
+                    </table>
+                </div>
+
                 <p class="form-message" id="patient-form-message" role="status"></p>
                 <div class="form-actions">
                     <button type="button" class="secondary-button" id="patient-create-cancel">취소</button>
-                    <button type="submit">저장</button>
+                    <button type="submit" id="patient-form-submit">저장</button>
                 </div>
             </form>
             <form class="filter-bar patient-filter-bar" id="patient-filter">
                 <input type="search" id="patient-keyword" placeholder="환자명, 차트번호, 병실 검색">
                 <select id="patient-ward">
                     <option value="">전체 병동</option>
-                    <option value="1병동">1병동</option>
-                    <option value="외래">외래</option>
                 </select>
                 <button type="submit">조회</button>
             </form>
+            <p class="page-subtitle" style="margin: 8px 0 0;">셀을 더블클릭해 직접 수정할 수 있습니다.</p>
             <div class="table-wrap">
                 <table>
                     <thead>
@@ -89,11 +127,13 @@
                             <th>퇴원일</th>
                             <th>치료정보</th>
                             <th>참고사항</th>
+                            <th style="text-align:right">본인부담 총액</th>
+                            <th>관리</th>
                         </tr>
                     </thead>
                     <tbody id="patient-body">
                         <tr>
-                            <td colspan="7" class="empty">환자명부 데이터 연동 전 기본 화면입니다.</td>
+                            <td colspan="9" class="empty">환자명부 데이터 연동 전 기본 화면입니다.</td>
                         </tr>
                     </tbody>
                 </table>

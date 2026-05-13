@@ -1,6 +1,7 @@
 package com.coresolution.cancertreatment.service;
 
 import java.util.List;
+import java.util.Set;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 
@@ -14,6 +15,8 @@ import com.coresolution.cancertreatment.repository.PatientRepository;
 @Service
 public class PatientService {
 
+    private static final Set<String> ALLOWED_DISCOUNT_TYPES = Set.of("NONE", "PERCENT", "AMOUNT");
+
     private final PatientRepository patientRepository;
 
     public PatientService(PatientRepository patientRepository) {
@@ -25,6 +28,29 @@ public class PatientService {
     }
 
     public Patient createPatient(String instCode, PatientRequest request) {
+        ValidPatient valid = validate(instCode, request);
+        return patientRepository.createPatient(
+                valid.instCode(), valid.name(), valid.chartNo(), valid.room(), valid.ward(),
+                valid.admissionDate(), valid.dischargeDate(), valid.treatmentInfo(), valid.note(),
+                valid.prescriptionWeeks(), valid.copaymentRate(),
+                valid.totalDiscountType(), valid.totalDiscountValue(),
+                valid.prescriptionItemIds());
+    }
+
+    public Patient updatePatient(String instCode, Long id, PatientRequest request) {
+        if (id == null) {
+            throw new IllegalArgumentException("환자 ID가 없습니다.");
+        }
+        ValidPatient valid = validate(instCode, request);
+        return patientRepository.updatePatient(
+                valid.instCode(), id, valid.name(), valid.chartNo(), valid.room(), valid.ward(),
+                valid.admissionDate(), valid.dischargeDate(), valid.treatmentInfo(), valid.note(),
+                valid.prescriptionWeeks(), valid.copaymentRate(),
+                valid.totalDiscountType(), valid.totalDiscountValue(),
+                valid.prescriptionItemIds());
+    }
+
+    private ValidPatient validate(String instCode, PatientRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("환자 정보를 입력해주세요.");
         }
@@ -41,16 +67,40 @@ public class PatientService {
         if (admissionDate != null && dischargeDate != null && dischargeDate.isBefore(admissionDate)) {
             throw new IllegalArgumentException("퇴원일은 입원일보다 빠를 수 없습니다.");
         }
-        return patientRepository.createPatient(
-                normalizedInst,
-                name,
-                chartNo,
-                room,
-                ward,
-                admissionDate,
-                dischargeDate,
-                normalize(request.getTreatmentInfo()),
-                normalize(request.getNote()));
+        int weeks = request.getPrescriptionWeeks() == null ? 0 : request.getPrescriptionWeeks();
+        if (weeks < 0 || weeks > 520) {
+            throw new IllegalArgumentException("처방 주수는 0~520 사이여야 합니다.");
+        }
+        int copayment = request.getCopaymentRate() == null ? 100 : request.getCopaymentRate();
+        if (copayment < 0 || copayment > 100) {
+            throw new IllegalArgumentException("본인부담율은 0~100 사이여야 합니다.");
+        }
+        String discountType = request.getTotalDiscountType() == null ? "NONE" : request.getTotalDiscountType().trim().toUpperCase();
+        if (!ALLOWED_DISCOUNT_TYPES.contains(discountType)) {
+            throw new IllegalArgumentException("할인 종류는 NONE/PERCENT/AMOUNT 중 하나여야 합니다.");
+        }
+        int discountValue = request.getTotalDiscountValue() == null ? 0 : request.getTotalDiscountValue();
+        if (discountValue < 0) {
+            throw new IllegalArgumentException("할인 값은 0 이상이어야 합니다.");
+        }
+        if ("PERCENT".equals(discountType) && discountValue > 100) {
+            throw new IllegalArgumentException("비율 할인은 100%를 초과할 수 없습니다.");
+        }
+        return new ValidPatient(
+                normalizedInst, name, chartNo, room, ward,
+                admissionDate, dischargeDate,
+                normalize(request.getTreatmentInfo()), normalize(request.getNote()),
+                weeks, copayment, discountType, discountValue,
+                request.getPrescriptionItemIds() == null ? List.of() : List.copyOf(request.getPrescriptionItemIds()));
+    }
+
+    private record ValidPatient(
+            String instCode, String name, String chartNo, String room, String ward,
+            LocalDate admissionDate, LocalDate dischargeDate,
+            String treatmentInfo, String note,
+            int prescriptionWeeks, int copaymentRate,
+            String totalDiscountType, int totalDiscountValue,
+            List<Long> prescriptionItemIds) {
     }
 
     public Patient updateTextField(String instCode, Long id, String field, String value) {
