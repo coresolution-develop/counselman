@@ -90,26 +90,34 @@ public class CounselManSsoLinkService {
         if (!isLoopbackUrl(upgradedBaseUrl)) {
             return upgradedBaseUrl;
         }
-        if (!usesCounselManHostFallback(service)) {
+
+        if (usesCounselManHostFallback(service)) {
+            String configuredBaseUrl = trimTrailingSlash(configuredCounselManBaseUrl);
+            if (StringUtils.hasText(configuredBaseUrl)) {
+                if (request == null || isLoopbackHost(request.getServerName())) {
+                    return configuredBaseUrl;
+                }
+                if (!isLoopbackUrl(configuredBaseUrl)) {
+                    return configuredBaseUrl;
+                }
+            }
+            if (request == null) {
+                return StringUtils.hasText(configuredBaseUrl) ? configuredBaseUrl : normalizedBaseUrl;
+            }
+            String rewriteSource = StringUtils.hasText(configuredBaseUrl) ? configuredBaseUrl : normalizedBaseUrl;
+            return rewriteHostFromRequest(rewriteSource, request);
+        }
+
+        // localhost URL이지만 counselman 계열이 아닌 서비스(CANCER_TREATMENT 등):
+        // 서비스 자신의 port를 유지한 채 요청 host/scheme으로 교체
+        if (request == null || isLoopbackHost(request.getServerName())) {
             return upgradedBaseUrl;
         }
+        return rewriteHostFromRequest(upgradedBaseUrl, request);
+    }
 
-        String configuredBaseUrl = trimTrailingSlash(configuredCounselManBaseUrl);
-        if (StringUtils.hasText(configuredBaseUrl)) {
-            if (request == null || isLoopbackHost(request.getServerName())) {
-                return configuredBaseUrl;
-            }
-            if (!isLoopbackUrl(configuredBaseUrl)) {
-                return configuredBaseUrl;
-            }
-        }
-
-        if (request == null) {
-            return StringUtils.hasText(configuredBaseUrl) ? configuredBaseUrl : normalizedBaseUrl;
-        }
-
-        String rewriteSource = StringUtils.hasText(configuredBaseUrl) ? configuredBaseUrl : normalizedBaseUrl;
-        URI original = URI.create(rewriteSource);
+    private String rewriteHostFromRequest(String baseUrl, HttpServletRequest request) {
+        URI original = URI.create(baseUrl);
         String scheme = StringUtils.hasText(request.getScheme()) ? request.getScheme() : original.getScheme();
         String host = StringUtils.hasText(request.getServerName()) ? request.getServerName() : original.getHost();
         int port = original.getPort() > 0 ? original.getPort() : request.getServerPort();
