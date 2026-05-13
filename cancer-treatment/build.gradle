@@ -30,3 +30,19 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+tasks.register('devJar') {
+    dependsOn 'bootJar'
+    group = 'build'
+    description = 'Build JAR for DEV deployment'
+
+    doLast {
+        def src = tasks.named('bootJar').get().archiveFile.get().asFile
+        copy {
+            from src
+            into "$buildDir/libs"
+            rename { 'cancer-treatment-dev.jar' }
+        }
+        println "DEV JAR created: ${buildDir}/libs/cancer-treatment-dev.jar"
+    }
+}

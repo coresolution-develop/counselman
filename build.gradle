@@ -114,10 +114,17 @@ tasks.register('mediplatProdJar', GradleBuild) {
 	tasks = ['prodJar']
 }
 
-tasks.register('packageDevDeploy') {
-	dependsOn 'devWar', 'mediplatDevJar'
+tasks.register('cancerTreatmentDevJar', GradleBuild) {
 	group = 'build'
-	description = 'Build CSM DEV WAR and MediPlat DEV JAR, then collect them in one folder'
+	description = 'Build Cancer Treatment JAR for DEV deployment'
+	dir = file('cancer-treatment')
+	tasks = ['devJar']
+}
+
+tasks.register('packageDevDeploy') {
+	dependsOn 'devWar', 'mediplatDevJar', 'cancerTreatmentDevJar'
+	group = 'build'
+	description = 'Build CSM DEV WAR, MediPlat DEV JAR, and Cancer Treatment DEV JAR, then collect them in one folder'
 
 	doLast {
 		def deployDir = file("$buildDir/deploy/dev")
@@ -127,12 +134,14 @@ tasks.register('packageDevDeploy') {
 		copy {
 			from "$buildDir/libs/csm-dev.war"
 			from "${projectDir}/mediplat/build/libs/mediplat-dev.jar"
+			from "${projectDir}/cancer-treatment/build/libs/cancer-treatment-dev.jar"
 			into deployDir
 		}
 
 		println "DEV deploy bundle created: ${deployDir}"
 		println "- ${deployDir}/csm-dev.war"
 		println "- ${deployDir}/mediplat-dev.jar"
+		println "- ${deployDir}/cancer-treatment-dev.jar"
 	}
 }
 
