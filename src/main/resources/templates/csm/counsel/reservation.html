@@ -107,13 +107,8 @@
                                     <a class="link-btn primary"
                                        th:href="@{/counsel/new(reservationId=${item.id})}">상담작성</a>
 
-                                    <form th:if="${item.status != 'COMPLETED'}" th:action="@{/counsel/reservation/status}" method="post">
-                                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                                        <input type="hidden" name="reservationId" th:value="${item.id}">
-                                        <input type="hidden" name="status" value="COMPLETED">
-                                        <input type="hidden" name="viewStatus" th:value="${selectedStatus}">
-                                        <button type="submit" class="row-btn">입원상담 이관</button>
-                                    </form>
+                                    <a class="row-btn"
+                                       th:href="@{/counsel/new(reservationId=${item.id})}">입원상담</a>
                                     <form th:if="${item.status != 'CANCELLED'}" th:action="@{/counsel/reservation/status}" method="post">
                                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
                                         <input type="hidden" name="reservationId" th:value="${item.id}">
