@@ -286,10 +286,13 @@ public class UserApiController {
         return v == null ? "" : v.toString().trim();
     }
 
-    private Long toLong(Object v) {
+    static Long toLong(Object v) {
         if (v == null) return null;
-        try { return ((Number) v).longValue(); }
-        catch (Exception e) { return null; }
+        if (v instanceof Number n) return n.longValue();
+        String s = v.toString().trim();
+        if (s.isEmpty() || "null".equalsIgnoreCase(s)) return null;
+        try { return Long.parseLong(s); }
+        catch (NumberFormatException e) { return null; }
     }
 
     private int parseRole(String role) {

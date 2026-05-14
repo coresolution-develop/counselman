@@ -312,7 +312,7 @@ public class RolesApiController {
                 "SELECT us_col_01 AS user_id, us_col_02 AS user_login,"
                 + " us_col_12 AS user_name, us_col_13 AS dept, us_col_14 AS position"
                 + " FROM csm.user_data_" + safe
-                + " WHERE us_col_09 = 1 ORDER BY us_col_12");
+                + " WHERE us_col_09 != 2 ORDER BY us_col_12");
         return ResponseEntity.ok(users);
     }
 
