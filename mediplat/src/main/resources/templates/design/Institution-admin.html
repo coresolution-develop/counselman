@@ -81,11 +81,13 @@
     var instCode             = /*[[${selectedInstCode}]]*/ '';
     var instName             = /*[[${instName}]]*/ '';
     var canManagePlatform    = /*[[${canManagePlatform}]]*/ false;
+    var maintenanceHtml      = /*[[${maintenanceHtml}]]*/ '';
     window.__MP_ADMIN__ = {
       user:     rawUser ? { name: rawUser.displayName, org: rawUser.instCode, instName: instName, role: rawUser.roleCode } : {},
       instCode: instCode,
       instName: instName,
       canManagePlatform: canManagePlatform,
+      maintenanceHtml: maintenanceHtml,
       institutions: rawInstitutions.map(function (i) {
         return { instCode: i.instCode, instName: i.instName, useYn: i.useYn };
       }),

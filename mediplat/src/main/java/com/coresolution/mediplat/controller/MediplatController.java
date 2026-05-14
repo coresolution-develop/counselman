@@ -36,6 +36,7 @@ import com.coresolution.mediplat.model.SeminarNotification;
 import com.coresolution.mediplat.model.SeminarReservation;
 import com.coresolution.mediplat.model.SeminarRoom;
 import com.coresolution.mediplat.service.CounselManSsoLinkService;
+import com.coresolution.mediplat.service.MaintenanceService;
 import com.coresolution.mediplat.service.PlatformStoreService;
 import com.coresolution.mediplat.service.SeminarRoomService;
 
@@ -52,14 +53,17 @@ public class MediplatController {
     private final PlatformStoreService storeService;
     private final CounselManSsoLinkService counselManSsoLinkService;
     private final SeminarRoomService seminarRoomService;
+    private final MaintenanceService maintenanceService;
 
     public MediplatController(
             PlatformStoreService storeService,
             CounselManSsoLinkService counselManSsoLinkService,
-            SeminarRoomService seminarRoomService) {
+            SeminarRoomService seminarRoomService,
+            MaintenanceService maintenanceService) {
         this.storeService = storeService;
         this.counselManSsoLinkService = counselManSsoLinkService;
         this.seminarRoomService = seminarRoomService;
+        this.maintenanceService = maintenanceService;
     }
 
     @GetMapping({ "", "/" })
@@ -637,6 +641,7 @@ public class MediplatController {
         model.addAttribute("institutionEnabledServices", institutionEnabledServices);
         model.addAttribute("selectedUserAccessUsername", selectedUserAccessUsername);
         model.addAttribute("userEnabledServiceCodes", userEnabledServiceCodes);
+        model.addAttribute("maintenanceHtml", maintenanceService.getMaintenanceHtml());
         model.addAttribute("message", message);
         model.addAttribute("error", error);
         if (user.isPlatformAdmin()) {
@@ -996,6 +1001,17 @@ public class MediplatController {
     private PlatformSessionUser sessionUser(HttpSession session) {
         Object value = session.getAttribute(SESSION_USER);
         return value instanceof PlatformSessionUser user ? user : null;
+    }
+
+    @PostMapping("/admin/maintenance")
+    public String saveMaintenancePage(
+            @RequestParam("content") String content,
+            HttpSession session) {
+        if (!isPlatformAdminSession(session)) {
+            return "redirect:/portal";
+        }
+        maintenanceService.saveMaintenanceHtml(content);
+        return "redirect:/admin?message=점검+페이지가+저장되었습니다";
     }
 
     private boolean isAdminUser(PlatformSessionUser user) {

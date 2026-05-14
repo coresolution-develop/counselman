@@ -625,7 +625,60 @@ function UserPermPanel({ selectedInstCode, users, allServices, accent }) {
 }
 
 /* ============================================================
-   PANEL 5: News Article Management
+   PANEL 5: Maintenance Page Editor
+   ============================================================ */
+function MaintenancePagePanel() {
+  const orangeGradient = 'linear-gradient(135deg,#c2410c,#ea580c)';
+  const [html, setHtml] = React.useState(__ADMIN__.maintenanceHtml || '');
+  const [saving, setSaving] = React.useState(false);
+  const [toast, showToast] = useToast();
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    setSaving(true);
+    const csrf = getCsrf();
+    const fd = new FormData();
+    fd.append('content', html);
+    const headers = {};
+    if (csrf.token) headers[csrf.header] = csrf.token;
+    fetch('/admin/maintenance', { method: 'POST', headers, body: fd })
+      .then(res => {
+        if (!res.ok) throw new Error('저장 실패');
+        showToast('점검 페이지가 저장되었습니다.');
+      })
+      .catch(err => showToast(err.message || '저장 실패', true))
+      .finally(() => setSaving(false));
+  }
+
+  return (
+    <div className="ia-panel" style={{ position: 'relative' }}>
+      <PanelHead
+        icon={<I.Shield width={16} height={16} />}
+        gradient={orangeGradient}
+        title="서비스 점검 페이지"
+        sub="서버 점검 시 고객에게 표시되는 페이지를 작성합니다"
+      />
+      <form className="ia-form" onSubmit={handleSubmit}>
+        <textarea
+          className="ia-field__textarea"
+          placeholder="점검 페이지 HTML을 작성하세요"
+          value={html}
+          onChange={e => setHtml(e.target.value)}
+          style={{ minHeight: 240, fontFamily: 'monospace', fontSize: 13, '--ring': '#ea580c' }}
+        />
+        <div className="ia-form__btns">
+          <Btn type="submit" loading={saving} style={{ background: orangeGradient }}>
+            <I.Save width={14} height={14} />저장
+          </Btn>
+        </div>
+      </form>
+      <div style={{ position: 'relative' }}><Toast {...(toast || {})} /></div>
+    </div>
+  );
+}
+
+/* ============================================================
+   PANEL 6: News Article Management
    ============================================================ */
 function NewsletterManagementPanel({ accent }) {
   const a = IA_ACCENTS[accent] || IA_ACCENTS.blue;
@@ -1038,6 +1091,10 @@ function InstitutionAdminApp() {
 
             {canManagePlatform && (
               <NewsletterManagementPanel accent={tweaks.accent} />
+            )}
+
+            {canManagePlatform && (
+              <MaintenancePagePanel />
             )}
 
             <div className="ia-main__row">
