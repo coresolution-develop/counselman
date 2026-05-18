@@ -46,6 +46,17 @@
 .mp-dp-input.is-editable > input {
   cursor: text;
 }
+/* Hide browser-native calendar/time picker indicator in editable mode:
+   the library injects its own .mp-dp-input__icon, so the native one
+   would render a duplicate icon next to it. */
+.mp-dp-input.is-editable > input::-webkit-calendar-picker-indicator {
+  display: none;
+  -webkit-appearance: none;
+}
+.mp-dp-input.is-editable > input::-webkit-inner-spin-button,
+.mp-dp-input.is-editable > input::-webkit-clear-button {
+  display: none;
+}
 
 /* Popover */
 .mp-dp-pop {
