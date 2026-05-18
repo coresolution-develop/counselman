@@ -230,7 +230,8 @@
             <span class="panel__title">FAQ 목록</span>
             <span class="panel__count" x-text="filtered.length + '개'"></span>
             <div style="flex:1"></div>
-            <a class="btn btn--outline" :href="ctx + 'api/faq/upload/template'">
+            <a class="btn btn--outline" :href="ctx + 'api/faq/upload/template'"
+               download="faq-upload-template.xlsx" data-turbo="false">
               <svg style="width:14px;height:14px"><use href="#i-download"/></svg>
               샘플 양식
             </a>
