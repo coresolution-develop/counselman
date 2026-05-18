@@ -1,10 +1,23 @@
 # MediPlat 작업 현황
 
-> 최종 업데이트: 2026-05-10
+> 최종 업데이트: 2026-05-14
 
 ---
 
 ## ✅ 완료된 작업
+
+### 2026-05-14 운영 핫픽스 + 도메인 cutover
+
+- [x] **Bug fix — `/csm/users` 역할 수정 반영 안 되던 문제** — `UserApiController.toLong()`이 JSON String을 거부해 `<select>`에서 변경한 `roleId`가 silently dropped → `Number`와 `String` 모두 수용하도록 수정 ([UserApiController.java:289](src/main/java/com/coresolution/csm/controller/UserApiController.java:289))
+- [x] **Bug fix — `/csm/roles` 사용자 추가 모달 빈 목록** — `GET /api/roles/users`가 `WHERE us_col_09 = 1`을 사용해 legacy NULL/0 행이 누락 → `us_col_09 != 2` (사용자 목록 페이지와 일치)로 변경 ([RolesApiController.java:315](src/main/java/com/coresolution/csm/controller/RolesApiController.java:315))
+- [x] 회귀 테스트 2종 추가 — `UserApiControllerToLongTest`, `RolesApiControllerUserFilterTest`
+- [x] **`scripts/deploy-prod.sh` 신규 작성** — PROD_HOST 확인 프롬프트, prod-preflight 자동 호출, timestamped 백업, `--dry-run`, 롤백 명령 안내
+- [x] **운영 도메인 cutover** — `csm.sosyge.net` 트래픽을 레거시 ROOT.war(AJP 8009)에서 신규 csm-next/mediplat-next/cancer-treatment-next로 전환. 점진 cutover로 `/api/external/*`만 레거시 유지
+- [x] httpd.conf ProxyPass 매핑 — `/csm/*` → 18081, `/resources/*` → 18081/csm/, `/api/external/*` → 8009 (레거시 유지), `/` → 18082 (MediPlat)
+- [x] **새벽 03:00 KST 자동 maintenance** — systemd timer (`nightly-maintenance.timer`) — csm-next restart + httpd reload
+- [x] STT/요약 환경변수 정정 — `CLOVA_*` 변수명이 코드와 불일치 → 정식 이름 `NCP_CLOVA_INVOKE_URL`, `NCP_CLOVA_SECRET_KEY`, `OPENAI_API_KEY`로 csm-next.env 추가
+- [x] SMS 발신번호 Bizppurio 콘솔 등록 (Bizppurio 사용 시 발송 가능)
+- [x] MediPlat SSO base URL 도메인 보정 — `MEDIPLAT_PLATFORM_BASE_URL`에서 포트(`:18082`) 제거 후 도메인만 (`https://csm.sosyge.net`)
 
 ### 공통
 - [x] CSRF 메타 태그 적용 (전체 design 페이지)
@@ -121,7 +134,7 @@
 
 ## 🔍 검증 필요 (브라우저 확인 미완료)
 
-- [ ] **MediPlat 기관 관리자 사용자 권한 저장 오류** — `https://dev.sosyge.net/admin`에서 기관 관리자로 로그인 후 사용자 권한을 수정하고 저장할 때 오류 발생. 서버 검증 환경에서 재현됨. 요청 URL/응답 코드/서버 로그 확인 후 `MediplatController.saveUserAccess()` / `PlatformStoreService.saveUserServiceAccess()` 흐름 점검 필요
+- [x] ~~**MediPlat 기관 관리자 사용자 권한 저장 오류**~~ — **2026-05-14 해결**. 실제 원인은 CSM의 두 버그(`UserApiController.toLong`이 String roleId 거부, `RolesApiController.getAllUsers`의 `us_col_09 = 1` 필터). 핫픽스 두 개로 dev/prod 검증 통과
 - [ ] **CSM 허용 버튼** (`/csm/access`) — toggle POST가 `mp_user_service` 행을 실제로 생성/수정하는지 확인 필요 (현재 FALH 데이터 없어 모두 비활성 상태로 표시됨)
 - [ ] **서류관리 TipTap 에디터** — 표 삽입·필드 칩 삽입 → 저장 → 입원서약서(`admissionPledge.html`) 렌더링 흐름 브라우저 E2E 검증
 - [ ] **채팅 페이지 폰트 CORS** — `common.css`의 `fonts.gstatic.com/ea/notosanskr/v2/` URL이 deprecated되어 CORS 에러 발생. `https://fonts.googleapis.com/css2?family=Noto+Sans+KR` CDN 또는 로컬 폰트로 교체 필요
@@ -142,6 +155,14 @@
 - [ ] 음성 녹음 기능 (MediaRecorder API)
 - [ ] 음성 → 텍스트 변환 백엔드 연동 (CLOVA Speech + GPT 요약)
 - [ ] **webm 오디오 STT** — 브라우저 녹음 webm 파일 서버 변환 또는 전사 지원 필요
+- [ ] **header 영역 축소 + 상단/하단 고정** — 콘텐츠 영역 확보 (운영 요청 2026-05-14)
+
+### 📥 상담 접수
+- [ ] **리스트 행 클릭 시 우측 상세 패널 노출** — 별도 "수정" 버튼 경유 없이 행 자체 클릭으로 즉시 상세 표시
+- [ ] **상담중 상태 행 진입 차단** — 다른 사용자가 진행 중인 상담은 진입 불가 처리 (락 표시 또는 disable)
+
+### 💬 챗봇 / 채팅
+- [ ] **`/csm/chat` 페이지 진입 불가** — 운영 cutover 후 발견. 응답 코드/콘솔 에러로 원인 추적 필요
 
 ### 🛏️ 병실현황판
 - [ ] 퇴원예고 등록 후 현황판 자동 새로고침 (현재 수동 새로고침 필요)
