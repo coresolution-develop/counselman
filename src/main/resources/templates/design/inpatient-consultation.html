@@ -487,7 +487,10 @@
     .ic-date-wrap .ic-date-trigger { flex: 0 0 32px; display: flex; align-items: center; justify-content: center; height: 100%; border: 0; border-left: 1px solid var(--border-subtle); background: var(--gray-50); color: var(--text-tertiary); cursor: pointer; padding: 0; }
     .ic-date-wrap .ic-date-trigger:hover { background: var(--gray-100); color: var(--text-secondary); }
     .ic-date-wrap .ic-date-trigger svg { width: 14px; height: 14px; pointer-events: none; }
-    .ic-date-hidden { visibility: hidden; position: absolute; top: 0; left: 0; width: 0 !important; height: 0 !important; min-width: 0 !important; min-height: 0 !important; overflow: hidden; padding: 0 !important; border: 0 !important; pointer-events: none; }
+    /* Visually hidden but still layout-present, so HTMLInputElement.showPicker()
+       is permitted by Chromium. Using visibility:hidden + width:0 makes Chromium
+       reject showPicker() with NotAllowedError, leaving the user with no calendar. */
+    .ic-date-hidden { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; border: 0; padding: 0; margin: 0; }
     .ic-date-hidden::-webkit-calendar-picker-indicator { display: none !important; }
     .ic-date-hidden::-webkit-inner-spin-button { display: none !important; }
 
@@ -1886,7 +1889,13 @@ function inpatientForm() {
     openBirthPicker() {
       const el = this.$refs.birthPicker;
       if (!el) return;
-      try { el.showPicker(); } catch (_) { el.focus(); }
+      // Prefer modern showPicker() when available; fall back to programmatic
+      // click which works on older browsers and as a safety net when the
+      // input is layout-suppressed.
+      if (typeof el.showPicker === 'function') {
+        try { el.showPicker(); return; } catch (_) { /* fall through */ }
+      }
+      try { el.click(); } catch (_) { el.focus(); }
     },
     onBirthInput(event) {
       const el = event.target;
