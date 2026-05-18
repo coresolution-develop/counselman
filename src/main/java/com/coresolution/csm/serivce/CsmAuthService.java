@@ -1695,7 +1695,9 @@ public class CsmAuthService {
                 .append("DATE_FORMAT(completed_at, '%Y-%m-%d %H:%i:%s') AS completed_at, ")
                 .append("DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at, ")
                 .append("DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at, ")
-                .append("DATE_FORMAT(opened_at, '%Y-%m-%d %H:%i:%s') AS opened_at ")
+                .append("DATE_FORMAT(opened_at, '%Y-%m-%d %H:%i:%s') AS opened_at, opened_by, ")
+                .append("CASE WHEN opened_at IS NOT NULL AND opened_at >= NOW() - INTERVAL ")
+                .append(RESERVATION_LOCK_STALE_MINUTES).append(" MINUTE THEN 1 ELSE 0 END AS lock_active ")
                 .append("FROM csm.counsel_reservation_").append(safe).append(" ");
         List<Object> params = new ArrayList<>();
         if (!"ALL".equals(normalizedStatus)) {
@@ -1727,7 +1729,10 @@ public class CsmAuthService {
                 + "status, linked_cs_idx, created_by, completed_by, "
                 + "DATE_FORMAT(completed_at, '%Y-%m-%d %H:%i:%s') AS completed_at, "
                 + "DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at, "
-                + "DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at "
+                + "DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at, "
+                + "DATE_FORMAT(opened_at, '%Y-%m-%d %H:%i:%s') AS opened_at, opened_by, "
+                + "CASE WHEN opened_at IS NOT NULL AND opened_at >= NOW() - INTERVAL "
+                + RESERVATION_LOCK_STALE_MINUTES + " MINUTE THEN 1 ELSE 0 END AS lock_active "
                 + "FROM csm.counsel_reservation_" + safe + " WHERE id = ? LIMIT 1";
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, reservationId);
         if (rows.isEmpty()) {
@@ -1747,7 +1752,8 @@ public class CsmAuthService {
                 + "status, linked_cs_idx, created_by, completed_by, "
                 + "DATE_FORMAT(completed_at, '%Y-%m-%d %H:%i:%s') AS completed_at, "
                 + "DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at, "
-                + "DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at "
+                + "DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at, "
+                + "DATE_FORMAT(opened_at, '%Y-%m-%d %H:%i:%s') AS opened_at, opened_by "
                 + "FROM csm.counsel_reservation_" + safe + " WHERE linked_cs_idx = ? LIMIT 1";
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, csIdx);
         if (rows.isEmpty()) {
@@ -1897,32 +1903,64 @@ public class CsmAuthService {
                 "ALTER TABLE csm." + tableName + " ADD COLUMN completed_at datetime default null");
         ensureTableColumn("csm", tableName, "opened_at",
                 "ALTER TABLE csm." + tableName + " ADD COLUMN opened_at datetime default null");
+        ensureTableColumn("csm", tableName, "opened_by",
+                "ALTER TABLE csm." + tableName + " ADD COLUMN opened_by varchar(100) default null");
     }
 
-    public void touchOpenedAt(String inst, long reservationId) {
-        if (reservationId <= 0) {
-            return;
-        }
+    /** Lock considered stale after this many minutes without a heartbeat. */
+    public static final int RESERVATION_LOCK_STALE_MINUTES = 3;
+
+    /**
+     * Attempt to acquire or refresh the lock on a reservation.
+     * Acquires when: no lock, same owner, or existing lock is stale.
+     * Returns true if the caller now holds the lock; false if another active owner holds it.
+     */
+    public boolean tryAcquireReservationLock(String inst, long reservationId, String userId) {
+        if (reservationId <= 0 || userId == null || userId.isBlank()) return false;
         String safe = sanitizeInst(inst);
         ensureCounselReservationTable(safe);
         try {
-            jdbcTemplate.update(
-                    "UPDATE csm.counsel_reservation_" + safe + " SET opened_at = NOW() WHERE id = ?",
-                    reservationId);
+            int updated = jdbcTemplate.update(
+                    "UPDATE csm.counsel_reservation_" + safe +
+                    " SET opened_at = NOW(), opened_by = ? " +
+                    " WHERE id = ? AND (opened_by IS NULL OR opened_by = ? " +
+                    "       OR opened_at IS NULL OR opened_at < NOW() - INTERVAL " +
+                    RESERVATION_LOCK_STALE_MINUTES + " MINUTE)",
+                    userId, reservationId, userId);
+            return updated > 0;
         } catch (Exception e) {
-            log.warn("[reservation] touchOpenedAt fail inst={}, id={}, err={}", safe, reservationId, e.toString());
+            log.warn("[reservation] tryAcquireReservationLock fail inst={}, id={}, err={}", safe, reservationId, e.toString());
+            return false;
         }
     }
 
-    public void clearOpenedAt(String inst, long reservationId) {
-        if (reservationId <= 0) return;
+    /** Heartbeat: refresh opened_at only if caller still owns the lock. */
+    public boolean refreshReservationLock(String inst, long reservationId, String userId) {
+        if (reservationId <= 0 || userId == null || userId.isBlank()) return false;
+        String safe = sanitizeInst(inst);
+        try {
+            int updated = jdbcTemplate.update(
+                    "UPDATE csm.counsel_reservation_" + safe +
+                    " SET opened_at = NOW() WHERE id = ? AND opened_by = ?",
+                    reservationId, userId);
+            return updated > 0;
+        } catch (Exception e) {
+            log.warn("[reservation] refreshReservationLock fail inst={}, id={}, err={}", safe, reservationId, e.toString());
+            return false;
+        }
+    }
+
+    /** Release the lock only if held by the given user. */
+    public void releaseReservationLock(String inst, long reservationId, String userId) {
+        if (reservationId <= 0 || userId == null || userId.isBlank()) return;
         String safe = sanitizeInst(inst);
         try {
             jdbcTemplate.update(
-                    "UPDATE csm.counsel_reservation_" + safe + " SET opened_at = NULL WHERE id = ?",
-                    reservationId);
+                    "UPDATE csm.counsel_reservation_" + safe +
+                    " SET opened_at = NULL, opened_by = NULL WHERE id = ? AND opened_by = ?",
+                    reservationId, userId);
         } catch (Exception e) {
-            log.warn("[reservation] clearOpenedAt fail inst={}, id={}, err={}", safe, reservationId, e.toString());
+            log.warn("[reservation] releaseReservationLock fail inst={}, id={}, err={}", safe, reservationId, e.toString());
         }
     }
 
@@ -1942,8 +1980,13 @@ public class CsmAuthService {
         reservation.setCompleted_at(safeText(row.get("completed_at"), 19));
         reservation.setCreated_at(safeText(row.get("created_at"), 19));
         reservation.setUpdated_at(safeText(row.get("updated_at"), 19));
-        reservation.setOpened_at(safeText(row.get("opened_at"), 19));
-        reservation.setBeingWorkedOn(false);
+        String openedAt = safeText(row.get("opened_at"), 19);
+        String openedBy = safeText(row.get("opened_by"), 100);
+        reservation.setOpened_at(openedAt);
+        reservation.setOpened_by(openedBy);
+        Object lockActive = row.get("lock_active");
+        boolean active = lockActive != null && ((Number) lockActive).intValue() == 1;
+        reservation.setBeingWorkedOn(active);
         return reservation;
     }
 

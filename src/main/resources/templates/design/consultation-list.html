@@ -837,10 +837,18 @@
         <div class="queue" id="consultationQueue" x-show="!queueCollapsed" x-cloak>
           <template x-for="(q, i) in queue" :key="q.id">
             <div class="queue-card" style="cursor:pointer;"
-                 @click="visit('/counsel/inpatient?reservationId=' + q.id)">
+                 :style="q.beingWorkedOn ? 'border-color: var(--brand-400); background: color-mix(in oklab, var(--brand-500) 4%, #fff);' : ''"
+                 @click="openReservation(q)">
               <div class="queue-card__head">
                 <span class="prio" :class="'prio--' + q.prio" x-text="'P' + q.prio"></span>
                 <span class="queue-card__name" x-text="q.name || '(이름 없음)'"></span>
+                <span x-show="q.beingWorkedOn"
+                  :title="q.openedByName ? q.openedByName + '님이 상담 중' : '다른 직원이 상담 중'"
+                  style="margin-left:auto;font-size:10px;font-weight:700;color:var(--brand-600);
+                         background:color-mix(in oklab,var(--brand-500) 12%,#fff);
+                         border:1px solid color-mix(in oklab,var(--brand-500) 30%,transparent);
+                         padding:2px 6px;border-radius:999px;animation:pulse-soft 2s infinite;"
+                  x-text="q.openedByName ? q.openedByName + ' 상담중' : '상담중'"></span>
               </div>
               <div class="queue-card__phone">
                 <span x-show="q.phone" x-text="q.phone"></span>
@@ -1097,6 +1105,9 @@ function listPage() {
   const records = /*[[${recordItems}]]*/ [];
   const phOpts  = /*[[${phOptions}]]*/ [];
   const columns = /*[[${orderItems}]]*/ [];
+  const currentUserId = /*[[${currentUserId}]]*/ '';
+  const lockOwnerName = /*[[${reservationLockOwnerName}]]*/ '';
+  const lockPatientName = /*[[${reservationLockPatientName}]]*/ '';
   const today   = new Date().toISOString().slice(0, 10);
 
   // ── 유틸 ──
@@ -1140,9 +1151,14 @@ function listPage() {
     columns,
     phOptions:    phOpts,
     saving:       false,
+    currentUserId: currentUserId,
 
     init() {
       this.loadQueueCollapsedState();
+      if (lockOwnerName) {
+        const patient = lockPatientName ? ` (${lockPatientName})` : '';
+        alert(`${lockOwnerName}님이 이미 상담 중입니다${patient}.\n해당 상담이 종료된 후 다시 시도해 주세요.`);
+      }
       this.$nextTick(() => {
         if (typeof window.applyFreezePositions === 'function') window.applyFreezePositions();
         this.refreshQueue({ silent: true });
@@ -1157,7 +1173,7 @@ function listPage() {
       document.addEventListener('visibilitychange', this._refreshOnVisibility);
       this._queueRefreshTimer = setInterval(() => {
         if (!document.hidden) this.refreshQueue({ silent: true });
-      }, 15000);
+      }, 5000);
     },
 
     destroy() {
@@ -1176,6 +1192,16 @@ function listPage() {
       } else {
         window.location.href = url;
       }
+    },
+
+    openReservation(q) {
+      if (!q || !q.id) return;
+      if (q.beingWorkedOn && q.openedBy && q.openedBy !== this.currentUserId) {
+        const who = q.openedByName || q.openedBy;
+        alert(`${who}님이 이미 상담 중입니다.\n해당 상담이 종료된 후 다시 시도해 주세요.`);
+        return;
+      }
+      this.visit('/counsel/inpatient?reservationId=' + q.id);
     },
 
     loadQueueCollapsedState() {

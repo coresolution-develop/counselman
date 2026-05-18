@@ -1949,6 +1949,47 @@ function inpatientForm() {
           localStorage.setItem('mp_agreement_status_' + (this.meta.csIdx || 0), 'done');
         }
       });
+      this._startReservationLock();
+    },
+
+    _startReservationLock() {
+      const rid = Number(this.meta.reservationId || 0);
+      if (rid <= 0) return;
+      this._reservationLockId = rid;
+      this._reservationHeartbeatTimer = setInterval(() => {
+        if (document.hidden) return;
+        fetch(ctx + '/counsel/inpatient/heartbeat?reservationId=' + rid, {
+          method: 'GET', credentials: 'same-origin',
+        }).catch(() => {});
+      }, 30000);
+      this._reservationReleaseHandler = () => {
+        const url = ctx + '/counsel/inpatient/release?reservationId=' + rid;
+        try {
+          const blob = new Blob([''], { type: 'application/x-www-form-urlencoded' });
+          if (!navigator.sendBeacon || !navigator.sendBeacon(url, blob)) {
+            fetch(url, { method: 'POST', credentials: 'same-origin', keepalive: true }).catch(() => {});
+          }
+        } catch (_) {
+          fetch(url, { method: 'POST', credentials: 'same-origin', keepalive: true }).catch(() => {});
+        }
+      };
+      window.addEventListener('pagehide', this._reservationReleaseHandler);
+      window.addEventListener('beforeunload', this._reservationReleaseHandler);
+    },
+
+    destroy() {
+      if (this._reservationHeartbeatTimer) {
+        clearInterval(this._reservationHeartbeatTimer);
+        this._reservationHeartbeatTimer = null;
+      }
+      if (this._reservationReleaseHandler) {
+        window.removeEventListener('pagehide', this._reservationReleaseHandler);
+        window.removeEventListener('beforeunload', this._reservationReleaseHandler);
+        if (this._reservationLockId) {
+          this._reservationReleaseHandler();
+        }
+        this._reservationReleaseHandler = null;
+      }
     },
 
     openRoomBoard() {

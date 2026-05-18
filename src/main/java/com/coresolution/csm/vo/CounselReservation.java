@@ -19,5 +19,7 @@ public class CounselReservation {
     private String created_at;
     private String updated_at;
     private String opened_at;
+    private String opened_by;
+    private String opened_by_name;
     private boolean beingWorkedOn;
 }
