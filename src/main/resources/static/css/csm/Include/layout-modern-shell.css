@@ -410,6 +410,31 @@ body:not(.counsel-list-modern) .copyright {
     color: inherit;
 }
 
+/* Override cate.css `.nav_link > span { width: 100% }` which squeezes label to 0 */
+.nav_section .nav_link.nav-item > .nav-item__icon {
+    width: 20px;
+    flex: 0 0 20px;
+}
+.nav_section .nav_link.nav-item > .nav-item__label {
+    width: auto;
+    flex: 1 1 0%;
+}
+
+/* Suppress legacy cate.css ::before bg-image icons on new nav-item markup
+   (cate.css attaches icons to every direct <span> child of .nav_link) */
+#user-nav .nav_link.nav-item > .nav-item__icon::before,
+#user-nav .nav_link.nav-item > .nav-item__label::before {
+    content: none;
+}
+
+/* Hide leaked csm_header / csm_sidebar fragments on pages that use the
+   legacy `header(info)` + `nav_section2(...)` shell.
+   These newer fragments are only intended for body.counsel-list-modern. */
+body:not(.counsel-list-modern) > header#csm-header,
+body:not(.counsel-list-modern) > aside#csm-sidebar {
+    display: none !important;
+}
+
 /* Icon */
 .nav-item__icon {
     width: 20px;

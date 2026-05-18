@@ -24,32 +24,18 @@ document.addEventListener("DOMContentLoaded", function() {
 	});
 	
 	// When the "Edit" button is clicked (for editing an existing row)
-    $("#user-modi").click(function() {
-        console.log("Edit - click");
-//        $('#head-title').text('기관 수정');
-//
-//        // Assuming you have logic to pre-populate the fields with selected row data:
-//        const selectedRow = $(".selected-row");
-//        if (selectedRow.length > 0) {
-//            // Populate modal with selected row data
-//            const selectedInstitutionName = selectedRow.find("td").eq(1).text();
-//            const selectedInstitutionCode = selectedRow.find("td").eq(0).text();
-//            const selectedNote = selectedRow.find("td").eq(2).text();
-//
-//            $("#id_col_02").val(selectedInstitutionName);
-//            $("#id_col_03").val(selectedInstitutionCode);
-//            $("#id_col_05").val(selectedNote);
-//
-//            // Change the save button's ID to 'update' and the text to 'Update'
-//            $("#save").attr('id', 'update').text('Update');
-//            $("#insert").attr('id', 'update').text('Update');
-//
-//            // Show the modal
-//            $("#popup").css('display', 'flex').hide().fadeIn();
-//        } else {
-//            alert("Please select a row to edit.");
-//        }
+    $("#user-modi").click(openInstModifyModal);
+
+    $("#instModifyModal").on('click', '[data-close-modify]', closeInstModifyModal);
+    $("#instModifyModal").on('click', function(e) {
+        if (e.target === this) closeInstModifyModal();
     });
+    $(document).on('keydown', function(e) {
+        if (e.key === 'Escape' && !document.getElementById('instModifyModal').hidden) {
+            closeInstModifyModal();
+        }
+    });
+    $("#instModifySaveBtn").click(submitInstModify);
 
 	$("#user-del").click(function() {
         // Get the hidden ID of the selected row
@@ -329,16 +315,87 @@ function openInstPopup() {
                 "width=" + width + ",height=" + height + ",scrollbars=yes,left=" + left + ",top=" + top);
 }
 let isntcode = '';
-// 기관 수정 팝업 오픈
-function openInstModifyPopup() {
-	if (!isntcode) {
-		alert("기관을 먼저 선택해 주세요.");
-		return;
-	}
-    var width = 500;
-    var height = 850;
-    var left = (window.screen.width / 2) - (width / 2);
-    var top = (window.screen.height / 2) - (height / 2);
-	window.open("/csm/core/modifyinstPopup?code="+isntcode, "popupwindow",
-				"width=" + width + ",height=" + height + ",scrollbars=yes,left=" + left + ",top=" + top);
+
+function openInstModifyModal() {
+    if (!isntcode) {
+        alert("기관을 먼저 선택해 주세요.");
+        return;
+    }
+    $.ajax({
+        url: '/csm/core/modifyinstPopup',
+        type: 'get',
+        data: { code: isntcode },
+        dataType: 'html'
+    })
+    .done(function(html) {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const pick = (id) => {
+            const el = doc.getElementById(id);
+            return el ? (el.value != null ? el.value : '') : '';
+        };
+        $('#mod_id_col_01').val(pick('id_col_01'));
+        $('#mod_id_col_02').val(pick('id_col_02'));
+        $('#mod_id_col_03').val(pick('id_col_03'));
+        $('#mod_id_col_05').val(pick('id_col_05'));
+        $('#mod_id_col_06').val(pick('id_col_06'));
+        $('#mod_id_col_07').val(pick('id_col_07'));
+        $('#mod_id_col_08').val(pick('id_col_08'));
+        $('#mod_id_col_09').val(pick('id_col_09'));
+
+        const modal = document.getElementById('instModifyModal');
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+        setTimeout(function() { $('#mod_id_col_02').trigger('focus'); }, 0);
+    })
+    .fail(function() {
+        alert('기관 정보 조회 중 오류가 발생했습니다.');
+    });
+}
+
+function closeInstModifyModal() {
+    const modal = document.getElementById('instModifyModal');
+    if (!modal) return;
+    modal.hidden = true;
+    document.body.style.overflow = '';
+}
+
+function submitInstModify() {
+    const form = document.getElementById('instModifyForm');
+    if (!form.reportValidity()) return;
+
+    const id = $('#mod_id_col_01').val();
+    if (!id) {
+        alert("기관 식별자가 없습니다.");
+        return;
+    }
+    const payload = {
+        id_col_02: $('#mod_id_col_02').val(),
+        id_col_03: $('#mod_id_col_03').val(),
+        id_col_09: $('#mod_id_col_09').val(),
+        id_col_06: $('#mod_id_col_06').val(),
+        id_col_07: $('#mod_id_col_07').val(),
+        id_col_08: $('#mod_id_col_08').val(),
+        id_col_05: $('#mod_id_col_05').val()
+    };
+
+    const saveBtn = document.getElementById('instModifySaveBtn');
+    saveBtn.disabled = true;
+
+    $.ajax({
+        url: '/csm/core/modifyinst/post/' + encodeURIComponent(id),
+        type: 'post',
+        dataType: 'json',
+        data: payload
+    })
+    .done(function() {
+        closeInstModifyModal();
+        location.reload();
+    })
+    .fail(function(xhr) {
+        const msg = (xhr && xhr.responseJSON && xhr.responseJSON.msg) || '기관 수정 중 오류가 발생했습니다.';
+        alert(msg);
+    })
+    .always(function() {
+        saveBtn.disabled = false;
+    });
 }

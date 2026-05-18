@@ -12,8 +12,7 @@ td, th {
 }
 
 .main {
-    padding: 110px 20px 100px 20px;
-    margin-left: 145px;
+    padding: 92px 20px 88px 20px;
     max-width: 2560px;
 }
 
@@ -52,16 +51,15 @@ td, th {
 }
 
 .content-top {
-    height: 50px;
     display: flex;
     align-items: center;
-    margin: 2px;
-    padding: 2px;
-    border: 1px solid #dddddd;
+    margin: 0 0 12px;
+    padding: 0;
+    border: none;
 }
 
 .section-mid {
-
+    margin-top: 4px;
 }
 
 .section-top {
@@ -86,15 +84,36 @@ td, th {
 .search-status-area {
     position: fixed;
     bottom: 0;
-    left: 0;
-    width: 100%;
+    left: 230px;
+    width: calc(100% - 230px);
     background-color: #fff;
-    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+    border-top: 1px solid #e5ebe8;
+    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.08);
     z-index: 999;
-    padding: 5px 20px;
+    padding: 10px 24px;
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
+    gap: 16px;
+}
+
+body.nav-collapsed .search-status-area {
+    left: 68px;
+    width: calc(100% - 68px);
+}
+
+@media screen and (max-width: 1260px) {
+    .search-status-area {
+        left: 205px;
+        width: calc(100% - 205px);
+    }
+}
+
+@media screen and (max-width: 900px) {
+    .search-status-area {
+        left: 0;
+        width: 100%;
+    }
 }
 
 .search-status-area span {
@@ -185,11 +204,7 @@ td, th {
     align-items: center;
 }
 .content-mid {
-	height: 60%;
-}
-
-.content-bot {
-	height: calc(40% - 64px);
+	min-height: 200px;
 }
 
 .selected-row {
@@ -462,4 +477,132 @@ td, th {
 .log-area select:focus {
     border-color: #06603A;
     outline: none;
+}
+
+/* === Institution modify modal === */
+.inst-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 28, 22, 0.48);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+.inst-modal-overlay[hidden] { display: none; }
+
+.inst-modal {
+    width: 100%;
+    max-width: 480px;
+    max-height: calc(100vh - 48px);
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 24px 48px rgba(2, 24, 14, 0.28);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.inst-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid #e8efeb;
+    background: #f8faf9;
+}
+.inst-modal__header h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #143d2c;
+}
+.inst-modal__close {
+    width: 32px;
+    height: 32px;
+    border: 1px solid #d6e0db;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 18px;
+    line-height: 1;
+    color: #5b7066;
+    cursor: pointer;
+}
+.inst-modal__close:hover { background: #eef4f1; color: #143d2c; }
+
+.inst-modal__body {
+    padding: 20px 24px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.inst-modal__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.inst-modal__field label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #2f4a3d;
+}
+.inst-modal__field .req { color: #d23030; margin-left: 2px; }
+.inst-modal__field input {
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid #d6e0db;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #1e382d;
+    background: #fff;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.inst-modal__field input:focus {
+    outline: none;
+    border-color: #06603A;
+    box-shadow: 0 0 0 3px rgba(6, 96, 58, 0.16);
+}
+.inst-modal__field input:disabled {
+    background: #f1f5f3;
+    color: #6b7d74;
+    cursor: not-allowed;
+}
+
+.inst-modal__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 14px 24px;
+    border-top: 1px solid #e8efeb;
+    background: #fafcfb;
+}
+.inst-modal__btn {
+    min-width: 88px;
+    height: 40px;
+    padding: 0 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+.inst-modal__btn--cancel {
+    background: #fff;
+    border-color: #d6e0db;
+    color: #455c51;
+}
+.inst-modal__btn--cancel:hover { background: #f1f5f3; }
+.inst-modal__btn--save {
+    background: #06603A;
+    color: #fff;
+}
+.inst-modal__btn--save:hover { background: #07744a; }
+.inst-modal__btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+@media screen and (max-width: 480px) {
+    .inst-modal { border-radius: 10px; }
+    .inst-modal__body { padding: 16px; }
 }
