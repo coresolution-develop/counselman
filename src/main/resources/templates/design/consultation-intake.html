@@ -138,6 +138,19 @@
         flex-wrap: wrap;
       }
     }
+
+    /* Row click selection — entire row acts as the "edit" trigger.
+       Replaces the per-row '수정' button that was removed. */
+    .app[data-screen-label="Consultation Intake"] .table tbody tr {
+      transition: background-color .12s ease;
+    }
+    .app[data-screen-label="Consultation Intake"] .table tbody tr:hover {
+      background: var(--surface-muted, #f6f8fa);
+    }
+    .app[data-screen-label="Consultation Intake"] .table tbody tr.is-selected {
+      background: var(--brand-50, #e9f5ff);
+      box-shadow: inset 3px 0 0 var(--brand-500, #2563eb);
+    }
   </style>
 </head>
 <body>
@@ -212,7 +225,9 @@
               </thead>
               <tbody>
                 <template x-for="r in filtered" :key="r.id">
-                  <tr>
+                  <tr @click="editRow(r)"
+                      :class="{'is-selected': form.editId === r.id}"
+                      style="cursor: pointer;">
                     <td>
                       <div style="font-weight:600;" x-text="r.name"></div>
                       <div style="font-size:11px; color: var(--text-tertiary); font-variant-numeric: tabular-nums;" x-text="r.phone"></div>
@@ -224,9 +239,9 @@
                     <td class="col-center" x-text="r.link || '—'" style="color: var(--text-tertiary);"></td>
                     <td class="col-right">
                       <div class="row-actions" style="justify-content:flex-end;">
-                        <button class="btn-xs" @click="editRow(r)">수정</button>
-                        <button class="btn-xs btn-xs--brand" x-show="r.statusType === 'receive'" @click="linkRow(r.id)"><svg><use href="#i-bed"/></svg>입원상담 이관</button>
-                        <button class="btn-xs btn-xs--danger" x-show="r.statusType !== 'cancel'" @click="cancelRow(r.id)">취소</button>
+                        <!-- @click.stop: 행 click(editRow)이 같이 트리거되지 않도록 -->
+                        <button class="btn-xs btn-xs--brand" x-show="r.statusType === 'receive'" @click.stop="goToInpatient(r)"><svg><use href="#i-bed"/></svg>입원상담</button>
+                        <button class="btn-xs btn-xs--danger" x-show="r.statusType !== 'cancel'" @click.stop="cancelRow(r.id)">취소</button>
                       </div>
                     </td>
                   </tr>
@@ -361,6 +376,7 @@ function intakePage() {
           patientPhone: this.form.phone,
           guardianName: this.form.guardian,
           callSummary:  this.form.note,
+          inquiry:      this.form.inquiry,
           priority:     this.form.prio,
           reservedAt:   this.form.time.replace('T', ' ') + ':00',
           status:       this.form.status,
@@ -373,11 +389,11 @@ function intakePage() {
           if (r) Object.assign(r, { name: this.form.name, phone: this.form.phone,
             guardian: this.form.guardian, prio: Number(this.form.prio),
             status: this.form.status, statusType: statusTypeMap[this.form.status] || 'receive',
-            note: this.form.note });
+            note: this.form.note, inquiry: this.form.inquiry });
         } else {
           const d = new Date();
           this.rows.unshift({ id: data.id, name: this.form.name, phone: this.form.phone,
-            guardian: this.form.guardian, note: this.form.note,
+            guardian: this.form.guardian, note: this.form.note, inquiry: this.form.inquiry,
             time: `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`,
             by: '', prio: Number(this.form.prio),
             status: this.form.status, statusType: statusTypeMap[this.form.status] || 'receive', link: '' });
@@ -394,17 +410,27 @@ function intakePage() {
       if (r) { r.status = '취소'; r.statusType = 'cancel'; r.link = ''; }
     },
 
-    async linkRow(id) {
-      if (!confirm('입원상담으로 이관하시겠습니까?')) return;
-      const data = await postForm('/counsel/intake/status', { reservationId: id, status: 'COMPLETED' });
-      if (!data.ok) { alert(data.error || '이관 실패'); return; }
-      const r = this.rows.find(r => r.id === id);
-      if (r) { r.status = '입원상담 연계'; r.statusType = 'done'; r.link = '입원상담'; }
+    // 페이지 이동만 — 접수 레코드 상태는 변경하지 않는다.
+    // 접수자 메모 / 문의 내용을 sessionStorage로 전달해 입원상담 페이지가
+    // 상담사 인지용 read-only 영역에 표시할 수 있게 한다.
+    goToInpatient(r) {
+      try {
+        sessionStorage.setItem('inpatient.intake', JSON.stringify({
+          reservationId: r.id,
+          patientName:   r.name || '',
+          phone:         r.phone || '',
+          guardian:      r.guardian || '',
+          note:          r.note || '',
+          inquiry:       r.inquiry || '',
+          capturedAt:    Date.now(),
+        }));
+      } catch (e) { /* sessionStorage 접근 실패해도 navigation은 진행 */ }
+      window.location.href = ctx + '/counsel/inpatient?from=intake&reservationId=' + encodeURIComponent(r.id);
     },
 
     editRow(r) {
       this.form = { editId: r.id, name: r.name, phone: r.phone || '', guardian: r.guardian || '',
-        prio: String(r.prio), status: r.status, time: nowLocal(), note: r.note || '', inquiry: '' };
+        prio: String(r.prio), status: r.status, time: nowLocal(), note: r.note || '', inquiry: r.inquiry || '' };
     },
     initSelected() {
       if (!this.selectedId) return;

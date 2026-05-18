@@ -428,6 +428,7 @@ public class CsmAuthService {
                         + "patient_phone varchar(50) default null,"
                         + "guardian_name varchar(100) default null,"
                         + "call_summary text,"
+                        + "inquiry text,"
                         + "priority int not null default 3,"
                         + "reserved_at datetime default null,"
                         + "status varchar(20) not null default 'RESERVED',"
@@ -1689,15 +1690,13 @@ public class CsmAuthService {
         String normalizedStatus = normalizeReservationStatus(status, true);
 
         StringBuilder sql = new StringBuilder()
-                .append("SELECT id, patient_name, patient_phone, guardian_name, call_summary, priority, ")
+                .append("SELECT id, patient_name, patient_phone, guardian_name, call_summary, inquiry, priority, ")
                 .append("DATE_FORMAT(reserved_at, '%Y-%m-%d %H:%i:%s') AS reserved_at, ")
                 .append("status, linked_cs_idx, created_by, completed_by, ")
                 .append("DATE_FORMAT(completed_at, '%Y-%m-%d %H:%i:%s') AS completed_at, ")
                 .append("DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at, ")
                 .append("DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at, ")
-                .append("DATE_FORMAT(opened_at, '%Y-%m-%d %H:%i:%s') AS opened_at, opened_by, ")
-                .append("CASE WHEN opened_at IS NOT NULL AND opened_at >= NOW() - INTERVAL ")
-                .append(RESERVATION_LOCK_STALE_MINUTES).append(" MINUTE THEN 1 ELSE 0 END AS lock_active ")
+                .append("DATE_FORMAT(opened_at, '%Y-%m-%d %H:%i:%s') AS opened_at ")
                 .append("FROM csm.counsel_reservation_").append(safe).append(" ");
         List<Object> params = new ArrayList<>();
         if (!"ALL".equals(normalizedStatus)) {
@@ -1724,15 +1723,12 @@ public class CsmAuthService {
         }
         String safe = sanitizeInst(inst);
         ensureCounselReservationTable(safe);
-        String sql = "SELECT id, patient_name, patient_phone, guardian_name, call_summary, priority, "
+        String sql = "SELECT id, patient_name, patient_phone, guardian_name, call_summary, inquiry, priority, "
                 + "DATE_FORMAT(reserved_at, '%Y-%m-%d %H:%i:%s') AS reserved_at, "
                 + "status, linked_cs_idx, created_by, completed_by, "
                 + "DATE_FORMAT(completed_at, '%Y-%m-%d %H:%i:%s') AS completed_at, "
                 + "DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at, "
-                + "DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at, "
-                + "DATE_FORMAT(opened_at, '%Y-%m-%d %H:%i:%s') AS opened_at, opened_by, "
-                + "CASE WHEN opened_at IS NOT NULL AND opened_at >= NOW() - INTERVAL "
-                + RESERVATION_LOCK_STALE_MINUTES + " MINUTE THEN 1 ELSE 0 END AS lock_active "
+                + "DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at "
                 + "FROM csm.counsel_reservation_" + safe + " WHERE id = ? LIMIT 1";
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, reservationId);
         if (rows.isEmpty()) {
@@ -1747,13 +1743,12 @@ public class CsmAuthService {
         }
         String safe = sanitizeInst(inst);
         ensureCounselReservationTable(safe);
-        String sql = "SELECT id, patient_name, patient_phone, guardian_name, call_summary, priority, "
+        String sql = "SELECT id, patient_name, patient_phone, guardian_name, call_summary, inquiry, priority, "
                 + "DATE_FORMAT(reserved_at, '%Y-%m-%d %H:%i:%s') AS reserved_at, "
                 + "status, linked_cs_idx, created_by, completed_by, "
                 + "DATE_FORMAT(completed_at, '%Y-%m-%d %H:%i:%s') AS completed_at, "
                 + "DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at, "
-                + "DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at, "
-                + "DATE_FORMAT(opened_at, '%Y-%m-%d %H:%i:%s') AS opened_at, opened_by "
+                + "DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at "
                 + "FROM csm.counsel_reservation_" + safe + " WHERE linked_cs_idx = ? LIMIT 1";
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, csIdx);
         if (rows.isEmpty()) {
@@ -1776,6 +1771,7 @@ public class CsmAuthService {
         String patientPhone = safeText(reservation.getPatient_phone(), 50);
         String guardianName = safeText(reservation.getGuardian_name(), 100);
         String callSummary = safeText(reservation.getCall_summary(), 3000);
+        String inquiry = safeText(reservation.getInquiry(), 5000);
         int priority = normalizeReservationPriority(reservation.getPriority());
         String status = normalizeReservationStatus(reservation.getStatus(), false);
         Timestamp reservedAt = parseReservationTimestamp(reservation.getReserved_at());
@@ -1784,8 +1780,8 @@ public class CsmAuthService {
         Long id = reservation.getId();
         if (id == null || id <= 0) {
             String sql = "INSERT INTO csm.counsel_reservation_" + safe + " ("
-                    + "patient_name, patient_phone, guardian_name, call_summary, priority, reserved_at, status, created_by"
-                    + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                    + "patient_name, patient_phone, guardian_name, call_summary, inquiry, priority, reserved_at, status, created_by"
+                    + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
             KeyHolder keyHolder = new GeneratedKeyHolder();
             jdbcTemplate.update(connection -> {
                 PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
@@ -1794,6 +1790,7 @@ public class CsmAuthService {
                 ps.setString(idx++, patientPhone);
                 ps.setString(idx++, guardianName);
                 ps.setString(idx++, callSummary);
+                ps.setString(idx++, inquiry);
                 ps.setInt(idx++, priority);
                 ps.setTimestamp(idx++, reservedAt);
                 ps.setString(idx++, status);
@@ -1806,13 +1803,14 @@ public class CsmAuthService {
 
         jdbcTemplate.update(
                 "UPDATE csm.counsel_reservation_" + safe + " "
-                        + "SET patient_name = ?, patient_phone = ?, guardian_name = ?, call_summary = ?, priority = ?, reserved_at = ?, status = ?, "
+                        + "SET patient_name = ?, patient_phone = ?, guardian_name = ?, call_summary = ?, inquiry = ?, priority = ?, reserved_at = ?, status = ?, "
                         + "created_by = COALESCE(NULLIF(?, ''), created_by) "
                         + "WHERE id = ?",
                 patientName,
                 patientPhone,
                 guardianName,
                 callSummary,
+                inquiry,
                 priority,
                 reservedAt,
                 status,
@@ -1880,6 +1878,7 @@ public class CsmAuthService {
                 + "patient_phone varchar(50) default null,"
                 + "guardian_name varchar(100) default null,"
                 + "call_summary text,"
+                + "inquiry text,"
                 + "priority int not null default 3,"
                 + "reserved_at datetime default null,"
                 + "status varchar(20) not null default 'RESERVED',"
@@ -1903,48 +1902,34 @@ public class CsmAuthService {
                 "ALTER TABLE csm." + tableName + " ADD COLUMN completed_at datetime default null");
         ensureTableColumn("csm", tableName, "opened_at",
                 "ALTER TABLE csm." + tableName + " ADD COLUMN opened_at datetime default null");
-        ensureTableColumn("csm", tableName, "opened_by",
-                "ALTER TABLE csm." + tableName + " ADD COLUMN opened_by varchar(100) default null");
+        ensureTableColumn("csm", tableName, "inquiry",
+                "ALTER TABLE csm." + tableName + " ADD COLUMN inquiry text");
     }
 
-    /** Lock considered stale after this many minutes without a heartbeat. */
-    public static final int RESERVATION_LOCK_STALE_MINUTES = 3;
-
-    /**
-     * Attempt to acquire or refresh the lock on a reservation.
-     * Acquires when: no lock, same owner, or existing lock is stale.
-     * Returns true if the caller now holds the lock; false if another active owner holds it.
-     */
-    public boolean tryAcquireReservationLock(String inst, long reservationId, String userId) {
-        if (reservationId <= 0 || userId == null || userId.isBlank()) return false;
+    public void touchOpenedAt(String inst, long reservationId) {
+        if (reservationId <= 0) {
+            return;
+        }
         String safe = sanitizeInst(inst);
         ensureCounselReservationTable(safe);
         try {
-            int updated = jdbcTemplate.update(
-                    "UPDATE csm.counsel_reservation_" + safe +
-                    " SET opened_at = NOW(), opened_by = ? " +
-                    " WHERE id = ? AND (opened_by IS NULL OR opened_by = ? " +
-                    "       OR opened_at IS NULL OR opened_at < NOW() - INTERVAL " +
-                    RESERVATION_LOCK_STALE_MINUTES + " MINUTE)",
-                    userId, reservationId, userId);
-            return updated > 0;
+            jdbcTemplate.update(
+                    "UPDATE csm.counsel_reservation_" + safe + " SET opened_at = NOW() WHERE id = ?",
+                    reservationId);
         } catch (Exception e) {
-            log.warn("[reservation] tryAcquireReservationLock fail inst={}, id={}, err={}", safe, reservationId, e.toString());
-            return false;
+            log.warn("[reservation] touchOpenedAt fail inst={}, id={}, err={}", safe, reservationId, e.toString());
         }
     }
 
-    /** Release the lock only if held by the given user. */
-    public void releaseReservationLock(String inst, long reservationId, String userId) {
-        if (reservationId <= 0 || userId == null || userId.isBlank()) return;
+    public void clearOpenedAt(String inst, long reservationId) {
+        if (reservationId <= 0) return;
         String safe = sanitizeInst(inst);
         try {
             jdbcTemplate.update(
-                    "UPDATE csm.counsel_reservation_" + safe +
-                    " SET opened_at = NULL, opened_by = NULL WHERE id = ? AND opened_by = ?",
-                    reservationId, userId);
+                    "UPDATE csm.counsel_reservation_" + safe + " SET opened_at = NULL WHERE id = ?",
+                    reservationId);
         } catch (Exception e) {
-            log.warn("[reservation] releaseReservationLock fail inst={}, id={}, err={}", safe, reservationId, e.toString());
+            log.warn("[reservation] clearOpenedAt fail inst={}, id={}, err={}", safe, reservationId, e.toString());
         }
     }
 
@@ -1955,6 +1940,7 @@ public class CsmAuthService {
         reservation.setPatient_phone(safeText(row.get("patient_phone"), 50));
         reservation.setGuardian_name(safeText(row.get("guardian_name"), 100));
         reservation.setCall_summary(safeText(row.get("call_summary"), 3000));
+        reservation.setInquiry(safeText(row.get("inquiry"), 5000));
         reservation.setPriority(normalizeReservationPriority(row.get("priority")));
         reservation.setReserved_at(safeText(row.get("reserved_at"), 19));
         reservation.setStatus(normalizeReservationStatus(row.get("status"), false));
@@ -1964,13 +1950,8 @@ public class CsmAuthService {
         reservation.setCompleted_at(safeText(row.get("completed_at"), 19));
         reservation.setCreated_at(safeText(row.get("created_at"), 19));
         reservation.setUpdated_at(safeText(row.get("updated_at"), 19));
-        String openedAt = safeText(row.get("opened_at"), 19);
-        String openedBy = safeText(row.get("opened_by"), 100);
-        reservation.setOpened_at(openedAt);
-        reservation.setOpened_by(openedBy);
-        Object lockActive = row.get("lock_active");
-        boolean active = lockActive != null && ((Number) lockActive).intValue() == 1;
-        reservation.setBeingWorkedOn(active);
+        reservation.setOpened_at(safeText(row.get("opened_at"), 19));
+        reservation.setBeingWorkedOn(false);
         return reservation;
     }
 

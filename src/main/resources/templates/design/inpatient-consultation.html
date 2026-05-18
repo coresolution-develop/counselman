@@ -914,6 +914,61 @@
         grid-template-columns: 1fr;
       }
     }
+
+    /* Intake info banner (handoff from 상담접수) */
+    [x-cloak] { display: none !important; }
+    .intake-banner {
+      display: block;
+      margin-bottom: 12px;
+      background: color-mix(in oklab, var(--brand-500, #2563eb) 4%, #fff);
+      border: 1px solid color-mix(in oklab, var(--brand-500, #2563eb) 22%, var(--border-default, #e5e7eb));
+      border-radius: var(--radius-lg, 12px);
+      overflow: visible;
+    }
+    .intake-banner__head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px dashed color-mix(in oklab, var(--brand-500, #2563eb) 18%, transparent);
+    }
+    .intake-banner__tag {
+      display: inline-grid; place-items: center;
+      width: 22px; height: 22px;
+      border-radius: 6px;
+      background: var(--brand-50, #e9f5ff);
+      color: var(--brand-600, #2563eb);
+      font-size: 12px; font-weight: 700;
+    }
+    .intake-banner__title { font-size: 13px; font-weight: 700; color: var(--text-primary, #111827); letter-spacing: -0.01em; }
+    .intake-banner__meta  { font-size: 11px; color: var(--text-tertiary, #6b7280); margin-left: auto; }
+    .intake-banner__body {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 10px 16px;
+      padding: 12px 14px;
+    }
+    @media (max-width: 820px) {
+      .intake-banner__body { grid-template-columns: 1fr; }
+    }
+    .intake-banner__field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+    .intake-banner__label {
+      font-size: 11px; font-weight: 600;
+      color: var(--text-tertiary, #6b7280);
+      letter-spacing: .02em;
+    }
+    .intake-banner__value {
+      min-height: 34px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: #fff;
+      border: 1px solid var(--border-subtle, #eef0f3);
+      font-size: 13px;
+      color: var(--text-primary, #111827);
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.5;
+    }
   </style>
 </head>
 <body>
@@ -976,6 +1031,25 @@
           <button type="button" class="btn btn--outline" @click="printJournal()"><svg><use href="#i-download"/></svg>일지 출력</button>
           <button type="button" class="btn btn--outline" @click="printAdmission()"><svg><use href="#i-download"/></svg>입원서식 출력</button>
           <button type="button" class="btn btn--primary" @click="save()" :disabled="loading"><svg><use href="#i-check"/></svg><span x-text="loading ? '저장 중...' : '환자정보 저장'"></span></button>
+        </div>
+      </div>
+
+      <!-- Intake info banner (read-only, populated from sessionStorage when navigated from 상담접수) -->
+      <div class="intake-banner" x-show="intakeInfo" x-cloak>
+        <div class="intake-banner__head">
+          <span class="intake-banner__tag">i</span>
+          <span class="intake-banner__title">상담접수 정보</span>
+          <span class="intake-banner__meta">상담사 참고용 (수정 불가)</span>
+        </div>
+        <div class="intake-banner__body">
+          <div class="intake-banner__field">
+            <div class="intake-banner__label">접수자 메모</div>
+            <div class="intake-banner__value" x-text="(intakeInfo && intakeInfo.note) ? intakeInfo.note : '—'"></div>
+          </div>
+          <div class="intake-banner__field">
+            <div class="intake-banner__label">문의 내용</div>
+            <div class="intake-banner__value" x-text="(intakeInfo && intakeInfo.inquiry) ? intakeInfo.inquiry : '—'"></div>
+          </div>
         </div>
       </div>
 
@@ -1962,6 +2036,9 @@ function inpatientForm() {
     },
     removeGuardian(i) { this.guardians.splice(i, 1); },
 
+    // Read-only intake info passed from 상담접수 page via sessionStorage
+    intakeInfo: null,
+
     stayOnPage: localStorage.getItem('ic_stay_on_page') !== 'false',
     stickyTopArea: localStorage.getItem('ic_sticky_top') === 'true',
     agreementStatus: _pledgeExists ? 'done' : (localStorage.getItem('mp_agreement_status_' + (_pd.csIdx || 0)) || 'pending'),
@@ -2046,6 +2123,27 @@ function inpatientForm() {
     },
 
     init() {
+      // Pick up intake info handed off from 상담접수 (consultation-intake.html → goToInpatient).
+      // Only honor data captured within the last 5 minutes to avoid stale carry-over
+      // between unrelated navigations.
+      try {
+        const raw = sessionStorage.getItem('inpatient.intake');
+        if (raw) {
+          const data = JSON.parse(raw);
+          const fresh = Date.now() - (Number(data?.capturedAt) || 0) < 5 * 60 * 1000;
+          const fromIntake = new URLSearchParams(location.search).get('from') === 'intake';
+          if (fresh && fromIntake) {
+            // Defer with a microtask so Alpine has fully wired reactive bindings
+            // before we mutate state. Direct assignment inside init() can race
+            // with the initial render on dense pages and leave x-text bindings
+            // showing the pre-init '—' fallback even after the value is set.
+            queueMicrotask(() => { this.intakeInfo = data; });
+          }
+          // Consume once: clear so a back/refresh doesn't re-show stale info.
+          sessionStorage.removeItem('inpatient.intake');
+        }
+      } catch (e) { /* sessionStorage unavailable — ignore */ }
+
       document.addEventListener('counsel-file-text', (event) => {
         const detail = event.detail || {};
         const matched = Number(detail.matchedCount || 0);

@@ -9,6 +9,7 @@ public class CounselReservation {
     private String patient_phone;
     private String guardian_name;
     private String call_summary;
+    private String inquiry;
     private Integer priority;
     private String reserved_at;
     private String status;
@@ -19,7 +20,5 @@ public class CounselReservation {
     private String created_at;
     private String updated_at;
     private String opened_at;
-    private String opened_by;
-    private String opened_by_name;
     private boolean beingWorkedOn;
 }
