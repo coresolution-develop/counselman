@@ -480,19 +480,8 @@
 
     .app[data-screen-label="Inpatient Consultation"] .page { max-width: 100%; }
 
-    .ic-date-wrap { display: flex; align-items: center; height: 34px; border: 1px solid var(--border-default); border-radius: 8px; background: #fff; transition: all .15s; overflow: hidden; position: relative; }
-    .ic-date-wrap:focus-within { border-color: var(--brand-400); box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-500) 14%, transparent); }
-    .ic-date-wrap .ic-date-text { flex: 1 1 auto; height: 100%; border: 0; background: transparent; padding: 0 10px; font-size: 13px; color: var(--text-primary); outline: none; min-width: 0; font-variant-numeric: tabular-nums; }
-    .ic-date-wrap .ic-date-text::placeholder { color: var(--text-tertiary); }
-    .ic-date-wrap .ic-date-trigger { flex: 0 0 32px; display: flex; align-items: center; justify-content: center; height: 100%; border: 0; border-left: 1px solid var(--border-subtle); background: var(--gray-50); color: var(--text-tertiary); cursor: pointer; padding: 0; }
-    .ic-date-wrap .ic-date-trigger:hover { background: var(--gray-100); color: var(--text-secondary); }
-    .ic-date-wrap .ic-date-trigger svg { width: 14px; height: 14px; pointer-events: none; }
-    /* Visually hidden but still layout-present, so HTMLInputElement.showPicker()
-       is permitted by Chromium. Using visibility:hidden + width:0 makes Chromium
-       reject showPicker() with NotAllowedError, leaving the user with no calendar. */
-    .ic-date-hidden { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; border: 0; padding: 0; margin: 0; }
-    .ic-date-hidden::-webkit-calendar-picker-indicator { display: none !important; }
-    .ic-date-hidden::-webkit-inner-spin-button { display: none !important; }
+    /* 생년월일은 MPDatePicker(assets2/js/datepicker.js)가 자동 enhance하므로
+       별도 wrapper/text/trigger CSS 불필요. */
 
     .ic-field__inline { display: flex; gap: 6px; align-items: center; min-width: 0; }
     .ic-field__inline .ic-select { flex: 1 1 auto; width: auto; min-width: 0; }
@@ -896,24 +885,9 @@
               </div>
               <div class="ic-field">
                 <label class="ic-field__label">생년월일</label>
-                <div class="ic-date-wrap">
-                  <input type="text" class="ic-date-text" placeholder="YYYY-MM-DD" maxlength="10"
-                         :value="patient.birth"
-                         @input="onBirthInput($event)"
-                         @change="calcAge()" />
-                  <button type="button" class="ic-date-trigger" @click="openBirthPicker()" title="날짜 선택" aria-label="날짜 선택">
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <rect x="1.5" y="2.5" width="13" height="12" rx="2"/><path d="M5 1v3M11 1v3M1.5 6.5h13"/>
-                    </svg>
-                  </button>
-                  <!-- data-native: MPDatePicker(assets2/js/datepicker.js)가 이 input을
-                       enhance하지 않게 차단. 우리는 옆의 button + showPicker()
-                       흐름을 그대로 사용하므로 native date input이어야 함. -->
-                  <input type="date" class="ic-date-hidden" x-ref="birthPicker"
-                         data-native
-                         :value="patient.birth"
-                         @change="patient.birth = $event.target.value; calcAge()" />
-                </div>
+                <!-- MPDatePicker(assets2/js/datepicker.js)가 init 시 자동 enhance.
+                     다른 페이지와 동일한 popup UI를 제공한다. -->
+                <input type="date" class="ic-input" x-model="patient.birth" @change="calcAge()" />
               </div>
               <div class="ic-field">
                 <label class="ic-field__label">나이</label>
@@ -1889,27 +1863,6 @@ function inpatientForm() {
         if (this.hasControl(v, 'radio')) v.checked = false;
       });
       value.checked = true;
-    },
-    openBirthPicker() {
-      const el = this.$refs.birthPicker;
-      if (!el) return;
-      // Prefer modern showPicker() when available; fall back to programmatic
-      // click which works on older browsers and as a safety net when the
-      // input is layout-suppressed.
-      if (typeof el.showPicker === 'function') {
-        try { el.showPicker(); return; } catch (_) { /* fall through */ }
-      }
-      try { el.click(); } catch (_) { el.focus(); }
-    },
-    onBirthInput(event) {
-      const el = event.target;
-      const raw = el.value.replace(/\D/g, '').slice(0, 8);
-      let v = raw;
-      if (raw.length > 6) v = raw.slice(0,4) + '-' + raw.slice(4,6) + '-' + raw.slice(6);
-      else if (raw.length > 4) v = raw.slice(0,4) + '-' + raw.slice(4);
-      el.value = v;
-      this.patient.birth = v;
-      if (v.length === 10) this.calcAge();
     },
     calcAge() {
       const birth = this.patient.birth;
