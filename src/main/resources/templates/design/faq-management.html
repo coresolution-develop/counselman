@@ -16,6 +16,9 @@
   <link rel="stylesheet" th:href="@{/assets/css/tweaks.css}" />
   <style>
     /* ===== FAQ Management styles ===== */
+    /* Keep title + count grouped on the left, buttons on the right */
+    .panel__header .panel__title { flex: none; }
+
     .faq-overlay {
       position: fixed; inset: 0; z-index: 200;
       background: rgba(0,0,0,.45); backdrop-filter: blur(2px);
