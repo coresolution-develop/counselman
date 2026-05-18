@@ -312,6 +312,49 @@
     .counsel-preview-card[data-view="source"] .counsel-preview-source,
     .counsel-preview-card[data-view="empty"] .counsel-preview-empty { display: block; }
     .counsel-match-preview { margin-top: 6px; }
+    /* 변경사항 미저장 경고 모달 */
+    .leave-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.5);
+      display: flex; align-items: center; justify-content: center; z-index: 9600;
+    }
+    .leave-modal {
+      background: #fff; border-radius: 14px; width: 420px; max-width: 92vw;
+      box-shadow: 0 12px 36px rgba(0,0,0,.22); display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .leave-modal__header { display: flex; align-items: center; gap: 10px; padding: 18px 22px 12px; }
+    .leave-modal__icon {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #fef3c7; color: #b45309;
+      font-size: 16px; font-weight: 700; flex-shrink: 0;
+    }
+    .leave-modal__title { font-weight: 700; font-size: 16px; color: #111827; }
+    .leave-modal__body { padding: 4px 22px 18px; }
+    .leave-modal__message { margin: 0 0 8px; font-size: 14px; line-height: 1.55; color: #1f2937; }
+    .leave-modal__hint { margin: 0; font-size: 13px; color: #6b7280; }
+    .leave-modal__footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 22px 18px; }
+    .leave-modal__btn {
+      padding: 9px 18px; border-radius: 8px; border: 1px solid transparent;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      transition: background .12s ease, border-color .12s ease;
+    }
+    .leave-modal__btn--ghost {
+      background: #fff; color: #374151; border-color: #d1d5db;
+    }
+    .leave-modal__btn--ghost:hover { background: #f9fafb; }
+    .leave-modal__btn--danger {
+      background: #dc2626; color: #fff;
+    }
+    .leave-modal__btn--danger:hover { background: #b91c1c; }
+    .leave-modal__btn:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+    @media (max-width: 480px) {
+      .leave-modal { width: calc(100vw - 32px); }
+      .leave-modal__header { padding: 16px 18px 10px; }
+      .leave-modal__body   { padding: 4px 18px 16px; }
+      .leave-modal__footer { padding: 10px 18px 16px; }
+    }
+
     .match-modal-overlay { position: fixed; inset: 0; z-index: 1000; align-items: center; justify-content: center; background: rgba(15,23,42,.36); }
     .match-modal { width: min(560px, calc(100vw - 32px)); max-height: min(640px, calc(100vh - 48px)); display: flex; flex-direction: column; background: #fff; border-radius: 12px; box-shadow: var(--shadow-xl); }
     .match-modal-header,
@@ -817,6 +860,25 @@
 
   <main class="main">
     <div class="page" x-data="inpatientForm()">
+      <!-- 변경사항 미저장 경고 모달 -->
+      <div class="leave-modal-overlay" x-show="leaveModal.open" x-cloak
+           @click.self="closeLeaveModal()" @keydown.escape.window="leaveModal.open && closeLeaveModal()">
+        <div class="leave-modal" @click.stop role="alertdialog" aria-modal="true" aria-labelledby="leaveModalTitle">
+          <div class="leave-modal__header">
+            <span class="leave-modal__icon" aria-hidden="true">!</span>
+            <span class="leave-modal__title" id="leaveModalTitle">저장되지 않은 변경사항</span>
+          </div>
+          <div class="leave-modal__body">
+            <p class="leave-modal__message">아직 저장하지 않은 변경사항이 있습니다.</p>
+            <p class="leave-modal__hint">페이지를 떠나면 변경사항이 사라집니다. 계속하시겠습니까?</p>
+          </div>
+          <div class="leave-modal__footer">
+            <button type="button" class="leave-modal__btn leave-modal__btn--ghost" @click="closeLeaveModal()">취소</button>
+            <button type="button" class="leave-modal__btn leave-modal__btn--danger" @click="confirmLeave()" x-ref="leaveModalConfirmBtn">나가기</button>
+          </div>
+        </div>
+      </div>
+
       <input type="hidden" name="cs_idx" th:value="${pd != null ? pd.csIdx : 0}" />
       <input type="hidden" id="audio_temp_key" name="audio_temp_key" />
       <input type="hidden" id="file_temp_key" name="file_temp_key" />
@@ -1751,6 +1813,9 @@ function inpatientForm() {
   return {
     loading: false,
     mobileActionsOpen: false,
+    leaveModal: { open: false, targetUrl: '' },
+    _dirty: false,
+    _bypassDirtyCheck: false,
     recorder: 'idle',
     statusOptions:   _status,
     pathTypeOptions: _path,
@@ -1916,6 +1981,69 @@ function inpatientForm() {
         }
       });
       this._startReservationLock();
+      this._startDirtyGuard();
+    },
+
+    _startDirtyGuard() {
+      const root = document.querySelector('[x-data="inpatientForm()"]');
+      this._dirtyMark = (ev) => {
+        const t = ev.target;
+        if (!t || t.closest('.leave-modal') || t.closest('.match-modal')) return;
+        this._dirty = true;
+      };
+      if (root) {
+        root.addEventListener('input', this._dirtyMark, true);
+        root.addEventListener('change', this._dirtyMark, true);
+      }
+
+      this._beforeVisitHandler = (e) => {
+        if (!this._dirty || this._bypassDirtyCheck || this.leaveModal.open) return;
+        const url = e?.detail?.url;
+        if (!url) return;
+        try {
+          const u = new URL(url, location.href);
+          if (u.origin !== location.origin) return;
+          if (u.pathname === location.pathname && u.search === location.search) return;
+        } catch (_) {}
+        e.preventDefault();
+        this.openLeaveModal(url);
+      };
+      document.addEventListener('turbo:before-visit', this._beforeVisitHandler);
+
+      this._beforeUnloadHandler = (e) => {
+        if (!this._dirty || this._bypassDirtyCheck) return;
+        e.preventDefault();
+        e.returnValue = '';
+      };
+      window.addEventListener('beforeunload', this._beforeUnloadHandler);
+    },
+
+    openLeaveModal(url) {
+      this.leaveModal = { open: true, targetUrl: url || '' };
+      this.$nextTick(() => {
+        const btn = this.$refs.leaveModalConfirmBtn;
+        if (btn && typeof btn.focus === 'function') btn.focus();
+      });
+    },
+
+    closeLeaveModal() {
+      this.leaveModal = { open: false, targetUrl: '' };
+    },
+
+    confirmLeave() {
+      const url = this.leaveModal.targetUrl;
+      this._bypassDirtyCheck = true;
+      this._dirty = false;
+      this.leaveModal = { open: false, targetUrl: '' };
+      if (!url) {
+        window.history.back();
+        return;
+      }
+      if (window.Turbo && typeof window.Turbo.visit === 'function') {
+        window.Turbo.visit(url);
+      } else {
+        window.location.href = url;
+      }
     },
 
     _startReservationLock() {
@@ -1934,6 +2062,7 @@ function inpatientForm() {
         .then(body => {
           if (body && body.ok === false && body.locked && !this._reservationLockEvicted) {
             this._reservationLockEvicted = true;
+            this._bypassDirtyCheck = true;
             if (this._reservationHeartbeatTimer) {
               clearInterval(this._reservationHeartbeatTimer);
               this._reservationHeartbeatTimer = null;
@@ -1994,6 +2123,22 @@ function inpatientForm() {
           handler();
         }
         this._reservationReleaseHandler = null;
+      }
+      if (this._dirtyMark) {
+        const root = document.querySelector('[x-data="inpatientForm()"]');
+        if (root) {
+          root.removeEventListener('input', this._dirtyMark, true);
+          root.removeEventListener('change', this._dirtyMark, true);
+        }
+        this._dirtyMark = null;
+      }
+      if (this._beforeVisitHandler) {
+        document.removeEventListener('turbo:before-visit', this._beforeVisitHandler);
+        this._beforeVisitHandler = null;
+      }
+      if (this._beforeUnloadHandler) {
+        window.removeEventListener('beforeunload', this._beforeUnloadHandler);
+        this._beforeUnloadHandler = null;
       }
     },
 
@@ -2152,6 +2297,8 @@ function inpatientForm() {
         if (!data.ok) { alert(data.error || '저장 실패'); return; }
         this.meta.csIdx = data.csIdx;
         this.patient.id = 'P-' + data.csIdx;
+        this._dirty = false;
+        this._bypassDirtyCheck = true;
         if (!this.stayOnPage) {
           location.href = ctx + '/counsel/list';
           return;
@@ -2160,6 +2307,7 @@ function inpatientForm() {
           location.href = ctx + '/counsel/inpatient?cs_idx=' + data.csIdx;
           return;
         }
+        this._bypassDirtyCheck = false;
         alert('저장되었습니다.');
       } finally { this.loading = false; }
     },
