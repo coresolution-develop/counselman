@@ -85,6 +85,8 @@ public class SecurityConfig {
                                                 new AntPathRequestMatcher("/csm/api/access/**"),
                                                 new AntPathRequestMatcher("/counsel/ListSetting", "POST"),
                                                 new AntPathRequestMatcher("/csm/counsel/ListSetting", "POST"),
+                                                new AntPathRequestMatcher("/counsel/inpatient/release", "POST"),
+                                                new AntPathRequestMatcher("/csm/counsel/inpatient/release", "POST"),
                                                 new AntPathRequestMatcher("/api/chat/**"),
                                                 new AntPathRequestMatcher("/csm/api/chat/**"),
                                                 new AntPathRequestMatcher("/ws/chat/**"),
