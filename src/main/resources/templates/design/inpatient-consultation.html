@@ -554,6 +554,49 @@
       margin: 0;
     }
 
+    /* ===== Desktop: independent scroll for left/right cards ===== */
+    @media (min-width: 1201px) {
+      .app[data-screen-label="Inpatient Consultation"] .main {
+        height: 100%;
+        overflow: hidden;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .page {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        padding-bottom: 0;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .page__header {
+        flex: 0 0 auto;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-grid {
+        flex: 1 1 auto;
+        min-height: 0;
+        align-items: stretch;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-grid > section {
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-grid > section > .ic-card,
+      .app[data-screen-label="Inpatient Consultation"] .ic-grid > aside.ic-card {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        position: static !important;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-grid > section > .ic-card > .ic-card__head,
+      .app[data-screen-label="Inpatient Consultation"] .ic-grid > aside.ic-card > .ic-card__head {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        background: linear-gradient(180deg, var(--gray-50), #fff);
+      }
+    }
+
     /* 입원상담 모바일 보강: 기존 데스크톱 구조는 유지하고 좁은 화면에서만 재배치 */
     @media (max-width: 768px) {
       .app[data-screen-label="Inpatient Consultation"] {
@@ -1188,7 +1231,7 @@
         </section>
 
         <!-- ============ RIGHT: Consultation ============ -->
-        <aside class="ic-card" style="position: sticky; top: 16px;">
+        <aside class="ic-card">
           <div class="ic-card__head">
             <span class="ic-tag" style="background:#ede9fe;color:#6d28d9;border-color:#c4b5fd;">2</span>
             <h2>상담 기록</h2>
