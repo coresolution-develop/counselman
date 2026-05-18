@@ -885,9 +885,12 @@
               </div>
               <div class="ic-field">
                 <label class="ic-field__label">생년월일</label>
-                <!-- MPDatePicker(assets2/js/datepicker.js)가 init 시 자동 enhance.
-                     다른 페이지와 동일한 popup UI를 제공한다. -->
-                <input type="date" class="ic-input" x-model="patient.birth" @change="calcAge()" />
+                <!-- MPDatePicker(assets/js/datepicker.js)가 init 시 자동 enhance.
+                     data-mp-dp-editable: display input을 readonly가 아닌 typeable로 유지
+                     (라이브러리의 isEditable 분기 사용). 사용자가 직접 'YYYY-MM-DD'를
+                     입력하거나 달력 아이콘으로 popup 모두 가능. -->
+                <input type="date" class="ic-input" data-mp-dp-editable
+                       x-model="patient.birth" @change="calcAge()" />
               </div>
               <div class="ic-field">
                 <label class="ic-field__label">나이</label>
