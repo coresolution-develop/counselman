@@ -85,6 +85,65 @@
       0%, 100% { opacity: 1; }
       50%       { opacity: .55; }
     }
+    /* 상담중 차단 모달 */
+    .lock-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.5);
+      display: flex; align-items: center; justify-content: center; z-index: 9500;
+      animation: lock-modal-fade .12s ease-out;
+    }
+    @keyframes lock-modal-fade {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    .lock-modal {
+      background: #fff; border-radius: 14px; width: 420px; max-width: 92vw;
+      box-shadow: 0 12px 36px rgba(0,0,0,.22); display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .lock-modal__header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 18px 22px 12px;
+    }
+    .lock-modal__icon {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: color-mix(in oklab, var(--brand-500, #f59e0b) 14%, #fff);
+      color: var(--brand-600, #b45309);
+      font-size: 16px; font-weight: 700; flex-shrink: 0;
+    }
+    .lock-modal__title {
+      font-weight: 700; font-size: 16px; color: #111827;
+    }
+    .lock-modal__body {
+      padding: 4px 22px 18px;
+    }
+    .lock-modal__message {
+      margin: 0 0 8px; font-size: 14px; line-height: 1.55; color: #1f2937;
+    }
+    .lock-modal__message strong { color: #111827; }
+    .lock-modal__hint {
+      margin: 0; font-size: 13px; color: #6b7280;
+    }
+    .lock-modal__footer {
+      display: flex; justify-content: flex-end; padding: 12px 22px 18px;
+    }
+    .lock-modal__btn {
+      padding: 9px 22px; border-radius: 8px; border: none;
+      background: var(--brand-500, #10b981); color: #fff;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      transition: background .12s ease;
+    }
+    .lock-modal__btn:hover { background: var(--brand-600, #059669); }
+    .lock-modal__btn:focus-visible {
+      outline: 2px solid var(--brand-600, #059669); outline-offset: 2px;
+    }
+    @media (max-width: 480px) {
+      .lock-modal { width: calc(100vw - 32px); }
+      .lock-modal__header { padding: 16px 18px 10px; }
+      .lock-modal__body   { padding: 4px 18px 16px; }
+      .lock-modal__footer { padding: 10px 18px 16px; }
+    }
+
     /* 일괄 SMS 모달 */
     .bulk-sms-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,.45);
@@ -998,6 +1057,28 @@
         </button>
       </div>
 
+      <!-- 상담중 차단 모달 -->
+      <div class="lock-modal-overlay" x-show="lockModal.open" x-cloak
+           @click.self="closeLockModal()" @keydown.escape.window="lockModal.open && closeLockModal()">
+        <div class="lock-modal" @click.stop role="alertdialog" aria-modal="true" aria-labelledby="lockModalTitle">
+          <div class="lock-modal__header">
+            <span class="lock-modal__icon" aria-hidden="true">⚠</span>
+            <span class="lock-modal__title" id="lockModalTitle">상담 진행 중</span>
+          </div>
+          <div class="lock-modal__body">
+            <p class="lock-modal__message">
+              <strong x-text="lockModal.ownerName || '다른 직원'"></strong>님이 현재
+              <template x-if="lockModal.patientName"><span> <strong x-text="lockModal.patientName"></strong> 환자의</span></template>
+              상담을 진행 중입니다.
+            </p>
+            <p class="lock-modal__hint">해당 상담이 종료된 후 다시 시도해 주세요.</p>
+          </div>
+          <div class="lock-modal__footer">
+            <button type="button" class="lock-modal__btn" @click="closeLockModal()" x-ref="lockModalCloseBtn">확인</button>
+          </div>
+        </div>
+      </div>
+
       <!-- 일괄 문자 보내기 모달 -->
       <div class="bulk-sms-overlay" x-show="bulkSmsOpen" x-cloak @click.self="bulkSmsOpen = false">
         <div class="bulk-sms-modal" @click.stop>
@@ -1152,12 +1233,12 @@ function listPage() {
     phOptions:    phOpts,
     saving:       false,
     currentUserId: currentUserId,
+    lockModal: { open: false, ownerName: '', patientName: '' },
 
     init() {
       this.loadQueueCollapsedState();
       if (lockOwnerName) {
-        const patient = lockPatientName ? ` (${lockPatientName})` : '';
-        alert(`${lockOwnerName}님이 이미 상담 중입니다${patient}.\n해당 상담이 종료된 후 다시 시도해 주세요.`);
+        this.openLockModal(lockOwnerName, lockPatientName);
       }
       this.$nextTick(() => {
         if (typeof window.applyFreezePositions === 'function') window.applyFreezePositions();
@@ -1197,11 +1278,26 @@ function listPage() {
     openReservation(q) {
       if (!q || !q.id) return;
       if (q.beingWorkedOn && q.openedBy && q.openedBy !== this.currentUserId) {
-        const who = q.openedByName || q.openedBy;
-        alert(`${who}님이 이미 상담 중입니다.\n해당 상담이 종료된 후 다시 시도해 주세요.`);
+        this.openLockModal(q.openedByName || q.openedBy, q.name || '');
         return;
       }
       this.visit('/counsel/inpatient?reservationId=' + q.id);
+    },
+
+    openLockModal(ownerName, patientName) {
+      this.lockModal = {
+        open: true,
+        ownerName: ownerName || '',
+        patientName: patientName || '',
+      };
+      this.$nextTick(() => {
+        const btn = this.$refs.lockModalCloseBtn;
+        if (btn && typeof btn.focus === 'function') btn.focus();
+      });
+    },
+
+    closeLockModal() {
+      this.lockModal = { open: false, ownerName: '', patientName: '' };
     },
 
     loadQueueCollapsedState() {
