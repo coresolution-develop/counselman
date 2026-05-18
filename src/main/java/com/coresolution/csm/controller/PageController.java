@@ -1679,6 +1679,8 @@ public class PageController {
                     return m;
                 }).filter(Objects::nonNull).collect(Collectors.toList());
 
+        Userdata currentUser = (Userdata) session.getAttribute("userInfo");
+        String currentUserId = currentUser != null ? safeString(currentUser.getUs_col_02()) : "";
         mv.addObject("queueItems", queueItems);
         mv.addObject("recordItems", recordItems);
         mv.addObject("orderItems", orderItems != null ? orderItems : List.of());
@@ -1688,6 +1690,7 @@ public class PageController {
         mv.addObject("statusOptions", cs.getCounselStatusOptions(inst));
         mv.addObject("pathTypeOptions", cs.getCounselPathTypeOptions(inst));
         mv.addObject("phOptions", phOptions);
+        mv.addObject("currentUserId", currentUserId);
         mv.setViewName("design/consultation-list");
         return mv;
     }
@@ -6709,6 +6712,7 @@ public class PageController {
                     .thenComparing(r -> r == null || r.getId() == null ? Long.MAX_VALUE : r.getId()));
         }
 
+        Map<String, String> ownerNameCache = new HashMap<>();
         return (reservations == null ? Collections.<CounselReservation>emptyList() : reservations).stream()
                 .filter(Objects::nonNull)
                 .map(r -> {
@@ -6719,6 +6723,16 @@ public class PageController {
                     m.put("phone", safeString(r.getPatient_phone()));
                     m.put("time", safeString(r.getReserved_at()));
                     m.put("note", safeString(r.getCall_summary()));
+                    boolean locked = r.isBeingWorkedOn();
+                    m.put("beingWorkedOn", locked);
+                    String ownerId = safeString(r.getOpened_by()).trim();
+                    m.put("openedBy", ownerId);
+                    String ownerName = "";
+                    if (locked && !ownerId.isEmpty()) {
+                        ownerName = ownerNameCache.computeIfAbsent(ownerId,
+                                key -> resolveLockOwnerName(inst, r));
+                    }
+                    m.put("openedByName", ownerName);
                     return m;
                 })
                 .collect(Collectors.toList());
@@ -8207,12 +8221,26 @@ public class PageController {
     public ModelAndView designCounselInpatient(
             @RequestParam(value = "cs_idx", required = false) Integer csIdx,
             @RequestParam(value = "reservationId", required = false) Long reservationId,
-            HttpSession session) {
+            HttpSession session,
+            RedirectAttributes redirectAttributes) {
         ModelAndView mv = new ModelAndView();
         String inst = ensureInst(session);
         if (inst == null) return new ModelAndView("redirect:/login");
         Userdata currentUser = ensureUserInfo(session, inst);
         String actorName = resolveReservationActor(inst, session);
+        String currentLoginId = currentUser != null ? safeString(currentUser.getUs_col_02()) : "";
+
+        if (reservationId != null && reservationId > 0 && !currentLoginId.isBlank()) {
+            boolean acquired = cs.tryAcquireReservationLock(inst, reservationId, currentLoginId);
+            if (!acquired) {
+                CounselReservation locked = cs.getCounselReservationById(inst, reservationId);
+                String ownerName = resolveLockOwnerName(inst, locked);
+                redirectAttributes.addFlashAttribute("reservationLockOwnerName", ownerName);
+                redirectAttributes.addFlashAttribute("reservationLockPatientName",
+                        locked != null ? safeString(locked.getPatient_name()) : "");
+                return new ModelAndView("redirect:/counsel/list");
+            }
+        }
 
         CounselData data = null;
         List<Guardian> rawGuardians = Collections.emptyList();
@@ -8236,7 +8264,6 @@ public class PageController {
         }
         if (reservationId != null && reservationId > 0) {
             reservation = cs.getCounselReservationById(inst, reservationId);
-            // touchOpenedAt removed: 30분 락 개념 삭제
         }
 
         Map<String, Object> categoryDataMap = Optional.ofNullable(cs.getCategoryData(inst))
@@ -8492,12 +8519,13 @@ public class PageController {
             HttpSession session) {
         String inst = ensureInst(session);
         if (inst == null) return Map.of("ok", false);
-        try {
-            if (reservationId > 0) cs.touchOpenedAt(inst, reservationId);
-            return Map.of("ok", true);
-        } catch (Exception e) {
+        Userdata user = (Userdata) session.getAttribute("userInfo");
+        String userId = user != null ? safeString(user.getUs_col_02()) : "";
+        if (userId.isBlank() || reservationId == null || reservationId <= 0) {
             return Map.of("ok", false);
         }
+        boolean refreshed = cs.refreshReservationLock(inst, reservationId, userId);
+        return Map.of("ok", refreshed);
     }
 
     @PostMapping({ "counsel/inpatient/release", "/counsel/inpatient/release" })
@@ -8507,12 +8535,29 @@ public class PageController {
             HttpSession session) {
         String inst = ensureInst(session);
         if (inst == null) return Map.of("ok", false);
-        try {
-            if (reservationId > 0) cs.clearOpenedAt(inst, reservationId);
-            return Map.of("ok", true);
-        } catch (Exception e) {
+        Userdata user = (Userdata) session.getAttribute("userInfo");
+        String userId = user != null ? safeString(user.getUs_col_02()) : "";
+        if (userId.isBlank() || reservationId == null || reservationId <= 0) {
             return Map.of("ok", false);
         }
+        cs.releaseReservationLock(inst, reservationId, userId);
+        return Map.of("ok", true);
+    }
+
+    private String resolveLockOwnerName(String inst, CounselReservation reservation) {
+        if (reservation == null) return "";
+        String ownerId = safeString(reservation.getOpened_by()).trim();
+        if (ownerId.isEmpty()) return "";
+        try {
+            Userdata owner = cs.userInfoById(inst, ownerId);
+            if (owner != null) {
+                String name = safeString(owner.getUs_col_12()).trim();
+                if (!name.isEmpty()) return name;
+            }
+        } catch (Exception ignore) {
+            // fall through to login id
+        }
+        return ownerId;
     }
 
     @GetMapping({ "ward-status", "/ward-status" })
