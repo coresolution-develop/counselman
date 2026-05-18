@@ -1989,9 +1989,16 @@ function inpatientForm() {
 
     _startDirtyGuard() {
       const root = document.querySelector('[x-data="inpatientForm()"]');
+      this._backGuardArmed = false;
       this._dirtyMark = (ev) => {
         const t = ev.target;
         if (!t || t.closest('.leave-modal') || t.closest('.match-modal')) return;
+        if (!this._dirty && !this._backGuardArmed) {
+          try {
+            history.pushState({ _dirtyGuard: true }, '', location.href);
+            this._backGuardArmed = true;
+          } catch (_) {}
+        }
         this._dirty = true;
       };
       if (root) {
@@ -2014,6 +2021,15 @@ function inpatientForm() {
         this.openLeaveModal(url);
       };
       document.addEventListener('turbo:before-visit', this._beforeVisitHandler);
+
+      this._popstateHandler = () => {
+        if (!this._dirty || this._bypassDirtyCheck || !this._backGuardArmed) return;
+        try {
+          history.pushState({ _dirtyGuard: true }, '', location.href);
+        } catch (_) {}
+        if (!this.leaveModal.open) this.openLeaveModal(null);
+      };
+      window.addEventListener('popstate', this._popstateHandler);
 
       this._beforeUnloadHandler = (e) => {
         if (!this._dirty || this._bypassDirtyCheck) return;
@@ -2041,7 +2057,8 @@ function inpatientForm() {
       this._dirty = false;
       this.leaveModal = { open: false, targetUrl: '' };
       if (!url) {
-        window.history.back();
+        // pop both the dirtyGuard duplicate AND the original inpatient entry
+        history.go(this._backGuardArmed ? -2 : -1);
         return;
       }
       if (window.Turbo && typeof window.Turbo.visit === 'function') {
@@ -2140,6 +2157,10 @@ function inpatientForm() {
       if (this._beforeVisitHandler) {
         document.removeEventListener('turbo:before-visit', this._beforeVisitHandler);
         this._beforeVisitHandler = null;
+      }
+      if (this._popstateHandler) {
+        window.removeEventListener('popstate', this._popstateHandler);
+        this._popstateHandler = null;
       }
       if (this._beforeUnloadHandler) {
         window.removeEventListener('beforeunload', this._beforeUnloadHandler);
