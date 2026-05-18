@@ -2009,6 +2009,8 @@ function inpatientForm() {
           if (u.pathname === location.pathname && u.search === location.search) return;
         } catch (_) {}
         e.preventDefault();
+        const loader = document.getElementById('nav-page-loader');
+        if (loader) loader.classList.remove('is-visible');
         this.openLeaveModal(url);
       };
       document.addEventListener('turbo:before-visit', this._beforeVisitHandler);
