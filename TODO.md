@@ -1,10 +1,113 @@
 # MediPlat 작업 현황
 
-> 최종 업데이트: 2026-05-14
+> 최종 업데이트: 2026-05-18
+
+---
+
+## 🎯 다음 진행 큐 (우선순위순)
+
+> 각 항목은 시작 위치·수정 방향·예상 작업량을 포함합니다. 위에서부터 picking 가능.
+
+### 🔥 P0 — 운영 차단 / 명시적 요청
+
+#### [P0-1] `/csm/chat` 페이지 진입 불가
+- **증상**: 운영 cutover 후 chat 페이지 접근 실패
+- **시작**: 응답 코드 / 콘솔 에러 / 서버 로그 확인 (`grep "chat" logs/csm-next.log`)
+- **의심 영역**: [PageController.java](src/main/java/com/coresolution/csm/controller/PageController.java) chat 매핑, [chat-page.html](src/main/resources/templates/design/chat-page.html), Spring Security 권한
+- **작업량**: 진단 30분 + 수정 1~2시간 (원인에 따라 변동)
+
+#### [P0-2] 헤더 영역 축소 + 상단/하단 고정 (2026-05-14 운영 요청)
+- **목표**: 콘텐츠 영역 확보 — 헤더 높이 축소 + 헤더/푸터 sticky
+- **시작**: [chrome.js](src/main/resources/static/assets/js/chrome.js) MPChrome.mount 헤더 마크업, [layout.css](src/main/resources/static/assets/css/layout.css) `.header` height
+- **수정 방향**: 헤더 64px → 48px, `position: sticky; top: 0`, 페이지 본문 padding-top 조정
+- **작업량**: 2~3시간 (모든 design 페이지 회귀 확인 포함)
+
+### ⚠️ P1 — 반복 버그 / 사용자 경험
+
+#### [P1-1] 상담 통계 Alpine ECharts 간헐 충돌
+- **증상**: Turbo 이동 시 `Cannot convert undefined or null to object`
+- **원인**: `_charts: []` 가 Alpine reactive state에 있어 ECharts 인스턴스 push 시 deep-proxy 시도
+- **수정 방향**: `_charts`를 Alpine state 밖 클로저 변수로 이동
+- **시작**: [consultation-stats.html](src/main/resources/templates/design/consultation-stats.html) noticePage 비슷한 패턴
+- **작업량**: 1시간
+
+#### [P1-2] 병실현황판 Alpine 간헐 버그
+- **증상**: P1-1과 동일 에러 패턴
+- **원인**: `mapWard()` 반환 객체의 `get discharge()` / `get afternoon()` getter가 Alpine reactive proxy 초기화 중 잘못된 `this` 컨텍스트
+- **수정 방향**: getter 제거 → 값 즉시 계산으로 대체
+- **시작**: [ward-status.html](src/main/resources/templates/design/ward-status.html)
+- **작업량**: 1시간
+
+#### [P1-3] 상담 리스트 "상담중" 상태 오표시 + 30분 락 제거
+- **증상**: 진입 후 퇴장 시에도 "상담중" 유지
+- **수정 방향**: 30분 락 개념 삭제 후 단순 상태 표시로 전환
+- **연관**: 상담 접수 페이지의 "상담중 진입 차단" 작업 (P1-4)과 함께 검토 권장
+- **작업량**: 2~3시간
+
+#### [P1-4] 상담 접수 — 행 클릭 상세 패널 + 진입 차단
+- 행 클릭 → 우측 상세 패널 즉시 노출 (별도 "수정" 버튼 경유 없이)
+- 다른 사용자가 진행 중인 상담은 진입 불가 (락 표시 또는 disable)
+- **시작**: [consultation-intake.html](src/main/resources/templates/design/consultation-intake.html)
+- **작업량**: 3~4시간
+
+### 🧹 P2 — 정리성 (방금 작업 연장선)
+
+#### [P2-1] 옛 페이지 redirect 정리
+- **대상**: `/smsSetting`, `/cardsetting`, `/smslog` 등 옛 디자인 URL
+- **수정 방향**: PageController에서 새 URL로 301 redirect (`return "redirect:/message/..."`)
+- **시작**: [PageController.java](src/main/java/com/coresolution/csm/controller/PageController.java) line 2692 (smsSetting), 2790 (cardsetting)
+- **작업량**: 30분
+
+#### [P2-2] 공지 읽음 추적 서버 통합
+- **현황**: client `localStorage` (`csm-read-notices-<userId>`) 기반
+- **수정 방향**: `core_notice_read` 테이블 + `/notice/read/{id}` 엔드포인트 활용 (이미 존재)
+- **변경 위치**: [chrome.js:328](src/main/resources/static/assets/js/chrome.js#L328) `markNoticesRead` — fetch 추가
+- **작업량**: 1~2시간
+
+#### [P2-3] inst_notice 시스템 deprecate 정책 확정
+- 일반 기관 자체 공지 작성 기능 사용 여부 결정 (현재 read-only)
+- 사용 안 함이면 `inst_notice_<INST>` 테이블, `/notices/save`, `/notices/delete` 제거
+- **블로커**: 정책 결정 필요 (코드 작업은 결정 후 30분)
+
+### 📌 P3 — 작은 개선 / 정리
+
+- [ ] CSM 허용 버튼 (`/csm/access`) toggle POST 검증 — `mp_user_service` 실제 insert/update 확인
+- [ ] 채팅 페이지 폰트 CORS 교체 — `fonts.gstatic.com/ea/notosanskr/v2/` deprecated → `fonts.googleapis.com/css2`
+- [ ] 기본 아바타 이미지 누락 — `/img/default-avatar.png` 추가
+- [ ] 챗봇 FAQ 검색 비로그인 접근 — 로그인 전 FAQ 패널 노출 검토
+- [ ] 좌측 네비게이션 스크롤 CSS 수정
 
 ---
 
 ## ✅ 완료된 작업
+
+### 2026-05-18 운영 핫픽스 (기관 등록 / 공지 / 문자관리 통합)
+
+- [x] **기관 등록 페이지 UI 깨짐 수정** — 새 디자인 사이드바에서 메뉴 라벨이 보이지 않던 문제 해결 ([layout-modern-shell.css](src/main/resources/static/css/csm/Include/layout-modern-shell.css))
+  - `cate.css`의 `.nav_link > span { width: 100% }` 가 아이콘 span을 100% 폭으로 늘려 라벨을 width 0으로 찌그러뜨림 → `.nav_section .nav_link.nav-item > .nav-item__icon { width: 20px; flex: 0 0 20px }` 명시
+  - 같은 cate.css의 `::before` 의사요소가 모든 `<span>` 직계 자식에 legacy 아이콘 bg-image를 붙여 아이콘이 중복 표시됨 → `content: none` 으로 무력화
+  - layout.html의 `csm_header` fragment가 admin 페이지에도 누출되어 빈 헤더(177px)가 공간 차지 → `body:not(.counsel-list-modern) > header#csm-header { display: none }`
+  - 하단 액션바가 `left:0; width:100%`로 사이드바를 덮음 → `left: 230px; width: calc(100% - 230px)` + collapse/모바일 분기
+- [x] **기관 수정 popup → modal 전환** — `window.open` 대신 인라인 모달로 전환 ([admin.html](src/main/resources/templates/csm/core/admin/admin.html), [admin.js](src/main/resources/static/js/csm/core/admin/admin.js))
+  - 기존 `/csm/core/modifyinstPopup` HTML 엔드포인트를 그대로 fetch + `DOMParser`로 input 값 추출 (백엔드 변경 없음)
+  - ESC/오버레이 클릭/취소 핸들러, 저장 시 `/csm/core/modifyinst/post/{id}` 호출 후 reload
+- [x] **공지사항 시스템 통합** — 새 디자인의 `/notices`(기관 자체 공지)와 `/notice`(core 배포 공지) 분리 문제 해결
+  - 일반 기관 사용자가 사이드바 "공지사항" 클릭 시 자체 inst_notice 테이블만 조회해 core 공지가 안 보이던 문제
+  - `designNotices()` 컨트롤러를 `listInstNotices` → `listInstitutionNotices` 로 전환하여 core_notice 데이터 표시 ([PageController.java](src/main/java/com/coresolution/csm/controller/PageController.java))
+  - `pinned_yn='Y' → pinned (boolean)` 매핑, author="본사", `canWrite=false`로 일반 기관은 작성 비활성
+  - core 사용자는 `/core/notice`로 redirect
+- [x] **공지 팝업 — core 공지 기반으로 전환** — `getNoticesPopup()`이 옛 `listInstNotices`(기관 자체 공지)만 보여주던 문제
+  - `listInstitutionNotices` + `popup_yn='Y'` & `read_yn≠'Y'` 필터로 변경
+  - core 작성 공지의 "팝업" 체크박스가 실제로 일반 기관 사용자에게 자동 표출됨
+- [x] **상용구 관리 → 새 디자인 모달 통합** — 옛 페이지(`/smsSetting`) 의존 제거 ([design/message-management.html](src/main/resources/templates/design/message-management.html))
+  - 페이지 헤더에 "+ 상용구 추가" 버튼, 각 행 hover 시 수정/삭제 액션
+  - 작성/수정/삭제 모달 통합 (`/smsInsert`, `/smsUpdate`, `/smsDelete`)
+  - 삭제 시 브라우저 `confirm()` 대신 디자인 confirm 모달
+  - `init` 중복 가드 (`dataset.bound`) — `DOMContentLoaded` + `turbo:load` 둘 다 호출되어 alert 두 번 뜨던 버그 수정
+- [x] **서명관리 탭 신규 추가** — 새 디자인에 누락된 서명관리 메뉴 추가
+  - `designMessage()` 컨트롤러에 `signature` 모드 + `/message/signature` 경로 추가
+  - 새 디자인 페이지에 서명 카드 목록, 작성/수정/삭제 모달 (`/InsertCard`, `/UpdateCard`, `/DeleteCard`)
+  - sent/reserved 발송내역 테이블이 signature 모드에서 잘못 표시되던 조건 (`messageMode != 'template'` → `messageMode == 'sent' or 'reserved'`)
 
 ### 2026-05-14 운영 핫픽스 + 도메인 cutover
 
@@ -175,7 +278,9 @@
 - [ ] 접수관리 버튼 연동
 
 ### 📢 공지사항
-- [ ] 공지 작성·수정·삭제 기능 백엔드 연동
+- [x] ~~core 공지 → 일반 기관 사용자 자동 노출~~ — **2026-05-18 완료** (`/notices` 페이지 + 팝업)
+- [ ] 공지 작성·수정·삭제 — core 공지(`/core/notice`)에서만 가능, 일반 기관 자체 공지 시스템(inst_notice)는 deprecated 상태로 유지. 정책 확정 시 inst_notice 테이블/엔드포인트(`/notices/save`, `/notices/delete`) 제거 검토
+- [ ] 공지 읽음 추적 서버 통합 — 현재 client `localStorage` 기반(`csm-read-notices-<userId>`). 브라우저별로 분리되고 다중 기기 동기화 안 됨. `core_notice_read` 테이블 + `/notice/read/{noticeId}` 엔드포인트 활용해 서버측으로 통합 검토
 
 ### 📈 상담 통계
 - [ ] **간헐적 버그 수정** — Turbo Drive 이동 시 Alpine.js `Cannot convert undefined or null to object` 발생. 원인: `_charts: []`가 Alpine reactive state에 있어 ECharts 인스턴스를 push할 때 Alpine이 deep-proxy 시도. 수정 방향: `_charts`를 클로저 변수로 이동 (reactive state에서 제외)
@@ -203,7 +308,9 @@
 ### 💬 문자 관리
 - [ ] 예약 내역 페이지 구현
 - [ ] 발송 내역 페이지 구현
-- [ ] 상용구 관리 — 추가·수정·삭제 백엔드 연동 (현재 조회만 됨)
+- [x] ~~상용구 관리 — 추가·수정·삭제 백엔드 연동~~ — **2026-05-18 완료** (새 디자인 모달 통합)
+- [x] ~~서명관리 탭 추가~~ — **2026-05-18 완료**
+- [ ] 옛 페이지 정리 — `/smsSetting`, `/cardsetting`이 사이드바에선 접근 불가하지만 직접 URL 입력 시 옛 디자인 노출. `/message`, `/message/signature` 로 301 redirect 또는 컨트롤러/템플릿 제거 검토
 
 ### 🌐 MediPlat 포털 CSS (LOW)
 - [ ] `ph__search` height 38px → 44px 이상으로 보정 (모바일 터치 타겟)
