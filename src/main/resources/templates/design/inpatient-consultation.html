@@ -540,13 +540,18 @@
       top: 0;
       z-index: 100;
       background: var(--page-bg);
-      padding-top: 24px;
-      padding-bottom: 16px;
+      padding-top: 12px;
+      padding-bottom: 10px;
       margin-left: -32px;
       margin-right: -32px;
       padding-left: 32px;
       padding-right: 32px;
       box-shadow: 0 1px 0 var(--border-subtle), 0 2px 8px rgba(15,23,42,.06);
+    }
+    .app[data-screen-label="Inpatient Consultation"] .page__header .page__title {
+      font-size: 18px;
+      line-height: 1.2;
+      margin: 0;
     }
 
     /* 입원상담 모바일 보강: 기존 데스크톱 구조는 유지하고 좁은 화면에서만 재배치 */
@@ -891,7 +896,6 @@
       <div class="page__header">
         <div>
           <h1 class="page__title">입원상담</h1>
-          <p class="page__subtitle">환자 상세 정보와 상담 기록을 한 화면에서 관리합니다</p>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <label class="ic-toggle">
