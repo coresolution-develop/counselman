@@ -46,6 +46,23 @@
       padding: 16px 24px;
       background: var(--gray-50); border-top: 1px solid var(--border-subtle);
     }
+    .faq-close-btn {
+      margin-left: auto; background: none; border: 0; cursor: pointer;
+      font-size: 18px; color: var(--text-tertiary); padding: 4px 8px;
+      border-radius: 6px; transition: background .12s ease;
+    }
+    .faq-close-btn:hover { background: var(--gray-100); color: var(--text-secondary); }
+    .faq-file-drop {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 28px 20px; border: 2px dashed var(--border-default); border-radius: 12px;
+      background: var(--gray-50); cursor: pointer; transition: all .15s ease;
+      text-align: center;
+    }
+    .faq-file-drop:hover,
+    .faq-file-drop.is-drag {
+      border-color: var(--brand-400, #10b981);
+      background: color-mix(in oklab, var(--brand-500, #10b981) 4%, #fff);
+    }
     .faq-form-group { display: flex; flex-direction: column; gap: 5px; }
     .faq-form-group label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
     .faq-form-group input,
@@ -209,10 +226,84 @@
             <span class="panel__title">FAQ 목록</span>
             <span class="panel__count" x-text="filtered.length + '개'"></span>
             <div style="flex:1"></div>
+            <a class="btn btn--outline" :href="ctx + 'api/faq/upload/template'">
+              <svg style="width:14px;height:14px"><use href="#i-download"/></svg>
+              샘플 양식
+            </a>
+            <button class="btn btn--outline" @click="openUpload()">
+              <svg style="width:14px;height:14px"><use href="#i-upload"/></svg>
+              엑셀 업로드
+            </button>
             <button class="btn btn--primary" @click="openAdd()">
               <svg style="width:14px;height:14px"><use href="#i-plus"/></svg>
               질문 추가
             </button>
+          </div>
+
+          <!-- Upload modal -->
+          <div class="faq-overlay" x-show="showUpload" x-cloak
+               @click.self="closeUpload()" @keydown.escape.window="showUpload && closeUpload()">
+            <div class="faq-modal" @click.stop role="dialog" aria-modal="true" aria-labelledby="faqUploadTitle">
+              <div class="faq-modal__head">
+                <span class="faq-modal__head-icon">
+                  <svg><use href="#i-upload"/></svg>
+                </span>
+                <span class="faq-modal__title" id="faqUploadTitle">FAQ 엑셀 업로드</span>
+                <button type="button" class="faq-close-btn" @click="closeUpload()" aria-label="닫기">✕</button>
+              </div>
+              <div class="faq-modal__body">
+                <p style="margin:0 0 12px;font-size:13px;color:var(--text-secondary);line-height:1.55;">
+                  샘플 양식의 헤더 순서대로 작성한 엑셀(.xlsx) 파일을 업로드하세요.<br/>
+                  <strong>카테고리 · 질문 · 답변</strong>은 필수, <strong>정렬순서</strong>는 선택입니다.
+                </p>
+                <label class="faq-file-drop" :class="{ 'is-drag': uploadDrag }"
+                       @dragover.prevent="uploadDrag = true"
+                       @dragleave.prevent="uploadDrag = false"
+                       @drop.prevent="handleDrop($event)">
+                  <input type="file" accept=".xlsx,.xls" style="display:none"
+                         @change="handleFile($event.target.files[0])" x-ref="uploadInput" />
+                  <svg style="width:32px;height:32px;color:var(--text-tertiary)"><use href="#i-upload"/></svg>
+                  <div x-show="!uploadFile" style="font-size:13px;color:var(--text-secondary);margin-top:8px;">
+                    파일을 끌어다 놓거나 클릭하여 선택
+                  </div>
+                  <div x-show="uploadFile" style="font-size:13px;color:var(--text-primary);margin-top:8px;">
+                    <strong x-text="uploadFile?.name"></strong>
+                    <span x-text="uploadFile ? ' (' + Math.round(uploadFile.size/1024) + ' KB)' : ''" style="color:var(--text-tertiary);"></span>
+                  </div>
+                  <button type="button" class="btn btn--ghost" style="margin-top:10px;" @click.prevent="$refs.uploadInput.click()" x-show="!uploadFile">
+                    파일 선택
+                  </button>
+                  <button type="button" class="btn btn--ghost" style="margin-top:10px;" @click.prevent="uploadFile = null; uploadResult = null;" x-show="uploadFile">
+                    다른 파일 선택
+                  </button>
+                </label>
+
+                <!-- Result -->
+                <div x-show="uploadResult" x-cloak style="margin-top:14px;padding:12px;background:var(--gray-50);border-radius:8px;font-size:13px;">
+                  <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;">
+                    <span><strong style="color:#059669;" x-text="uploadResult?.success || 0"></strong> 건 등록</span>
+                    <span><strong style="color:#6b7280;" x-text="uploadResult?.skipped || 0"></strong> 건 건너뜀</span>
+                    <span><strong style="color:#dc2626;" x-text="uploadResult?.failed || 0"></strong> 건 실패</span>
+                  </div>
+                  <div x-show="(uploadResult?.errors || []).length > 0" style="max-height:160px;overflow-y:auto;border-top:1px solid var(--border-subtle);padding-top:8px;">
+                    <template x-for="err in (uploadResult?.errors || [])" :key="err.row">
+                      <div style="font-size:12px;color:#b91c1c;padding:2px 0;">
+                        <strong x-text="err.row + '행'"></strong>: <span x-text="err.message"></span>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+
+                <div x-show="uploadError" x-cloak style="margin-top:12px;padding:10px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-size:13px;color:#b91c1c;" x-text="uploadError"></div>
+              </div>
+              <div class="faq-modal__footer">
+                <button type="button" class="btn btn--ghost" @click="closeUpload()">닫기</button>
+                <button type="button" class="btn btn--primary"
+                        :disabled="!uploadFile || uploading"
+                        @click="submitUpload()"
+                        x-text="uploading ? '업로드 중...' : '업로드'"></button>
+              </div>
+            </div>
           </div>
 
           <!-- Toolbar -->
@@ -409,6 +500,7 @@
 
   function _registerFaqManagementPage() {
     Alpine.data('faqManagementPage', () => ({
+      ctx,
       loading:    true,
       items:      [],
       filtered:   [],
@@ -424,6 +516,13 @@
 
       showDelete:   false,
       deleteTarget: null,
+
+      showUpload:   false,
+      uploadFile:   null,
+      uploadDrag:   false,
+      uploading:    false,
+      uploadResult: null,
+      uploadError:  '',
 
       async init() {
         await Promise.all([this.loadFaqs(), this.loadCategories()]);
@@ -536,6 +635,68 @@
           }
         } catch(e) { console.error('confirmDelete', e); }
         finally { this.saving = false; }
+      },
+
+      // ── Excel upload ─────────────────────────────────
+      openUpload() {
+        this.uploadFile = null;
+        this.uploadResult = null;
+        this.uploadError = '';
+        this.uploadDrag = false;
+        this.showUpload = true;
+      },
+
+      closeUpload() {
+        this.showUpload = false;
+      },
+
+      handleFile(file) {
+        if (!file) return;
+        const name = (file.name || '').toLowerCase();
+        if (!name.endsWith('.xlsx') && !name.endsWith('.xls')) {
+          this.uploadError = '엑셀 파일(.xlsx, .xls)만 업로드할 수 있습니다.';
+          return;
+        }
+        this.uploadFile = file;
+        this.uploadError = '';
+        this.uploadResult = null;
+      },
+
+      handleDrop(ev) {
+        this.uploadDrag = false;
+        const file = ev.dataTransfer?.files?.[0];
+        this.handleFile(file);
+      },
+
+      async submitUpload() {
+        if (!this.uploadFile) return;
+        this.uploading = true;
+        this.uploadError = '';
+        this.uploadResult = null;
+        try {
+          const fd = new FormData();
+          fd.append('file', this.uploadFile);
+          const res = await fetch(ctx + 'api/faq/upload', {
+            method: 'POST',
+            headers: csrfHeaders(),
+            body: fd,
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            this.uploadError = data.error || ('업로드 실패 (' + res.status + ')');
+            return;
+          }
+          this.uploadResult = data;
+          if ((data.success || 0) > 0) {
+            await Promise.all([this.loadFaqs(), this.loadCategories()]);
+            this.$dispatch('toast', { message: data.success + '건 등록되었습니다' });
+          }
+        } catch(e) {
+          console.error('submitUpload', e);
+          this.uploadError = '네트워크 오류';
+        } finally {
+          this.uploading = false;
+        }
       },
     }));
   }
