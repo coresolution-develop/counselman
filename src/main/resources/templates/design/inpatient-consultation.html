@@ -1014,7 +1014,8 @@
                                  :checked="value.checked"
                                  @change="selectDynamicRadio(item, value)" />
                           <span class="ic-dynamic-field__label" x-text="value.name"></span>
-                          <span class="ic-dynamic-field__control">
+                          <span class="ic-dynamic-field__control"
+                                x-show="hasControl(value, 'select') || hasControl(value, 'text')">
                             <select class="ic-select" x-show="hasControl(value, 'select')" x-model="value.selected"
                                     :name="value.fieldKey + '_select'"
                                     :data-label="value.name"
