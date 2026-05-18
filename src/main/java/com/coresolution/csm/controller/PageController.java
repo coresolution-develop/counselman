@@ -8524,8 +8524,15 @@ public class PageController {
         if (userId.isBlank() || reservationId == null || reservationId <= 0) {
             return Map.of("ok", false);
         }
-        boolean refreshed = cs.refreshReservationLock(inst, reservationId, userId);
-        return Map.of("ok", refreshed);
+        boolean acquired = cs.tryAcquireReservationLock(inst, reservationId, userId);
+        if (acquired) return Map.of("ok", true);
+        CounselReservation locked = cs.getCounselReservationById(inst, reservationId);
+        Map<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        out.put("locked", true);
+        out.put("ownerName", resolveLockOwnerName(inst, locked));
+        out.put("patientName", locked != null ? safeString(locked.getPatient_name()) : "");
+        return out;
     }
 
     @PostMapping({ "counsel/inpatient/release", "/counsel/inpatient/release" })

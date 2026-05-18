@@ -1957,12 +1957,38 @@ function inpatientForm() {
       if (rid <= 0) return;
       this._reservationLockId = rid;
       this._reservationLockReleased = false;
-      this._reservationHeartbeatTimer = setInterval(() => {
-        if (document.hidden) return;
-        fetch(ctx + '/counsel/inpatient/heartbeat?reservationId=' + rid, {
+      this._reservationLockEvicted = false;
+
+      const beat = () => {
+        if (document.hidden) return Promise.resolve();
+        return fetch(ctx + '/counsel/inpatient/heartbeat?reservationId=' + rid, {
           method: 'GET', credentials: 'same-origin',
-        }).catch(() => {});
-      }, 30000);
+        })
+        .then(r => r.json().catch(() => ({ ok: false })))
+        .then(body => {
+          if (body && body.ok === false && body.locked && !this._reservationLockEvicted) {
+            this._reservationLockEvicted = true;
+            if (this._reservationHeartbeatTimer) {
+              clearInterval(this._reservationHeartbeatTimer);
+              this._reservationHeartbeatTimer = null;
+            }
+            const params = new URLSearchParams();
+            if (body.ownerName) params.set('_lockedBy', body.ownerName);
+            if (body.patientName) params.set('_lockedPatient', body.patientName);
+            const target = ctx + '/counsel/list' + (params.toString() ? ('?' + params.toString()) : '');
+            if (window.Turbo && typeof window.Turbo.visit === 'function') {
+              window.Turbo.visit(target);
+            } else {
+              window.location.href = target;
+            }
+          }
+        })
+        .catch(() => {});
+      };
+
+      // Fire immediately to handle Turbo cache / bfcache restoring page without server-side acquire
+      beat();
+      this._reservationHeartbeatTimer = setInterval(beat, 30000);
 
       const releaseOnce = () => {
         if (this._reservationLockReleased) return;

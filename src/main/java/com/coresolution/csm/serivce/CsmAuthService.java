@@ -1934,22 +1934,6 @@ public class CsmAuthService {
         }
     }
 
-    /** Heartbeat: refresh opened_at only if caller still owns the lock. */
-    public boolean refreshReservationLock(String inst, long reservationId, String userId) {
-        if (reservationId <= 0 || userId == null || userId.isBlank()) return false;
-        String safe = sanitizeInst(inst);
-        try {
-            int updated = jdbcTemplate.update(
-                    "UPDATE csm.counsel_reservation_" + safe +
-                    " SET opened_at = NOW() WHERE id = ? AND opened_by = ?",
-                    reservationId, userId);
-            return updated > 0;
-        } catch (Exception e) {
-            log.warn("[reservation] refreshReservationLock fail inst={}, id={}, err={}", safe, reservationId, e.toString());
-            return false;
-        }
-    }
-
     /** Release the lock only if held by the given user. */
     public void releaseReservationLock(String inst, long reservationId, String userId) {
         if (reservationId <= 0 || userId == null || userId.isBlank()) return;

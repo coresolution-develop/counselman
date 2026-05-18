@@ -1237,8 +1237,21 @@ function listPage() {
 
     init() {
       this.loadQueueCollapsedState();
-      if (lockOwnerName) {
-        this.openLockModal(lockOwnerName, lockPatientName);
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryLockOwner = urlParams.get('_lockedBy') || '';
+      const queryLockPatient = urlParams.get('_lockedPatient') || '';
+      const finalOwner = lockOwnerName || queryLockOwner;
+      const finalPatient = lockPatientName || queryLockPatient;
+      if (finalOwner) {
+        this.openLockModal(finalOwner, finalPatient);
+        if (queryLockOwner || queryLockPatient) {
+          urlParams.delete('_lockedBy');
+          urlParams.delete('_lockedPatient');
+          const cleanUrl = window.location.pathname +
+            (urlParams.toString() ? '?' + urlParams.toString() : '') +
+            window.location.hash;
+          try { window.history.replaceState({}, '', cleanUrl); } catch (_) {}
+        }
       }
       this.$nextTick(() => {
         if (typeof window.applyFreezePositions === 'function') window.applyFreezePositions();
