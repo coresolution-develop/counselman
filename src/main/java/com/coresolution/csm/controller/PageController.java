@@ -8082,9 +8082,25 @@ public class PageController {
     public List<Map<String, Object>> getNoticesPopup(HttpSession session) {
         String inst = ensureInst(session);
         if (inst == null) return List.of();
-        List<Map<String, Object>> notices = cs.listInstNotices(inst);
+        if (isCoreInst(inst)) return List.of();
+
+        String userId = resolveNoticeUserId(session);
+        List<Map<String, Object>> notices = cs.listInstitutionNotices(inst, userId, 300);
         if (notices == null) return List.of();
-        return notices;
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map<String, Object> n : notices) {
+            if (n == null) continue;
+            String popupYn = String.valueOf(n.get("popup_yn"));
+            String readYn = String.valueOf(n.get("read_yn"));
+            if (!"Y".equalsIgnoreCase(popupYn)) continue;
+            if ("Y".equalsIgnoreCase(readYn)) continue;
+            Map<String, Object> view = new HashMap<>(n);
+            view.put("pinned", "Y".equalsIgnoreCase(String.valueOf(n.get("pinned_yn"))));
+            view.put("author", "본사");
+            result.add(view);
+        }
+        return result;
     }
 
     private static String designStatusType(String status) {
@@ -8546,22 +8562,27 @@ public class PageController {
     public String designNotices(Model model, HttpSession session) {
         String inst = ensureInst(session);
         if (inst == null) return "redirect:/login";
+        if (isCoreInst(inst)) {
+            return "redirect:/core/notice";
+        }
 
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        boolean canWrite = auth != null && auth.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_INST_ADMIN".equals(a.getAuthority())
-                            || "ROLE_PLATFORM_ADMIN".equals(a.getAuthority()));
-
-        List<Map<String, Object>> notices = cs.listInstNotices(inst);
+        String userId = resolveNoticeUserId(session);
+        List<Map<String, Object>> rawNotices = cs.listInstitutionNotices(inst, userId, 500);
+        List<Map<String, Object>> notices = new ArrayList<>(rawNotices.size());
+        for (Map<String, Object> n : rawNotices) {
+            if (n == null) continue;
+            Map<String, Object> view = new HashMap<>(n);
+            view.put("pinned", "Y".equalsIgnoreCase(String.valueOf(n.get("pinned_yn"))));
+            view.put("author", "본사");
+            notices.add(view);
+        }
         long pinnedCount = notices.stream()
-                .filter(n -> Integer.valueOf(1).equals(n.get("pinned")))
+                .filter(n -> Boolean.TRUE.equals(n.get("pinned")))
                 .count();
         long publishedCount = notices.stream()
                 .filter(n -> !"DRAFT".equals(n.get("status")))
                 .count();
-        long draftCount = notices.stream()
-                .filter(n -> "DRAFT".equals(n.get("status")))
-                .count();
+        long draftCount = 0L;
 
         Userdata info = ensureUserInfo(session, inst);
         model.addAttribute("info", info);
@@ -8570,7 +8591,7 @@ public class PageController {
         model.addAttribute("pinnedCount", pinnedCount);
         model.addAttribute("publishedCount", publishedCount);
         model.addAttribute("draftCount", draftCount);
-        model.addAttribute("canWrite", canWrite);
+        model.addAttribute("canWrite", false);
         return "design/notices";
     }
 
@@ -8612,7 +8633,7 @@ public class PageController {
         }
     }
 
-    @GetMapping({ "message", "/message", "message/sent", "/message/sent", "message/reservations", "/message/reservations" })
+    @GetMapping({ "message", "/message", "message/sent", "/message/sent", "message/reservations", "/message/reservations", "message/signature", "/message/signature" })
     @PreAuthorize("hasAuthority('SMS:SEND') or hasAuthority('SMS:HISTORY_READ') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public String designMessage(
             HttpServletRequest request,
@@ -8625,9 +8646,11 @@ public class PageController {
         if (inst == null) return "redirect:/login";
 
         String uri = request.getRequestURI();
-        String mode = uri != null && uri.contains("/message/sent")
-                ? "sent"
-                : (uri != null && uri.contains("/message/reservations") ? "reserved" : "template");
+        String mode;
+        if (uri != null && uri.contains("/message/sent")) mode = "sent";
+        else if (uri != null && uri.contains("/message/reservations")) mode = "reserved";
+        else if (uri != null && uri.contains("/message/signature")) mode = "signature";
+        else mode = "template";
 
         Criteria cri = new Criteria();
         cri.setInst(inst);
@@ -8640,6 +8663,9 @@ public class PageController {
             cri.setKeyword(keyword);
             totalCount = ss.SelectTemplateCnt(cri);
             model.addAttribute("smsTemplates", Optional.ofNullable(ss.SelectTemplate(cri)).orElseGet(Collections::emptyList));
+        } else if ("signature".equals(mode)) {
+            cri.setKeyword(keyword);
+            model.addAttribute("cards", Optional.ofNullable(cs.SelectCardSearch(cri)).orElseGet(Collections::emptyList));
         } else {
             cri.setType(mode);
             totalCount = ss.smsCnt(cri);

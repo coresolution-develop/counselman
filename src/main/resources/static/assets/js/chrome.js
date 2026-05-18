@@ -21,7 +21,7 @@
       { id: 'discharge',     label: '퇴원예고',     icon: 'calendar',   href: '/room-board/discharge-notice',   permKey: 'room_board' },
       { id: 'list',          label: '상담리스트',   icon: 'list',       href: '/counsel/list',                  permKey: 'counsel_list' },
       { id: 'documents',     label: '서류관리',     icon: 'clipboard',  href: '/documents',                     permKey: 'counsel_log' },
-      { id: 'notice',        label: '공지사항',     icon: 'megaphone',  href: '/notices',                       permKey: 'notice' },
+      { id: 'notice',        label: '공지사항',     icon: 'megaphone',  href: '/notices',                       permKey: 'notice', active: ['/notice', '/notices'] },
       { id: 'stats',         label: '상담통계',     icon: 'chart',      href: '/statistics',                    permKey: 'stats' },
     ]},
     { key: 's:커뮤니케이션', section: '커뮤니케이션', items: [

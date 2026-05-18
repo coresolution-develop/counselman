@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="_csrf" th:content="${_csrf.token}" />
+  <meta name="_csrf_header" th:content="${_csrf.headerName}" />
   <title>MediPlat · 문자관리</title>
   <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
   <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
@@ -17,6 +19,30 @@
     .message-status--success { background: #ecfdf5; color: #047857; }
     .message-status--progress { background: #eff6ff; color: #1d4ed8; }
     .message-status--fail { background: #fef2f2; color: #b91c1c; }
+
+    .msg-row.sms-template-row { position: relative; }
+    .sms-template-actions { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); display: none; gap: 6px; }
+    .msg-row.sms-template-row:hover .sms-template-actions { display: flex; }
+
+    .sms-tmpl-overlay { position: fixed; inset: 0; background: rgba(15,28,22,.48); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .sms-tmpl-overlay[hidden] { display: none; }
+    .sms-tmpl-dialog { width: 100%; max-width: 520px; background: #fff; border-radius: 12px; box-shadow: 0 24px 48px rgba(2,24,14,.28); display: flex; flex-direction: column; overflow: hidden; }
+    .sms-tmpl-dialog__head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #e8efeb; background: #f8faf9; }
+    .sms-tmpl-dialog__title { font-size: 15px; font-weight: 700; color: #143d2c; }
+    .sms-tmpl-dialog__body { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+    .sms-tmpl-label { display: block; font-size: 13px; font-weight: 600; color: #2f4a3d; margin-bottom: 6px; }
+    .sms-tmpl-input { width: 100%; height: 40px; padding: 0 12px; border: 1px solid #d6e0db; border-radius: 8px; font-size: 14px; }
+    .sms-tmpl-input:focus { outline: none; border-color: #06603A; box-shadow: 0 0 0 3px rgba(6,96,58,.16); }
+    .sms-tmpl-textarea { width: 100%; min-height: 180px; padding: 10px 12px; border: 1px solid #d6e0db; border-radius: 8px; font-size: 14px; resize: vertical; font-family: inherit; }
+    .sms-tmpl-textarea:focus { outline: none; border-color: #06603A; box-shadow: 0 0 0 3px rgba(6,96,58,.16); }
+    .sms-tmpl-counter { font-size: 12px; color: var(--text-tertiary,#6b7280); text-align: right; margin-top: 4px; }
+    .sms-tmpl-dialog__foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid #e8efeb; background: #fafcfb; }
+
+    .sms-tmpl-confirm { max-width: 400px; }
+    .sms-tmpl-confirm__msg { font-size: 14px; color: #1f2937; line-height: 1.6; margin: 0; }
+    .sms-tmpl-confirm__sub { font-size: 12px; color: var(--text-tertiary,#6b7280); }
+    .sms-tmpl-dialog__foot .btn--danger { background: #dc2626; color: #fff; border: 1px solid #dc2626; }
+    .sms-tmpl-dialog__foot .btn--danger:hover { background: #b91c1c; border-color: #b91c1c; }
   </style>
 </head>
 <body>
@@ -36,12 +62,19 @@
 
       <div class="page__header">
         <div>
-          <h1 class="page__title" th:text="${messageMode == 'sent' ? '발송내역' : (messageMode == 'reserved' ? '예약내역' : '상용구 관리')}">문자관리</h1>
+          <h1 class="page__title"
+              th:text="${messageMode == 'sent' ? '발송내역' : (messageMode == 'reserved' ? '예약내역' : (messageMode == 'signature' ? '서명관리' : '상용구 관리'))}">문자관리</h1>
           <p class="page__subtitle"
-             th:text="${messageMode == 'sent' ? '즉시 발송된 문자 내역을 확인합니다' : (messageMode == 'reserved' ? '예약 발송으로 접수된 문자 내역을 확인합니다' : '자주 사용하는 문자 템플릿을 등록하고 관리합니다')}">
+             th:text="${messageMode == 'sent' ? '즉시 발송된 문자 내역을 확인합니다' : (messageMode == 'reserved' ? '예약 발송으로 접수된 문자 내역을 확인합니다' : (messageMode == 'signature' ? '문자 발송 시 사용할 서명을 등록하고 관리합니다' : '자주 사용하는 문자 템플릿을 등록하고 관리합니다'))}">
             문자 내역을 확인합니다
           </p>
         </div>
+        <button th:if="${messageMode == 'template'}" type="button" class="btn btn--primary" id="sms-template-add-btn">
+          <svg><use href="#i-plus"/></svg>상용구 추가
+        </button>
+        <button th:if="${messageMode == 'signature'}" type="button" class="btn btn--primary" id="sms-card-add-btn">
+          <svg><use href="#i-plus"/></svg>서명 추가
+        </button>
       </div>
 
       <div class="tabs">
@@ -56,6 +89,10 @@
         <a class="tab" th:classappend="${messageMode == 'template'} ? ' is-active' : ''" th:href="@{/message}">
           <svg><use href="#i-chat"/></svg>
           상용구 관리
+        </a>
+        <a class="tab" th:classappend="${messageMode == 'signature'} ? ' is-active' : ''" th:href="@{/message/signature}">
+          <svg><use href="#i-edit"/></svg>
+          서명관리
         </a>
         <a class="tab" th:href="@{/message/rate}">
           <svg><use href="#i-chart"/></svg>
@@ -87,7 +124,7 @@
           <input type="text"
                  name="keyword"
                  th:value="${keyword}"
-                 th:placeholder="${messageMode == 'template' ? '상용구명 · 내용 검색' : '발신번호 · 수신번호 · 내용 검색'}" />
+                 th:placeholder="${messageMode == 'template' ? '상용구명 · 내용 검색' : (messageMode == 'signature' ? '서명이름 · 내용 검색' : '발신번호 · 수신번호 · 내용 검색')}" />
         </div>
         <button type="submit" class="btn btn--outline"><svg><use href="#i-search"/></svg>검색</button>
         <div class="toolbar__spacer"></div>
@@ -101,7 +138,9 @@
           <div>상용구 내용</div>
         </div>
 
-        <div class="msg-row" th:each="t : ${smsTemplates}" th:attr="data-id=${t.id}">
+        <div class="msg-row sms-template-row"
+             th:each="t : ${smsTemplates}"
+             th:attr="data-id=${t.id},data-title=${t.title},data-template=${t.template}">
           <div class="msg-row__date">
             <span class="dot"></span>
             <div>
@@ -117,11 +156,48 @@
             </div>
           </div>
           <div class="msg-row__body" th:text="${t.template}">상용구 내용</div>
+          <div class="sms-template-actions">
+            <button type="button" class="btn-xs sms-template-edit" aria-label="수정"><svg><use href="#i-edit"/></svg>수정</button>
+            <button type="button" class="btn-xs sms-template-delete" aria-label="삭제" style="color:var(--danger-600)"><svg><use href="#i-trash"/></svg>삭제</button>
+          </div>
         </div>
         <div class="message-empty" th:if="${#lists.isEmpty(smsTemplates)}">등록된 상용구가 없습니다.</div>
       </div>
 
-      <div th:if="${messageMode != 'template'}" class="table-wrap">
+      <div th:if="${messageMode == 'signature'}" class="msg-card">
+        <div class="msg-card__header">
+          <div>생성일자</div>
+          <div>서명이름</div>
+          <div>서명내용</div>
+        </div>
+
+        <div class="msg-row sms-card-row"
+             th:each="c : ${cards}"
+             th:attr="data-id=${c.id},data-title=${c.title},data-content=${c.content}">
+          <div class="msg-row__date">
+            <span class="dot"></span>
+            <div>
+              <span th:text="${c.created_at != null ? #dates.format(c.created_at, 'yyyy-MM-dd') : '-'}">2026-04-03</span><br/>
+              <span style="color: var(--text-tertiary); font-size:11px;"
+                    th:text="${c.created_at != null ? #dates.format(c.created_at, 'HH:mm:ss') : ''}">17:11:34</span>
+            </div>
+          </div>
+          <div>
+            <div class="msg-row__name">
+              <span th:text="${c.title}">서명이름</span>
+              <span class="subtitle">서명</span>
+            </div>
+          </div>
+          <div class="msg-row__body" th:text="${c.content}">서명내용</div>
+          <div class="sms-template-actions">
+            <button type="button" class="btn-xs sms-card-edit" aria-label="수정"><svg><use href="#i-edit"/></svg>수정</button>
+            <button type="button" class="btn-xs sms-card-delete" aria-label="삭제" style="color:var(--danger-600)"><svg><use href="#i-trash"/></svg>삭제</button>
+          </div>
+        </div>
+        <div class="message-empty" th:if="${#lists.isEmpty(cards)}">등록된 서명이 없습니다.</div>
+      </div>
+
+      <div th:if="${messageMode == 'sent' or messageMode == 'reserved'}" class="table-wrap">
         <table class="table message-table">
           <thead>
           <tr>
@@ -156,12 +232,88 @@
              th:text="${messageMode == 'reserved' ? '예약 발송 내역이 없습니다.' : '발송 내역이 없습니다.'}">내역이 없습니다.</div>
       </div>
 
-      <div class="footer-bar" th:if="${messageMode == 'template'}">
-        <a class="btn btn--outline" th:href="@{/smsSetting(page=1,perPageNum=10)}"><svg><use href="#i-edit"/></svg>상용구 관리</a>
-      </div>
-
     </div>
   </main>
+</div>
+
+<div th:if="${messageMode == 'template'}" class="sms-tmpl-overlay" id="sms-template-modal" hidden>
+  <div class="sms-tmpl-dialog" role="dialog" aria-modal="true" aria-labelledby="sms-template-modal-title">
+    <div class="sms-tmpl-dialog__head">
+      <span class="sms-tmpl-dialog__title" id="sms-template-modal-title">상용구 추가</span>
+      <button type="button" class="btn-xs" data-sms-tmpl-close aria-label="닫기"><svg><use href="#i-x"/></svg></button>
+    </div>
+    <div class="sms-tmpl-dialog__body">
+      <div>
+        <label class="sms-tmpl-label" for="sms-tmpl-title">상용구명</label>
+        <input class="input sms-tmpl-input" type="text" id="sms-tmpl-title" maxlength="100" placeholder="상용구 이름을 입력하세요" />
+      </div>
+      <div>
+        <label class="sms-tmpl-label" for="sms-tmpl-body">상용구 내용</label>
+        <textarea class="sms-tmpl-textarea" id="sms-tmpl-body" maxlength="2000" placeholder="상용구 내용을 입력하세요"></textarea>
+        <div class="sms-tmpl-counter"><span id="sms-tmpl-body-len">0</span>/2000자</div>
+      </div>
+    </div>
+    <div class="sms-tmpl-dialog__foot">
+      <button type="button" class="btn btn--ghost" data-sms-tmpl-close>취소</button>
+      <button type="button" class="btn btn--primary" id="sms-tmpl-save-btn">저장</button>
+    </div>
+  </div>
+</div>
+
+<div th:if="${messageMode == 'template'}" class="sms-tmpl-overlay" id="sms-template-confirm-modal" hidden>
+  <div class="sms-tmpl-dialog sms-tmpl-confirm" role="alertdialog" aria-modal="true" aria-labelledby="sms-template-confirm-title">
+    <div class="sms-tmpl-dialog__head">
+      <span class="sms-tmpl-dialog__title" id="sms-template-confirm-title">상용구 삭제</span>
+      <button type="button" class="btn-xs" data-sms-confirm-close aria-label="닫기"><svg><use href="#i-x"/></svg></button>
+    </div>
+    <div class="sms-tmpl-dialog__body">
+      <p class="sms-tmpl-confirm__msg">선택한 상용구를 삭제하시겠습니까?<br/><span class="sms-tmpl-confirm__sub">삭제 후에는 복구할 수 없습니다.</span></p>
+    </div>
+    <div class="sms-tmpl-dialog__foot">
+      <button type="button" class="btn btn--ghost" data-sms-confirm-close>취소</button>
+      <button type="button" class="btn btn--danger" id="sms-tmpl-confirm-ok">삭제</button>
+    </div>
+  </div>
+</div>
+
+<div th:if="${messageMode == 'signature'}" class="sms-tmpl-overlay" id="sms-card-modal" hidden>
+  <div class="sms-tmpl-dialog" role="dialog" aria-modal="true" aria-labelledby="sms-card-modal-title">
+    <div class="sms-tmpl-dialog__head">
+      <span class="sms-tmpl-dialog__title" id="sms-card-modal-title">서명 추가</span>
+      <button type="button" class="btn-xs" data-sms-card-close aria-label="닫기"><svg><use href="#i-x"/></svg></button>
+    </div>
+    <div class="sms-tmpl-dialog__body">
+      <div>
+        <label class="sms-tmpl-label" for="sms-card-title">서명이름</label>
+        <input class="input sms-tmpl-input" type="text" id="sms-card-title" maxlength="100" placeholder="서명 이름을 입력하세요" />
+      </div>
+      <div>
+        <label class="sms-tmpl-label" for="sms-card-body">서명내용</label>
+        <textarea class="sms-tmpl-textarea" id="sms-card-body" maxlength="2000" placeholder="서명 내용을 입력하세요"></textarea>
+        <div class="sms-tmpl-counter"><span id="sms-card-body-len">0</span>/2000자</div>
+      </div>
+    </div>
+    <div class="sms-tmpl-dialog__foot">
+      <button type="button" class="btn btn--ghost" data-sms-card-close>취소</button>
+      <button type="button" class="btn btn--primary" id="sms-card-save-btn">저장</button>
+    </div>
+  </div>
+</div>
+
+<div th:if="${messageMode == 'signature'}" class="sms-tmpl-overlay" id="sms-card-confirm-modal" hidden>
+  <div class="sms-tmpl-dialog sms-tmpl-confirm" role="alertdialog" aria-modal="true" aria-labelledby="sms-card-confirm-title">
+    <div class="sms-tmpl-dialog__head">
+      <span class="sms-tmpl-dialog__title" id="sms-card-confirm-title">서명 삭제</span>
+      <button type="button" class="btn-xs" data-sms-card-confirm-close aria-label="닫기"><svg><use href="#i-x"/></svg></button>
+    </div>
+    <div class="sms-tmpl-dialog__body">
+      <p class="sms-tmpl-confirm__msg">선택한 서명을 삭제하시겠습니까?<br/><span class="sms-tmpl-confirm__sub">삭제 후에는 복구할 수 없습니다.</span></p>
+    </div>
+    <div class="sms-tmpl-dialog__foot">
+      <button type="button" class="btn btn--ghost" data-sms-card-confirm-close>취소</button>
+      <button type="button" class="btn btn--danger" id="sms-card-confirm-ok">삭제</button>
+    </div>
+  </div>
 </div>
 
 <script th:src="@{/assets/js/app.js}"></script>
@@ -169,6 +321,293 @@
 <script th:src="@{/assets/js/chrome.js}" data-page="message" th:attr="data-ctx=@{/}"></script>
 <script>
   document.addEventListener('turbo:load', () => { MPChrome.mount({ parent: '커뮤니케이션', current: '문자관리' }); }, { once: true });
+</script>
+<script th:if="${messageMode == 'template'}" th:inline="javascript">
+/*<![CDATA[*/
+(function () {
+  const ctx = (/*[[@{/}]]*/ '/').replace(/\/$/, '');
+
+  function init() {
+    const modal = document.getElementById('sms-template-modal');
+    const addBtn = document.getElementById('sms-template-add-btn');
+    if (!modal || !addBtn) return;
+    if (modal.dataset.bound === '1') return;
+    modal.dataset.bound = '1';
+
+    const titleEl = document.getElementById('sms-template-modal-title');
+    const titleInput = document.getElementById('sms-tmpl-title');
+    const bodyInput = document.getElementById('sms-tmpl-body');
+    const bodyLenEl = document.getElementById('sms-tmpl-body-len');
+    const saveBtn = document.getElementById('sms-tmpl-save-btn');
+
+    const confirmModal = document.getElementById('sms-template-confirm-modal');
+    const confirmOkBtn = document.getElementById('sms-tmpl-confirm-ok');
+    let pendingDeleteId = null;
+
+    let mode = 'insert';
+    let editingId = null;
+
+    function csrf() {
+      const t = document.querySelector('meta[name="_csrf"]')?.content || '';
+      const h = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+      return { token: t, header: h };
+    }
+
+    function updateLen() { bodyLenEl.textContent = String(bodyInput.value.length); }
+
+    function openModal(currentMode, row) {
+      mode = currentMode;
+      editingId = null;
+      titleInput.value = '';
+      bodyInput.value = '';
+      if (currentMode === 'edit' && row) {
+        editingId = Number(row.getAttribute('data-id') || 0);
+        titleInput.value = row.getAttribute('data-title') || '';
+        bodyInput.value = row.getAttribute('data-template') || '';
+        titleEl.textContent = '상용구 수정';
+      } else {
+        titleEl.textContent = '상용구 추가';
+      }
+      updateLen();
+      modal.hidden = false;
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => titleInput.focus(), 0);
+    }
+    function closeModal() {
+      modal.hidden = true;
+      document.body.style.overflow = '';
+    }
+    function openConfirm(id) {
+      pendingDeleteId = id;
+      confirmModal.hidden = false;
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => confirmOkBtn.focus(), 0);
+    }
+    function closeConfirm() {
+      pendingDeleteId = null;
+      confirmModal.hidden = true;
+      document.body.style.overflow = '';
+    }
+
+    addBtn.addEventListener('click', () => openModal('insert', null));
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+    modal.querySelectorAll('[data-sms-tmpl-close]').forEach(el => el.addEventListener('click', closeModal));
+    confirmModal.addEventListener('click', (e) => { if (e.target === confirmModal) closeConfirm(); });
+    confirmModal.querySelectorAll('[data-sms-confirm-close]').forEach(el => el.addEventListener('click', closeConfirm));
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (!confirmModal.hidden) { closeConfirm(); return; }
+      if (!modal.hidden) closeModal();
+    });
+    bodyInput.addEventListener('input', updateLen);
+
+    document.querySelectorAll('.sms-template-row').forEach(row => {
+      row.querySelector('.sms-template-edit')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openModal('edit', row);
+      });
+      row.querySelector('.sms-template-delete')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = Number(row.getAttribute('data-id') || 0);
+        if (!id) return;
+        openConfirm(id);
+      });
+    });
+
+    confirmOkBtn.addEventListener('click', async () => {
+      const id = pendingDeleteId;
+      if (!id) { closeConfirm(); return; }
+      const { token, header } = csrf();
+      const form = new URLSearchParams({ id: String(id) });
+      const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+      if (token) headers[header] = token;
+      confirmOkBtn.disabled = true;
+      try {
+        const res = await fetch(ctx + '/smsDelete', { method: 'POST', headers, body: form });
+        const data = await res.json();
+        if (String(data?.result) === '1') { closeConfirm(); location.reload(); }
+        else { alert(data?.message || '상용구 삭제에 실패했습니다.'); }
+      } catch (err) {
+        alert('삭제 중 오류: ' + err.message);
+      } finally {
+        confirmOkBtn.disabled = false;
+      }
+    });
+
+    saveBtn.addEventListener('click', async () => {
+      const title = titleInput.value.trim();
+      const text = bodyInput.value.trim();
+      if (!title) { alert('상용구명을 입력하세요.'); titleInput.focus(); return; }
+      if (!text)  { alert('상용구 내용을 입력하세요.'); bodyInput.focus(); return; }
+      const { token, header } = csrf();
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers[header] = token;
+
+      const url = mode === 'edit' ? '/smsUpdate' : '/smsInsert';
+      const payload = mode === 'edit' ? { id: editingId, title, template: text } : { title, template: text };
+      saveBtn.disabled = true;
+      try {
+        const res = await fetch(ctx + url, { method: 'POST', headers, body: JSON.stringify(payload) });
+        const data = await res.json();
+        if (String(data?.result) === '1') { closeModal(); location.reload(); }
+        else { alert(data?.message || '저장에 실패했습니다.'); }
+      } catch (err) { alert('저장 중 오류: ' + err.message); }
+      finally { saveBtn.disabled = false; }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
+  }
+  document.addEventListener('turbo:load', init);
+})();
+/*]]>*/
+</script>
+<script th:if="${messageMode == 'signature'}" th:inline="javascript">
+/*<![CDATA[*/
+(function () {
+  const ctx = (/*[[@{/}]]*/ '/').replace(/\/$/, '');
+
+  function init() {
+    const modal = document.getElementById('sms-card-modal');
+    const addBtn = document.getElementById('sms-card-add-btn');
+    if (!modal || !addBtn) return;
+    if (modal.dataset.bound === '1') return;
+    modal.dataset.bound = '1';
+
+    const titleEl = document.getElementById('sms-card-modal-title');
+    const titleInput = document.getElementById('sms-card-title');
+    const bodyInput = document.getElementById('sms-card-body');
+    const bodyLenEl = document.getElementById('sms-card-body-len');
+    const saveBtn = document.getElementById('sms-card-save-btn');
+
+    const confirmModal = document.getElementById('sms-card-confirm-modal');
+    const confirmOkBtn = document.getElementById('sms-card-confirm-ok');
+    let pendingDeleteId = null;
+
+    let mode = 'insert';
+    let editingId = null;
+
+    function csrf() {
+      const t = document.querySelector('meta[name="_csrf"]')?.content || '';
+      const h = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+      return { token: t, header: h };
+    }
+
+    function updateLen() { bodyLenEl.textContent = String(bodyInput.value.length); }
+
+    function openModal(currentMode, row) {
+      mode = currentMode;
+      editingId = null;
+      titleInput.value = '';
+      bodyInput.value = '';
+      if (currentMode === 'edit' && row) {
+        editingId = Number(row.getAttribute('data-id') || 0);
+        titleInput.value = row.getAttribute('data-title') || '';
+        bodyInput.value = row.getAttribute('data-content') || '';
+        titleEl.textContent = '서명 수정';
+      } else {
+        titleEl.textContent = '서명 추가';
+      }
+      updateLen();
+      modal.hidden = false;
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => titleInput.focus(), 0);
+    }
+    function closeModal() {
+      modal.hidden = true;
+      document.body.style.overflow = '';
+    }
+    function openConfirm(id) {
+      pendingDeleteId = id;
+      confirmModal.hidden = false;
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => confirmOkBtn.focus(), 0);
+    }
+    function closeConfirm() {
+      pendingDeleteId = null;
+      confirmModal.hidden = true;
+      document.body.style.overflow = '';
+    }
+
+    addBtn.addEventListener('click', () => openModal('insert', null));
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+    modal.querySelectorAll('[data-sms-card-close]').forEach(el => el.addEventListener('click', closeModal));
+    confirmModal.addEventListener('click', (e) => { if (e.target === confirmModal) closeConfirm(); });
+    confirmModal.querySelectorAll('[data-sms-card-confirm-close]').forEach(el => el.addEventListener('click', closeConfirm));
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (!confirmModal.hidden) { closeConfirm(); return; }
+      if (!modal.hidden) closeModal();
+    });
+    bodyInput.addEventListener('input', updateLen);
+
+    document.querySelectorAll('.sms-card-row').forEach(row => {
+      row.querySelector('.sms-card-edit')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openModal('edit', row);
+      });
+      row.querySelector('.sms-card-delete')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = Number(row.getAttribute('data-id') || 0);
+        if (!id) return;
+        openConfirm(id);
+      });
+    });
+
+    confirmOkBtn.addEventListener('click', async () => {
+      const id = pendingDeleteId;
+      if (!id) { closeConfirm(); return; }
+      const { token, header } = csrf();
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers[header] = token;
+      confirmOkBtn.disabled = true;
+      try {
+        const res = await fetch(ctx + '/DeleteCard', { method: 'POST', headers, body: JSON.stringify({ id }) });
+        const data = await res.json();
+        if (String(data?.result) === '1') { closeConfirm(); location.reload(); }
+        else { alert(data?.message || '서명 삭제에 실패했습니다.'); }
+      } catch (err) {
+        alert('삭제 중 오류: ' + err.message);
+      } finally {
+        confirmOkBtn.disabled = false;
+      }
+    });
+
+    saveBtn.addEventListener('click', async () => {
+      const title = titleInput.value.trim();
+      const text = bodyInput.value.trim();
+      if (!title) { alert('서명이름을 입력하세요.'); titleInput.focus(); return; }
+      if (!text)  { alert('서명내용을 입력하세요.'); bodyInput.focus(); return; }
+      const { token, header } = csrf();
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers[header] = token;
+
+      const url = mode === 'edit' ? '/UpdateCard' : '/InsertCard';
+      const payload = mode === 'edit' ? { id: editingId, title, content: text } : { title, content: text };
+      saveBtn.disabled = true;
+      try {
+        const res = await fetch(ctx + url, { method: 'POST', headers, body: JSON.stringify(payload) });
+        const data = await res.json();
+        if (String(data?.result) === '1') { closeModal(); location.reload(); }
+        else { alert(data?.message || '저장에 실패했습니다.'); }
+      } catch (err) { alert('저장 중 오류: ' + err.message); }
+      finally { saveBtn.disabled = false; }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
+  }
+  document.addEventListener('turbo:load', init);
+})();
+/*]]>*/
 </script>
 <script data-turbo-eval="false" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js"></script>
 <script data-turbo-eval="false" defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
