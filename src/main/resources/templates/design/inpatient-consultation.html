@@ -584,16 +584,38 @@
       .app[data-screen-label="Inpatient Consultation"] .ic-grid > aside.ic-card {
         flex: 1 1 auto;
         min-height: 0;
-        overflow-y: auto;
-        overflow-x: hidden;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
         position: static !important;
       }
       .app[data-screen-label="Inpatient Consultation"] .ic-grid > section > .ic-card > .ic-card__head,
       .app[data-screen-label="Inpatient Consultation"] .ic-grid > aside.ic-card > .ic-card__head {
+        flex: 0 0 auto;
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-card > .ic-card__body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+
+      /* Optional sticky pinning of patient top strip + 현상태 row */
+      .app[data-screen-label="Inpatient Consultation"] .ic-card.is-sticky-top .ic-top {
         position: sticky;
         top: 0;
-        z-index: 5;
-        background: linear-gradient(180deg, var(--gray-50), #fff);
+        z-index: 4;
+        background: #fff;
+        box-shadow: 0 1px 0 var(--border-subtle);
+      }
+      .app[data-screen-label="Inpatient Consultation"] .ic-card.is-sticky-top .ic-row--condition {
+        position: sticky;
+        bottom: 0;
+        z-index: 3;
+        background: #fff;
+        box-shadow: 0 -1px 0 var(--border-subtle);
+        padding-top: 12px;
+        padding-bottom: 12px;
       }
     }
 
@@ -946,6 +968,11 @@
                   @click="stayOnPage=!stayOnPage; localStorage.setItem('ic_stay_on_page', stayOnPage)"></span>
             <span style="font-size:12px;color:var(--text-secondary);" x-text="stayOnPage ? '저장 후 이 페이지 유지' : '저장 후 목록으로'"></span>
           </label>
+          <label class="ic-toggle">
+            <span class="ic-switch" :class="{ 'is-on': stickyTopArea }"
+                  @click="stickyTopArea=!stickyTopArea; localStorage.setItem('ic_sticky_top', stickyTopArea)"></span>
+            <span style="font-size:12px;color:var(--text-secondary);">상단/현상태 고정</span>
+          </label>
           <button type="button" class="btn btn--outline" @click="printJournal()"><svg><use href="#i-download"/></svg>일지 출력</button>
           <button type="button" class="btn btn--outline" @click="printAdmission()"><svg><use href="#i-download"/></svg>입원서식 출력</button>
           <button type="button" class="btn btn--primary" @click="save()" :disabled="loading"><svg><use href="#i-check"/></svg><span x-text="loading ? '저장 중...' : '환자정보 저장'"></span></button>
@@ -957,12 +984,13 @@
 
         <!-- ============ LEFT: Patient details ============ -->
         <section>
-          <div class="ic-card">
+          <div class="ic-card" :class="{ 'is-sticky-top': stickyTopArea }">
             <div class="ic-card__head">
               <span class="ic-tag">1</span>
               <h2>환자 상세정보</h2>
               <span class="eyebrow" x-text="'ID ' + patient.id"></span>
             </div>
+            <div class="ic-card__body">
 
             <!-- Top patient strip -->
             <div class="ic-top">
@@ -1219,7 +1247,7 @@
               </div>
 
               <!-- 현상태 (textarea) -->
-              <div class="ic-row">
+              <div class="ic-row ic-row--condition">
                 <div class="ic-row__label">현상태</div>
                 <div class="ic-row__body">
                   <textarea class="ic-textarea" placeholder="환자의 현재 상태, 주요 증상, 생활자립 정도 등을 기록하세요" x-model="patient.condition"></textarea>
@@ -1227,6 +1255,7 @@
               </div>
 
             </div>
+            </div><!-- /.ic-card__body -->
           </div>
         </section>
 
@@ -1237,6 +1266,7 @@
             <h2>상담 기록</h2>
             <span class="eyebrow">2026-04-24 · 이수민</span>
           </div>
+          <div class="ic-card__body">
 
           <!-- Guardians (multi) -->
           <div class="ic-side__section" style="padding-top: 14px;">
@@ -1468,6 +1498,7 @@
               <div x-show="history.length === 0" class="ic-history__empty">저장된 상담 이력이 없습니다</div>
             </div>
           </div>
+          </div><!-- /.ic-card__body -->
         </aside>
 
       </div>
@@ -1932,6 +1963,7 @@ function inpatientForm() {
     removeGuardian(i) { this.guardians.splice(i, 1); },
 
     stayOnPage: localStorage.getItem('ic_stay_on_page') !== 'false',
+    stickyTopArea: localStorage.getItem('ic_sticky_top') === 'true',
     agreementStatus: _pledgeExists ? 'done' : (localStorage.getItem('mp_agreement_status_' + (_pd.csIdx || 0)) || 'pending'),
     agreementLabel() {
       return { pending: '미작성', progress: '작성중', done: '작성완료' }[this.agreementStatus] || '미작성';
