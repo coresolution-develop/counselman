@@ -1,152 +1,77 @@
-$(document).ready(function() {
-    var errorMessage = $("#errorMessage").text();
-    if (errorMessage) {
-        showErrorModal(errorMessage);
-    }
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('resetPwdForm');
+    if (!form) return;
 
-    $("form").on("submit", function(event) {
-        event.preventDefault(); // 기본 폼 제출 방지
+    const pw1 = document.getElementById('user_password1');
+    const pw2 = document.getElementById('user_password2');
+    const resultDiv = document.getElementById('result');
+    const submitBtn = document.getElementById('submitBtn');
 
-        var password1 = $("#user_password1").val();
-        var password2 = $("#user_password2").val();
-
-        if (password1 !== password2) {
-            showSuccessModal2("비밀번호가 일치하지 않습니다.");
-        } else {
-            const modal3 = document.querySelector('.modal3');
-            const body = document.querySelector('body');
-            const menuMsg3 = document.querySelector('.menu_msg3');
-            const confirmBtn = document.getElementById('confirmBtn');
-
-            menuMsg3.innerText = "비밀번호를 변경 하시겠습니까?";
-            modal3.classList.add('show');
-            body.style.overflow = 'hidden';
-
-            confirmBtn.onclick = function() {
-                var formData = {
-                    us_col_01: $("input[name='us_col_01']").val(),
-                    us_col_03: $("#user_password1").val(),
-                    inst: $("input[name='inst']").val(),
-                    token: $("input[name='token']").val()
-                };
-				console.log(formData);
-                $.ajax({
-                    type: "POST",
-                    beforeSend: function(xhr) {
-                        const csrfToken = document.querySelector("meta[name=\"_csrf\"]")?.getAttribute("content") || "";
-                        const csrfHeader = document.querySelector("meta[name=\"_csrf_header\"]")?.getAttribute("content") || "X-CSRF-TOKEN";
-                        if (csrfToken) xhr.setRequestHeader(csrfHeader, csrfToken);
-                    },
-                    url: $("form").attr("action"),
-                    data: JSON.stringify(formData),
-                    contentType: "application/json; charset=utf-8",
-                    success: function(response) {
-                        modal3.classList.remove('show');
-                        showSuccessModal("비밀번호 변경에 성공했습니다.");
-                    },
-                    error: function(xhr, status, error) {
-                        modal3.classList.remove('show');
-                        showSuccessModal("비밀번호 변경에 실패했습니다.");
-                    }
-                });
-            };
+    function setAlert(msg, ok) {
+        if (!msg) {
+            resultDiv.style.display = 'none';
+            resultDiv.textContent = '';
+            return;
         }
-    });
-});
-
-function showErrorModal(message) {
-    var messageDiv = document.getElementById('errorMessage');
-    if (messageDiv) {
-        messageDiv.textContent = message;
-    } else {
-        console.warn("errorMessage element not found.");
+        resultDiv.className = 'alert ' + (ok ? 'alert--ok' : 'alert--err');
+        resultDiv.textContent = msg;
+        resultDiv.style.display = 'block';
     }
-    var modal = document.getElementById('errorModal');
-    if (modal) {
-        modal.classList.add('show');
-    }
-    document.body.style.overflow = 'hidden';
 
-    const confirmBtn = document.getElementById('confirmBtn2');
-    if (confirmBtn) {
-        confirmBtn.onclick = function() {
-            window.location.href = '/csm/login';
+    function csrfHeader(xhr) {
+        const token  = document.querySelector('meta[name="_csrf"]')?.content || '';
+        const header = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+        if (token) xhr.setRequestHeader(header, token);
+    }
+
+    function showSpinner(on) {
+        document.getElementById('spinner-overlay')?.classList.toggle('show', !!on);
+    }
+
+    function submit() {
+        setAlert('', false);
+        const p1 = pw1.value;
+        const p2 = pw2.value;
+        if (!p1 || !p2) {
+            setAlert('새 비밀번호와 확인을 모두 입력해 주세요.', false);
+            return;
+        }
+        if (p1 !== p2) {
+            setAlert('비밀번호가 일치하지 않습니다.', false);
+            pw2.focus();
+            return;
+        }
+
+        const payload = {
+            us_col_01: form.querySelector('input[name="us_col_01"]').value,
+            us_col_03: p1,
+            inst:      form.querySelector('input[name="inst"]').value,
+            token:     form.querySelector('input[name="token"]').value
         };
+
+        submitBtn.disabled = true;
+        showSpinner(true);
+        $.ajax({
+            type: 'POST',
+            url: form.getAttribute('action'),
+            beforeSend: csrfHeader,
+            data: JSON.stringify(payload),
+            contentType: 'application/json; charset=utf-8',
+            success: function () {
+                showSpinner(false);
+                setAlert('비밀번호가 변경되었습니다. 잠시 후 로그인 화면으로 이동합니다.', true);
+                setTimeout(() => { window.location.href = '/csm/login'; }, 1500);
+            },
+            error: function (xhr) {
+                showSpinner(false);
+                submitBtn.disabled = false;
+                const msg = xhr?.responseText || '비밀번호 변경에 실패했습니다.';
+                setAlert(msg, false);
+            }
+        });
     }
-}
-function closeErrorModal() {
-    $("#errorModal").removeClass('show');
-    $("body").css("overflow", "auto");
-}
 
-function showSuccessModal(message) {
-    const modal = document.querySelector('.modal');
-    const body = document.querySelector('body');
-    const menuMsg = document.querySelector('.menu_msg');
-    menuMsg.innerText = message;
-    modal.classList.add('show');
-    body.style.overflow = 'hidden';
+    form.addEventListener('submit', function (e) { e.preventDefault(); submit(); });
 
-    const confirmBtn = document.getElementById('confirmBtn2');
-    confirmBtn.onclick = function() {
-        window.location.href = '/csm/login';
-    };
-}
-
-function showSuccessModal2(message) {
-    const modal = document.querySelector('.modal2');
-    const body = document.querySelector('body');
-    const menuMsg = document.querySelector('.menu_msg2');
-    menuMsg.innerText = message;
-    modal.classList.add('show');
-    body.style.overflow = 'hidden';
-}
-
-function redirectToLogin() {
-    window.location.href = '/csm/login';
-}
-function closePopup(){
-	var modal = document.querySelector('.modal');
-	var body = document.querySelector('body');
-	modal.classList.toggle('show');
-	if (!modal.classList.contains('show')) {
-		body.style.overflow = 'auto';
-	}
-}
-
-function closePopup2(){
-	var modal2 = document.querySelector('.modal2');
-	var body = document.querySelector('body');
-	modal2.classList.toggle('show');
-	if (!modal2.classList.contains('show')) {
-		body.style.overflow = 'auto';
-	}
-}
-
-function closePopup3() {
-    var modal3 = document.querySelector('.modal3');
-    var body = document.querySelector('body');
-    modal3.classList.toggle('show');
-    if (!modal3.classList.contains('show')) {
-        body.style.overflow = 'auto';
-    }
-}
-
-function closePopup4() {
-    var modal4 = document.querySelector('.modal4');
-    var body = document.querySelector('body');
-    modal4.classList.toggle('show');
-    if (!modal4.classList.contains('show')) {
-        body.style.overflow = 'auto';
-    }
-}
-
-function closeErrorModalAndRedirect(redirect) {
-    var modal = document.getElementById('errorModal');
-    modal.classList.remove('show');
-    document.body.style.overflow = 'auto';
-
-    if (redirect === 'true') {
-        window.location.href = '/csm/login';
-    }
-}
+    [pw1, pw2].forEach(el => el.addEventListener('input', () => setAlert('', false)));
+});

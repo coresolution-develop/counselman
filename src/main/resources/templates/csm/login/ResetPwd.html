@@ -1,90 +1,299 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta name="_csrf" th:content="${_csrf.token}" />
-    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
-    <meta charset="UTF-8">
-<link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>비밀번호설정 : SOSYGE EASY-CRM</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="_csrf" th:content="${_csrf.token}" />
+  <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+  <title>비밀번호 재설정 · MediPlat</title>
 
-    <link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
-    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
-    <link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
-    <link rel="stylesheet" th:href="@{/css/csm/Include/modal.css}">
-    <link rel="stylesheet" th:href="@{/css/csm/popup/pwd.css}">
+  <link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+  <link rel="apple-touch-icon" sizes="180x180" th:href="@{/favicon/favicon.ico}">
+  <link rel="icon" sizes="192x192" th:href="@{/favicon/favicon.ico}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css" />
+
+  <style>
+    :root {
+      --cs-blue-900: #0b1f4a;
+      --cs-blue-800: #112a5e;
+      --cs-blue-700: #173a82;
+      --cs-blue-600: #1d4ed8;
+      --cs-blue-500: #2563eb;
+
+      --ink-900: #0f172a;
+      --ink-700: #334155;
+      --ink-600: #475569;
+      --ink-500: #64748b;
+      --ink-400: #94a3b8;
+      --ink-300: #cbd5e1;
+      --ink-200: #e2e8f0;
+      --ink-100: #eef2f6;
+      --ink-50:  #f8fafc;
+
+      --danger:    #dc2626;
+      --danger-bg: #fef2f2;
+      --success:   #15803d;
+      --success-bg:#f0fdf4;
+
+      --radius-card:  18px;
+      --radius-input: 10px;
+      --shadow-card:  0 24px 48px -12px rgba(11,31,74,0.18), 0 8px 16px -4px rgba(11,31,74,0.06);
+
+      --font: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--ink-900);
+      -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.01em;
+      background:
+        radial-gradient(1200px 600px at 90% -10%, #d6f1ea 0%, transparent 60%),
+        radial-gradient(900px 500px at -10% 110%, #e2ecff 0%, transparent 55%),
+        linear-gradient(180deg, #f4f6fa 0%, #eef2f7 100%);
+      min-height: 100%;
+    }
+    button { font-family: inherit; cursor: pointer; border: 0; background: none; }
+    input { font-family: inherit; }
+    a { color: inherit; text-decoration: none; }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 32px 16px;
+    }
+    .card {
+      width: 100%;
+      max-width: 440px;
+      background: rgba(255,255,255,0.98);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-card);
+      padding: 36px 32px 28px;
+    }
+    .card__head { margin-bottom: 22px; text-align: center; }
+    .icon-circle {
+      width: 56px; height: 56px;
+      margin: 0 auto 12px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(180deg, #dbeafe, #bfdbfe);
+      border-radius: 14px;
+      color: var(--cs-blue-700);
+    }
+    .icon-circle--success {
+      background: linear-gradient(180deg, #d1fae5, #a7f3d0);
+      color: var(--success);
+    }
+    .icon-circle--danger {
+      background: linear-gradient(180deg, #fee2e2, #fecaca);
+      color: var(--danger);
+    }
+    .card__eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      font-weight: 600;
+      color: var(--cs-blue-700);
+      text-transform: uppercase;
+    }
+    .card__title {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 6px 0 6px;
+      color: var(--ink-900);
+    }
+    .card__sub {
+      font-size: 13px;
+      color: var(--ink-500);
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .lf { display: flex; flex-direction: column; gap: 14px; }
+    .lf__field { display: flex; flex-direction: column; gap: 7px; }
+    .lf__label {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--ink-700);
+    }
+    .lf__input-wrap {
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      height: 46px;
+      border-radius: var(--radius-input);
+      background: var(--ink-50);
+      border: 1.5px solid var(--ink-100);
+      transition: border-color .14s, box-shadow .14s, background .14s;
+    }
+    .lf__input-wrap:hover { background: #fff; }
+    .lf__input-wrap:focus-within {
+      background: #fff;
+      border-color: var(--cs-blue-500);
+      box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+    }
+    .lf__input {
+      flex: 1; min-width: 0;
+      height: 100%;
+      border: 0; outline: 0; background: transparent;
+      font-size: 14px; color: var(--ink-900);
+    }
+    .lf__input::placeholder { color: var(--ink-400); }
+    .lf__hint {
+      font-size: 11.5px;
+      color: var(--ink-500);
+      margin-top: 2px;
+    }
+
+    .btn-primary {
+      width: 100%;
+      height: 46px;
+      border-radius: var(--radius-input);
+      background: linear-gradient(180deg, var(--cs-blue-600), var(--cs-blue-700));
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      box-shadow: 0 6px 14px -4px rgba(37,99,235,.45);
+      transition: transform .12s, box-shadow .14s, opacity .14s;
+      margin-top: 6px;
+    }
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 20px -6px rgba(37,99,235,.55);
+    }
+    .btn-primary:active:not(:disabled) { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .link {
+      display: block;
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--ink-600);
+      text-align: center;
+    }
+    .link:hover { color: var(--cs-blue-600); text-decoration: underline; }
+
+    .alert {
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 12.5px;
+      font-weight: 500;
+      line-height: 1.5;
+    }
+    .alert--err { background: var(--danger-bg); border: 1px solid #fecaca; color: var(--danger); animation: shake .42s cubic-bezier(.36,.07,.19,.97) both; }
+    .alert--ok  { background: var(--success-bg); border: 1px solid #bbf7d0; color: var(--success); }
+    @keyframes shake {
+      10%, 90% { transform: translateX(-1px); }
+      20%, 80% { transform: translateX(2px); }
+      30%, 50%, 70% { transform: translateX(-4px); }
+      40%, 60% { transform: translateX(4px); }
+    }
+
+    @media (max-width: 480px) {
+      .card { padding: 28px 22px 22px; border-radius: 14px; }
+      .card__title { font-size: 20px; }
+    }
+
+    .spinner-overlay {
+      position: fixed; inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15,23,42,0.32);
+      backdrop-filter: blur(2px);
+      z-index: 50;
+    }
+    .spinner-overlay.show { display: flex; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      .alert--err { animation: none; }
+      .btn-primary, .lf__input-wrap { transition: none; }
+      .spinner { animation: none; }
+    }
+  </style>
 </head>
 <body>
-<div class="modal normal" id="errorModal">
-    <div class="modal_body">
-        <div>
-            <img class="menu_icon" th:src="@{/img/alert_img.png}" alt="alert">
-            <div class="menu_msg" id="errorMessage" th:text="${Msg}"></div>
-            <div class="modal_footer">
-                <div class="btn modal_btn" th:onclick="|closeErrorModalAndRedirect('${redirect}')|" id="confirmBtn2">
-                    확인
-                </div>
-            </div>
-        </div>
+
+<div class="app">
+
+  <!-- 토큰 유효성 실패 / 만료 -->
+  <div class="card" th:if="${Msg != null and !#strings.isEmpty(Msg)}">
+    <div class="card__head">
+      <div class="icon-circle icon-circle--danger" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <h1 class="card__title">링크가 유효하지 않습니다</h1>
+      <p class="card__sub" th:text="${Msg}">유효하지 않거나 만료된 링크입니다.</p>
     </div>
+    <a class="btn-primary" th:href="@{/findpwd}" style="display:flex; align-items:center; justify-content:center; text-decoration:none;">
+      비밀번호 찾기로 돌아가기
+    </a>
+  </div>
+
+  <!-- 비밀번호 재설정 폼 -->
+  <div class="card" th:if="${Msg == null or #strings.isEmpty(Msg)}">
+    <div class="card__head">
+      <div class="icon-circle" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <div class="card__eyebrow">New Password</div>
+      <h1 class="card__title">비밀번호 재설정</h1>
+      <p class="card__sub">사용하실 새 비밀번호를 입력해 주세요.</p>
+    </div>
+
+    <form id="resetPwdForm" th:action="@{/ResetPwd}" method="post" onsubmit="return false;">
+      <input type="hidden" name="us_col_01" th:value="${us_col_01}">
+      <input type="hidden" name="inst" th:value="${inst}">
+      <input type="hidden" name="token" th:value="${token}">
+
+      <div class="lf">
+        <div class="lf__field">
+          <label class="lf__label" for="user_password1">새 비밀번호</label>
+          <div class="lf__input-wrap">
+            <input class="lf__input" type="password" id="user_password1" name="us_col_03"
+                   placeholder="새 비밀번호" autocomplete="new-password" required>
+          </div>
+        </div>
+        <div class="lf__field">
+          <label class="lf__label" for="user_password2">새 비밀번호 확인</label>
+          <div class="lf__input-wrap">
+            <input class="lf__input" type="password" id="user_password2"
+                   placeholder="한 번 더 입력" autocomplete="new-password" required>
+          </div>
+        </div>
+
+        <div id="result" class="alert alert--err" style="display:none;" role="alert"></div>
+
+        <button class="btn-primary" type="submit" id="submitBtn">비밀번호 변경</button>
+        <a class="link" th:href="@{/login}">로그인으로 돌아가기</a>
+      </div>
+    </form>
+  </div>
+
 </div>
 
-<th:block th:if="${Msg != null and !#strings.isEmpty(Msg)}">
-    <script th:inline="javascript">
-        $(document).ready(function() {
-            showErrorModal([[${Msg}]]);
-        });
-    </script>
-</th:block>
-
-<form th:if="${Msg == null or #strings.isEmpty(Msg)}" id="resetPwdForm" th:action="@{/ResetPwd}" method="post">
-    <div class="ManageUser"><h3>비밀번호 설정</h3></div>
-
-    <label for="user_password1">새 비밀번호<font color="red">*</font></label>
-    <input type="password" class="manageuser-modi pass" id="user_password1" name="us_col_03" required>
-
-    <label for="user_password2">새 비밀번호 확인<font color="red">*</font></label>
-    <input type="password" class="manageuser-modi pass" id="user_password2" required>
-
-    <input type="hidden" name="us_col_01" th:value="${us_col_01}">
-    <input type="hidden" name="inst" th:value="${inst}">
-    <input type="hidden" name="token" th:value="${token}">
-
-    <div class="ManageUser-button">
-        <button class="ManageUser-can" type="button" onclick="window.close()">취소</button>
-        <button class="ManageUser-cle" type="submit" style="margin-bottom:10px;">변경</button>
-    </div>
-</form>
-
-<div class="modal2 normal">
-    <div class="modal_body2">
-        <div>
-            <img class="menu_icon" th:src="@{/img/alert_img.png}" alt="alert">
-            <div class="menu_msg2"></div>
-            <div class="modal_footer2">
-                <div class="btn modal_btn" onclick="closePopup2()">
-                    확인
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal3 normal">
-    <div class="modal_body3">
-        <div>
-            <img class="menu_icon" th:src="@{/img/alert_img.png}" alt="alert">
-            <div class="menu_msg3"></div>
-            <div class="modal_footer3">
-                <div class="btn modal_btn2" id="confirmBtn">
-                    확인
-                </div>
-                <div class="btn pink_btn2" onclick="closePopup3()">
-                    취소
-                </div>
-            </div>
-        </div>
-    </div>
+<div id="spinner-overlay" class="spinner-overlay" aria-hidden="true">
+  <div class="spinner" role="status" aria-label="잠시만 기다려주세요"></div>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.js"></script>

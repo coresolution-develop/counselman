@@ -23,15 +23,19 @@ document.addEventListener('DOMContentLoaded', function () {
         if (csrfToken) xhr.setRequestHeader(csrfHdr, csrfToken);
     }
 
-    function showResult(msg, ok) {
-        resultDiv.style.color = ok ? '#fff' : 'red';
-        resultDiv.innerHTML = msg || '';
+    function setAlert(el, msg, ok) {
+        if (!msg) {
+            el.style.display = 'none';
+            el.textContent = '';
+            return;
+        }
+        el.className = 'alert ' + (ok ? 'alert--ok' : 'alert--err');
+        el.textContent = msg;
+        el.style.display = 'block';
     }
 
-    function showOtpResult(msg, ok) {
-        otpResultDiv.style.color = ok ? '#1a7f37' : 'red';
-        otpResultDiv.innerHTML = msg || '';
-    }
+    function showResult(msg, ok) { setAlert(resultDiv, msg, ok); }
+    function showOtpResult(msg, ok) { setAlert(otpResultDiv, msg, ok); }
 
     function switchToOtp(phoneMask) {
         otpPhoneMask.textContent = phoneMask || '***-****-****';
@@ -144,19 +148,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 입력 시 result 초기화
     document.querySelectorAll('#us_col_02, #us_col_12, #us_col_04').forEach(input => {
-        input.addEventListener('input', () => { resultDiv.innerHTML = ''; });
+        input.addEventListener('input', () => { showResult('', false); });
     });
+    document.getElementById('otpCode')?.addEventListener('input', () => { showOtpResult('', false); });
 });
 
 function spinner() {
-    const el = document.getElementById('spinner-overlay');
-    if (el) {
-        el.classList.add('show');
-        el.style.display = 'flex';
-    }
+    document.getElementById('spinner-overlay')?.classList.add('show');
 }
 
 function hideSpinner() {
-    const el = document.getElementById('spinner-overlay');
-    if (el) el.style.display = 'none';
+    document.getElementById('spinner-overlay')?.classList.remove('show');
 }
