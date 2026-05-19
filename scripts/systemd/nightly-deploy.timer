@@ -1,0 +1,16 @@
+[Unit]
+Description=Daily 02:30 KST trigger for nightly-deploy.service
+Documentation=file:///opt/deploy/scripts/systemd/README.md
+
+[Timer]
+# 02:30 Asia/Seoul, every day. Runs before nightly-maintenance (03:00) so the
+# fresh artifact is already in place when maintenance reload runs.
+OnCalendar=*-*-* 02:30:00 Asia/Seoul
+# If the host was off at 02:30 the timer fires once on next boot.
+Persistent=true
+# Small random jitter to avoid coinciding with other 02:30 cron jobs.
+RandomizedDelaySec=120
+Unit=nightly-deploy.service
+
+[Install]
+WantedBy=timers.target

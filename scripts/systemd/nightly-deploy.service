@@ -1,0 +1,30 @@
+[Unit]
+Description=Nightly auto-deploy (csm-next / mediplat-next / cancer-treatment-next)
+Documentation=file:///opt/deploy/scripts/systemd/README.md
+After=network-online.target
+Wants=network-online.target
+# Run before the existing nightly-maintenance so its restart doesn't race the
+# fresh deploy. Both timers fire on the same day but ordering is enforced here.
+Before=nightly-maintenance.service
+
+[Service]
+Type=oneshot
+# Run as root so systemctl restart of mediplat / cancer-treatment works and
+# file ownership is preserved by `cp -a`.
+User=root
+# The deploy script reads env vars from /etc/default/nightly-deploy if present.
+EnvironmentFile=-/etc/default/nightly-deploy
+ExecStart=/opt/deploy/scripts/deploy-nightly.sh
+
+# Hardening — script only touches well-known paths.
+ProtectSystem=full
+ProtectHome=true
+NoNewPrivileges=true
+PrivateTmp=true
+ReadWritePaths=/opt/deploy /opt/mediplat/app /opt/cancer-treatment/app /usr/local/tomcat10/webapps
+
+# Standard streams already go to journald; tag them for easy filtering.
+SyslogIdentifier=nightly-deploy
+
+[Install]
+WantedBy=multi-user.target
