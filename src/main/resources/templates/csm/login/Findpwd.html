@@ -29,20 +29,66 @@
             margin: 0 0 3px;
             font-weight: bold;
         }
+        .channel-group {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin: 12px 0 8px;
+            font-size: 14px;
+        }
+        .channel-group label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            margin: 8px 0 4px;
+            line-height: 1.5;
+        }
+        .help-text strong { color: #1a2332; }
     </style>
 </head>
 <body>
 <div class="login-container">
     <div class="login_wrap">
         <h2 class="login_title" align="center">비밀번호 변경</h2>
-        <form th:action="@{/findpwd/post}" method="post" onsubmit="return false;">
+
+        <!-- Step 1: 사용자 식별 + 채널 선택 -->
+        <form id="findForm" th:action="@{/findpwd/post}" method="post" onsubmit="return false;">
             <input type="text" class="login-select" placeholder="기관코드" name="us_col_04" id="us_col_04">
             <input type="text" placeholder="아이디" name="us_col_02" id="us_col_02">
             <input type="text" placeholder="이름" name="us_col_12" id="us_col_12" autofocus="autofocus">
+
+            <div class="channel-group" role="radiogroup" aria-label="인증 수단 선택">
+                <label><input type="radio" name="channel" value="email" checked> 이메일 링크</label>
+                <label><input type="radio" name="channel" value="sms"> SMS 인증번호</label>
+            </div>
+
             <div id="result"></div>
             <input class="login_btn" type="button" value="비밀번호 변경" id="confirm">
             <a class="pwd_btn" th:href="@{/login}">로그인</a>
         </form>
+
+        <!-- Step 2: SMS OTP 입력 (initial hidden) -->
+        <form id="otpForm" style="display:none;" onsubmit="return false;">
+            <p class="help-text">
+                휴대폰 <strong id="otpPhoneMask">***-****-****</strong>로<br>
+                인증번호를 전송했습니다. (5분 이내 유효)
+            </p>
+            <input type="text" inputmode="numeric" maxlength="6" placeholder="6자리 인증번호" id="otpCode">
+            <div id="otpResult"></div>
+            <input class="login_btn" type="button" value="인증번호 확인" id="otpConfirm">
+            <a class="pwd_btn" href="javascript:void(0)" id="otpBack">처음으로</a>
+        </form>
+
+        <p class="help-text" style="margin-top:24px;">
+            인증이 어려우신 경우, 소속 기관 관리자에게<br>
+            비밀번호 초기화를 요청해 주세요.
+        </p>
     </div>
     <div class="bottom_img">
         <div class="login_bottom" alt="하단백그라운드"></div>

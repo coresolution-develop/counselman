@@ -99,6 +99,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import com.coresolution.csm.serivce.CsmEmailService;
 import com.coresolution.csm.serivce.ModuleFeatureService;
 import com.coresolution.csm.serivce.CsmPasswordResetTokenService;
+import com.coresolution.csm.serivce.CsmSmsOtpService;
 import com.coresolution.csm.serivce.ExternalSmsGatewayService;
 import com.coresolution.csm.serivce.SmsService;
 import com.coresolution.csm.util.AES128;
@@ -151,6 +152,8 @@ public class PageController {
     private String mediplatPlatformBaseUrl;
     @Autowired
     private CsmPasswordResetTokenService tokenService;
+    @Autowired
+    private CsmSmsOtpService smsOtpService;
     @Autowired
     private CsmEmailService emailService;
     @Autowired
@@ -321,9 +324,10 @@ public class PageController {
     @PostMapping({ "findpwd/post", "/findpwd/post" })
     @ResponseBody
     public Map<String, Object> postFindpwd(
-            @RequestParam("us_col_04") @NotBlank @Email @Size(max = 100) String usCol04,
+            @RequestParam("us_col_04") @NotBlank @Size(max = 100) String usCol04,
             @RequestParam("us_col_02") @NotBlank @Size(max = 50) String usCol02,
             @RequestParam("us_col_12") @NotBlank @Size(max = 100) String usCol12,
+            @RequestParam(value = "channel", required = false, defaultValue = "email") String channel,
             HttpServletRequest request) {
         Map<String, Object> response = new HashMap<>();
         try {
@@ -340,6 +344,11 @@ public class PageController {
                 response.put("msg", "사용자 정보를 불러올 수 없습니다.");
                 return response;
             }
+
+            if ("sms".equalsIgnoreCase(channel)) {
+                return sendOtpBySms(user, usCol04, response);
+            }
+
             if (user.getUs_col_11() == null || user.getUs_col_11().trim().isEmpty()) {
                 response.put("result", false);
                 response.put("msg", "이메일 정보가 없습니다.");
@@ -372,6 +381,144 @@ public class PageController {
             log.error("[findpwd/post] fail inst={}, userId={}", usCol04, usCol02, e);
             response.put("result", false);
             response.put("msg", "비밀번호 변경 요청 중 오류가 발생했습니다.");
+            return response;
+        }
+    }
+
+    private Map<String, Object> sendOtpBySms(Userdata user, String inst, Map<String, Object> response) {
+        String phone = user.getUs_col_10();
+        if (phone == null || phone.trim().isEmpty()) {
+            response.put("result", false);
+            response.put("msg", "휴대폰 번호가 등록되어 있지 않습니다.");
+            return response;
+        }
+        String normalizedPhone = phone.replaceAll("[^0-9]", "");
+        if (normalizedPhone.length() < 10) {
+            response.put("result", false);
+            response.put("msg", "유효하지 않은 휴대폰 번호입니다.");
+            return response;
+        }
+
+        String from = resolveOtpSenderNumber(inst);
+        if (from == null) {
+            response.put("result", false);
+            response.put("msg", "발신번호가 등록되어 있지 않습니다. 관리자에게 문의해 주세요.");
+            return response;
+        }
+
+        String userIdStr = String.valueOf(user.getUs_col_01());
+        String code = smsOtpService.issue(inst, userIdStr, user.getUs_col_11(), normalizedPhone);
+        String message = "[CSM] 비밀번호 변경 인증번호: " + code + " (5분 이내 입력)";
+
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("type", "sms");
+            payload.put("from", from);
+            payload.put("to", normalizedPhone);
+            payload.put("refkey", "pwd-otp-" + inst + "-" + userIdStr + "-" + System.currentTimeMillis());
+            payload.put("content", Map.of("sms", Map.of("message", message)));
+            Map<String, Object> resp = externalSmsGatewayService.send(payload);
+            String desc = Optional.ofNullable(resp.get("description")).map(String::valueOf).orElse("");
+            if (!"success".equalsIgnoreCase(desc)) {
+                log.warn("[findpwd/sms] gateway returned non-success inst={} userId={} resp={}", inst, userIdStr, resp);
+                smsOtpService.consume(inst, userIdStr);
+                response.put("result", false);
+                response.put("msg", "SMS 발송에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+                return response;
+            }
+        } catch (Exception e) {
+            log.error("[findpwd/sms] send fail inst={} userId={}", inst, userIdStr, e);
+            smsOtpService.consume(inst, userIdStr);
+            response.put("result", false);
+            response.put("msg", "SMS 발송 중 오류가 발생했습니다.");
+            return response;
+        }
+
+        response.put("result", true);
+        response.put("requireOtp", true);
+        response.put("phoneMask", maskPhone(normalizedPhone));
+        response.put("msg", "인증번호를 전송했습니다.");
+        return response;
+    }
+
+    private String resolveOtpSenderNumber(String inst) {
+        try {
+            String safe = cs.sanitizeInstPublic(inst);
+            List<String> rows = jdbcTemplate.queryForList(
+                    "SELECT phone_num FROM csm.phone_number_" + safe + " ORDER BY id ASC LIMIT 1",
+                    String.class);
+            if (rows.isEmpty()) return null;
+            String num = rows.get(0);
+            return num == null ? null : num.replaceAll("[^0-9]", "");
+        } catch (Exception e) {
+            log.warn("[findpwd/sms] sender lookup failed inst={}: {}", inst, e.getMessage());
+            return null;
+        }
+    }
+
+    private String maskPhone(String digits) {
+        if (digits == null || digits.length() < 7) return "***-****-****";
+        int len = digits.length();
+        String tail = digits.substring(len - 4);
+        String head = digits.substring(0, 3);
+        return head + "-****-" + tail;
+    }
+
+    @PostMapping({ "findpwd/verify-otp", "/findpwd/verify-otp" })
+    @ResponseBody
+    public Map<String, Object> verifyOtp(
+            @RequestParam("us_col_04") @NotBlank @Size(max = 100) String usCol04,
+            @RequestParam("us_col_02") @NotBlank @Size(max = 50) String usCol02,
+            @RequestParam("code") @NotBlank @Size(max = 10) String code,
+            HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            Userdata user = cs.userInfoById(usCol04, usCol02);
+            if (user == null) {
+                response.put("result", false);
+                response.put("msg", "사용자 정보를 불러올 수 없습니다.");
+                return response;
+            }
+
+            String userIdStr = String.valueOf(user.getUs_col_01());
+            CsmSmsOtpService.VerifyResult vr = smsOtpService.verify(usCol04, userIdStr, code);
+            switch (vr) {
+                case OK:
+                    break;
+                case EXPIRED:
+                    response.put("result", false);
+                    response.put("msg", "인증번호가 만료되었습니다. 다시 요청해 주세요.");
+                    return response;
+                case TOO_MANY_ATTEMPTS:
+                    response.put("result", false);
+                    response.put("msg", "인증 시도 횟수를 초과했습니다. 처음부터 다시 시도해 주세요.");
+                    return response;
+                case NOT_FOUND:
+                    response.put("result", false);
+                    response.put("msg", "인증번호가 만료되었거나 발급되지 않았습니다.");
+                    return response;
+                case MISMATCH:
+                default:
+                    response.put("result", false);
+                    response.put("msg", "인증번호가 일치하지 않습니다.");
+                    return response;
+            }
+
+            smsOtpService.consume(usCol04, userIdStr);
+            String email = user.getUs_col_11() == null ? "" : user.getUs_col_11();
+            String token = tokenService.generateToken(email, usCol04, userIdStr);
+            String redirect = request.getContextPath()
+                    + "/ResetPwd?us_col_01=" + userIdStr
+                    + "&inst=" + usCol04
+                    + "&token=" + token;
+
+            response.put("result", true);
+            response.put("redirect", redirect);
+            return response;
+        } catch (Exception e) {
+            log.error("[findpwd/verify-otp] fail inst={} userId={}", usCol04, usCol02, e);
+            response.put("result", false);
+            response.put("msg", "인증 요청 중 오류가 발생했습니다.");
             return response;
         }
     }
@@ -437,6 +584,11 @@ public class PageController {
             log.error("[ResetPwd] fail us_col_01={}, inst={}", usCol01, inst, e);
             return ResponseEntity.badRequest().body("비밀번호 변경에 실패했습니다.");
         }
+    }
+
+    @GetMapping({ "my/account", "/my/account" })
+    public String myAccount() {
+        return "design/my-account";
     }
 
     @GetMapping({ "logout", "/logout" })
@@ -8033,6 +8185,8 @@ public class PageController {
         result.put("name",     safeString(u.getUs_col_12()));
         result.put("id",       safeString(u.getUs_col_02()));
         result.put("userId",   u.getUs_col_01());
+        result.put("email",    safeString(u.getUs_col_11()));
+        result.put("phone",    safeString(u.getUs_col_10()));
         result.put("inst",     inst != null ? inst : "");
         result.put("instname", instname);
         result.put("role",     role);

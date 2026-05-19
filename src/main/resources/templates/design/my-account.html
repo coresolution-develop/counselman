@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="turbo-visit-control" content="reload" />
+  <meta name="_csrf"        th:content="${_csrf.token}"/>
+  <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+  <title>MediPlat · 내 계정</title>
+
+  <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/layout.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/components.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/tweaks.css}" />
+  <style>
+    .ma-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+    @media (max-width: 960px) { .ma-grid { grid-template-columns: 1fr; } }
+    .ma-card {
+      background: var(--surface, #fff);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg, 12px);
+      padding: 24px;
+    }
+    .ma-card__title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0 0 4px;
+    }
+    .ma-card__desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin: 0 0 18px;
+    }
+    .ma-info-row {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-default);
+      font-size: 14px;
+    }
+    .ma-info-row:last-of-type { border-bottom: none; }
+    .ma-info-row dt { color: var(--text-secondary); font-weight: 500; }
+    .ma-info-row dd { color: var(--text-primary); margin: 0; word-break: break-all; }
+    .ma-form-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .ma-form-row label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+    .ma-form-row input {
+      height: 40px;
+      padding: 0 12px;
+      font-size: 14px;
+      border: 1px solid var(--border-default);
+      border-radius: 8px;
+      background: #fff;
+    }
+    .ma-form-row input:focus {
+      outline: none;
+      border-color: var(--brand, #3858d9);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand, #3858d9) 18%, transparent);
+    }
+    .ma-btn-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .ma-msg {
+      font-size: 13px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+    .ma-msg.is-err { color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; }
+    .ma-msg.is-ok  { color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; }
+  </style>
+</head>
+<body>
+<script th:src="@{/assets/js/sprite.js}"></script>
+
+<div class="app"
+     data-screen-label="My Account"
+     :data-sidebar="$store.app.sidebarCollapsed ? 'collapsed' : 'expanded'"
+     :data-variation="$store.app.variation"
+     x-data>
+
+  <div id="slot-sidebar"></div>
+  <div id="slot-header"></div>
+
+  <main class="main">
+    <div class="page" x-data="myAccount()" x-init="loadMe()">
+
+      <div class="page__header">
+        <div>
+          <h1 class="page__title">내 계정</h1>
+          <p class="page__subtitle">내 정보를 확인하고 비밀번호를 변경합니다</p>
+        </div>
+      </div>
+
+      <div class="ma-grid">
+        <section class="ma-card">
+          <h2 class="ma-card__title">내 정보</h2>
+          <p class="ma-card__desc">기본 정보는 관리자에게 문의해 주세요</p>
+          <dl>
+            <div class="ma-info-row"><dt>이름</dt><dd x-text="me.name || '-'"></dd></div>
+            <div class="ma-info-row"><dt>아이디</dt><dd x-text="me.id || '-'"></dd></div>
+            <div class="ma-info-row"><dt>이메일</dt><dd x-text="me.email || '-'"></dd></div>
+            <div class="ma-info-row"><dt>연락처</dt><dd x-text="me.phone || '-'"></dd></div>
+            <div class="ma-info-row"><dt>기관</dt><dd x-text="me.instname || me.inst || '-'"></dd></div>
+          </dl>
+        </section>
+
+        <section class="ma-card">
+          <h2 class="ma-card__title">비밀번호 변경</h2>
+          <p class="ma-card__desc">변경 후에도 로그아웃 없이 그대로 사용하실 수 있습니다</p>
+
+          <template x-if="msg">
+            <div class="ma-msg" :class="msgType === 'ok' ? 'is-ok' : 'is-err'" x-text="msg"></div>
+          </template>
+
+          <form @submit.prevent="changePassword">
+            <div class="ma-form-row">
+              <label for="currentPassword">현재 비밀번호</label>
+              <input id="currentPassword" type="password" autocomplete="current-password"
+                     x-model="form.currentPassword" required />
+            </div>
+            <div class="ma-form-row">
+              <label for="newPassword">새 비밀번호</label>
+              <input id="newPassword" type="password" autocomplete="new-password"
+                     x-model="form.newPassword" required />
+            </div>
+            <div class="ma-form-row">
+              <label for="newPasswordConfirm">새 비밀번호 확인</label>
+              <input id="newPasswordConfirm" type="password" autocomplete="new-password"
+                     x-model="form.newPasswordConfirm" required />
+            </div>
+            <div class="ma-btn-row">
+              <button type="submit" class="btn btn--primary" :disabled="loading">
+                <span x-show="!loading">변경하기</span>
+                <span x-show="loading">변경 중…</span>
+              </button>
+            </div>
+          </form>
+        </section>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+  const _ctx = /*[[@{/}]]*/ '/';
+
+  function csrfHeaders() {
+    const token  = document.querySelector('meta[name="_csrf"]')?.content;
+    const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+    return token && header ? { [header]: token } : {};
+  }
+
+  function myAccount() {
+    return {
+      me: { id: '', name: '', email: '', phone: '', inst: '', instname: '' },
+      form: { currentPassword: '', newPassword: '', newPasswordConfirm: '' },
+      loading: false,
+      msg: '',
+      msgType: 'err',
+
+      async loadMe() {
+        try {
+          const res = await fetch(_ctx + 'api/me', { headers: { Accept: 'application/json' } });
+          if (res.ok) {
+            const data = await res.json();
+            this.me = Object.assign(this.me, data);
+          }
+        } catch (e) {
+          // 무시 — 표시 가능 정보만 비어 있을 뿐
+        }
+      },
+
+      async changePassword() {
+        this.msg = '';
+        const { currentPassword, newPassword, newPasswordConfirm } = this.form;
+        if (!currentPassword || !newPassword || !newPasswordConfirm) {
+          this.msgType = 'err';
+          this.msg = '모든 항목을 입력해 주세요.';
+          return;
+        }
+        if (newPassword !== newPasswordConfirm) {
+          this.msgType = 'err';
+          this.msg = '새 비밀번호가 일치하지 않습니다.';
+          return;
+        }
+
+        this.loading = true;
+        try {
+          const res = await fetch(_ctx + 'api/me/password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+            body: JSON.stringify({ currentPassword, newPassword })
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data.ok) {
+            this.msgType = 'ok';
+            this.msg = '비밀번호가 변경되었습니다.';
+            this.form = { currentPassword: '', newPassword: '', newPasswordConfirm: '' };
+          } else {
+            this.msgType = 'err';
+            this.msg = data.error || '비밀번호 변경에 실패했습니다.';
+          }
+        } catch (e) {
+          this.msgType = 'err';
+          this.msg = '요청 중 오류가 발생했습니다.';
+        } finally {
+          this.loading = false;
+        }
+      }
+    };
+  }
+</script>
+
+<script th:src="@{/assets/js/app.js}"></script>
+<script th:src="@{/assets/js/chrome.js}" data-page="my-account" th:attr="data-ctx=@{/}"></script>
+<script>
+  document.addEventListener('turbo:load', () => { MPChrome.mount({ parent: '내 계정', current: '내 정보' }); }, { once: true });
+</script>
+<script data-turbo-eval="false" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js"></script>
+<script data-turbo-eval="false" defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</body>
+</html>

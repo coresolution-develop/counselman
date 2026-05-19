@@ -152,7 +152,7 @@
         <div class="notif-panel" id="js-notif-panel" style="display:none"></div>
       </div>
       <button class="header__icon-btn" aria-label="도움말">${icon('help')}</button>
-      <button class="header__user">
+      <button class="header__user" id="js-user-btn" aria-label="내 계정">
         <div class="header__avatar js-user-avatar">?</div>
         <div class="header__user-meta">
           <span class="header__user-name"></span>
@@ -160,6 +160,15 @@
         </div>
       </button>
     </header>`;
+  }
+
+  function attachUserMenuListener() {
+    const btn = document.getElementById('js-user-btn');
+    if (!btn || btn.dataset.bound === '1') return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', () => {
+      window.location.href = path('/my/account');
+    });
   }
 
   // ── 유저 정보 패치 ───────────────────────────────────────────────
@@ -651,6 +660,7 @@
         if (sbSlot) sbSlot.outerHTML = renderSidebar(false);
 
         attachSidebarListeners();
+        attachUserMenuListener();
         injectPageLoader();
         injectNotifStyles();
         patchUserInfo(window._meCache);
