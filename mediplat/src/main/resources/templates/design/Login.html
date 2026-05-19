@@ -65,9 +65,10 @@
 
 <script th:inline="javascript">
   window.__MP_LOGIN__ = {
-    error:    /*[[${error}]]*/ null,
-    instCode: /*[[${loginInstCode}]]*/ '',
-    username: /*[[${loginUsername}]]*/ ''
+    error:      /*[[${error}]]*/ null,
+    instCode:   /*[[${loginInstCode}]]*/ '',
+    username:   /*[[${loginUsername}]]*/ '',
+    findPwdUrl: /*[[${findPwdUrl}]]*/ '/csm/findpwd'
   };
 </script>
 <form id="mp-login-form" method="post" th:action="@{/login}" style="display:none">

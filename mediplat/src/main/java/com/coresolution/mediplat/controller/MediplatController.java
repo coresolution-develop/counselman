@@ -12,6 +12,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -55,6 +56,9 @@ public class MediplatController {
     private final SeminarRoomService seminarRoomService;
     private final MaintenanceService maintenanceService;
 
+    @Value("${platform.bootstrap.counselman-base-url:http://localhost:8081/csm}")
+    private String counselmanBaseUrl;
+
     public MediplatController(
             PlatformStoreService storeService,
             CounselManSsoLinkService counselManSsoLinkService,
@@ -93,7 +97,14 @@ public class MediplatController {
         if (!model.containsAttribute("loginUsername")) {
             model.addAttribute("loginUsername", "");
         }
+        model.addAttribute("findPwdUrl", buildFindPwdUrl());
         return "design/Login";
+    }
+
+    private String buildFindPwdUrl() {
+        String base = StringUtils.hasText(counselmanBaseUrl) ? counselmanBaseUrl.trim() : "/csm";
+        while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
+        return base + "/findpwd";
     }
 
     @PostMapping("/login")

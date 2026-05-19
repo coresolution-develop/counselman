@@ -165,7 +165,12 @@ function LoginForm({ tweaks }) {
             </label>
           )}
           <span className="lf__row-spacer" />
-          {tweaks.showForgot && <a href="#" className="lf__forgot">비밀번호를 잊으셨나요?</a>}
+          {tweaks.showForgot && (
+            <a
+              href={(window.__MP_LOGIN__ && window.__MP_LOGIN__.findPwdUrl) || '/csm/findpwd'}
+              className="lf__forgot"
+            >비밀번호를 잊으셨나요?</a>
+          )}
         </div>
       )}
 
