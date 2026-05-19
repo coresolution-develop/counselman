@@ -151,6 +151,8 @@ public class PageController {
 
     @Value("${mediplat.platform.base-url:http://localhost:8082}")
     private String mediplatPlatformBaseUrl;
+    @Value("${csm.base-url:}")
+    private String csmBaseUrl;
     @Autowired
     private CsmPasswordResetTokenService tokenService;
     @Autowired
@@ -365,13 +367,7 @@ public class PageController {
             String email = rawEmail.trim();
 
             String token = tokenService.generateToken(email, usCol04, String.valueOf(user.getUs_col_01()));
-            String resetLink = request.getScheme() + "://" + request.getServerName()
-                    + ((request.getServerPort() == 80 || request.getServerPort() == 443) ? ""
-                            : ":" + request.getServerPort())
-                    + request.getContextPath()
-                    + "/ResetPwd?us_col_01=" + user.getUs_col_01()
-                    + "&inst=" + usCol04
-                    + "&token=" + token;
+            String resetLink = buildResetLink(request, String.valueOf(user.getUs_col_01()), usCol04, token);
             String instName = Optional.ofNullable(cs.coreInstFindByCode(usCol04))
                     .map(Instdata::getId_col_02)
                     .orElse("");
@@ -451,6 +447,36 @@ public class PageController {
         response.put("phoneMask", AuthContactValidator.maskKrMobile(normalizedPhone));
         response.put("msg", "인증번호를 전송했습니다.");
         return response;
+    }
+
+    /**
+     * 비밀번호 재설정 절대 URL 생성.
+     * 우선순위: csm.base-url 설정값 → request 헤더 폴백.
+     * 설정값이 없을 때만 request에 의존하므로 Host Header Injection 위험을 최소화한다.
+     */
+    String buildResetLink(HttpServletRequest request, String userIdx, String inst, String token) {
+        String base = resolveCsmBaseUrl(request);
+        return base
+                + "/ResetPwd?us_col_01=" + userIdx
+                + "&inst=" + inst
+                + "&token=" + token;
+    }
+
+    String resolveCsmBaseUrl(HttpServletRequest request) {
+        if (StringUtils.hasText(csmBaseUrl)) {
+            String trimmed = csmBaseUrl.trim();
+            while (trimmed.endsWith("/")) {
+                trimmed = trimmed.substring(0, trimmed.length() - 1);
+            }
+            return trimmed;
+        }
+        if (request == null) return "";
+        StringBuilder sb = new StringBuilder()
+                .append(request.getScheme()).append("://").append(request.getServerName());
+        int port = request.getServerPort();
+        if (port != 80 && port != 443) sb.append(':').append(port);
+        sb.append(request.getContextPath());
+        return sb.toString();
     }
 
     private String resolveOtpSenderNumber(String inst) {
