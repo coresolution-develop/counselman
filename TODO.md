@@ -1,6 +1,6 @@
 # MediPlat 작업 현황
 
-> 최종 업데이트: 2026-05-18
+> 최종 업데이트: 2026-05-19
 
 ---
 
@@ -80,6 +80,25 @@
 ---
 
 ## ✅ 완료된 작업
+
+### 2026-05-19 MediPlat 직원 관리 확장 (감사 로깅 / 사용자 필드)
+
+- [x] **로그인 이력 감사 기능** — 기관 관리자/슈퍼관리자가 직원 로그인 활동을 조회 ([커밋 b704d8b](https://github.com/coresolution-develop/counselman/commit/b704d8b))
+  - `mp_login_audit` 테이블 신규 (MySQL + H2 DDL, 인덱스: `(inst_code, login_at)`, `(username)`)
+  - `PlatformStoreService.recordLogin / recordLogout / listLoginAudits` 추가, `KeyHolder`로 audit id 반환
+  - 로그인 성공 시 audit row 생성, 세션에 `mediplatLoginAuditId` 저장
+  - `HttpSessionListener.sessionDestroyed`로 명시적 로그아웃 + 세션 만료 둘 다에서 logoutAt/sessionSeconds 기록
+  - `/admin/login-audit` 페이지 신규 (Thymeleaf 서버 렌더링, 기관·계정명·기간 필터, 최대 200건)
+  - 권한: `PLATFORM_ADMIN`은 전체, `INSTITUTION_ADMIN`은 자기 기관 강제 잠금
+  - 단위 테스트 3종 (insert / logout 멱등성 / 기관 격리)
+- [x] **직원 등록 시 이메일·휴대폰 입력 기능** — 기관 관리자/슈퍼관리자 사용자 등록 폼에 두 필드 추가 ([커밋 3da97c7](https://github.com/coresolution-develop/counselman/commit/3da97c7))
+  - `mp_user` 테이블에 `email VARCHAR(500) NULL`, `phone VARCHAR(500) NULL` 추가 (`ALTER TABLE IF NOT EXISTS` 마이그레이션 포함)
+  - CSM `us_col_10`(연락처) / `us_col_11`(이메일)과 자료형·검증 정책 동일 (느슨한 자유 입력)
+  - `PlatformUser` 모델 확장, 5곳의 SELECT 매핑을 `mapPlatformUser` 헬퍼로 통합
+  - `saveUser` 오버로드 + `bulkSaveUsers` Map 키 `email`/`phone` 지원, 빈 문자열은 NULL 저장
+  - React 단건 등록/수정 폼에 두 입력 행 추가 (`type=email`, `type=tel`, `inputMode`, `autoComplete`)
+  - `admin.html` 대량 CSV 5/6번 컬럼으로 email/phone 처리 (해당 페이지는 라우팅되지 않은 상태)
+  - 단위 테스트 4종 (단건 저장 / 빈값 NULL 처리 / 대량 저장 / 업데이트)
 
 ### 2026-05-18 운영 핫픽스 (기관 등록 / 공지 / 문자관리 통합)
 
@@ -231,7 +250,8 @@
 - [x] `PlatformStoreService.institutionExists()` / `setInstitutionUseYn()` 추가
 - [x] 신규 기관 저장 시 COUNSELMAN 자동 활성화
 - [x] `POST /admin/institutions/status` (활성/비활성), `POST /api/admin/institutions` (JSON API)
-- [ ] 기관 관리자 사용자 권한 저장 오류 조사 — `/admin/user-access` 저장 시 오류 발생. 기관 관리자 권한 범위, `instCode` resolve, `enabledServiceCodes` null/empty 처리, DB update/insert 조건 확인 필요
+- [x] **기관별 로그인 이력 감사** (2026-05-19) — `/admin/login-audit`, `mp_login_audit` 테이블
+- [x] **직원 이메일·휴대폰 필드** (2026-05-19) — `mp_user.email`/`phone`, CSM 자료형 호환
 
 ---
 
@@ -333,3 +353,5 @@
 | CLOVA/GPT 연동 | 백엔드 준비됨, webm 제외 mp3/wav/m4a 지원 |
 | 챗봇 상담 접수 | `csm.counsel_reservation_{inst}` (patient_name, patient_phone, call_summary, created_by, status) |
 | 챗봇 채팅방 | `csm.chat_room_{inst}`, `csm.chat_message_{inst}`, `csm.faq_{inst}` |
+| MediPlat 사용자 | `mediplat.mp_user` (inst_code, username, display_name, dept, email, phone, role_code) — email/phone은 nullable, CSM `us_col_10/11` 호환 |
+| MediPlat 로그인 이력 | `mediplat.mp_login_audit` (inst_code, username, login_at, logout_at, session_seconds) — `HttpSessionListener`가 logout 기록 |
