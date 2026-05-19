@@ -259,7 +259,7 @@ class MediplatControllerTest {
         when(storeService.listEnabledIntegrationCodes("FALH")).thenReturn(List.of());
         when(storeService.isRoomBoardCounselPairEnabled("FALH")).thenReturn(false);
         when(storeService.listInstitutionUsers("FALH")).thenReturn(List.of(
-                new PlatformUser(1L, "FALH", "user1", "hash", "사용자", "", "USER", "Y")));
+                new PlatformUser(1L, "FALH", "user1", "hash", "사용자", "", null, null, "USER", "Y")));
         when(storeService.listEnabledServiceCodesForUser("FALH", "user1")).thenReturn(List.of("COUNSELMAN"));
 
         String view = controller.adminPage("ABCD", null, "user1", null, null, model, session);

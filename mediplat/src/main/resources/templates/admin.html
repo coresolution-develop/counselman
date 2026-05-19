@@ -121,7 +121,7 @@
         <div class="admin-card" th:if="${canManagePlatform}">
             <div class="section-head">
                 <h2>직원 대량 등록</h2>
-                <p>CSV 형식으로 기관 직원을 한 번에 등록합니다. 이미 존재하는 아이디는 비밀번호·이름·부서만 업데이트됩니다.</p>
+                <p>CSV 형식으로 기관 직원을 한 번에 등록합니다. 이미 존재하는 아이디는 비밀번호·이름·부서·이메일·연락처만 업데이트됩니다.</p>
             </div>
             <div class="stack-form">
                 <select id="bulk-inst-select">
@@ -130,15 +130,15 @@
                             th:value="${institution.instCode}"
                             th:text="${institution.instName + ' (' + institution.instCode + ')'}">기관</option>
                 </select>
-                <p class="form-hint">형식: <code>아이디,비밀번호,이름,부서(선택)</code> — 첫 줄 헤더는 자동 무시됩니다.</p>
+                <p class="form-hint">형식: <code>아이디,비밀번호,이름,부서(선택),이메일(선택),휴대폰(선택)</code> — 첫 줄 헤더는 자동 무시됩니다.</p>
                 <textarea id="bulk-csv" class="bulk-area"
-                          placeholder="아이디,비밀번호,이름,부서
-hong1,pass1234,홍길동,원무과
-kim2,pass5678,김철수,간호부"></textarea>
+                          placeholder="아이디,비밀번호,이름,부서,이메일,휴대폰
+hong1,pass1234,홍길동,원무과,hong@example.com,010-1234-5678
+kim2,pass5678,김철수,간호부,,"></textarea>
                 <button type="button" id="bulk-preview-btn" class="secondary-btn">미리보기</button>
                 <div id="bulk-preview-wrap" style="display:none">
                     <table class="preview-table">
-                        <thead><tr><th>#</th><th>아이디</th><th>비밀번호</th><th>이름</th><th>부서</th><th>상태</th></tr></thead>
+                        <thead><tr><th>#</th><th>아이디</th><th>비밀번호</th><th>이름</th><th>부서</th><th>이메일</th><th>휴대폰</th><th>상태</th></tr></thead>
                         <tbody id="bulk-preview-body"></tbody>
                     </table>
                     <button type="button" id="bulk-submit-btn" style="margin-top:10px">등록 실행</button>
@@ -498,6 +498,8 @@ kim2,pass5678,김철수,간호부"></textarea>
                 password:    cols[1] || '',
                 displayName: cols[2] || '',
                 dept:        cols[3] || '',
+                email:       cols[4] || '',
+                phone:       cols[5] || '',
                 valid:       !!(cols[0] && cols[1] && cols[2])
             };
         });
@@ -511,6 +513,8 @@ kim2,pass5678,김철수,간호부"></textarea>
                 <td>${r.password ? '••••••' : '<span class="err">필수</span>'}</td>
                 <td>${escHtml(r.displayName) || '<span class="err">필수</span>'}</td>
                 <td>${escHtml(r.dept) || '-'}</td>
+                <td>${escHtml(r.email) || '-'}</td>
+                <td>${escHtml(r.phone) || '-'}</td>
                 <td>${r.valid ? '✓' : '<span class="err">오류</span>'}</td>
             </tr>`).join('');
         previewWrap.style.display = '';

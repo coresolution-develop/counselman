@@ -113,6 +113,8 @@
           org:      u.instCode,
           userId:   u.username,
           name:     u.displayName || u.username,
+          email:    u.email || '',
+          phone:    u.phone || '',
           roleCode: u.roleCode || 'USER',
           status:   u.useYn === 'Y' ? '사용' : '미사용'
         };

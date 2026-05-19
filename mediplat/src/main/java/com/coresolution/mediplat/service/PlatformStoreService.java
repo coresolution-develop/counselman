@@ -314,18 +314,25 @@ public class PlatformStoreService {
 
     public List<PlatformUser> listUsers() {
         return jdbcTemplate.query("""
-                SELECT id, inst_code, username, password_hash, display_name, COALESCE(dept, '') AS dept, role_code, use_yn
+                SELECT id, inst_code, username, password_hash, display_name, COALESCE(dept, '') AS dept,
+                       email, phone, role_code, use_yn
                 FROM mp_user
                 ORDER BY id ASC
-                """, (rs, rowNum) -> new PlatformUser(
-                        rs.getLong("id"),
-                        rs.getString("inst_code"),
-                        rs.getString("username"),
-                        rs.getString("password_hash"),
-                        rs.getString("display_name"),
-                        rs.getString("dept"),
-                        rs.getString("role_code"),
-                        rs.getString("use_yn")));
+                """, (rs, rowNum) -> mapPlatformUser(rs));
+    }
+
+    private PlatformUser mapPlatformUser(java.sql.ResultSet rs) throws java.sql.SQLException {
+        return new PlatformUser(
+                rs.getLong("id"),
+                rs.getString("inst_code"),
+                rs.getString("username"),
+                rs.getString("password_hash"),
+                rs.getString("display_name"),
+                rs.getString("dept"),
+                rs.getString("email"),
+                rs.getString("phone"),
+                rs.getString("role_code"),
+                rs.getString("use_yn"));
     }
 
     public List<PlatformUser> listInstitutionAdminUsers() {
@@ -400,19 +407,12 @@ public class PlatformStoreService {
 
     public List<RoomBoardViewerAccount> listRoomBoardViewerAccounts() {
         List<PlatformUser> viewerUsers = jdbcTemplate.query("""
-                SELECT id, inst_code, username, password_hash, display_name, COALESCE(dept, '') AS dept, role_code, use_yn
+                SELECT id, inst_code, username, password_hash, display_name, COALESCE(dept, '') AS dept,
+                       email, phone, role_code, use_yn
                 FROM mp_user
                 WHERE role_code = ?
                 ORDER BY username ASC
-                """, (rs, rowNum) -> new PlatformUser(
-                        rs.getLong("id"),
-                        rs.getString("inst_code"),
-                        rs.getString("username"),
-                        rs.getString("password_hash"),
-                        rs.getString("display_name"),
-                        rs.getString("dept"),
-                        rs.getString("role_code"),
-                        rs.getString("use_yn")),
+                """, (rs, rowNum) -> mapPlatformUser(rs),
                 ROLE_ROOM_BOARD_VIEWER);
 
         Map<String, String> institutionNameMap = new LinkedHashMap<>();
@@ -519,6 +519,8 @@ public class PlatformStoreService {
                 passwordHash,
                 normalizedDisplayName,
                 "",
+                existingViewerUser == null ? null : existingViewerUser.getEmail(),
+                existingViewerUser == null ? null : existingViewerUser.getPhone(),
                 ROLE_ROOM_BOARD_VIEWER,
                 normalizedUseYn);
         replaceRoomBoardViewerScopes(normalizedUsername, normalizedScopeInstCodes);
@@ -762,10 +764,23 @@ public class PlatformStoreService {
     }
 
     public void saveUser(String instCode, String username, String rawPassword, String displayName, String roleCode, String useYn) {
-        saveUser(instCode, username, rawPassword, displayName, "", roleCode, useYn);
+        saveUser(instCode, username, rawPassword, displayName, "", null, null, roleCode, useYn);
     }
 
     public void saveUser(String instCode, String username, String rawPassword, String displayName, String dept, String roleCode, String useYn) {
+        saveUser(instCode, username, rawPassword, displayName, dept, null, null, roleCode, useYn);
+    }
+
+    public void saveUser(
+            String instCode,
+            String username,
+            String rawPassword,
+            String displayName,
+            String dept,
+            String email,
+            String phone,
+            String roleCode,
+            String useYn) {
         String normalizedInstCode = normalizeInstCode(instCode);
         String normalizedUsername = normalizeUsername(username);
         String normalizedUseYn = normalizeYn(useYn);
@@ -778,7 +793,8 @@ public class PlatformStoreService {
             throw new IllegalArgumentException("먼저 기관을 등록해 주세요.");
         }
         String hash = passwordEncoder.encode(rawPassword.trim());
-        upsertUser(normalizedInstCode, normalizedUsername, hash, displayName.trim(), dept, normalizedRole, normalizedUseYn);
+        upsertUser(normalizedInstCode, normalizedUsername, hash, displayName.trim(), dept,
+                trimToNull(email), trimToNull(phone), normalizedRole, normalizedUseYn);
     }
 
     public void bulkSaveUsers(String instCode, List<Map<String, String>> users) {
@@ -795,13 +811,15 @@ public class PlatformStoreService {
             String rawPassword = u.getOrDefault("password", "");
             String displayName = u.getOrDefault("displayName", "");
             String dept        = u.getOrDefault("dept", "");
+            String email       = trimToNull(u.get("email"));
+            String phone       = trimToNull(u.get("phone"));
             String roleCode    = normalizeRole(u.getOrDefault("roleCode", "USER"));
             String useYn       = normalizeYn(u.getOrDefault("useYn", "Y"));
             if (!StringUtils.hasText(username) || !StringUtils.hasText(rawPassword) || !StringUtils.hasText(displayName)) {
                 continue;
             }
             String hash = passwordEncoder.encode(rawPassword.trim());
-            upsertUser(normalizedInstCode, username, hash, displayName.trim(), dept, roleCode, useYn);
+            upsertUser(normalizedInstCode, username, hash, displayName.trim(), dept, email, phone, roleCode, useYn);
         }
     }
 
@@ -991,6 +1009,8 @@ public class PlatformStoreService {
                     password_hash VARCHAR(255) NOT NULL,
                     display_name VARCHAR(100) NOT NULL,
                     dept VARCHAR(100) NOT NULL DEFAULT '',
+                    email VARCHAR(500) NULL,
+                    phone VARCHAR(500) NULL,
                     role_code VARCHAR(30) NOT NULL DEFAULT 'USER',
                     use_yn CHAR(1) NOT NULL DEFAULT 'Y',
                     UNIQUE KEY uq_mp_user_inst_username (inst_code, username)
@@ -1001,6 +1021,18 @@ public class PlatformStoreService {
                 Integer.class);
         if (deptColExists == null || deptColExists == 0) {
             jdbcTemplate.execute("ALTER TABLE mp_user ADD COLUMN dept VARCHAR(100) NOT NULL DEFAULT ''");
+        }
+        Integer emailColExists = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'mp_user' AND COLUMN_NAME = 'email'",
+                Integer.class);
+        if (emailColExists == null || emailColExists == 0) {
+            jdbcTemplate.execute("ALTER TABLE mp_user ADD COLUMN email VARCHAR(500) NULL");
+        }
+        Integer phoneColExists = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'mp_user' AND COLUMN_NAME = 'phone'",
+                Integer.class);
+        if (phoneColExists == null || phoneColExists == 0) {
+            jdbcTemplate.execute("ALTER TABLE mp_user ADD COLUMN phone VARCHAR(500) NULL");
         }
 
         jdbcTemplate.execute("""
@@ -1103,11 +1135,15 @@ public class PlatformStoreService {
                     password_hash VARCHAR(255) NOT NULL,
                     display_name VARCHAR(100) NOT NULL,
                     dept VARCHAR(100) NOT NULL DEFAULT '',
+                    email VARCHAR(500) NULL,
+                    phone VARCHAR(500) NULL,
                     role_code VARCHAR(30) NOT NULL DEFAULT 'USER',
                     use_yn CHAR(1) NOT NULL DEFAULT 'Y',
                     UNIQUE (inst_code, username)
                 )
                 """);
+        jdbcTemplate.execute("ALTER TABLE mp_user ADD COLUMN IF NOT EXISTS email VARCHAR(500) NULL");
+        jdbcTemplate.execute("ALTER TABLE mp_user ADD COLUMN IF NOT EXISTS phone VARCHAR(500) NULL");
 
         jdbcTemplate.execute("""
                 CREATE TABLE IF NOT EXISTS mp_user_scope (
@@ -1277,20 +1313,13 @@ public class PlatformStoreService {
             return null;
         }
         List<PlatformUser> users = jdbcTemplate.query("""
-                SELECT id, inst_code, username, password_hash, display_name, COALESCE(dept, '') AS dept, role_code, use_yn
+                SELECT id, inst_code, username, password_hash, display_name, COALESCE(dept, '') AS dept,
+                       email, phone, role_code, use_yn
                 FROM mp_user
                 WHERE inst_code = ?
                   AND username = ?
                 LIMIT 1
-                """, (rs, rowNum) -> new PlatformUser(
-                        rs.getLong("id"),
-                        rs.getString("inst_code"),
-                        rs.getString("username"),
-                        rs.getString("password_hash"),
-                        rs.getString("display_name"),
-                        rs.getString("dept"),
-                        rs.getString("role_code"),
-                        rs.getString("use_yn")),
+                """, (rs, rowNum) -> mapPlatformUser(rs),
                 normalizedInstCode,
                 normalizedUsername);
         return users.isEmpty() ? null : users.get(0);
@@ -1302,20 +1331,13 @@ public class PlatformStoreService {
             return null;
         }
         List<PlatformUser> users = jdbcTemplate.query("""
-                SELECT id, inst_code, username, password_hash, display_name, COALESCE(dept, '') AS dept, role_code, use_yn
+                SELECT id, inst_code, username, password_hash, display_name, COALESCE(dept, '') AS dept,
+                       email, phone, role_code, use_yn
                 FROM mp_user
                 WHERE role_code = ?
                   AND LOWER(username) = LOWER(?)
                 LIMIT 1
-                """, (rs, rowNum) -> new PlatformUser(
-                        rs.getLong("id"),
-                        rs.getString("inst_code"),
-                        rs.getString("username"),
-                        rs.getString("password_hash"),
-                        rs.getString("display_name"),
-                        rs.getString("dept"),
-                        rs.getString("role_code"),
-                        rs.getString("use_yn")),
+                """, (rs, rowNum) -> mapPlatformUser(rs),
                 ROLE_ROOM_BOARD_VIEWER,
                 normalizedUsername);
         return users.isEmpty() ? null : users.get(0);
@@ -1327,18 +1349,11 @@ public class PlatformStoreService {
             return false;
         }
         List<PlatformUser> users = jdbcTemplate.query("""
-                SELECT id, inst_code, username, password_hash, display_name, COALESCE(dept, '') AS dept, role_code, use_yn
+                SELECT id, inst_code, username, password_hash, display_name, COALESCE(dept, '') AS dept,
+                       email, phone, role_code, use_yn
                 FROM mp_user
                 WHERE LOWER(username) = LOWER(?)
-                """, (rs, rowNum) -> new PlatformUser(
-                        rs.getLong("id"),
-                        rs.getString("inst_code"),
-                        rs.getString("username"),
-                        rs.getString("password_hash"),
-                        rs.getString("display_name"),
-                        rs.getString("dept"),
-                        rs.getString("role_code"),
-                        rs.getString("use_yn")),
+                """, (rs, rowNum) -> mapPlatformUser(rs),
                 normalizedUsername);
         for (PlatformUser user : users) {
             if (user == null) {
@@ -1469,16 +1484,19 @@ public class PlatformStoreService {
                 """, instCode, instName, useYn);
     }
 
-    private void upsertUser(String instCode, String username, String passwordHash, String displayName, String dept, String roleCode, String useYn) {
+    private void upsertUser(String instCode, String username, String passwordHash, String displayName, String dept,
+            String email, String phone, String roleCode, String useYn) {
         String safeDept = dept != null ? dept.trim() : "";
         if (isMySql()) {
             jdbcTemplate.update("""
-                    INSERT INTO mp_user (inst_code, username, password_hash, display_name, dept, role_code, use_yn)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO mp_user (inst_code, username, password_hash, display_name, dept, email, phone, role_code, use_yn)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON DUPLICATE KEY UPDATE
                         password_hash = ?,
                         display_name = ?,
                         dept = ?,
+                        email = ?,
+                        phone = ?,
                         role_code = ?,
                         use_yn = ?
                     """,
@@ -1487,20 +1505,24 @@ public class PlatformStoreService {
                     passwordHash,
                     displayName,
                     safeDept,
+                    email,
+                    phone,
                     roleCode,
                     useYn,
                     passwordHash,
                     displayName,
                     safeDept,
+                    email,
+                    phone,
                     roleCode,
                     useYn);
             return;
         }
         jdbcTemplate.update("""
-                MERGE INTO mp_user (inst_code, username, password_hash, display_name, dept, role_code, use_yn)
+                MERGE INTO mp_user (inst_code, username, password_hash, display_name, dept, email, phone, role_code, use_yn)
                 KEY (inst_code, username)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, instCode, username, passwordHash, displayName, safeDept, roleCode, useYn);
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, instCode, username, passwordHash, displayName, safeDept, email, phone, roleCode, useYn);
     }
 
     private void upsertService(

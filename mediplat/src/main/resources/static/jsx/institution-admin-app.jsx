@@ -68,6 +68,7 @@ const I = {
   App:         (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>,
   Link:        (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
   Mail:        (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>,
+  Phone:       (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>,
 };
 
 /* ---- Shared helpers ---- */
@@ -448,7 +449,7 @@ function AppManagementPanel({ allServices, onSaved, accent }) {
 function UserManagementPanel({ selectedInstCode, users, setUsers, accent, density }) {
   const a = IA_ACCENTS[accent] || IA_ACCENTS.blue;
   const compact = density === 'compact';
-  const emptyForm = { userId: '', password: '', name: '', roleCode: 'USER', useYn: 'Y' };
+  const emptyForm = { userId: '', password: '', name: '', email: '', phone: '', roleCode: 'USER', useYn: 'Y' };
   const [form, setForm] = React.useState(emptyForm);
   const [editId, setEditId] = React.useState(null);
   const [saving, setSaving] = React.useState(false);
@@ -458,7 +459,15 @@ function UserManagementPanel({ selectedInstCode, users, setUsers, accent, densit
 
   function handleEdit(u) {
     setEditId(u.userId);
-    setForm({ userId: u.userId, password: '', name: u.name, roleCode: u.roleCode || 'USER', useYn: u.status === '사용' ? 'Y' : 'N' });
+    setForm({
+      userId: u.userId,
+      password: '',
+      name: u.name,
+      email: u.email || '',
+      phone: u.phone || '',
+      roleCode: u.roleCode || 'USER',
+      useYn: u.status === '사용' ? 'Y' : 'N',
+    });
   }
 
   async function handleSave(e) {
@@ -467,12 +476,32 @@ function UserManagementPanel({ selectedInstCode, users, setUsers, accent, densit
     if (!editId && !form.password) { showToast('비밀번호를 입력하세요.', true); return; }
     setSaving(true);
     try {
-      await postForm('/admin/users', { instCode: selectedInstCode, username: form.userId, password: form.password, displayName: form.name, roleCode: form.roleCode, useYn: form.useYn });
+      await postForm('/admin/users', {
+        instCode: selectedInstCode,
+        username: form.userId,
+        password: form.password,
+        displayName: form.name,
+        email: form.email,
+        phone: form.phone,
+        roleCode: form.roleCode,
+        useYn: form.useYn,
+      });
       showToast(editId ? '수정되었습니다.' : '사용자가 추가되었습니다.');
       if (editId) {
-        setUsers(p => p.map(u => u.userId === editId ? { ...u, name: form.name, roleCode: form.roleCode, status: form.useYn === 'Y' ? '사용' : '미사용' } : u));
+        setUsers(p => p.map(u => u.userId === editId
+          ? { ...u, name: form.name, email: form.email, phone: form.phone, roleCode: form.roleCode, status: form.useYn === 'Y' ? '사용' : '미사용' }
+          : u));
       } else {
-        setUsers(p => [...p, { id: Date.now(), org: selectedInstCode, userId: form.userId, name: form.name, roleCode: form.roleCode, status: form.useYn === 'Y' ? '사용' : '미사용' }]);
+        setUsers(p => [...p, {
+          id: Date.now(),
+          org: selectedInstCode,
+          userId: form.userId,
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          roleCode: form.roleCode,
+          status: form.useYn === 'Y' ? '사용' : '미사용',
+        }]);
       }
       setEditId(null);
       setForm(emptyForm);
@@ -503,6 +532,14 @@ function UserManagementPanel({ selectedInstCode, users, setUsers, accent, densit
               <option value="INSTITUTION_ADMIN">기관 관리자</option>
             </select>
             <I.Chevron width={13} height={13} className="ia-field__caret" />
+          </Field>
+        </div>
+        <div className="ia-form__row">
+          <Field icon={<I.Mail width={14} height={14} />}>
+            <input className="ia-field__input" type="email" inputMode="email" autoComplete="email" placeholder="이메일 (선택)" value={form.email} onChange={e => f('email', e.target.value)} style={{ '--ring': a.to }} />
+          </Field>
+          <Field icon={<I.Phone width={14} height={14} />}>
+            <input className="ia-field__input" type="tel" inputMode="tel" autoComplete="tel" placeholder="휴대폰 번호 (선택)" value={form.phone} onChange={e => f('phone', e.target.value)} style={{ '--ring': a.to }} />
           </Field>
         </div>
         <div className="ia-form__btns">
@@ -1040,7 +1077,7 @@ function InstitutionAdminApp() {
       if (!res.ok) return;
       const d = await res.json();
       setEnabledServiceCodes(d.enabledServiceCodes || []);
-      setUsers((d.institutionUsers || []).map(u => ({ id: u.id || u.username, org: u.instCode, userId: u.username, name: u.displayName || u.username, roleCode: u.roleCode || 'USER', status: u.useYn === 'Y' ? '사용' : '미사용' })));
+      setUsers((d.institutionUsers || []).map(u => ({ id: u.id || u.username, org: u.instCode, userId: u.username, name: u.displayName || u.username, email: u.email || '', phone: u.phone || '', roleCode: u.roleCode || 'USER', status: u.useYn === 'Y' ? '사용' : '미사용' })));
       // async-data only returns {serviceCode, serviceName}, keep full service data from initial load
     } catch (e) { console.error(e); }
   }

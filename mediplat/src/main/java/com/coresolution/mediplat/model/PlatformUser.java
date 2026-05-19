@@ -7,6 +7,8 @@ public class PlatformUser {
     private final String passwordHash;
     private final String displayName;
     private final String dept;
+    private final String email;
+    private final String phone;
     private final String roleCode;
     private final String useYn;
 
@@ -17,6 +19,8 @@ public class PlatformUser {
             String passwordHash,
             String displayName,
             String dept,
+            String email,
+            String phone,
             String roleCode,
             String useYn) {
         this.id = id;
@@ -25,6 +29,8 @@ public class PlatformUser {
         this.passwordHash = passwordHash;
         this.displayName = displayName;
         this.dept = dept;
+        this.email = email;
+        this.phone = phone;
         this.roleCode = roleCode;
         this.useYn = useYn;
     }
@@ -51,6 +57,14 @@ public class PlatformUser {
 
     public String getDept() {
         return dept;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public String getPhone() {
+        return phone;
     }
 
     public String getRoleCode() {

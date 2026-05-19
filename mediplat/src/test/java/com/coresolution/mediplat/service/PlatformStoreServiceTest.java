@@ -197,6 +197,88 @@ class PlatformStoreServiceTest {
     }
 
     @Test
+    void saveUser_persistsEmailAndPhone_andListInstitutionUsersReturnsThem() {
+        CounselManAccountService counselManAccountService = org.mockito.Mockito.mock(CounselManAccountService.class);
+        when(counselManAccountService.listInstitutions()).thenReturn(List.of());
+        when(counselManAccountService.isRoomBoardEnabled(anyString())).thenReturn(true);
+
+        PlatformStoreService storeService = newInitializedStoreService(counselManAccountService);
+        storeService.saveInstitution("FALH", "기관A", "Y");
+        storeService.saveUser("FALH", "jdoe", "Passw0rd!", "John Doe", "원무과",
+                "jdoe@example.com", "010-1234-5678", "USER", "Y");
+
+        List<com.coresolution.mediplat.model.PlatformUser> users = storeService.listInstitutionUsers("FALH");
+        assertEquals(1, users.size());
+        com.coresolution.mediplat.model.PlatformUser saved = users.get(0);
+        assertEquals("jdoe", saved.getUsername());
+        assertEquals("jdoe@example.com", saved.getEmail());
+        assertEquals("010-1234-5678", saved.getPhone());
+    }
+
+    @Test
+    void saveUser_blankEmailPhone_storedAsNull() {
+        CounselManAccountService counselManAccountService = org.mockito.Mockito.mock(CounselManAccountService.class);
+        when(counselManAccountService.listInstitutions()).thenReturn(List.of());
+        when(counselManAccountService.isRoomBoardEnabled(anyString())).thenReturn(true);
+
+        PlatformStoreService storeService = newInitializedStoreService(counselManAccountService);
+        storeService.saveInstitution("FALH", "기관A", "Y");
+        storeService.saveUser("FALH", "alice", "Passw0rd!", "Alice", "", "  ", "", "USER", "Y");
+
+        com.coresolution.mediplat.model.PlatformUser saved = storeService.listInstitutionUsers("FALH").get(0);
+        assertNull(saved.getEmail());
+        assertNull(saved.getPhone());
+    }
+
+    @Test
+    void bulkSaveUsers_acceptsEmailAndPhone() {
+        CounselManAccountService counselManAccountService = org.mockito.Mockito.mock(CounselManAccountService.class);
+        when(counselManAccountService.listInstitutions()).thenReturn(List.of());
+        when(counselManAccountService.isRoomBoardEnabled(anyString())).thenReturn(true);
+
+        PlatformStoreService storeService = newInitializedStoreService(counselManAccountService);
+        storeService.saveInstitution("FALH", "기관A", "Y");
+
+        java.util.Map<String, String> row1 = new java.util.HashMap<>();
+        row1.put("username", "bob");
+        row1.put("password", "Passw0rd!");
+        row1.put("displayName", "Bob");
+        row1.put("dept", "간호부");
+        row1.put("email", "bob@example.com");
+        row1.put("phone", "010-9999-0000");
+        java.util.Map<String, String> row2 = new java.util.HashMap<>();
+        row2.put("username", "carol");
+        row2.put("password", "Passw0rd!");
+        row2.put("displayName", "Carol");
+        storeService.bulkSaveUsers("FALH", List.of(row1, row2));
+
+        List<com.coresolution.mediplat.model.PlatformUser> users = storeService.listInstitutionUsers("FALH");
+        assertEquals(2, users.size());
+        com.coresolution.mediplat.model.PlatformUser bob = users.stream().filter(u -> "bob".equals(u.getUsername())).findFirst().orElseThrow();
+        assertEquals("bob@example.com", bob.getEmail());
+        assertEquals("010-9999-0000", bob.getPhone());
+        com.coresolution.mediplat.model.PlatformUser carol = users.stream().filter(u -> "carol".equals(u.getUsername())).findFirst().orElseThrow();
+        assertNull(carol.getEmail());
+        assertNull(carol.getPhone());
+    }
+
+    @Test
+    void saveUser_updatesExistingRowEmailAndPhone() {
+        CounselManAccountService counselManAccountService = org.mockito.Mockito.mock(CounselManAccountService.class);
+        when(counselManAccountService.listInstitutions()).thenReturn(List.of());
+        when(counselManAccountService.isRoomBoardEnabled(anyString())).thenReturn(true);
+
+        PlatformStoreService storeService = newInitializedStoreService(counselManAccountService);
+        storeService.saveInstitution("FALH", "기관A", "Y");
+        storeService.saveUser("FALH", "jdoe", "Passw0rd!", "John", "", "old@example.com", "010-0000-0000", "USER", "Y");
+        storeService.saveUser("FALH", "jdoe", "Passw0rd!", "John", "", "new@example.com", "010-1111-2222", "USER", "Y");
+
+        com.coresolution.mediplat.model.PlatformUser saved = storeService.listInstitutionUsers("FALH").get(0);
+        assertEquals("new@example.com", saved.getEmail());
+        assertEquals("010-1111-2222", saved.getPhone());
+    }
+
+    @Test
     void recordLogin_insertsAuditRow_andRecordLogoutFillsSessionSeconds() throws InterruptedException {
         CounselManAccountService counselManAccountService = org.mockito.Mockito.mock(CounselManAccountService.class);
         when(counselManAccountService.listInstitutions()).thenReturn(List.of());

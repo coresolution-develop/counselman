@@ -724,6 +724,9 @@ public class MediplatController {
             userMap.put("instCode", institutionUser.getInstCode());
             userMap.put("username", institutionUser.getUsername());
             userMap.put("displayName", institutionUser.getDisplayName());
+            userMap.put("dept", institutionUser.getDept());
+            userMap.put("email", institutionUser.getEmail());
+            userMap.put("phone", institutionUser.getPhone());
             userMap.put("roleCode", institutionUser.getRoleCode());
             userMap.put("useYn", institutionUser.getUseYn());
             return userMap;
@@ -841,6 +844,9 @@ public class MediplatController {
             @RequestParam("username") String username,
             @RequestParam("password") String password,
             @RequestParam("displayName") String displayName,
+            @RequestParam(name = "dept", required = false) String dept,
+            @RequestParam(name = "email", required = false) String email,
+            @RequestParam(name = "phone", required = false) String phone,
             @RequestParam(name = "roleCode", defaultValue = "USER") String roleCode,
             @RequestParam(name = "useYn", defaultValue = "Y") String useYn,
             HttpSession session,
@@ -856,7 +862,8 @@ public class MediplatController {
             return "redirect:/admin";
         }
         try {
-            storeService.saveUser(managedInstCode, username, password, displayName, managedRoleCode, useYn);
+            storeService.saveUser(managedInstCode, username, password, displayName,
+                    dept == null ? "" : dept, email, phone, managedRoleCode, useYn);
             String savedMessage = "INSTITUTION_ADMIN".equalsIgnoreCase(managedRoleCode)
                     ? "기관 관리자 계정이 저장되었습니다."
                     : "기관 사용자 계정이 저장되었습니다.";
