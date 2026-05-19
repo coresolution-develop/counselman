@@ -100,6 +100,38 @@
   - `admin.html` 대량 CSV 5/6번 컬럼으로 email/phone 처리 (해당 페이지는 라우팅되지 않은 상태)
   - 단위 테스트 4종 (단건 저장 / 빈값 NULL 처리 / 대량 저장 / 업데이트)
 
+### 2026-05-19 비밀번호 찾기 / 변경 통합
+
+- [x] **SMS OTP 기반 비밀번호 찾기 + 본인 비밀번호 변경** — `/findpwd`에 이메일 링크 / SMS 인증번호 라디오 선택, 로그인된 사용자는 헤더 사용자 메뉴 → `/my/account`에서 본인 비밀번호 변경 ([커밋 b88fa41](https://github.com/coresolution-develop/counselman/commit/b88fa41), [커밋 c867fb9](https://github.com/coresolution-develop/counselman/commit/c867fb9))
+  - `CsmSmsOtpService` 신설 — 6자리 OTP, 5분 TTL, 5회 시도 제한 (in-memory `ConcurrentHashMap` + `@Scheduled` purge)
+  - `PageController.postFindpwd`에 `channel=email|sms` 분기, `/findpwd/verify-otp` 엔드포인트 추가 — OTP 검증 성공 시 `CsmPasswordResetTokenService` 토큰 발급 후 `/ResetPwd` 자동 이동
+  - SMS 발신번호는 `csm.phone_number_{inst}` 첫 행 사용, Bizppurio 게이트웨이로 발송
+  - `MeApiController.POST /api/me/password` — 현재 비밀번호 검증 후 AES 업데이트 + `mp_user` bcrypt 동기화. 변경 후 강제 로그아웃 없이 그대로 사용
+  - design 톤의 `/my/account` 페이지 신설 (read-only 내 정보 카드 + 비밀번호 변경 카드)
+  - `chrome.js` 헤더 `header__user` 버튼에 클릭 핸들러 추가 → `/my/account` 이동
+  - MediPlat `design/Login.html`에 `findPwdUrl` 모델 주입 (`platform.bootstrap.counselman-base-url` 기반), `login-app.jsx`의 forgot 링크 연결
+
+- [x] **Findpwd / ResetPwd 디자인 리뉴얼** — MediPlat 로그인 톤(Pretendard, 라이트 그레이/민트 그라데이션 배경, 흰 반투명 카드, 네이비 액센트)으로 재작성. 라디오 버튼 미표시 + "로그인" 링크 가림 + 옛 modal 스택 4종 → 세그먼트 컨트롤 + 인라인 alert로 정리 ([커밋 5c4b489](https://github.com/coresolution-develop/counselman/commit/5c4b489))
+  - 모바일 480px 이하 padding/폰트 축소, `prefers-reduced-motion` 대응, `role="alert"` 등 접근성 보강
+  - ResetPwd: 토큰 만료/무효 상태도 danger 아이콘 카드 + 복귀 버튼으로 명확하게
+
+- [x] **이메일/휴대폰 형식 검증 + 마스킹 표시** — DB에 garbage 값 저장돼 있을 때 명확히 안내 ([커밋 600708b](https://github.com/coresolution-develop/counselman/commit/600708b))
+  - `AuthContactValidator` 유틸 신설 — RFC-5322 lite 이메일 정규식, 한국 휴대폰 정규식(`^01(?:0|1|[6-9])\d{7,8}$`)
+  - 이메일 채널: 형식 검증 실패 시 "등록된 이메일 형식이 올바르지 않습니다. 관리자에게 비밀번호 초기화를 요청해 주세요" 안내. 성공 시 응답 `msg`에 마스킹 주소(`al***@gmail.com`) 포함
+  - SMS 채널: 기존 길이만 ≥10 → 010/011/016~019 prefix + 정확히 10~11자리. `phoneMask` 응답으로 OTP 화면에 `010-****-1234` 표시
+  - 인라인 `maskPhone` 헬퍼 제거, `AuthContactValidator.maskKrMobile`로 일원화
+
+- [x] **`csm.base-url` 명시 설정으로 Host Header Injection 방어** — 비밀번호 재설정 이메일에 포함되는 reset 링크가 `request.getServerName()` 단독 의존 → 공격자가 임의 Host 헤더로 도메인 조작해 토큰 탈취 가능했던 취약점 차단 ([커밋 884a8d9](https://github.com/coresolution-develop/counselman/commit/884a8d9))
+  - `csm.base-url` 프로퍼티 추가 (env: `CSM_BASE_URL`). 설정값 우선 사용, 빈 값일 때만 request 헤더로 폴백
+  - 환경별 default: `prod=https://csm.sosyge.net/csm`, `local=http://localhost:8081/csm`, `dev`=빈 값 (운영자가 `CSM_BASE_URL` 환경변수로 dev 도메인 주입)
+  - `PageController.buildResetLink()` / `resolveCsmBaseUrl()` 메서드로 로직 분리, trailing slash 정규화
+
+- [x] **회귀 테스트 신규 4개 클래스 추가** (총 30+ 케이스 통과)
+  - `CsmSmsOtpServiceTest` — OTP 발급/검증/만료/시도제한/재발급
+  - `MeApiControllerTest` — 미인증 거부, 현재 비밀번호 mismatch, 동일 비밀번호 거부, `mp_user` sync 호출
+  - `AuthContactValidatorTest` — 이메일 valid/invalid, 010/011/016~019 prefix, 길이/국제번호/유선번호 거부, 마스킹 edge case
+  - `PageControllerResetLinkTest` — 설정값이 request보다 우선, trailing slash 제거, 빈/공백 폴백, 포트 80/443 생략
+
 ### 2026-05-18 운영 핫픽스 (기관 등록 / 공지 / 문자관리 통합)
 
 - [x] **기관 등록 페이지 UI 깨짐 수정** — 새 디자인 사이드바에서 메뉴 라벨이 보이지 않던 문제 해결 ([layout-modern-shell.css](src/main/resources/static/css/csm/Include/layout-modern-shell.css))
@@ -355,3 +387,6 @@
 | 챗봇 채팅방 | `csm.chat_room_{inst}`, `csm.chat_message_{inst}`, `csm.faq_{inst}` |
 | MediPlat 사용자 | `mediplat.mp_user` (inst_code, username, display_name, dept, email, phone, role_code) — email/phone은 nullable, CSM `us_col_10/11` 호환 |
 | MediPlat 로그인 이력 | `mediplat.mp_login_audit` (inst_code, username, login_at, logout_at, session_seconds) — `HttpSessionListener`가 logout 기록 |
+| 비밀번호 찾기 — OTP 발신번호 | `csm.phone_number_{inst}` 첫 행 사용 (없으면 발송 거부) |
+| 비밀번호 찾기 엔드포인트 | `POST /findpwd/post` (channel=email\|sms), `POST /findpwd/verify-otp`, `POST /api/me/password` |
+| 비밀번호 reset 도메인 환경변수 | `CSM_BASE_URL` — 빈 값이면 `X-Forwarded-Host` 폴백. prod default `https://csm.sosyge.net/csm` |
