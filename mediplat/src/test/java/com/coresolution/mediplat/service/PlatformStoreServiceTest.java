@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
@@ -19,6 +20,7 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.coresolution.mediplat.model.PlatformInstitution;
+import com.coresolution.mediplat.model.PlatformLoginAudit;
 import com.coresolution.mediplat.model.PlatformSessionUser;
 
 class PlatformStoreServiceTest {
@@ -192,6 +194,85 @@ class PlatformStoreServiceTest {
         storeService.saveInstitutionServiceAccess("FALH", List.of("ROOM_BOARD"));
 
         assertTrue(storeService.isRoomBoardCounselPairEnabled("FALH"));
+    }
+
+    @Test
+    void recordLogin_insertsAuditRow_andRecordLogoutFillsSessionSeconds() throws InterruptedException {
+        CounselManAccountService counselManAccountService = org.mockito.Mockito.mock(CounselManAccountService.class);
+        when(counselManAccountService.listInstitutions()).thenReturn(List.of());
+        when(counselManAccountService.isRoomBoardEnabled(anyString())).thenReturn(true);
+
+        PlatformStoreService storeService = newInitializedStoreService(counselManAccountService);
+        storeService.saveInstitution("FALH", "기관A", "Y");
+
+        PlatformSessionUser sessionUser = new PlatformSessionUser("FALH", "jdoe", "John Doe", "USER");
+        Long auditId = storeService.recordLogin(sessionUser);
+        assertNotNull(auditId);
+
+        List<PlatformLoginAudit> auditsBeforeLogout = storeService.listLoginAudits("FALH", null, null, null, 50);
+        assertEquals(1, auditsBeforeLogout.size());
+        PlatformLoginAudit pending = auditsBeforeLogout.get(0);
+        assertEquals("jdoe", pending.getUsername());
+        assertEquals("기관A", pending.getInstName());
+        assertNotNull(pending.getLoginAt());
+        assertNull(pending.getLogoutAt());
+        assertNull(pending.getSessionSeconds());
+
+        Thread.sleep(1100);
+        storeService.recordLogout(auditId);
+
+        List<PlatformLoginAudit> auditsAfter = storeService.listLoginAudits("FALH", null, null, null, 50);
+        assertEquals(1, auditsAfter.size());
+        PlatformLoginAudit finished = auditsAfter.get(0);
+        assertNotNull(finished.getLogoutAt());
+        assertNotNull(finished.getSessionSeconds());
+        assertTrue(finished.getSessionSeconds() >= 1L,
+                () -> "expected session seconds >= 1 but was " + finished.getSessionSeconds());
+    }
+
+    @Test
+    void listLoginAudits_filtersByInstitution() {
+        CounselManAccountService counselManAccountService = org.mockito.Mockito.mock(CounselManAccountService.class);
+        when(counselManAccountService.listInstitutions()).thenReturn(List.of());
+        when(counselManAccountService.isRoomBoardEnabled(anyString())).thenReturn(true);
+
+        PlatformStoreService storeService = newInitializedStoreService(counselManAccountService);
+        storeService.saveInstitution("FALH", "기관A", "Y");
+        storeService.saveInstitution("ABCD", "기관B", "Y");
+
+        storeService.recordLogin(new PlatformSessionUser("FALH", "alice", "Alice", "USER"));
+        storeService.recordLogin(new PlatformSessionUser("ABCD", "bob", "Bob", "USER"));
+
+        List<PlatformLoginAudit> falhAudits = storeService.listLoginAudits("FALH", null, null, null, 50);
+        assertEquals(1, falhAudits.size());
+        assertEquals("alice", falhAudits.get(0).getUsername());
+
+        List<PlatformLoginAudit> allAudits = storeService.listLoginAudits(null, null, null, null, 50);
+        assertEquals(2, allAudits.size());
+    }
+
+    @Test
+    void recordLogout_isIdempotent() {
+        CounselManAccountService counselManAccountService = org.mockito.Mockito.mock(CounselManAccountService.class);
+        when(counselManAccountService.listInstitutions()).thenReturn(List.of());
+        when(counselManAccountService.isRoomBoardEnabled(anyString())).thenReturn(true);
+
+        PlatformStoreService storeService = newInitializedStoreService(counselManAccountService);
+        storeService.saveInstitution("FALH", "기관A", "Y");
+
+        Long auditId = storeService.recordLogin(new PlatformSessionUser("FALH", "jdoe", "John Doe", "USER"));
+        storeService.recordLogout(auditId);
+
+        PlatformLoginAudit first = storeService.listLoginAudits("FALH", null, null, null, 50).get(0);
+        java.time.LocalDateTime firstLogoutAt = first.getLogoutAt();
+        Long firstSeconds = first.getSessionSeconds();
+        assertNotNull(firstLogoutAt);
+
+        storeService.recordLogout(auditId);
+
+        PlatformLoginAudit second = storeService.listLoginAudits("FALH", null, null, null, 50).get(0);
+        assertEquals(firstLogoutAt, second.getLogoutAt());
+        assertEquals(firstSeconds, second.getSessionSeconds());
     }
 
     private PlatformStoreService newInitializedStoreService(CounselManAccountService counselManAccountService) {

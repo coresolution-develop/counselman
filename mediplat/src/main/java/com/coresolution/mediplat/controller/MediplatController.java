@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.DateTimeException;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -28,6 +29,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.util.StringUtils;
 
 import com.coresolution.mediplat.model.PlatformInstitution;
+import com.coresolution.mediplat.model.PlatformLoginAudit;
 import com.coresolution.mediplat.model.PlatformService;
 import com.coresolution.mediplat.model.PlatformSessionUser;
 import com.coresolution.mediplat.model.PlatformUser;
@@ -47,7 +49,8 @@ import jakarta.servlet.http.HttpSession;
 @RequestMapping
 public class MediplatController {
 
-    private static final String SESSION_USER = "mediplatUser";
+    public static final String SESSION_USER = "mediplatUser";
+    public static final String SESSION_LOGIN_AUDIT_ID = "mediplatLoginAuditId";
     private static final String SERVICE_CODE_ROOM_BOARD = "ROOM_BOARD";
     private static final String SERVICE_CODE_SEMINAR_ROOM = "SEMINAR_ROOM";
 
@@ -122,6 +125,10 @@ public class MediplatController {
             return "redirect:/login";
         }
         session.setAttribute(SESSION_USER, user);
+        Long auditId = storeService.recordLogin(user);
+        if (auditId != null) {
+            session.setAttribute(SESSION_LOGIN_AUDIT_ID, auditId);
+        }
         return "redirect:/portal";
     }
 
@@ -996,6 +1003,62 @@ public class MediplatController {
             redirectAttributes.addAttribute("instCode", instCode);
         }
         return "redirect:/admin";
+    }
+
+    @GetMapping("/admin/login-audit")
+    public String loginAuditPage(
+            @RequestParam(name = "instCode", required = false) String instCode,
+            @RequestParam(name = "username", required = false) String username,
+            @RequestParam(name = "fromDate", required = false) String fromDate,
+            @RequestParam(name = "toDate", required = false) String toDate,
+            Model model,
+            HttpSession session) {
+        PlatformSessionUser user = sessionUser(session);
+        if (user == null) {
+            return "redirect:/login";
+        }
+        if (!isAdminUser(user)) {
+            return "redirect:/portal";
+        }
+
+        String filterInstCode = user.isInstitutionAdmin()
+                ? normalizeInstCode(user.getInstCode())
+                : normalizeInstCode(instCode);
+        LocalDate parsedFromDate = parseIsoDate(fromDate);
+        LocalDate parsedToDate = parseIsoDate(toDate);
+        if (parsedFromDate == null && parsedToDate == null) {
+            parsedToDate = LocalDate.now();
+            parsedFromDate = parsedToDate.minusDays(30);
+        }
+
+        List<PlatformLoginAudit> audits = storeService.listLoginAudits(
+                filterInstCode,
+                username,
+                parsedFromDate,
+                parsedToDate,
+                200);
+
+        model.addAttribute("user", user);
+        model.addAttribute("institutions", resolveAdminInstitutions(user, filterInstCode));
+        model.addAttribute("audits", audits);
+        model.addAttribute("filterInstCode", filterInstCode == null ? "" : filterInstCode);
+        model.addAttribute("filterUsername", username == null ? "" : username);
+        model.addAttribute("filterFromDate", parsedFromDate == null ? "" : parsedFromDate.toString());
+        model.addAttribute("filterToDate", parsedToDate == null ? "" : parsedToDate.toString());
+        model.addAttribute("canSelectInstitution", user.isPlatformAdmin());
+        model.addAttribute("dateTimeFormatter", DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        return "design/Login-audit";
+    }
+
+    private LocalDate parseIsoDate(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value.trim());
+        } catch (DateTimeParseException e) {
+            return null;
+        }
     }
 
     private boolean isServiceAccessible(PlatformSessionUser user, String serviceCode) {

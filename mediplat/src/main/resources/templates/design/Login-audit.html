@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MediPlat · 로그인 이력</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css" />
+  <style>
+    :root {
+      --cs-blue-700: #173a82;
+      --cs-blue-600: #1d4ed8;
+      --cs-blue-500: #2563eb;
+      --cs-blue-50:  #eff4ff;
+      --ink-900: #0f172a;
+      --ink-700: #334155;
+      --ink-500: #64748b;
+      --ink-300: #cbd5e1;
+      --ink-200: #e2e8f0;
+      --ink-100: #eef2f6;
+      --ink-50:  #f8fafc;
+      --danger: #b91c1c;
+      --success: #15803d;
+      --font: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--ink-900);
+      background: linear-gradient(180deg, #f4f7fa 0%, #eef2f7 100%);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.01em;
+    }
+    .page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    h1 { font-size: 22px; margin: 0; color: var(--cs-blue-700); }
+    .subtitle { color: var(--ink-500); font-size: 14px; }
+    .back-link {
+      font-size: 14px;
+      color: var(--cs-blue-600);
+      border: 1px solid var(--ink-200);
+      padding: 8px 14px;
+      border-radius: 8px;
+      background: #fff;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid var(--ink-200);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+    form.filters {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+    label { font-size: 13px; color: var(--ink-700); display: block; margin-bottom: 6px; }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--ink-200);
+      border-radius: 8px;
+      font-size: 14px;
+      background: #fff;
+      color: var(--ink-900);
+    }
+    input:focus, select:focus { outline: 2px solid var(--cs-blue-500); outline-offset: 1px; border-color: var(--cs-blue-500); }
+    .actions { display: flex; gap: 8px; }
+    button.primary {
+      padding: 10px 16px;
+      background: var(--cs-blue-600);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    button.primary:hover { background: var(--cs-blue-700); }
+    a.reset {
+      padding: 10px 16px;
+      border: 1px solid var(--ink-200);
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--ink-700);
+      background: #fff;
+      display: inline-flex;
+      align-items: center;
+    }
+    .summary { color: var(--ink-500); font-size: 13px; margin-bottom: 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    thead th {
+      text-align: left;
+      padding: 12px 10px;
+      background: var(--ink-50);
+      border-bottom: 1px solid var(--ink-200);
+      font-size: 12px;
+      color: var(--ink-700);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    tbody td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--ink-100);
+      color: var(--ink-900);
+      vertical-align: top;
+    }
+    tbody tr:hover { background: var(--cs-blue-50); }
+    .role-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--ink-100);
+      color: var(--ink-700);
+    }
+    .role-PLATFORM_ADMIN { background: #fee2e2; color: #991b1b; }
+    .role-INSTITUTION_ADMIN { background: #dbeafe; color: #1e40af; }
+    .open-session { color: var(--danger); font-weight: 600; }
+    .empty { padding: 36px 12px; text-align: center; color: var(--ink-500); }
+    @media (max-width: 640px) {
+      .page { padding: 20px 12px 48px; }
+      thead { display: none; }
+      tbody td { display: block; border-bottom: none; padding: 4px 0; }
+      tbody tr { display: block; border-bottom: 1px solid var(--ink-200); padding: 12px 0; }
+      tbody td::before { content: attr(data-label) ': '; color: var(--ink-500); font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div>
+        <h1>로그인 이력 조회</h1>
+        <div class="subtitle">기관 직원들의 로그인/로그아웃 시각과 세션 시간을 조회합니다.</div>
+      </div>
+      <a href="/admin" class="back-link">← 관리 페이지로</a>
+    </div>
+
+    <div class="card">
+      <form class="filters" method="get" action="/admin/login-audit">
+        <div th:if="${canSelectInstitution}">
+          <label for="instCode">기관</label>
+          <select id="instCode" name="instCode">
+            <option value="">전체 기관</option>
+            <option th:each="inst : ${institutions}"
+                    th:value="${inst.instCode}"
+                    th:text="|${inst.instName} (${inst.instCode})|"
+                    th:selected="${inst.instCode == filterInstCode}"></option>
+          </select>
+        </div>
+        <div th:unless="${canSelectInstitution}">
+          <label>기관</label>
+          <input type="text" th:value="${filterInstCode}" disabled />
+          <input type="hidden" name="instCode" th:value="${filterInstCode}" />
+        </div>
+        <div>
+          <label for="username">계정명 (부분 일치)</label>
+          <input id="username" type="text" name="username" th:value="${filterUsername}" placeholder="예: jdoe" />
+        </div>
+        <div>
+          <label for="fromDate">시작일</label>
+          <input id="fromDate" type="date" name="fromDate" th:value="${filterFromDate}" />
+        </div>
+        <div>
+          <label for="toDate">종료일</label>
+          <input id="toDate" type="date" name="toDate" th:value="${filterToDate}" />
+        </div>
+        <div class="actions">
+          <button type="submit" class="primary">조회</button>
+          <a class="reset" href="/admin/login-audit">초기화</a>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="summary">
+        총 <strong th:text="${#lists.size(audits)}">0</strong>건 (최대 200건 표시)
+      </div>
+      <div th:if="${#lists.isEmpty(audits)}" class="empty">
+        조건에 맞는 로그인 이력이 없습니다.
+      </div>
+      <table th:unless="${#lists.isEmpty(audits)}">
+        <thead>
+          <tr>
+            <th>기관</th>
+            <th>계정</th>
+            <th>이름</th>
+            <th>역할</th>
+            <th>로그인</th>
+            <th>로그아웃</th>
+            <th>세션 시간</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="audit : ${audits}">
+            <td data-label="기관">
+              <span th:text="${audit.instName}">기관명</span>
+              <div style="color: var(--ink-500); font-size: 12px;" th:text="${audit.instCode}">CODE</div>
+            </td>
+            <td data-label="계정" th:text="${audit.username}">user</td>
+            <td data-label="이름" th:text="${audit.displayName}">홍길동</td>
+            <td data-label="역할">
+              <span class="role-badge"
+                    th:classappend="|role-${audit.roleCode}|"
+                    th:text="${audit.roleCode}">ROLE</span>
+            </td>
+            <td data-label="로그인"
+                th:text="${audit.loginAt != null ? #temporals.format(audit.loginAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">2026-01-01 09:00:00</td>
+            <td data-label="로그아웃">
+              <span th:if="${audit.logoutAt != null}"
+                    th:text="${#temporals.format(audit.logoutAt, 'yyyy-MM-dd HH:mm:ss')}">2026-01-01 18:00:00</span>
+              <span th:if="${audit.logoutAt == null}" class="open-session">세션 진행 중</span>
+            </td>
+            <td data-label="세션 시간">
+              <span th:if="${audit.sessionSeconds != null}"
+                    th:text="|${audit.sessionSeconds / 3600}시간 ${(audit.sessionSeconds % 3600) / 60}분 ${audit.sessionSeconds % 60}초|">-</span>
+              <span th:if="${audit.sessionSeconds == null}">-</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

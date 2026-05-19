@@ -26,6 +26,7 @@ import com.coresolution.mediplat.model.PlatformSessionUser;
 import com.coresolution.mediplat.model.PlatformUser;
 import com.coresolution.mediplat.service.CounselManAccountService;
 import com.coresolution.mediplat.service.CounselManSsoLinkService;
+import com.coresolution.mediplat.service.MaintenanceService;
 import com.coresolution.mediplat.service.PlatformStoreService;
 import com.coresolution.mediplat.service.SeminarRoomService;
 
@@ -48,7 +49,8 @@ class InstitutionAdminFlowTest {
         when(counselManSsoLinkService.createLaunchUrl(any(), any())).thenReturn("http://launch-host/csm/entry?token=ok");
         SeminarRoomService seminarRoomService = mock(SeminarRoomService.class);
 
-        MediplatController controller = new MediplatController(storeService, counselManSsoLinkService, seminarRoomService);
+        MaintenanceService maintenanceService = mock(MaintenanceService.class);
+        MediplatController controller = new MediplatController(storeService, counselManSsoLinkService, seminarRoomService, maintenanceService);
 
         MockHttpSession adminSession = new MockHttpSession();
         String loginView = controller.login(

@@ -24,6 +24,7 @@ import com.coresolution.mediplat.model.PlatformService;
 import com.coresolution.mediplat.model.PlatformSessionUser;
 import com.coresolution.mediplat.model.PlatformUser;
 import com.coresolution.mediplat.service.CounselManSsoLinkService;
+import com.coresolution.mediplat.service.MaintenanceService;
 import com.coresolution.mediplat.service.PlatformStoreService;
 import com.coresolution.mediplat.service.SeminarRoomService;
 
@@ -41,11 +42,14 @@ class MediplatControllerTest {
     @Mock
     private SeminarRoomService seminarRoomService;
 
+    @Mock
+    private MaintenanceService maintenanceService;
+
     private MediplatController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new MediplatController(storeService, counselManSsoLinkService, seminarRoomService);
+        controller = new MediplatController(storeService, counselManSsoLinkService, seminarRoomService, maintenanceService);
     }
 
     @Test
