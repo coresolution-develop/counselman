@@ -101,6 +101,7 @@ import com.coresolution.csm.serivce.ModuleFeatureService;
 import com.coresolution.csm.serivce.CsmPasswordResetTokenService;
 import com.coresolution.csm.serivce.CsmSmsOtpService;
 import com.coresolution.csm.serivce.ExternalSmsGatewayService;
+import com.coresolution.csm.util.AuthContactValidator;
 import com.coresolution.csm.serivce.SmsService;
 import com.coresolution.csm.util.AES128;
 import com.coresolution.csm.vo.AdmissionReservationItem;
@@ -349,13 +350,21 @@ public class PageController {
                 return sendOtpBySms(user, usCol04, response);
             }
 
-            if (user.getUs_col_11() == null || user.getUs_col_11().trim().isEmpty()) {
+            String rawEmail = user.getUs_col_11();
+            if (rawEmail == null || rawEmail.trim().isEmpty()) {
                 response.put("result", false);
-                response.put("msg", "이메일 정보가 없습니다.");
+                response.put("msg", "등록된 이메일이 없습니다. 관리자에게 비밀번호 초기화를 요청해 주세요.");
                 return response;
             }
+            if (!AuthContactValidator.isValidEmail(rawEmail)) {
+                log.warn("[findpwd/email] invalid stored email format inst={} userId={}", usCol04, usCol02);
+                response.put("result", false);
+                response.put("msg", "등록된 이메일 형식이 올바르지 않습니다. 관리자에게 비밀번호 초기화를 요청해 주세요.");
+                return response;
+            }
+            String email = rawEmail.trim();
 
-            String token = tokenService.generateToken(user.getUs_col_11(), usCol04, String.valueOf(user.getUs_col_01()));
+            String token = tokenService.generateToken(email, usCol04, String.valueOf(user.getUs_col_01()));
             String resetLink = request.getScheme() + "://" + request.getServerName()
                     + ((request.getServerPort() == 80 || request.getServerPort() == 443) ? ""
                             : ":" + request.getServerPort())
@@ -367,15 +376,17 @@ public class PageController {
                     .map(Instdata::getId_col_02)
                     .orElse("");
             emailService.sendPasswordResetLink(
-                    user.getUs_col_11(),
+                    email,
                     resetLink,
                     String.valueOf(user.getUs_col_01()),
                     usCol04,
                     usCol02,
                     instName);
 
+            String emailMask = AuthContactValidator.maskEmail(email);
             response.put("result", true);
-            response.put("msg", "등록된 이메일로 비밀번호 변경 링크를 전송하였습니다.");
+            response.put("emailMask", emailMask);
+            response.put("msg", "등록된 이메일 " + emailMask + "(으)로 비밀번호 변경 링크를 전송하였습니다.");
             return response;
         } catch (Exception e) {
             log.error("[findpwd/post] fail inst={}, userId={}", usCol04, usCol02, e);
@@ -389,13 +400,14 @@ public class PageController {
         String phone = user.getUs_col_10();
         if (phone == null || phone.trim().isEmpty()) {
             response.put("result", false);
-            response.put("msg", "휴대폰 번호가 등록되어 있지 않습니다.");
+            response.put("msg", "등록된 휴대폰 번호가 없습니다. 관리자에게 비밀번호 초기화를 요청해 주세요.");
             return response;
         }
-        String normalizedPhone = phone.replaceAll("[^0-9]", "");
-        if (normalizedPhone.length() < 10) {
+        String normalizedPhone = AuthContactValidator.normalizePhone(phone);
+        if (!AuthContactValidator.isValidKrMobile(normalizedPhone)) {
+            log.warn("[findpwd/sms] invalid stored phone format inst={} userId={}", inst, user.getUs_col_01());
             response.put("result", false);
-            response.put("msg", "유효하지 않은 휴대폰 번호입니다.");
+            response.put("msg", "등록된 휴대폰 번호 형식이 올바르지 않습니다. 관리자에게 비밀번호 초기화를 요청해 주세요.");
             return response;
         }
 
@@ -436,7 +448,7 @@ public class PageController {
 
         response.put("result", true);
         response.put("requireOtp", true);
-        response.put("phoneMask", maskPhone(normalizedPhone));
+        response.put("phoneMask", AuthContactValidator.maskKrMobile(normalizedPhone));
         response.put("msg", "인증번호를 전송했습니다.");
         return response;
     }
@@ -454,14 +466,6 @@ public class PageController {
             log.warn("[findpwd/sms] sender lookup failed inst={}: {}", inst, e.getMessage());
             return null;
         }
-    }
-
-    private String maskPhone(String digits) {
-        if (digits == null || digits.length() < 7) return "***-****-****";
-        int len = digits.length();
-        String tail = digits.substring(len - 4);
-        String head = digits.substring(0, 3);
-        return head + "-****-" + tail;
     }
 
     @PostMapping({ "findpwd/verify-otp", "/findpwd/verify-otp" })
