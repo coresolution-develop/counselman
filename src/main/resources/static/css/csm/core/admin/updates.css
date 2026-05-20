@@ -1,0 +1,52 @@
+/* Updates admin page — extends notice.css */
+
+.updates-table .notice-table-head,
+.updates-table .notice-row {
+  grid-template-columns: 90px 160px 1fr 160px;
+}
+
+.version-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.version-cell strong {
+  font-weight: 600;
+  color: #1a2332;
+}
+
+.cat-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f1f3f5;
+  color: #495057;
+  white-space: nowrap;
+}
+
+.cat-badge.cat-release {
+  background: #e7f5ff;
+  color: #1971c2;
+}
+
+.cat-badge.cat-maintenance {
+  background: #fff4e6;
+  color: #d9480f;
+}
+
+.cat-badge.cat-fix {
+  background: #f3f0ff;
+  color: #6741d9;
+}
+
+.form-actions .action.danger {
+  background: #fa5252;
+  color: #fff;
+}
+
+.form-actions .action.danger:hover {
+  background: #e03131;
+}

@@ -289,6 +289,13 @@
         <span class="nav-item__icon"><svg width="18" height="18" aria-hidden="true"><use href="#i-megaphone"/></svg></span>
         <span class="nav-item__label">공지관리</span>
       </a>
+      <a class="nav_link nav-item menu5" data-menu="updates" data-content="all"
+         th:href="@{/core/updates}"
+         th:classappend="${activeMenu == 'updates' ? ' on active' : ''}"
+         aria-label="업데이트 관리 페이지로 이동">
+        <span class="nav-item__icon"><svg width="18" height="18" aria-hidden="true"><use href="#i-list"/></svg></span>
+        <span class="nav-item__label">업데이트 관리</span>
+      </a>
     </div>
   </nav>
 

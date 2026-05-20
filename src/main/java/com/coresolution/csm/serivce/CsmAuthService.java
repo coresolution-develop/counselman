@@ -2365,6 +2365,309 @@ public class CsmAuthService {
         return null;
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // Update Management (release notes / 운영 점검 안내)
+    //
+    // Distinct from core_notice: updates are a permanent version history
+    // (v1.3.0 → v1.4.0 …) intended for product-progress communication.
+    // No per-institution targeting and no start_at/end_at window — once
+    // PUBLISHED, an update is visible to all institutions until DRAFTED back.
+    // ─────────────────────────────────────────────────────────────────────
+
+    private static final List<String> UPDATE_CATEGORIES = List.of("release", "maintenance", "fix");
+    private static final List<String> UPDATE_SEVERITIES = List.of("critical", "important", "normal");
+
+    public List<Map<String, Object>> coreUpdateList(String status, String keyword, int limit) {
+        ensureCoreUpdateTables();
+        int limitedRows = limit <= 0 ? 300 : Math.min(limit, 2000);
+        String normalizedStatus = normalizeCoreNoticeStatus(status, true);
+        String normalizedKeyword = safeText(keyword, 200);
+
+        StringBuilder sql = new StringBuilder()
+                .append("SELECT id, version, title, summary, body, category, severity, ")
+                .append("popup_yn, status, ")
+                .append("DATE_FORMAT(published_at, '%Y-%m-%d %H:%i:%s') AS published_at, ")
+                .append("DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at, ")
+                .append("DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at, ")
+                .append("created_by ")
+                .append("FROM csm.core_update WHERE 1=1 ");
+        List<Object> params = new ArrayList<>();
+        if (!"ALL".equals(normalizedStatus)) {
+            sql.append("AND status = ? ");
+            params.add(normalizedStatus);
+        }
+        if (!normalizedKeyword.isBlank()) {
+            sql.append("AND (title LIKE ? OR summary LIKE ? OR body LIKE ? OR version LIKE ?) ");
+            String like = "%" + normalizedKeyword + "%";
+            params.add(like);
+            params.add(like);
+            params.add(like);
+            params.add(like);
+        }
+        sql.append("ORDER BY CASE status WHEN 'PUBLISHED' THEN 0 WHEN 'DRAFT' THEN 1 ELSE 2 END, ")
+                .append("COALESCE(published_at, created_at) DESC, id DESC ")
+                .append("LIMIT ?");
+        params.add(limitedRows);
+
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql.toString(), params.toArray());
+        for (Map<String, Object> row : rows) {
+            row.put("status", normalizeCoreNoticeStatus(row.get("status"), false));
+            row.put("popup_yn", normalizeYn(row.get("popup_yn"), "N"));
+            row.put("category", normalizeUpdateCategory(row.get("category")));
+            row.put("severity", normalizeUpdateSeverity(row.get("severity")));
+        }
+        return rows;
+    }
+
+    public Map<String, Object> coreUpdateById(long updateId) {
+        ensureCoreUpdateTables();
+        if (updateId <= 0) {
+            return null;
+        }
+        String sql = "SELECT id, version, title, summary, body, category, severity, popup_yn, status, "
+                + "DATE_FORMAT(published_at, '%Y-%m-%d %H:%i:%s') AS published_at, "
+                + "DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at, "
+                + "DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at, "
+                + "created_by "
+                + "FROM csm.core_update WHERE id = ? LIMIT 1";
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, updateId);
+        if (rows.isEmpty()) {
+            return null;
+        }
+        Map<String, Object> row = rows.get(0);
+        row.put("status", normalizeCoreNoticeStatus(row.get("status"), false));
+        row.put("popup_yn", normalizeYn(row.get("popup_yn"), "N"));
+        row.put("category", normalizeUpdateCategory(row.get("category")));
+        row.put("severity", normalizeUpdateSeverity(row.get("severity")));
+        return row;
+    }
+
+    @Transactional
+    public long coreUpdateSave(Map<String, Object> payload) {
+        ensureCoreUpdateTables();
+        String version = safeText(payload == null ? null : payload.get("version"), 50);
+        if (version.isBlank()) {
+            throw new IllegalArgumentException("버전(version)은 필수입니다.");
+        }
+        String title = safeText(payload == null ? null : payload.get("title"), 200);
+        if (title.isBlank()) {
+            throw new IllegalArgumentException("업데이트 제목은 필수입니다.");
+        }
+        String summary = safeText(payload == null ? null : payload.get("summary"), 500);
+        String body = safeText(payload == null ? null : payload.get("body"), 20000);
+        String category = normalizeUpdateCategory(payload == null ? null : payload.get("category"));
+        String severity = normalizeUpdateSeverity(payload == null ? null : payload.get("severity"));
+        String popupYn = normalizeYn(payload == null ? null : payload.get("popupYn"), "N");
+        String status = normalizeCoreNoticeStatus(payload == null ? null : payload.get("status"), false);
+        // published_at: PUBLISHED 전환 시 자동 채움. DRAFT면 NULL.
+        Timestamp publishedAt = parseCoreNoticeTimestamp(payload == null ? null : payload.get("publishedAt"));
+        if ("PUBLISHED".equals(status) && publishedAt == null) {
+            publishedAt = new Timestamp(System.currentTimeMillis());
+        } else if (!"PUBLISHED".equals(status)) {
+            publishedAt = null;
+        }
+        String createdBy = safeText(payload == null ? null : payload.get("createdBy"), 100);
+
+        long updateId = parseLong(payload == null ? null : payload.get("id"), 0L);
+        if (updateId <= 0) {
+            String sql = "INSERT INTO csm.core_update ("
+                    + "version, title, summary, body, category, severity, popup_yn, status, published_at, created_by"
+                    + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            KeyHolder keyHolder = new GeneratedKeyHolder();
+            Timestamp finalPublishedAt = publishedAt;
+            jdbcTemplate.update(connection -> {
+                PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+                int idx = 1;
+                ps.setString(idx++, version);
+                ps.setString(idx++, title);
+                ps.setString(idx++, summary);
+                ps.setString(idx++, body);
+                ps.setString(idx++, category);
+                ps.setString(idx++, severity);
+                ps.setString(idx++, popupYn);
+                ps.setString(idx++, status);
+                ps.setTimestamp(idx++, finalPublishedAt);
+                ps.setString(idx++, createdBy);
+                return ps;
+            }, keyHolder);
+            Number key = keyHolder.getKey();
+            updateId = key == null ? 0L : key.longValue();
+        } else {
+            jdbcTemplate.update(
+                    "UPDATE csm.core_update SET version = ?, title = ?, summary = ?, body = ?, "
+                            + "category = ?, severity = ?, popup_yn = ?, status = ?, published_at = ? "
+                            + "WHERE id = ?",
+                    version, title, summary, body, category, severity, popupYn, status, publishedAt, updateId);
+        }
+
+        if (updateId <= 0) {
+            throw new IllegalStateException("업데이트 저장에 실패했습니다.");
+        }
+        return updateId;
+    }
+
+    public int coreUpdateUpdateStatus(long updateId, Object status) {
+        ensureCoreUpdateTables();
+        if (updateId <= 0) {
+            return 0;
+        }
+        String normalized = normalizeCoreNoticeStatus(status, false);
+        if ("PUBLISHED".equals(normalized)) {
+            return jdbcTemplate.update(
+                    "UPDATE csm.core_update SET status = ?, "
+                            + "published_at = COALESCE(published_at, NOW()) WHERE id = ?",
+                    normalized, updateId);
+        }
+        return jdbcTemplate.update("UPDATE csm.core_update SET status = ? WHERE id = ?", normalized, updateId);
+    }
+
+    public int coreUpdateDelete(long updateId) {
+        ensureCoreUpdateTables();
+        if (updateId <= 0) {
+            return 0;
+        }
+        jdbcTemplate.update("DELETE FROM csm.core_update_read WHERE update_id = ?", updateId);
+        return jdbcTemplate.update("DELETE FROM csm.core_update WHERE id = ?", updateId);
+    }
+
+    public List<Map<String, Object>> listPublishedUpdates(String inst, String userId, int limit) {
+        ensureCoreUpdateTables();
+        String safeInst = sanitizeInst(inst);
+        String safeUserId = safeText(userId, 100);
+        int limitedRows = limit <= 0 ? 200 : Math.min(limit, 2000);
+        String sql;
+        Object[] params;
+        if (safeUserId.isBlank()) {
+            sql = "SELECT u.id, u.version, u.title, u.summary, u.body, u.category, u.severity, "
+                    + "u.popup_yn, u.status, "
+                    + "DATE_FORMAT(u.published_at, '%Y-%m-%d %H:%i:%s') AS published_at, "
+                    + "'N' AS read_yn, NULL AS read_at "
+                    + "FROM csm.core_update u WHERE u.status = 'PUBLISHED' "
+                    + "ORDER BY COALESCE(u.published_at, u.created_at) DESC, u.id DESC LIMIT ?";
+            params = new Object[] { limitedRows };
+        } else {
+            sql = "SELECT u.id, u.version, u.title, u.summary, u.body, u.category, u.severity, "
+                    + "u.popup_yn, u.status, "
+                    + "DATE_FORMAT(u.published_at, '%Y-%m-%d %H:%i:%s') AS published_at, "
+                    + "CASE WHEN r.id IS NULL THEN 'N' ELSE 'Y' END AS read_yn, "
+                    + "DATE_FORMAT(r.read_at, '%Y-%m-%d %H:%i:%s') AS read_at "
+                    + "FROM csm.core_update u "
+                    + "LEFT JOIN csm.core_update_read r ON r.update_id = u.id "
+                    + "AND r.inst_code = ? AND r.user_id = ? "
+                    + "WHERE u.status = 'PUBLISHED' "
+                    + "ORDER BY COALESCE(u.published_at, u.created_at) DESC, u.id DESC LIMIT ?";
+            params = new Object[] { safeInst, safeUserId, limitedRows };
+        }
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params);
+        for (Map<String, Object> row : rows) {
+            row.put("status", normalizeCoreNoticeStatus(row.get("status"), false));
+            row.put("popup_yn", normalizeYn(row.get("popup_yn"), "N"));
+            row.put("read_yn", normalizeYn(row.get("read_yn"), "N"));
+            row.put("category", normalizeUpdateCategory(row.get("category")));
+            row.put("severity", normalizeUpdateSeverity(row.get("severity")));
+        }
+        return rows;
+    }
+
+    public List<Map<String, Object>> listUnreadPopupUpdates(String inst, String userId, int limit) {
+        ensureCoreUpdateTables();
+        String safeInst = sanitizeInst(inst);
+        String safeUserId = safeText(userId, 100);
+        if (safeUserId.isBlank()) {
+            return Collections.emptyList();
+        }
+        int limitedRows = limit <= 0 ? 5 : Math.min(limit, 20);
+        String sql = "SELECT u.id, u.version, u.title, u.summary, u.body, u.category, u.severity, "
+                + "u.popup_yn, u.status, "
+                + "DATE_FORMAT(u.published_at, '%Y-%m-%d %H:%i:%s') AS published_at "
+                + "FROM csm.core_update u "
+                + "LEFT JOIN csm.core_update_read r ON r.update_id = u.id "
+                + "AND r.inst_code = ? AND r.user_id = ? "
+                + "WHERE u.status = 'PUBLISHED' AND u.popup_yn = 'Y' AND r.id IS NULL "
+                + "ORDER BY COALESCE(u.published_at, u.created_at) DESC, u.id DESC LIMIT ?";
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, safeInst, safeUserId, limitedRows);
+        for (Map<String, Object> row : rows) {
+            row.put("status", normalizeCoreNoticeStatus(row.get("status"), false));
+            row.put("popup_yn", normalizeYn(row.get("popup_yn"), "N"));
+            row.put("category", normalizeUpdateCategory(row.get("category")));
+            row.put("severity", normalizeUpdateSeverity(row.get("severity")));
+        }
+        return rows;
+    }
+
+    public int markUpdateRead(String inst, String userId, Integer userIdx, long updateId) {
+        ensureCoreUpdateTables();
+        if (updateId <= 0) {
+            return 0;
+        }
+        String safeInst = sanitizeInst(inst);
+        String safeUserId = safeText(userId, 100);
+        if (safeUserId.isBlank()) {
+            return 0;
+        }
+        Integer normalizedUserIdx = userIdx != null && userIdx > 0 ? userIdx : null;
+        String sql = "INSERT INTO csm.core_update_read (update_id, inst_code, user_idx, user_id, read_at) "
+                + "VALUES (?, ?, ?, ?, NOW()) "
+                + "ON DUPLICATE KEY UPDATE read_at = VALUES(read_at), user_idx = VALUES(user_idx)";
+        return jdbcTemplate.update(sql, updateId, safeInst, normalizedUserIdx, safeUserId);
+    }
+
+    public int countUnreadUpdates(String inst, String userId) {
+        ensureCoreUpdateTables();
+        String safeInst = sanitizeInst(inst);
+        String safeUserId = safeText(userId, 100);
+        if (safeUserId.isBlank()) {
+            return 0;
+        }
+        String sql = "SELECT COUNT(*) FROM csm.core_update u "
+                + "LEFT JOIN csm.core_update_read r ON r.update_id = u.id "
+                + "AND r.inst_code = ? AND r.user_id = ? "
+                + "WHERE u.status = 'PUBLISHED' AND r.id IS NULL";
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, safeInst, safeUserId);
+        return count == null ? 0 : count;
+    }
+
+    private String normalizeUpdateCategory(Object value) {
+        String v = value == null ? "" : String.valueOf(value).trim().toLowerCase();
+        return UPDATE_CATEGORIES.contains(v) ? v : "release";
+    }
+
+    private String normalizeUpdateSeverity(Object value) {
+        String v = value == null ? "" : String.valueOf(value).trim().toLowerCase();
+        return UPDATE_SEVERITIES.contains(v) ? v : "normal";
+    }
+
+    private void ensureCoreUpdateTables() {
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS csm.core_update ("
+                + "id bigint auto_increment primary key,"
+                + "version varchar(50) not null,"
+                + "title varchar(200) not null,"
+                + "summary varchar(500) default null,"
+                + "body mediumtext,"
+                + "category varchar(20) not null default 'release',"
+                + "severity varchar(20) not null default 'normal',"
+                + "popup_yn char(1) not null default 'N',"
+                + "status varchar(20) not null default 'DRAFT',"
+                + "published_at datetime default null,"
+                + "created_by varchar(100) default null,"
+                + "created_at timestamp default current_timestamp,"
+                + "updated_at timestamp default current_timestamp on update current_timestamp,"
+                + "key idx_status_published (status, published_at),"
+                + "key idx_version (version)"
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS csm.core_update_read ("
+                + "id bigint auto_increment primary key,"
+                + "update_id bigint not null,"
+                + "inst_code varchar(32) not null,"
+                + "user_idx int default null,"
+                + "user_id varchar(100) not null,"
+                + "read_at datetime not null default current_timestamp,"
+                + "unique key uq_update_inst_user (update_id, inst_code, user_id),"
+                + "key idx_inst_user_update (inst_code, user_id, update_id)"
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    }
+
     private void ensureCoreNoticeTables() {
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS csm.core_notice ("
                 + "id bigint auto_increment primary key,"

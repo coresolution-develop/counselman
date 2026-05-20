@@ -78,6 +78,51 @@
   opacity: 0;
   pointer-events: none;
 }
+/* collapsed 상태에서 "순서 편집" 버튼은 좁은 폭에 텍스트가 wrap되어 한 글자씩
+   세로로 표시되는 깨짐이 발생. 편집 모드는 사이드바 펼친 상태에서만 의미가
+   있으므로 collapsed 시 완전히 숨긴다. */
+.app[data-sidebar="collapsed"] .sidebar__edit-btn {
+  display: none;
+}
+
+/* collapsed 상태에서 섹션 라벨("상담 업무", "커뮤니케이션" 등)은 opacity:0
+   처리만 되어 있어 padding/margin 만큼 빈 공간이 크게 잡혀 메뉴 아이콘
+   사이 간격이 부자연스럽게 벌어진다. 완전히 숨기고 섹션 간 마진을 축소. */
+.app[data-sidebar="collapsed"] .nav-section__label {
+  display: none;
+}
+.app[data-sidebar="collapsed"] .nav-section { margin-top: 8px; }
+.app[data-sidebar="collapsed"] .nav-section:first-child { margin-top: 4px; }
+
+/* collapsed 상태의 hover 라벨 툴팁은 JS에서 document.body에 fixed position
+   으로 부착한다 (CSS ::after 방식은 .sidebar__nav 의 overflow-y:auto 에
+   잘려 가로 스크롤이 발생하는 문제가 있어 회피). 아래는 그 floating 노드
+   스타일. */
+.sidebar-floating-tooltip {
+  position: fixed;
+  padding: 6px 10px;
+  background: rgba(15, 23, 42, 0.95);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+  letter-spacing: -0.01em;
+  transform: translateY(-50%);
+}
+.sidebar-floating-tooltip::before {
+  content: "";
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border-style: solid;
+  border-width: 5px 6px 5px 0;
+  border-color: transparent rgba(15, 23, 42, 0.95) transparent transparent;
+}
 
 .sidebar__nav {
   flex: 1;
@@ -521,6 +566,16 @@
   }
   .app[data-sidebar="collapsed"] .sidebar__logout {
     gap: 8px;
+  }
+  /* 모바일 drawer 열림 상태에서는 사이드바가 펼쳐진 모습이므로
+     desktop collapsed에서 적용한 fix들을 원복.
+     (floating tooltip은 JS에서 collapsed && desktop 일 때만 생성되므로
+      별도 비활성화 불필요) */
+  .app[data-sidebar="collapsed"] .sidebar__edit-btn {
+    display: block;
+  }
+  .app[data-sidebar="collapsed"] .nav-section__label {
+    display: block;
   }
   .app[data-sidebar="collapsed"]::after,
   .app[data-sidebar="mobile-open"]::after {

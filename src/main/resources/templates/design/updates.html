@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="_csrf" th:content="${_csrf.token}"/>
+  <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+  <title>MediPlat · 업데이트</title>
+  <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/layout.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/components.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/tweaks.css}" />
+  <style>
+    .updates-feed { display:flex; flex-direction:column; gap:12px; margin-top:4px; }
+
+    .update-card {
+      background:#fff;
+      border:1px solid var(--border-default,#e5e7eb);
+      border-radius:10px;
+      overflow:hidden;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    .update-card.is-unread {
+      border-color: var(--brand-400,#34d399);
+      box-shadow: 0 0 0 1px color-mix(in oklab, var(--brand-500,#10b981) 20%, transparent);
+    }
+    .update-card.is-critical { border-color:#fa5252; }
+
+    .update-card__head {
+      display:flex;
+      align-items:flex-start;
+      gap:12px;
+      padding:14px 18px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .update-card__version {
+      flex-shrink:0;
+      font-weight:600;
+      font-size:13px;
+      color:var(--brand-700,#047857);
+      padding:4px 10px;
+      background: color-mix(in oklab, var(--brand-500,#10b981) 10%, #fff);
+      border-radius:6px;
+      font-variant-numeric: tabular-nums;
+    }
+    .update-card__main { flex:1; min-width:0; }
+    .update-card__title-row {
+      display:flex;
+      align-items:center;
+      gap:6px;
+      flex-wrap:wrap;
+    }
+    .update-card__title {
+      font-size:15px;
+      font-weight:600;
+      color:var(--text-primary);
+      line-height:1.4;
+    }
+    .update-card__summary {
+      margin-top:4px;
+      font-size:13px;
+      color:var(--text-secondary);
+      line-height:1.6;
+    }
+    .update-card__meta {
+      margin-top:6px;
+      font-size:12px;
+      color:var(--text-tertiary);
+    }
+    .update-card__body {
+      display:none;
+      padding:0 18px 16px 18px;
+      font-size:13px;
+      color:var(--text-secondary);
+      line-height:1.75;
+      white-space:pre-wrap;
+      border-top:1px solid var(--border-subtle,#f0f0f0);
+    }
+    .update-card__body.is-open { display:block; padding-top:14px; }
+
+    .tag-cat {
+      display:inline-block;
+      font-size:11px;
+      font-weight:500;
+      padding:2px 8px;
+      border-radius:4px;
+      background:#f1f3f5;
+      color:#495057;
+    }
+    .tag-cat.cat-release       { background:#e7f5ff; color:#1971c2; }
+    .tag-cat.cat-maintenance   { background:#fff4e6; color:#d9480f; }
+    .tag-cat.cat-fix           { background:#f3f0ff; color:#6741d9; }
+    .tag-sev.sev-critical      { background:#fff0f0; color:#c92a2a; }
+    .tag-sev.sev-important     { background:#fff9db; color:#a37908; }
+
+    .updates-hero {
+      background: linear-gradient(135deg, color-mix(in oklab, var(--brand-500,#10b981) 8%, #fff) 0%, #fff 100%);
+      border:1px solid color-mix(in oklab, var(--brand-500,#10b981) 20%, var(--border-default,#e5e7eb));
+      border-radius:12px;
+      padding:20px 24px;
+      margin-bottom:16px;
+    }
+    .updates-hero__eyebrow {
+      font-size:12px;
+      font-weight:500;
+      color:var(--brand-700,#047857);
+      margin-bottom:6px;
+    }
+    .updates-hero__title {
+      font-size:20px;
+      font-weight:700;
+      color:var(--text-primary);
+      margin-bottom:4px;
+    }
+    .updates-hero__summary {
+      font-size:13px;
+      color:var(--text-secondary);
+      line-height:1.6;
+    }
+  </style>
+</head>
+<body>
+<script th:src="@{/assets/js/sprite.js}"></script>
+
+<div class="app"
+     data-screen-label="Updates"
+     :data-sidebar="$store.app.sidebarCollapsed ? 'collapsed' : 'expanded'"
+     :data-variation="$store.app.variation"
+     x-data>
+
+  <div id="slot-sidebar"></div>
+  <div id="slot-header"></div>
+
+  <main class="main">
+    <div class="page" x-data="updatesPage()">
+      <div class="page__header">
+        <div>
+          <h1 class="page__title">업데이트</h1>
+          <p class="page__subtitle">제품 개선·점검·버그 수정 이력을 시간순으로 확인합니다</p>
+        </div>
+      </div>
+
+      <!-- Hero: latest update spotlight -->
+      <template x-if="latest">
+        <div class="updates-hero" @click="toggle(latest)">
+          <div class="updates-hero__eyebrow">
+            <span x-text="latest.version"></span>
+            &nbsp;·&nbsp;
+            <span x-text="categoryLabel(latest.category)"></span>
+            &nbsp;·&nbsp;
+            <span x-text="latest.published_at || ''"></span>
+          </div>
+          <div class="updates-hero__title" x-text="latest.title"></div>
+          <div class="updates-hero__summary" x-text="latest.summary || ''" x-show="latest.summary"></div>
+        </div>
+      </template>
+
+      <!-- Stats -->
+      <div class="stat-row">
+        <div class="stat-card stat-card--brand">
+          <div class="stat-card__label"><span class="dot"></span>전체 업데이트</div>
+          <div class="stat-card__value" x-text="updates.length"></div>
+        </div>
+        <div class="stat-card stat-card--gray">
+          <div class="stat-card__label"><span class="dot"></span>미읽음</div>
+          <div class="stat-card__value" x-text="unreadCount"></div>
+        </div>
+        <div class="stat-card stat-card--gray">
+          <div class="stat-card__label"><span class="dot"></span>신규 기능</div>
+          <div class="stat-card__value" x-text="updates.filter(u=>u.category==='release').length"></div>
+        </div>
+        <div class="stat-card stat-card--gray">
+          <div class="stat-card__label"><span class="dot"></span>버그 수정</div>
+          <div class="stat-card__value" x-text="updates.filter(u=>u.category==='fix').length"></div>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="filter-pills">
+          <button class="pill" :class="{ 'is-active': filter === 'all' }" @click="filter='all'">전체</button>
+          <button class="pill" :class="{ 'is-active': filter === 'release' }" @click="filter='release'">신규 기능</button>
+          <button class="pill" :class="{ 'is-active': filter === 'maintenance' }" @click="filter='maintenance'">점검</button>
+          <button class="pill" :class="{ 'is-active': filter === 'fix' }" @click="filter='fix'">버그 수정</button>
+          <button class="pill" :class="{ 'is-active': filter === 'unread' }" @click="filter='unread'">미읽음</button>
+        </div>
+        <div class="toolbar__spacer"></div>
+        <div class="header__search" style="height:34px; min-width:240px;">
+          <svg><use href="#i-search"/></svg>
+          <input type="text" placeholder="버전 또는 제목 검색" x-model="search" />
+        </div>
+      </div>
+
+      <!-- Feed -->
+      <div class="updates-feed">
+        <template x-for="u in filtered" :key="u.id">
+          <div class="update-card"
+               :class="{ 'is-unread': u.read_yn !== 'Y', 'is-critical': u.severity === 'critical' }">
+            <div class="update-card__head" @click="toggle(u)">
+              <span class="update-card__version" x-text="u.version"></span>
+              <div class="update-card__main">
+                <div class="update-card__title-row">
+                  <span class="update-card__title" x-text="u.title"></span>
+                  <span class="tag-cat" :class="'cat-' + u.category" x-text="categoryLabel(u.category)"></span>
+                  <span x-show="u.severity === 'critical'" class="tag-cat tag-sev sev-critical">긴급</span>
+                  <span x-show="u.severity === 'important'" class="tag-cat tag-sev sev-important">중요</span>
+                </div>
+                <div class="update-card__summary" x-show="u.summary" x-text="u.summary"></div>
+                <div class="update-card__meta">
+                  <span x-text="u.published_at || ''"></span>
+                  <span x-show="u.read_yn !== 'Y'">&nbsp;·&nbsp;<strong style="color:var(--brand-700,#047857)">새 업데이트</strong></span>
+                </div>
+              </div>
+            </div>
+            <div class="update-card__body" :class="{ 'is-open': u._open }" x-text="u.body"></div>
+          </div>
+        </template>
+        <div x-show="filtered.length === 0" style="padding:40px 0;text-align:center;color:var(--text-tertiary);font-size:14px;">
+          업데이트가 없습니다.
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+/*<![CDATA[*/
+function updatesPage() {
+  const ctx        = (/*[[@{/}]]*/ '/').replace(/\/$/, '');
+  const csrfToken  = document.querySelector('meta[name="_csrf"]')?.content || '';
+  const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+  const serverUpdates = /*[[${updates}]]*/ [];
+
+  return {
+    ctx,
+    updates: serverUpdates.map(u => ({ ...u, _open: false })),
+    filter: 'all',
+    search: '',
+
+    get latest() {
+      return this.updates.find(u => u.status === 'PUBLISHED') || null;
+    },
+
+    get unreadCount() {
+      return this.updates.filter(u => u.read_yn !== 'Y').length;
+    },
+
+    get filtered() {
+      let list = this.updates;
+      if (this.filter === 'release')     list = list.filter(u => u.category === 'release');
+      if (this.filter === 'maintenance') list = list.filter(u => u.category === 'maintenance');
+      if (this.filter === 'fix')         list = list.filter(u => u.category === 'fix');
+      if (this.filter === 'unread')      list = list.filter(u => u.read_yn !== 'Y');
+      if (this.search.trim()) {
+        const kw = this.search.trim().toLowerCase();
+        list = list.filter(u =>
+          (u.title || '').toLowerCase().includes(kw) ||
+          (u.version || '').toLowerCase().includes(kw)
+        );
+      }
+      return list;
+    },
+
+    categoryLabel(cat) {
+      if (cat === 'release')     return '신규 기능';
+      if (cat === 'maintenance') return '점검/공지';
+      if (cat === 'fix')         return '버그 수정';
+      return '업데이트';
+    },
+
+    toggle(u) {
+      u._open = !u._open;
+      if (u._open && u.read_yn !== 'Y') {
+        this.markRead(u);
+      }
+    },
+
+    async markRead(u) {
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+        const res = await fetch(`${ctx}/api/updates/${u.id}/read`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({}),
+        });
+        if (res.ok) {
+          u.read_yn = 'Y';
+        }
+      } catch (e) {
+        // silent — read tracking is non-critical
+      }
+    },
+  };
+}
+/*]]>*/
+</script>
+
+<script th:src="@{/assets/js/app.js}"></script>
+<script th:src="@{/assets/js/chrome.js}" data-page="updates" th:attr="data-ctx=@{/}"></script>
+<script>
+  document.addEventListener('turbo:load', () => { MPChrome.mount({ parent: '시스템', current: '업데이트' }); }, { once: true });
+</script>
+<script data-turbo-eval="false" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js"></script>
+<script data-turbo-eval="false" defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</body>
+</html>

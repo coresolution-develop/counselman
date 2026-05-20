@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="_csrf" th:content="${_csrf.token}">
+<meta name="_csrf_header" th:content="${_csrf.headerName}">
+<title>업데이트 관리 : SOSYGE EASY-CRM</title>
+<link rel="shortcut icon" th:href="@{/favicon/favicon.ico}">
+<link rel="stylesheet" th:href="@{/css/reset.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/common.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/style.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/header.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/cate.css}">
+<link rel="stylesheet" th:href="@{/css/csm/Include/button.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/admin/style.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/admin/admin.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/admin/notice.css}">
+<link rel="stylesheet" th:href="@{/css/csm/core/admin/updates.css}">
+<script th:src="@{/js/csm/core/admin/core-updates.js}" defer></script>
+</head>
+<body>
+<div th:replace="~{csm/Include/layout :: header(info=${info})}"></div>
+<div th:replace="~{csm/Include/layout :: nav_section2('updates', '', '', '')}"></div>
+
+<div class="main">
+  <div class="section notice-section">
+    <div class="content-top">
+      <form method="get" th:action="@{/core/updates}" class="notice-filter">
+        <select name="status" id="update-filter-status">
+          <option value="ALL" th:selected="${selectedStatus == 'ALL'}">전체</option>
+          <option value="DRAFT" th:selected="${selectedStatus == 'DRAFT'}">임시저장</option>
+          <option value="PUBLISHED" th:selected="${selectedStatus == 'PUBLISHED'}">게시중</option>
+          <option value="ARCHIVED" th:selected="${selectedStatus == 'ARCHIVED'}">보관</option>
+        </select>
+        <input type="text" name="keyword" id="update-filter-keyword" placeholder="버전/제목/내용 검색"
+               th:value="${keyword}">
+        <button type="submit" class="filter-btn">검색</button>
+        <button type="button" id="update-filter-reset" class="filter-btn light">초기화</button>
+      </form>
+    </div>
+
+    <div class="content-mid notice-layout">
+      <section class="notice-list-panel">
+        <div class="panel-title">
+          <span>업데이트 목록</span>
+          <strong th:text="|${updateCount}건|">0건</strong>
+        </div>
+        <div class="notice-table updates-table">
+          <div class="notice-table-head">
+            <div>상태</div>
+            <div>버전</div>
+            <div>제목</div>
+            <div>공개일</div>
+          </div>
+          <div class="notice-table-body" id="core-update-rows">
+            <div class="notice-row empty" th:if="${#lists.isEmpty(updates)}">
+              <div>등록된 업데이트가 없습니다.</div>
+            </div>
+            <div class="notice-row"
+                 th:each="u : ${updates}"
+                 th:attr="data-update-id=${u['id']}">
+              <div>
+                <span class="badge"
+                      th:classappend="${u['status'] == 'PUBLISHED' ? ' published' : (u['status'] == 'ARCHIVED' ? ' archived' : ' draft')}"
+                      th:text="${u['status'] == 'PUBLISHED' ? '게시중' : (u['status'] == 'ARCHIVED' ? '보관' : '임시저장')}">임시저장</span>
+              </div>
+              <div class="version-cell">
+                <strong th:text="${u['version']}">v1.0.0</strong>
+                <span class="cat-badge" th:classappend="|cat-${u['category']}|"
+                      th:text="${u['category'] == 'release' ? '신규' : (u['category'] == 'maintenance' ? '점검' : '수정')}">신규</span>
+              </div>
+              <div th:text="${u['title']}">업데이트 제목</div>
+              <div th:text="${#strings.isEmpty(u['published_at']) ? '-' : u['published_at']}">2026-05-20</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="notice-form-panel">
+        <div class="panel-title">
+          <span>업데이트 편집</span>
+          <strong id="core-update-current-id">신규</strong>
+        </div>
+
+        <form id="core-update-form" onsubmit="return false;">
+          <input type="hidden" id="update-id" value="">
+
+          <div class="field-grid">
+            <div class="field-row">
+              <label for="update-version">버전 *</label>
+              <input type="text" id="update-version" maxlength="50" placeholder="예: v1.3.0">
+            </div>
+            <div class="field-row">
+              <label for="update-category">분류</label>
+              <select id="update-category">
+                <option value="release">신규 기능</option>
+                <option value="maintenance">점검/공지</option>
+                <option value="fix">버그 수정</option>
+              </select>
+            </div>
+            <div class="field-row">
+              <label for="update-severity">강조도</label>
+              <select id="update-severity">
+                <option value="normal">일반</option>
+                <option value="important">중요</option>
+                <option value="critical">긴급</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <label for="update-title">제목 *</label>
+            <input type="text" id="update-title" maxlength="200" placeholder="고객에게 노출될 업데이트 제목">
+          </div>
+
+          <div class="field-row">
+            <label for="update-summary">한 줄 요약</label>
+            <input type="text" id="update-summary" maxlength="500"
+                   placeholder="목록·팝업 카드에 보여질 요약 (생략 가능)">
+          </div>
+
+          <div class="field-row">
+            <label for="update-body">상세 내용</label>
+            <textarea id="update-body" rows="10" maxlength="20000"
+                      placeholder="릴리즈 노트 본문 (마크다운/HTML 지원 안 함 — 줄바꿈 그대로 표시)"></textarea>
+          </div>
+
+          <div class="field-grid">
+            <div class="field-row">
+              <label for="update-status">상태</label>
+              <select id="update-status">
+                <option value="DRAFT">임시저장</option>
+                <option value="PUBLISHED">게시</option>
+                <option value="ARCHIVED">보관</option>
+              </select>
+            </div>
+            <div class="field-row check-row">
+              <label><input type="checkbox" id="update-popup"> 로그인 시 팝업</label>
+            </div>
+            <div class="field-row">
+              <label for="update-published-at">공개일</label>
+              <input type="datetime-local" id="update-published-at"
+                     title="비워두면 게시 전환 시 현재 시각으로 자동 기록">
+            </div>
+          </div>
+        </form>
+
+        <div class="form-actions">
+          <button type="button" id="update-new-btn" class="action light">신규</button>
+          <button type="button" id="update-save-btn" class="action">저장</button>
+          <button type="button" id="update-publish-btn" class="action success">게시</button>
+          <button type="button" id="update-archive-btn" class="action dark">보관</button>
+          <button type="button" id="update-delete-btn" class="action danger">삭제</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -334,6 +334,15 @@ public class PageController {
             HttpServletRequest request) {
         Map<String, Object> response = new HashMap<>();
         try {
+            String resolvedInst = cs.resolveInst(usCol04);
+            if (resolvedInst == null || resolvedInst.isBlank()) {
+                response.put("result", false);
+                response.put("msg", "기관 정보가 존재하지 않습니다. 기관코드 또는 기관명을 확인해 주세요.");
+                return response;
+            }
+            usCol04 = resolvedInst;
+            response.put("resolvedInst", resolvedInst);
+
             boolean exists = cs.findUserByIdAndName(usCol02, usCol12, usCol04);
             if (!exists) {
                 response.put("result", false);
@@ -503,6 +512,14 @@ public class PageController {
             HttpServletRequest request) {
         Map<String, Object> response = new HashMap<>();
         try {
+            String resolvedInst = cs.resolveInst(usCol04);
+            if (resolvedInst == null || resolvedInst.isBlank()) {
+                response.put("result", false);
+                response.put("msg", "기관 정보가 존재하지 않습니다.");
+                return response;
+            }
+            usCol04 = resolvedInst;
+
             Userdata user = cs.userInfoById(usCol04, usCol02);
             if (user == null) {
                 response.put("result", false);
@@ -1002,6 +1019,178 @@ public class PageController {
                     .body(Map.of("result", "0", "message", "공지 상태를 변경할 수 없습니다."));
         }
         return ResponseEntity.ok(Map.of("result", "1", "updated", updated));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Update Management (release/maintenance notes) — core admin write side
+    // ─────────────────────────────────────────────────────────────────────
+
+    @GetMapping({ "core/updates", "/core/updates" })
+    public String coreUpdatesPage(
+            @RequestParam(value = "status", defaultValue = "ALL") String status,
+            @RequestParam(value = "keyword", defaultValue = "") String keyword,
+            Model model,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (!isCoreInst(inst)) {
+            return "redirect:/login";
+        }
+        Userdata info = ensureUserInfo(session, inst);
+        String selectedStatus = normalizeCoreNoticeStatusParam(status, true);
+        String searchKeyword = safeString(keyword).trim();
+
+        List<Map<String, Object>> updates = cs.coreUpdateList(selectedStatus, searchKeyword, 500);
+
+        model.addAttribute("info", info);
+        model.addAttribute("selectedStatus", selectedStatus);
+        model.addAttribute("keyword", searchKeyword);
+        model.addAttribute("updates", updates);
+        model.addAttribute("updateCount", updates.size());
+        return "csm/core/admin/updates";
+    }
+
+    @GetMapping({ "core/updates/detail/{updateId}", "/core/updates/detail/{updateId}" })
+    @ResponseBody
+    public ResponseEntity<?> coreUpdateDetail(
+            @PathVariable("updateId") long updateId,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (!isCoreInst(inst)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "권한 없음"));
+        }
+        Map<String, Object> update = cs.coreUpdateById(updateId);
+        if (update == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "업데이트 정보를 찾을 수 없습니다."));
+        }
+        return ResponseEntity.ok(Map.of("result", "1", "update", update));
+    }
+
+    @PostMapping({ "core/updates/save", "/core/updates/save" })
+    @ResponseBody
+    public ResponseEntity<?> coreUpdateSave(
+            HttpSession session,
+            @RequestBody Map<String, Object> body) {
+        String inst = ensureInst(session);
+        if (!isCoreInst(inst)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "권한 없음"));
+        }
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            if (body != null) {
+                payload.putAll(body);
+            }
+            if (safeString(readAsString(payload, "createdBy")).isBlank()) {
+                payload.put("createdBy", resolveNoticeActor(inst, session));
+            }
+            long updateId = cs.coreUpdateSave(payload);
+            return ResponseEntity.ok(Map.of("result", "1", "id", updateId));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("result", "0", "message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[core/updates/save] fail", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("result", "0", "message", "업데이트 저장 중 오류가 발생했습니다."));
+        }
+    }
+
+    @PostMapping({ "core/updates/status", "/core/updates/status" })
+    @ResponseBody
+    public ResponseEntity<?> coreUpdateStatusUpdate(
+            HttpSession session,
+            @RequestBody Map<String, Object> body) {
+        String inst = ensureInst(session);
+        if (!isCoreInst(inst)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "권한 없음"));
+        }
+        long updateId = parseLongSafely(body == null ? null : body.get("id"), 0L);
+        String status = readAsString(body == null ? Collections.emptyMap() : body, "status").trim();
+        if (updateId <= 0 || status.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("result", "0", "message", "필수값이 누락되었습니다."));
+        }
+        int updated = cs.coreUpdateUpdateStatus(updateId, status);
+        if (updated <= 0) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("result", "0", "message", "업데이트 상태를 변경할 수 없습니다."));
+        }
+        return ResponseEntity.ok(Map.of("result", "1", "updated", updated));
+    }
+
+    @PostMapping({ "core/updates/delete", "/core/updates/delete" })
+    @ResponseBody
+    public ResponseEntity<?> coreUpdateDelete(
+            HttpSession session,
+            @RequestBody Map<String, Object> body) {
+        String inst = ensureInst(session);
+        if (!isCoreInst(inst)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "권한 없음"));
+        }
+        long updateId = parseLongSafely(body == null ? null : body.get("id"), 0L);
+        if (updateId <= 0) {
+            return ResponseEntity.badRequest().body(Map.of("result", "0", "message", "id가 올바르지 않습니다."));
+        }
+        int deleted = cs.coreUpdateDelete(updateId);
+        if (deleted <= 0) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("result", "0", "message", "업데이트를 찾을 수 없습니다."));
+        }
+        return ResponseEntity.ok(Map.of("result", "1", "deleted", deleted));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Update Management — user-facing read side
+    // ─────────────────────────────────────────────────────────────────────
+
+    @GetMapping({ "updates", "/updates" })
+    public String updatesPage(Model model, HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return "redirect:/login";
+        }
+        Userdata info = ensureUserInfo(session, inst);
+        String userId = resolveNoticeUserId(session);
+        List<Map<String, Object>> updates = cs.listPublishedUpdates(inst, userId, 500);
+        int unreadCount = cs.countUnreadUpdates(inst, userId);
+
+        model.addAttribute("info", info);
+        model.addAttribute("inst", inst);
+        model.addAttribute("updates", updates);
+        model.addAttribute("updateCount", updates.size());
+        model.addAttribute("unreadCount", unreadCount);
+        return "design/updates";
+    }
+
+    @PostMapping({ "api/updates/{updateId}/read", "/api/updates/{updateId}/read" })
+    @ResponseBody
+    public ResponseEntity<?> markUpdateRead(
+            @PathVariable("updateId") long updateId,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "세션이 만료되었습니다."));
+        }
+        String userId = resolveNoticeUserId(session);
+        if (userId.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "사용자 정보를 확인할 수 없습니다."));
+        }
+        Integer userIdx = resolveNoticeUserIdx(session);
+        int updated = cs.markUpdateRead(inst, userId, userIdx, updateId);
+        int unreadCount = cs.countUnreadUpdates(inst, userId);
+        return ResponseEntity.ok(Map.of(
+                "result", "1",
+                "updated", updated,
+                "unreadCount", unreadCount));
+    }
+
+    @GetMapping({ "api/updates-popup", "/api/updates-popup" })
+    @ResponseBody
+    public List<Map<String, Object>> getUpdatesPopup(HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) return List.of();
+        if (isCoreInst(inst)) return List.of();
+        String userId = resolveNoticeUserId(session);
+        if (userId.isBlank()) return List.of();
+        List<Map<String, Object>> updates = cs.listUnreadPopupUpdates(inst, userId, 5);
+        return updates == null ? List.of() : updates;
     }
 
     @GetMapping({ "core/newinstPopup", "/core/newinstPopup" })

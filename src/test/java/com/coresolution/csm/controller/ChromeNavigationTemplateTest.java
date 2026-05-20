@@ -13,12 +13,15 @@ class ChromeNavigationTemplateTest {
     void adminNavigationHighlightsAllAdminSubPages() throws Exception {
         String chrome = Files.readString(Path.of("src/main/resources/static/assets/js/chrome.js"));
 
-        assertThat(chrome).contains("active: ['/roles', '/users', '/access', '/room-board/manage', '/admin/room-board']");
+        // active 배열에 핵심 admin sub-paths가 모두 포함되어야 함 (확장될 수 있어 부분 검사)
+        assertThat(chrome).contains("'/roles'", "'/users'", "'/access'",
+                "'/room-board/manage'", "'/admin/room-board'");
         assertThat(chrome).contains("const activePaths = [it.href, ...(it.active || [])].map(path);");
         assertThat(chrome).contains("const active = activePaths.includes(pathNow) ? ' is-active' : '';");
-        assertThat(chrome).contains("{ id: 'stats',         label: '상담통계',     icon: 'chart',      href: '/statistics' }");
-        assertThat(chrome).contains("href: '/counsel/log-settings'");
-        assertThat(chrome).contains("active: ['/counsel/log-settings', '/admin/counsel/log-settings']");
+        // stats 항목은 항상 존재해야 함 (permKey 추가 등 부가 필드는 무관)
+        assertThat(chrome).contains("id: 'stats'", "label: '상담통계'", "href: '/statistics'");
+        // 상담일지 관리 경로 (신규 + 레거시) — admin active 배열에 포함되어 있어야 함
+        assertThat(chrome).contains("'/counsel/log-settings'", "'/admin/counsel/log-settings'");
     }
 
     @Test

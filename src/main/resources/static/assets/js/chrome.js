@@ -28,6 +28,7 @@
       { id: 'message',       label: '문자관리',     icon: 'chat',       href: '/message',                       permKey: 'sms' },
     ]},
     { key: 's:시스템', section: '시스템', items: [
+      { id: 'updates',       label: '업데이트',     icon: 'list',       href: '/updates',                       active: ['/updates'] },
       { id: 'admin',         label: '관리자',       icon: 'shield',     href: '/roles',                         permKey: 'admin',
         active: ['/roles', '/users', '/access', '/counsel/log-settings', '/admin/counsel/log-settings', '/room-board/manage', '/admin/room-board', '/faq-manage', '/chat-admin'] },
     ]},
@@ -89,7 +90,8 @@
         const draggableAttr = editMode ? ' draggable="true"' : '';
         const main = `<a class="nav-item${active}"
               href="${editMode ? '#' : path(it.href)}"
-              data-item-key="${it.id}"${draggableAttr}>
+              data-item-key="${it.id}"
+              data-tooltip="${escHtml(it.label)}"${draggableAttr}>
             ${handle}
             <span class="nav-item__icon">${icon(it.icon)}</span>
             <span class="nav-item__label">${it.label}</span>
@@ -129,7 +131,7 @@
           <span class="sidebar__footer-name">MediPlat</span>
           <span class="sidebar__footer-copy">© Coresolution</span>
         </div>
-        <a class="sidebar__logout" href="${path('/logout')}">
+        <a class="sidebar__logout" href="${path('/logout')}" data-tooltip="로그아웃">
           ${icon('logout')}
           <span class="sidebar__logout-text">로그아웃</span>
         </a>
@@ -202,7 +204,65 @@
       });
     }
     if (editMode) attachDragListeners();
+    attachCollapsedTooltipHandlers();
   }
+
+  // ── collapsed 상태 floating tooltip ──────────────────────────────
+  // CSS ::after 로 만들면 .sidebar__nav 의 overflow-y:auto 안에서 가로
+  // 스크롤이 발생하므로, document.body 에 fixed position 으로 부착한다.
+  // 사이드바가 collapsed(데스크탑)일 때만 동작; 모바일·펼침 상태에선 skip.
+  let _tooltipEl = null;
+  function removeFloatingTooltip() {
+    if (_tooltipEl) {
+      _tooltipEl.remove();
+      _tooltipEl = null;
+    }
+  }
+  function showFloatingTooltip(anchorEl, text) {
+    removeFloatingTooltip();
+    if (!text) return;
+    const rect = anchorEl.getBoundingClientRect();
+    const tip = document.createElement('div');
+    tip.className = 'sidebar-floating-tooltip';
+    tip.textContent = text;
+    // 우선 보이지 않게 화면에 붙여 사이즈를 잡은 뒤 좌표 적용 (CLS 방지)
+    tip.style.left = '-9999px';
+    tip.style.top = '0';
+    document.body.appendChild(tip);
+    // 사이드바 우측 끝 + 10px 위치, 세로는 anchor 중앙
+    tip.style.left = (rect.right + 10) + 'px';
+    tip.style.top  = (rect.top + rect.height / 2) + 'px';
+    _tooltipEl = tip;
+  }
+  function isDesktopCollapsed() {
+    const app = document.querySelector('.app');
+    if (!app) return false;
+    if (app.dataset.sidebar !== 'collapsed') return false;
+    return window.matchMedia('(min-width: 901px)').matches;
+  }
+  function attachCollapsedTooltipHandlers() {
+    const sidebar = document.querySelector('.sidebar');
+    if (!sidebar) return;
+    sidebar.querySelectorAll('[data-tooltip]').forEach(el => {
+      if (el.dataset.tooltipBound === '1') return;
+      el.dataset.tooltipBound = '1';
+      el.addEventListener('mouseenter', () => {
+        if (!isDesktopCollapsed()) return;
+        showFloatingTooltip(el, el.getAttribute('data-tooltip'));
+      });
+      el.addEventListener('mouseleave', removeFloatingTooltip);
+      // 사이드바가 다시 펼쳐지거나 페이지 이동 시 잔존 tooltip 정리
+      el.addEventListener('click', removeFloatingTooltip);
+    });
+  }
+  // 사이드바 토글 시 잔존 tooltip 즉시 정리
+  document.addEventListener('click', e => {
+    if (e.target.closest('.header__toggle')) {
+      removeFloatingTooltip();
+    }
+  });
+  window.addEventListener('scroll', removeFloatingTooltip, true);
+  window.addEventListener('resize', removeFloatingTooltip);
 
   function attachDragListeners() {
     const navRoot = document.getElementById('navRoot');
@@ -420,6 +480,119 @@
     if (unread.length === 0) return;
 
     showNoticePopup(unread, me.id);
+  }
+
+  // ── 업데이트 팝업 (서버측 read 추적) ─────────────────────────────
+  // notice popup과 별도 — 버전/분류 강조, popup_yn=Y 미읽음만 노출.
+  // 확인 시 서버에 read 기록 (per-user, per-inst).
+  function showUpdatePopup(updates) {
+    const existing = document.getElementById('csm-update-popup');
+    if (existing) existing.remove();
+
+    let current = 0;
+    const total = updates.length;
+    const csrfToken  = document.querySelector('meta[name="_csrf"]')?.getAttribute('content') || '';
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
+
+    function categoryLabel(cat) {
+      if (cat === 'release')     return '신규 기능';
+      if (cat === 'maintenance') return '점검/공지';
+      if (cat === 'fix')         return '버그 수정';
+      return '업데이트';
+    }
+    function categoryColor(cat) {
+      if (cat === 'release')     return { bg:'#e7f5ff', fg:'#1971c2' };
+      if (cat === 'maintenance') return { bg:'#fff4e6', fg:'#d9480f' };
+      if (cat === 'fix')         return { bg:'#f3f0ff', fg:'#6741d9' };
+      return { bg:'#f1f3f5', fg:'#495057' };
+    }
+
+    async function markRead(updateId) {
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+        await fetch(CTX + '/api/updates/' + updateId + '/read', {
+          method: 'POST', headers, credentials: 'same-origin', body: JSON.stringify({}),
+        });
+      } catch { /* non-critical */ }
+    }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'csm-update-popup';
+    overlay.style.cssText = [
+      'position:fixed', 'inset:0', 'background:rgba(0,0,0,.48)',
+      'display:flex', 'align-items:center', 'justify-content:center', 'z-index:9999',
+    ].join(';');
+
+    function render() {
+      const u = updates[current];
+      const cat = categoryColor(u.category);
+      const sevBadge = u.severity === 'critical'
+        ? '<span style="background:#fff0f0;color:#c92a2a;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;">긴급</span>'
+        : (u.severity === 'important'
+            ? '<span style="background:#fff9db;color:#a37908;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;">중요</span>'
+            : '');
+      const counter = total > 1 ? `<span style="font-size:11px;color:#6b7280;margin-left:4px;">(${current + 1}/${total})</span>` : '';
+      const prevBtn = (total > 1 && current > 0)
+        ? '<button id="upop-prev" style="padding:6px 14px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer;font-size:13px;">이전</button>'
+        : '';
+      const nextBtn = (total > 1 && current < total - 1)
+        ? '<button id="upop-next" style="padding:6px 14px;border-radius:6px;background:#10b981;color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:600;">다음</button>'
+        : '';
+      const confirmBtn = (current === total - 1)
+        ? '<button id="upop-confirm" style="padding:6px 16px;border:none;border-radius:6px;background:#10b981;color:#fff;cursor:pointer;font-size:13px;font-weight:600;">확인</button>'
+        : '';
+
+      overlay.innerHTML = `
+        <div style="background:#fff;border-radius:12px;width:560px;max-width:92vw;max-height:84vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,.2);">
+          <div style="padding:20px 24px 14px;border-bottom:1px solid #f0f0f0;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+                <span style="background:#d1fae5;color:#065f46;font-size:12px;font-weight:700;padding:3px 10px;border-radius:6px;">${escHtml(u.version || '')}</span>
+                <span style="background:${cat.bg};color:${cat.fg};font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px;">${categoryLabel(u.category)}</span>
+                ${sevBadge}
+                ${counter}
+              </div>
+              <div style="font-size:16px;font-weight:700;color:#111827;line-height:1.4;word-break:break-word;">${escHtml(u.title || '')}</div>
+              ${u.summary ? `<div style="margin-top:6px;font-size:13px;color:#4b5563;line-height:1.6;">${escHtml(u.summary)}</div>` : ''}
+            </div>
+            <button id="upop-close" style="background:none;border:none;cursor:pointer;padding:2px 4px;color:#9ca3af;font-size:18px;line-height:1;flex-shrink:0;">✕</button>
+          </div>
+          <div style="padding:16px 24px;overflow-y:auto;flex:1;font-size:13px;color:#374151;line-height:1.75;white-space:pre-wrap;">${escHtml(u.body || '')}</div>
+          <div style="padding:12px 24px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f0f0f0;gap:8px;">
+            <span style="font-size:12px;color:#9ca3af;">${escHtml(u.published_at || '')}</span>
+            <div style="display:flex;gap:8px;">${prevBtn}${nextBtn}${confirmBtn}</div>
+          </div>
+        </div>`;
+
+      overlay.querySelector('#upop-close')?.addEventListener('click', () => overlay.remove());
+      overlay.querySelector('#upop-prev')?.addEventListener('click', () => { current--; render(); });
+      overlay.querySelector('#upop-next')?.addEventListener('click', () => {
+        // mark current as read before advancing
+        markRead(updates[current].id);
+        current++;
+        render();
+      });
+      overlay.querySelector('#upop-confirm')?.addEventListener('click', () => {
+        Promise.all(updates.map(x => markRead(x.id))).finally(() => overlay.remove());
+      });
+    }
+
+    render();
+    document.body.appendChild(overlay);
+  }
+
+  async function checkAndShowUpdatePopup() {
+    const me = window._meCache;
+    if (!me || !me.id) return;
+    let updates;
+    try {
+      const res = await fetch(CTX + '/api/updates-popup', { credentials: 'same-origin' });
+      if (!res.ok) return;
+      updates = await res.json();
+    } catch { return; }
+    if (!Array.isArray(updates) || updates.length === 0) return;
+    showUpdatePopup(updates);
   }
 
   // ── 페이지 전환 로더 ──────────────────────────────────────────────
@@ -667,6 +840,8 @@
         attachBellListener();
         startNotifPoll();
         checkAndShowNoticePopup();
+        // 업데이트 팝업은 공지 팝업 뒤에 표시되도록 약간 지연.
+        setTimeout(() => { checkAndShowUpdatePopup(); }, 250);
       } finally {
         // 캐시 사용 시 즉시, API 호출 시 완료 후 로더 숨김
         hidePageLoader();
