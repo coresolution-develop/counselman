@@ -79,6 +79,10 @@ document.addEventListener('DOMContentLoaded', function () {
             success: function (response) {
                 hideSpinner();
                 if (response.result === true) {
+                    if (response.resolvedInst) {
+                        pendingInst = response.resolvedInst;
+                        localStorage.setItem('inst', response.resolvedInst);
+                    }
                     if (response.requireOtp === true) {
                         switchToOtp(response.phoneMask);
                     } else {
