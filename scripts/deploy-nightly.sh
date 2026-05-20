@@ -44,6 +44,10 @@ set -euo pipefail
 STAGING_DIR="${STAGING_DIR:-/opt/deploy/staging}"
 ARCHIVE_DIR="${ARCHIVE_DIR:-/opt/deploy/archive}"
 TOMCAT_WEBAPPS="${TOMCAT_WEBAPPS:-/usr/local/tomcat10/webapps}"
+# CSM_SERVICE: csm.war 배포 후 restart 할 systemd unit (비어있으면 Tomcat
+# autoDeploy 가정. 운영(csm-next 전용 Tomcat 인스턴스)에서는
+# CSM_SERVICE=csm-next 로 설정 권장).
+CSM_SERVICE="${CSM_SERVICE:-}"
 MEDIPLAT_APP_DIR="${MEDIPLAT_APP_DIR:-/opt/mediplat/app}"
 MEDIPLAT_SERVICE="${MEDIPLAT_SERVICE:-mediplat}"
 CANCER_APP_DIR="${CANCER_APP_DIR:-/opt/cancer-treatment/app}"
@@ -80,7 +84,7 @@ mkdir -p "${ARCHIVE_DIR}/${TS}"
 
 # (artifact basename, live path/file, systemd unit name or empty)
 APPS=(
-  "csm.war|${TOMCAT_WEBAPPS}/csm.war|"
+  "csm.war|${TOMCAT_WEBAPPS}/csm.war|${CSM_SERVICE}"
   "mediplat.jar|${MEDIPLAT_APP_DIR}/mediplat.jar|${MEDIPLAT_SERVICE}"
   "cancer-treatment.jar|${CANCER_APP_DIR}/cancer-treatment.jar|${CANCER_SERVICE}"
 )
