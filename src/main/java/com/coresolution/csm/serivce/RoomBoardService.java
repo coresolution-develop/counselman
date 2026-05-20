@@ -1501,7 +1501,7 @@ public class RoomBoardService {
                        WHERE id IN (SELECT MIN(id) FROM csm.counsel_data_%s_guardians GROUP BY cs_idx)
                   ) g ON g.cs_idx = cd.cs_idx
                  WHERE cd.cs_col_19 = '입원예약'
-                 ORDER BY cd.cs_col_21 ASC, cd.cs_idx ASC
+                 ORDER BY cd.cs_col_16 DESC, cd.cs_idx DESC
                 """.formatted(safe, safe, safe);
 
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
