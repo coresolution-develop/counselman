@@ -68,6 +68,21 @@ Read the relevant file from `.agents/rules/` when working on matching code.
 
 ---
 
+# Release Notes Automation
+
+`src/` 하위에 사용자 인지 가능한 변경(버그 수정·기능·UX·보안·운영)이 발생한 세션은, 응답의 마지막에 release-note 카드 초안을 마크다운으로 출력한다. 사용자가 그대로 `/csm/core/updates` 에 붙여넣을 수 있는 형식이다.
+
+규칙 본문: [`.claude/rules/release-notes.md`](.claude/rules/release-notes.md)
+
+요약:
+- **트리거**: src/ 변경 발생 시 자동. typo·포맷팅·내부 리팩터링·테스트만 추가는 skip.
+- **버전 번호 (SemVer)**: fix → patch, feature → minor, breaking → major. 직전 버전은 git log 또는 `core_update` 테이블에서 파악; 불확실하면 카드 상단에 가정 표시.
+- **필드 기본값**: 상태 PUBLISHED, 팝업 ❌ (critical만 ✅), 공개일은 작업 완료 시각.
+- **톤**: 고객 시점("무엇이 달라졌다"), 한 줄 요약은 한 문장.
+- **누적**: 같은 세션의 여러 변경은 하나의 카드로 통합 우선.
+
+---
+
 # Coding Guidelines
 
 Behavioral guidelines to reduce common LLM coding mistakes.  
