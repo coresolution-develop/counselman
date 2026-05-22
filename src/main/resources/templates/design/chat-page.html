@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="ctx" th:content="@{/}"/>
-  <title>상담 | 효사랑가족요양병원</title>
+  <title th:text="${instName != null and !instName.isEmpty()} ? '상담 | ' + ${instName} : '상담'">상담</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
@@ -741,7 +741,8 @@
         </svg>
         자주 묻는 질문
       </button>
-      <h1 :class="{ 'chat-header__title--compact': currentView === 'chat' }">효사랑가족요양병원 상담</h1>
+      <h1 :class="{ 'chat-header__title--compact': currentView === 'chat' }"
+          th:text="${instName != null and !instName.isEmpty()} ? ${instName} + ' 상담' : '상담'">상담</h1>
     </div>
     <div class="chat-header__right" x-show="user.loggedIn">
       <img class="user-avatar" :src="user.thumbnail || (CTX + '/img/default-avatar.svg')" :alt="user.nickname"
@@ -1016,7 +1017,7 @@ const CTX = (document.querySelector('meta[name=ctx]')?.content || '/').replace(/
 
 function chatApp() {
   return {
-    inst: '',
+    token: '',
     user: { loggedIn: false, nickname: '', thumbnail: '' },
     faqs: [],
     categories: [],
@@ -1051,14 +1052,17 @@ function chatApp() {
     },
 
     kakaoLoginUrl() {
-      sessionStorage.setItem('chat_inst', this.inst);
+      sessionStorage.setItem('chat_token', this.token);
       return CTX + '/oauth2/authorization/kakao';
     },
 
     async init() {
       const params = new URLSearchParams(location.search);
-      this.inst = params.get('inst') || sessionStorage.getItem('chat_inst') || 'FALH';
-      sessionStorage.setItem('chat_inst', this.inst);
+      this.token = params.get('t') || sessionStorage.getItem('chat_token') || '';
+      if (this.token) sessionStorage.setItem('chat_token', this.token);
+      if (!this.token) {
+        console.warn('chat-page: no chat token in URL');
+      }
 
       this.loadFaqs();
       const res = await fetch(CTX + '/api/chat/me').catch(() => null);
@@ -1094,7 +1098,7 @@ function chatApp() {
     },
 
     async resumeRoom() {
-      const res = await fetch(CTX + '/api/chat/room/my?inst=' + this.inst).catch(() => null);
+      const res = await fetch(CTX + '/api/chat/room/my?t=' + this.token).catch(() => null);
       if (!res || !res.ok) return;
       const data = await res.json();
       if (!data.id) return;
@@ -1103,7 +1107,7 @@ function chatApp() {
       this.roomStatus = data.status;
       this.currentView = 'chat';
 
-      const msgRes = await fetch(CTX + '/api/chat/room/' + this.roomId + '/messages?inst=' + this.inst).catch(() => null);
+      const msgRes = await fetch(CTX + '/api/chat/room/' + this.roomId + '/messages?t=' + this.token).catch(() => null);
       if (msgRes && msgRes.ok) {
         const rows = await msgRes.json();
         this.messages = rows.map(m => ({
@@ -1118,7 +1122,7 @@ function chatApp() {
     },
 
     async loadFaqs() {
-      const res = await fetch(CTX + '/api/chat/faqs?inst=' + this.inst).catch(() => null);
+      const res = await fetch(CTX + '/api/chat/faqs?t=' + this.token).catch(() => null);
       if (!res || !res.ok) return;
       const data = await res.json();
       this.faqs = (Array.isArray(data) ? data : []).map(f => ({ ...f, _open: false }));
@@ -1227,7 +1231,7 @@ function chatApp() {
       this.currentView = 'chat';
       this.sending = true;
       try {
-        const res = await fetch(CTX + '/api/chat/room?inst=' + this.inst, { method: 'POST' });
+        const res = await fetch(CTX + '/api/chat/room?t=' + this.token, { method: 'POST' });
         const data = await res.json();
         this.roomId = data.roomId;
         this.roomStatus = 'WAITING';
@@ -1267,7 +1271,7 @@ function chatApp() {
         return;
       }
       this.stompClient.send('/app/chat/' + this.roomId + '/send', {}, JSON.stringify({
-        inst: this.inst,
+        token: this.token,
         senderType: 'USER',
         senderName: this.user.nickname,
         content
@@ -1280,7 +1284,7 @@ function chatApp() {
       this.stompClient = Stomp.over(sock);
       this.stompClient.debug = null;
       this.stompClient.connect({}, () => {
-        this.stompClient.subscribe('/topic/chat/' + this.roomId, (frame) => {
+        this.stompClient.subscribe('/topic/chat/' + this.token + '/' + this.roomId, (frame) => {
           const msg = JSON.parse(frame.body);
           if (msg.type === 'COUNSELOR_JOINED') {
             this._clearStatusPoll();
@@ -1307,7 +1311,7 @@ function chatApp() {
       this._statusPollTimer = setInterval(async () => {
         if (this.roomStatus !== 'WAITING') { this._clearStatusPoll(); return; }
         try {
-          const res = await fetch(CTX + '/api/chat/room/' + this.roomId + '/status?inst=' + this.inst);
+          const res = await fetch(CTX + '/api/chat/room/' + this.roomId + '/status?t=' + this.token);
           if (!res.ok) return;
           const data = await res.json();
           if (data.status === 'ACTIVE' && this.roomStatus === 'WAITING') {
@@ -1357,7 +1361,7 @@ function chatApp() {
       this.counselErrors = {};
       try {
         const fd = new FormData();
-        fd.append('inst', this.inst);
+        fd.append('t', this.token);
         fd.append('name', this.counselForm.name.trim());
         fd.append('phone', this.counselForm.phone.trim());
         fd.append('content', this.counselForm.content.trim());
@@ -1415,7 +1419,7 @@ function chatApp() {
       }
       try {
         const fd = new FormData();
-        fd.append('inst', this.inst);
+        fd.append('t', this.token);
         fd.append('name', this.botData.name);
         fd.append('phone', this.botData.phone);
         fd.append('content', this.botData.content);

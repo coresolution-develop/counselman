@@ -27,15 +27,18 @@ public class CsmSchemaBootstrapService {
     private final CsmAuthService csmAuthService;
     private final TransactionTemplate transactionTemplate;
     private final MediplatRoleMapper mediplatRoleMapper;
+    private final ChatTokenService chatTokenService;
 
     public CsmSchemaBootstrapService(JdbcTemplate jdbcTemplate,
                                      CsmAuthService csmAuthService,
                                      PlatformTransactionManager transactionManager,
-                                     MediplatRoleMapper mediplatRoleMapper) {
+                                     MediplatRoleMapper mediplatRoleMapper,
+                                     ChatTokenService chatTokenService) {
         this.jdbcTemplate = jdbcTemplate;
         this.csmAuthService = csmAuthService;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.mediplatRoleMapper = mediplatRoleMapper;
+        this.chatTokenService = chatTokenService;
     }
 
     @PostConstruct
@@ -72,6 +75,7 @@ public class CsmSchemaBootstrapService {
                         upsertCoreInstitution(instCode, instName, useYn);
                         syncUsersFromPlatform(instCode, instName);
                     });
+                    chatTokenService.getOrCreateToken(instCode);
                 } catch (Exception e) {
                     log.warn("[schema-bootstrap] inst={} skipped: {}", instCode, e.toString());
                 }
@@ -114,6 +118,7 @@ public class CsmSchemaBootstrapService {
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                     """);
             ensurePermissionMasterTables();
+            ensureChatInstTokenTable();
             return;
         }
 
@@ -146,6 +151,17 @@ public class CsmSchemaBootstrapService {
                     us_col_07 VARCHAR(100),
                     UNIQUE (us_col_01, us_col_02)
                 )
+                """);
+    }
+
+    private void ensureChatInstTokenTable() {
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS csm.chat_inst_token (
+                    token      VARCHAR(32)  NOT NULL PRIMARY KEY,
+                    inst       VARCHAR(50)  NOT NULL,
+                    created_at DATETIME     DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_chat_inst_token_inst (inst)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """);
     }
 

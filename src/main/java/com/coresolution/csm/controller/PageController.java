@@ -170,6 +170,8 @@ public class PageController {
     @Autowired
     private RoomBoardService roomBoardService;
     @Autowired
+    private com.coresolution.csm.serivce.ChatTokenService chatTokenService;
+    @Autowired
     private PlatformTransactionManager transactionManager;
     private TransactionTemplate transactionTemplate;
 
@@ -9374,13 +9376,53 @@ public class PageController {
     }
 
     @GetMapping({ "chat", "/chat" })
-    public String chatPage() {
+    public String chatPage(
+            @RequestParam(value = "inst", required = false) String inst,
+            @RequestParam(value = "t", required = false) String token,
+            org.springframework.ui.Model model) {
+
+        // Tolerate a token mistakenly supplied via ?inst=<token>: treat it as a token.
+        String effectiveToken = token;
+        if ((effectiveToken == null || effectiveToken.isBlank())
+                && inst != null && !inst.isBlank()) {
+            String maybe = inst.trim();
+            String fromToken = chatTokenService.resolveInst(maybe);
+            if (fromToken != null) {
+                return "redirect:/chat?t=" + maybe;
+            }
+            // Legacy inst code → resolve and redirect to canonical token URL.
+            String sanitized = maybe.replaceAll("[^A-Za-z0-9_]", "");
+            if (!sanitized.isEmpty()) {
+                String canonical = cs.resolveInst(sanitized);
+                if (canonical != null) {
+                    String tk = chatTokenService.getOrCreateToken(canonical);
+                    if (tk != null) {
+                        return "redirect:/chat?t=" + tk;
+                    }
+                }
+            }
+        }
+
+        // Resolve display name from token (never expose the inst code in the page).
+        String instName = "";
+        if (effectiveToken != null && !effectiveToken.isBlank()) {
+            String canonicalInst = chatTokenService.resolveInst(effectiveToken.trim());
+            if (canonicalInst != null) {
+                instName = chatTokenService.getInstName(canonicalInst);
+            }
+        }
+        model.addAttribute("instName", instName);
         return "design/chat-page";
     }
 
     @GetMapping({ "chat-admin", "/chat-admin" })
     @PreAuthorize("hasAuthority('CHAT:ADMIN') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN') or hasRole('COUNSELOR')")
-    public String chatAdmin() {
+    public String chatAdmin(jakarta.servlet.http.HttpSession session, org.springframework.ui.Model model) {
+        Object v = session.getAttribute("inst");
+        String inst = v == null ? "" : v.toString().replaceAll("[^A-Za-z0-9_]", "");
+        String chatToken = inst.isEmpty() ? "" :
+                java.util.Optional.ofNullable(chatTokenService.getOrCreateToken(inst)).orElse("");
+        model.addAttribute("chatToken", chatToken);
         return "design/chat-admin";
     }
 

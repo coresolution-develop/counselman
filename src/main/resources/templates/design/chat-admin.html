@@ -8,6 +8,7 @@
   <meta name="_csrf" th:content="${_csrf.token}"/>
   <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
   <meta name="ctx" th:content="@{/}"/>
+  <meta name="chat-token" th:content="${chatToken}"/>
   <title>채팅 관리 | 카운셀맨</title>
 
   <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
@@ -379,7 +380,7 @@ const CTX = (document.querySelector('meta[name=ctx]')?.content || '/').replace(/
 
 function chatAdminPage() {
   return {
-    inst: '',
+    token: '',
     counselorId: null,
     counselorName: '',
     rooms: [],
@@ -404,8 +405,11 @@ function chatAdminPage() {
         this.counselorName = info.name || info.id || '상담사';
       }
 
-      const params = new URLSearchParams(location.search);
-      this.inst = params.get('inst') || 'FALH';
+      this.token = document.querySelector('meta[name="chat-token"]')?.content || '';
+      if (!this.token) {
+        alert('소속 기관 정보를 확인할 수 없습니다. 다시 로그인해주세요.');
+        return;
+      }
 
       // 알림 권한 상태 초기화
       if ('Notification' in window) {
@@ -450,7 +454,7 @@ function chatAdminPage() {
     },
 
     async loadRooms() {
-      const res = await fetch(CTX + '/api/chat/rooms?inst=' + this.inst);
+      const res = await fetch(CTX + '/api/chat/rooms');
       const data = await res.json();
       const prev = new Set(this.rooms.map(r => r.id));
       this.rooms = data.map(r => ({ ...r, _new: !prev.has(r.id) && r.status === 'WAITING' }));
@@ -461,7 +465,7 @@ function chatAdminPage() {
       this.stompClient = Stomp.over(sock);
       this.stompClient.debug = null;
       this.stompClient.connect({}, () => {
-        this.stompClient.subscribe('/topic/admin/rooms/' + this.inst, (frame) => {
+        this.stompClient.subscribe('/topic/admin/rooms/' + this.token, (frame) => {
           const msg = JSON.parse(frame.body);
           if (msg.type === 'NEW_ROOM') {
             this.loadRooms();
@@ -484,7 +488,7 @@ function chatAdminPage() {
       this.selectedRoom = room;
       this.messages = [];
 
-      const res = await fetch(CTX + '/api/chat/room/' + room.id + '/messages?inst=' + this.inst);
+      const res = await fetch(CTX + '/api/chat/room/' + room.id + '/messages?t=' + this.token);
       const data = await res.json();
       this.messages = data.map(m => ({
         type: 'MESSAGE',
@@ -495,7 +499,7 @@ function chatAdminPage() {
 
       if (this._roomSub) this._roomSub.unsubscribe();
       if (this.stompClient && this.stompClient.connected) {
-        this._roomSub = this.stompClient.subscribe('/topic/chat/' + room.id, (frame) => {
+        this._roomSub = this.stompClient.subscribe('/topic/chat/' + this.token + '/' + room.id, (frame) => {
           const msg = JSON.parse(frame.body);
           if (msg.type === 'MESSAGE') {
             this.messages.push(msg);
@@ -510,8 +514,7 @@ function chatAdminPage() {
     async joinRoom() {
       if (!this.selectedRoom) return;
       await fetch(CTX + '/api/chat/room/' + this.selectedRoom.id + '/join'
-        + '?inst=' + this.inst
-        + '&counselorId=' + (this.counselorId || 0)
+        + '?counselorId=' + (this.counselorId || 0)
         + '&counselorName=' + encodeURIComponent(this.counselorName),
         { method: 'PUT' });
       this.selectedRoom.status = 'ACTIVE';
@@ -520,7 +523,7 @@ function chatAdminPage() {
 
     async closeRoom() {
       if (!this.selectedRoom) return;
-      await fetch(CTX + '/api/chat/room/' + this.selectedRoom.id + '/close?inst=' + this.inst,
+      await fetch(CTX + '/api/chat/room/' + this.selectedRoom.id + '/close',
         { method: 'PUT' });
       this.selectedRoom.status = 'CLOSED';
       this.loadRooms();
@@ -531,7 +534,7 @@ function chatAdminPage() {
       if (!this.inputText.trim() || !this.stompClient || !this.selectedRoom) return;
       const content = this.inputText.trim();
       this.stompClient.send('/app/chat/' + this.selectedRoom.id + '/send', {}, JSON.stringify({
-        inst: this.inst,
+        token: this.token,
         senderType: 'COUNSELOR',
         senderName: this.counselorName,
         content
