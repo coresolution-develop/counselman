@@ -37,18 +37,17 @@
         });
         els.body.addEventListener('change', handleStatusChange);
         els.body.addEventListener('dblclick', handleInlineEditStart);
+        setupDragAndDrop();
         loadSchedules();
         loadCalendarOverview();
         loadModalMasters();
         setupPatientCombobox();
+        setupTreatmentCombobox();
         connectSse();
     }
 
     function loadModalMasters() {
-        window.__sm = window.__sm || { patients: [], wards: [], types: [], options: [] };
-        fetch(API + 'api/patients', { headers: { Accept: 'application/json' } })
-            .then(function (r) { return r.ok ? r.json() : { items: [] }; })
-            .then(function (data) { window.__sm.patients = data.items || []; });
+        window.__sm = window.__sm || { wards: [], types: [], options: [] };
         fetch(API + 'api/settings', { headers: { Accept: 'application/json' } })
             .then(function (r) { return r.ok ? r.json() : {}; })
             .then(function (data) {
@@ -58,51 +57,168 @@
             });
     }
 
+    /**
+     * Generic combobox helper.
+     * opts: { input, dropdown, emptyEl?, search: (q) => Promise<items[]>, render: (item) => htmlString, onSelect: (item) => void, minChars?: number }
+     */
+    function attachCombobox(opts) {
+        var input = opts.input;
+        var dropdown = opts.dropdown;
+        var emptyEl = opts.emptyEl || null;
+        var minChars = opts.minChars == null ? 0 : opts.minChars;
+        var debounceMs = opts.debounceMs == null ? 180 : opts.debounceMs;
+        var activeIndex = -1;
+        var currentItems = [];
+        var fetchSeq = 0;
+        var timer = null;
+
+        function show(items) {
+            currentItems = items || [];
+            activeIndex = -1;
+            if (!currentItems.length) {
+                dropdown.innerHTML = '';
+                dropdown.style.display = 'none';
+                if (emptyEl) emptyEl.style.display = input.value.trim() ? 'block' : 'none';
+                return;
+            }
+            dropdown.innerHTML = currentItems.slice(0, 30).map(function (it, i) {
+                return '<div class="combobox-item" role="option" data-idx="' + i + '">' + opts.render(it) + '</div>';
+            }).join('');
+            dropdown.style.display = 'block';
+            if (emptyEl) emptyEl.style.display = 'none';
+        }
+
+        function close() {
+            dropdown.style.display = 'none';
+            if (emptyEl) emptyEl.style.display = 'none';
+            activeIndex = -1;
+        }
+
+        function setActive(i) {
+            var nodes = dropdown.querySelectorAll('.combobox-item');
+            if (!nodes.length) return;
+            if (i < 0) i = nodes.length - 1;
+            if (i >= nodes.length) i = 0;
+            activeIndex = i;
+            nodes.forEach(function (n, idx) {
+                n.classList.toggle('is-active', idx === activeIndex);
+            });
+            var act = nodes[activeIndex];
+            if (act) act.scrollIntoView({ block: 'nearest' });
+        }
+
+        function pick(i) {
+            if (i < 0 || i >= currentItems.length) return;
+            opts.onSelect(currentItems[i]);
+            close();
+        }
+
+        function trigger() {
+            var q = input.value.trim();
+            if (q.length < minChars) {
+                close();
+                return;
+            }
+            var mySeq = ++fetchSeq;
+            Promise.resolve(opts.search(q)).then(function (items) {
+                if (mySeq !== fetchSeq) return;
+                show(items);
+            }).catch(function () {
+                if (mySeq !== fetchSeq) return;
+                show([]);
+            });
+        }
+
+        function scheduleTrigger() {
+            clearTimeout(timer);
+            timer = setTimeout(trigger, debounceMs);
+        }
+
+        input.addEventListener('focus', trigger);
+        input.addEventListener('input', scheduleTrigger);
+        input.addEventListener('blur', function () {
+            setTimeout(close, 150);
+        });
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (dropdown.style.display === 'none') trigger();
+                else setActive(activeIndex + 1);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setActive(activeIndex - 1);
+            } else if (e.key === 'Enter') {
+                if (activeIndex >= 0 && dropdown.style.display !== 'none') {
+                    e.preventDefault();
+                    pick(activeIndex);
+                }
+            } else if (e.key === 'Escape') {
+                close();
+            }
+        });
+        dropdown.addEventListener('mousedown', function (e) {
+            var item = e.target.closest('.combobox-item');
+            if (!item) return;
+            e.preventDefault();
+            pick(parseInt(item.dataset.idx, 10));
+        });
+    }
+
     function setupPatientCombobox() {
         var input    = document.getElementById('modal-patient');
         var dropdown = document.getElementById('modal-patient-dropdown');
         var empty    = document.getElementById('modal-patient-empty');
         if (!input || !dropdown) return;
 
-        function render(list) {
-            if (!list.length) {
-                dropdown.innerHTML = '';
-                dropdown.style.display = 'none';
-                empty.style.display = input.value.trim() ? 'block' : 'none';
-                return;
+        attachCombobox({
+            input: input,
+            dropdown: dropdown,
+            emptyEl: empty,
+            search: function (q) {
+                var url = API + 'api/patients' + (q ? '?keyword=' + encodeURIComponent(q) : '');
+                return fetch(url, { headers: { Accept: 'application/json' } })
+                    .then(function (r) { return r.ok ? r.json() : { items: [] }; })
+                    .then(function (data) { return data.items || []; });
+            },
+            render: function (p) {
+                var parts = [];
+                if (p.ward)    parts.push(escapeAttr(p.ward));
+                if (p.chartNo) parts.push('#' + escapeAttr(p.chartNo));
+                if (p.room)    parts.push(escapeAttr(p.room));
+                var meta = parts.length ? '<span class="meta">' + parts.join(' · ') + '</span>' : '';
+                return '<strong>' + escapeAttr(p.name) + '</strong>' + meta;
+            },
+            onSelect: function (p) {
+                input.value = p.name || '';
+                var wardSelect = document.getElementById('modal-ward');
+                if (wardSelect && p.ward) setSelectValue(wardSelect, p.ward);
             }
-            dropdown.innerHTML = list.slice(0, 30).map(function (p) {
-                var ward = p.ward ? '<span class="meta">' + escapeAttr(p.ward) + '</span>' : '';
-                return '<div class="combobox-item" data-name="' + escapeAttr(p.name) + '" data-ward="' + escapeAttr(p.ward || '') + '">'
-                     + '<strong>' + escapeAttr(p.name) + '</strong>' + ward + '</div>';
-            }).join('');
-            dropdown.style.display = 'block';
-            empty.style.display = 'none';
-        }
-
-        function filter() {
-            var q = input.value.trim().toLowerCase();
-            var src = (window.__sm && window.__sm.patients) || [];
-            if (!q) { render(src); return; }
-            render(src.filter(function (p) { return (p.name || '').toLowerCase().indexOf(q) >= 0; }));
-        }
-
-        input.addEventListener('focus', filter);
-        input.addEventListener('input', filter);
-        input.addEventListener('blur', function () {
-            setTimeout(function () { dropdown.style.display = 'none'; empty.style.display = 'none'; }, 150);
         });
-        dropdown.addEventListener('mousedown', function (e) {
-            var item = e.target.closest('.combobox-item');
-            if (!item) return;
-            e.preventDefault();
-            input.value = item.dataset.name;
-            var wardSelect = document.getElementById('modal-ward');
-            if (wardSelect && item.dataset.ward) {
-                setSelectValue(wardSelect, item.dataset.ward);
+    }
+
+    function setupTreatmentCombobox() {
+        var input    = document.getElementById('modal-treatment');
+        var dropdown = document.getElementById('modal-treatment-dropdown');
+        if (!input || !dropdown) return;
+
+        attachCombobox({
+            input: input,
+            dropdown: dropdown,
+            search: function (q) {
+                var types = (window.__sm && window.__sm.types) || [];
+                if (!q) return types;
+                var lower = q.toLowerCase();
+                return types.filter(function (t) {
+                    return (t.name || '').toLowerCase().indexOf(lower) >= 0;
+                });
+            },
+            render: function (t) {
+                var detail = t.detail ? '<span class="meta">' + escapeAttr(t.detail) + '</span>' : '';
+                return '<strong>' + escapeAttr(t.name) + '</strong>' + detail;
+            },
+            onSelect: function (t) {
+                input.value = t.name || '';
             }
-            dropdown.style.display = 'none';
-            empty.style.display = 'none';
         });
     }
 
@@ -119,10 +235,9 @@
     };
 
     function populateScheduleSelects() {
-        var masters = window.__sm || { wards: [], types: [], options: [] };
-        fillSelect(document.getElementById('modal-ward'),      masters.wards,   function (it) { return it.name; }, function (it) { return (it.code && it.code !== it.name) ? it.name + ' (' + it.code + ')' : it.name; });
-        fillSelect(document.getElementById('modal-treatment'), masters.types,   function (it) { return it.name; }, function (it) { return it.name; });
-        fillSelect(document.getElementById('modal-option'),    masters.options, function (it) { return it.name; }, function (it) { return (it.code && it.code !== it.name) ? it.code + ' — ' + it.name : it.name; });
+        var masters = window.__sm || { wards: [], options: [] };
+        fillSelect(document.getElementById('modal-ward'),   masters.wards,   function (it) { return it.name; }, function (it) { return (it.code && it.code !== it.name) ? it.name + ' (' + it.code + ')' : it.name; });
+        fillSelect(document.getElementById('modal-option'), masters.options, function (it) { return it.name; }, function (it) { return (it.code && it.code !== it.name) ? it.code + ' — ' + it.name : it.name; });
     }
 
     function fillSelect(select, items, valueFn, labelFn) {
@@ -260,7 +375,7 @@
                    : 'var(--success)';
         var sLabel = item.status || '예약';
 
-        return '<div class="' + blockCls + '"' +
+        return '<div class="' + blockCls + '" draggable="true"' +
             ' data-id="' + escapeHtml(String(item.id || '')) + '"' +
             ' data-date="' + escapeHtml(item.treatmentDate || '') + '"' +
             ' data-time="' + escapeHtml(item.startTime || '') + '"' +
@@ -279,6 +394,8 @@
                     (item.treatmentOption ? ' · ' + escapeHtml(item.treatmentOption) : '') +
                     (item.ward ? ' <span style="color:var(--fg4);font-size:11px">· ' + escapeHtml(item.ward) + '</span>' : '') +
                 '</div>' +
+                (item.treatmentInfo ? '<div class="print-only print-extra">처방: ' + escapeHtml(item.treatmentInfo) + '</div>' : '') +
+                (item.note ? '<div class="print-only print-extra note">메모: ' + escapeHtml(item.note) + '</div>' : '') +
             '</div>' +
             '<div class="session-meta">' +
                 '<div class="session-status">' +
@@ -287,6 +404,93 @@
                 '</div>' +
             '</div>' +
             '</div>';
+    }
+
+    /* ── Drag & Drop time change ─────────────────────────── */
+
+    function setupDragAndDrop() {
+        if (!els.body) return;
+        var dragId = null;
+        var dragSourceTime = null;
+
+        els.body.addEventListener('dragstart', function (e) {
+            var block = e.target.closest && e.target.closest('.session-block');
+            if (!block) return;
+            dragId = block.dataset.id;
+            dragSourceTime = block.dataset.time;
+            block.classList.add('is-dragging');
+            if (e.dataTransfer) {
+                e.dataTransfer.effectAllowed = 'move';
+                try { e.dataTransfer.setData('text/plain', dragId); } catch (_) {}
+            }
+        });
+
+        els.body.addEventListener('dragend', function (e) {
+            var block = e.target.closest && e.target.closest('.session-block');
+            if (block) block.classList.remove('is-dragging');
+            clearDropTargets();
+            dragId = null;
+            dragSourceTime = null;
+        });
+
+        els.body.addEventListener('dragover', function (e) {
+            if (!dragId) return;
+            var track = e.target.closest && e.target.closest('.time-track');
+            if (!track) return;
+            e.preventDefault();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+            clearDropTargets();
+            track.classList.add('is-drop-target');
+        });
+
+        els.body.addEventListener('dragleave', function (e) {
+            var track = e.target.closest && e.target.closest('.time-track');
+            if (track && !track.contains(e.relatedTarget)) {
+                track.classList.remove('is-drop-target');
+            }
+        });
+
+        els.body.addEventListener('drop', function (e) {
+            if (!dragId) return;
+            var track = e.target.closest && e.target.closest('.time-track');
+            if (!track) return;
+            e.preventDefault();
+            clearDropTargets();
+
+            var slot = track.closest('.time-slot');
+            var label = slot && slot.querySelector('.time-label');
+            var targetTime = label ? label.textContent.trim() : '';
+            var id = dragId;
+            dragId = null;
+            if (!targetTime || targetTime === dragSourceTime) return;
+            patchStartTime(id, targetTime);
+        });
+    }
+
+    function clearDropTargets() {
+        document.querySelectorAll('.time-track.is-drop-target').forEach(function (el) {
+            el.classList.remove('is-drop-target');
+        });
+    }
+
+    function patchStartTime(id, startTime) {
+        fetch(API + 'api/treatment-schedules/' + encodeURIComponent(id) + '/time', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ startTime: startTime })
+        })
+            .then(function (r) {
+                if (!r.ok) return r.json().then(function (e) { throw new Error(e.error || '시간 변경 실패'); });
+                return r.json();
+            })
+            .then(function () {
+                loadSchedules();
+                loadCalendarOverview();
+            })
+            .catch(function (e) {
+                alert(e.message || '시간 변경에 실패했습니다.');
+                loadSchedules();
+            });
     }
 
     function renderQueue(items) {
@@ -560,10 +764,10 @@ function selectSession(el) {
     document.getElementById('modal-date').value = date;
     document.getElementById('modal-time').value = time;
     document.getElementById('modal-patient').value = patient;
+    document.getElementById('modal-treatment').value = treatment;
     if (window.__sm_helpers) {
-        window.__sm_helpers.setSelect(document.getElementById('modal-ward'),      ward);
-        window.__sm_helpers.setSelect(document.getElementById('modal-treatment'), treatment);
-        window.__sm_helpers.setSelect(document.getElementById('modal-option'),    option);
+        window.__sm_helpers.setSelect(document.getElementById('modal-ward'),   ward);
+        window.__sm_helpers.setSelect(document.getElementById('modal-option'), option);
     }
     document.getElementById('modal-status').value = status;
     document.getElementById('modal-info').value = info;

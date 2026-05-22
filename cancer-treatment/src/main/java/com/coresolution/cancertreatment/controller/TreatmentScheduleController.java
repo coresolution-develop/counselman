@@ -482,6 +482,20 @@ public class TreatmentScheduleController {
         }
     }
 
+    @PatchMapping("/api/treatment-schedules/{id}/time")
+    @ResponseBody
+    public ResponseEntity<?> updateScheduleTime(
+            @PathVariable("id") Long id,
+            @RequestBody Map<String, String> body,
+            HttpSession session) {
+        requireUser(session);
+        try {
+            return ResponseEntity.ok(scheduleService.updateStartTime(id, body.get("startTime")));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @PatchMapping("/api/treatment-schedules/{id}/field")
     @ResponseBody
     public ResponseEntity<?> updateScheduleField(

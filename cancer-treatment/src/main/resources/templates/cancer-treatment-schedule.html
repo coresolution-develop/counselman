@@ -245,10 +245,16 @@ body {
 .session-block {
   background: rgba(94,106,210,0.12); border: 1px solid rgba(94,106,210,0.3);
   border-radius: 6px; padding: 8px 12px;
-  cursor: pointer; transition: background 0.12s, border-color 0.12s;
+  cursor: grab; transition: background 0.12s, border-color 0.12s, opacity 0.12s;
   display: flex; align-items: center; gap: 10px;
 }
 .session-block:hover { background: rgba(94,106,210,0.2); border-color: rgba(94,106,210,0.5); }
+.session-block.is-dragging { opacity: 0.4; cursor: grabbing; }
+.time-track.is-drop-target {
+  background: rgba(94,106,210,0.08);
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 2px rgba(94,106,210,0.45);
+}
 .session-block.success { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.25); }
 .session-block.success:hover { background: rgba(16,185,129,0.14); }
 .session-block.muted { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.08); }
@@ -563,6 +569,101 @@ textarea.modal-input { resize: vertical; min-height: 56px; }
   cursor: pointer; font-family: var(--font-sans);
 }
 .tp-confirm-btn:hover { background: var(--accent-hover); }
+
+/* ── Print-only DOM (hidden on screen) ─────────────────────── */
+.print-only { display: none; }
+
+/* ── Print Layout ──────────────────────────────────────────── */
+@media print {
+  @page { size: A4; margin: 12mm; }
+
+  body {
+    height: auto; overflow: visible;
+    background: #fff; color: #000;
+    font-size: 10.5pt; display: block;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+
+  /* Hide chrome */
+  .topnav, .sidebar, .right-panel,
+  .compact-filter, .stat-row, .week-strip,
+  .page-header .header-right,
+  .modal-overlay,
+  .time-grid-header { display: none !important; }
+
+  /* Reset layout containers */
+  .layout, .main, .content-area, .schedule-panel {
+    display: block; overflow: visible;
+    padding: 0; margin: 0; border: none; flex: none; width: 100%;
+  }
+
+  /* Print header */
+  .page-header {
+    padding: 0 0 4mm 0; margin-bottom: 5mm;
+    border-bottom: 1.5px solid #000;
+    display: block;
+  }
+  .page-title { font-size: 16pt; font-weight: 700; color: #000; }
+  .page-date  { font-size: 11pt; color: #000; margin-top: 1mm; }
+
+  /* Time grid as compact rows */
+  .time-grid { display: block; gap: 0; }
+  .time-slot {
+    display: flex; align-items: flex-start;
+    gap: 5mm; padding: 2.5mm 0; min-height: 0;
+    border-bottom: 1px solid #c8c8c8;
+    page-break-inside: avoid;
+  }
+  .time-label {
+    width: 16mm; flex-shrink: 0;
+    font-size: 11pt; font-weight: 600; color: #000;
+    text-align: left; padding-top: 0; font-family: var(--font-mono);
+  }
+  .time-track {
+    flex: 1; border-top: none; padding: 0;
+    gap: 2mm; display: flex; flex-direction: column;
+  }
+  .session-block {
+    background: #fff !important; border: none !important;
+    border-radius: 0; padding: 0; outline: none !important;
+    page-break-inside: avoid; gap: 4mm;
+    opacity: 1 !important;
+  }
+  .session-block.cancelled .session-name::after {
+    content: ' (취소)'; font-weight: 400; color: #555;
+  }
+  .session-avatar { display: none !important; }
+  .session-info { flex: 1; min-width: 0; }
+  .session-name { font-size: 11pt; font-weight: 600; color: #000; }
+  .session-type { font-size: 10pt; color: #222; margin-top: 0.5mm; }
+  .session-type span { color: #444 !important; font-size: 10pt !important; }
+  .session-meta {
+    flex-shrink: 0; min-width: 18mm;
+    align-items: flex-end; gap: 0;
+  }
+  .status-dot { display: none !important; }
+  .session-status { font-size: 10pt; color: #000 !important; gap: 0; }
+  .session-status span { color: #000 !important; }
+
+  /* Print-only schedule extras */
+  .print-only { display: block; }
+  .print-extra {
+    font-size: 9.5pt; color: #333;
+    margin-top: 0.5mm; line-height: 1.4;
+  }
+  .print-extra.note { color: #555; font-style: italic; }
+
+  /* Month view: keep grid but cleaned up */
+  #month-view-section .month-cal-cell {
+    border: 1px solid #999 !important; background: #fff !important;
+  }
+  #month-view-section .month-cal-cell.mc-today { border-color: #000 !important; }
+  #month-view-section .month-cal-cell.mc-selected { background: #f0f0f0 !important; }
+  #month-view-section .month-cal-badge { color: #000 !important; }
+
+  /* Empty state */
+  .empty { font-size: 11pt; color: #555; padding: 20mm 0; }
+}
 </style>
 </head>
 <body>
@@ -702,7 +803,7 @@ textarea.modal-input { resize: vertical; min-height: 56px; }
         <button class="btn-outline active" onclick="setViewActive(this); setView('day')">일</button>
         <button class="btn-outline" onclick="setViewActive(this); setView('week')">주</button>
         <button class="btn-outline" onclick="setViewActive(this); setView('month')">월</button>
-        <button class="btn-outline">내보내기</button>
+        <button class="btn-outline" onclick="window.print()">인쇄</button>
       </div>
     </div>
 
@@ -925,12 +1026,14 @@ textarea.modal-input { resize: vertical; min-height: 56px; }
         </label>
       </div>
       <div class="modal-row">
-        <label class="modal-field">
+        <div class="modal-field">
           <span class="modal-label">치료종류 <span class="req">*</span></span>
-          <select id="modal-treatment" class="modal-input">
-            <option value="">선택</option>
-          </select>
-        </label>
+          <div class="combobox-wrap">
+            <input type="text" id="modal-treatment" class="modal-input combobox-input"
+                   autocomplete="off" maxlength="100" placeholder="치료종류 검색 또는 입력">
+            <div id="modal-treatment-dropdown" class="combobox-dropdown" role="listbox" style="display:none"></div>
+          </div>
+        </div>
         <label class="modal-field">
           <span class="modal-label">옵션</span>
           <select id="modal-option" class="modal-input">

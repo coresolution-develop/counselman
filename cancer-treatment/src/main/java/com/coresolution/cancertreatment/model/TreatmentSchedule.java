@@ -4,7 +4,7 @@ public class TreatmentSchedule {
 
     private final Long id;
     private final String treatmentDate;
-    private final String startTime;
+    private String startTime;
     private final String patientName;
     private final String ward;
     private final String treatmentName;
@@ -74,6 +74,10 @@ public class TreatmentSchedule {
 
     public String getNote() {
         return note;
+    }
+
+    public void setStartTime(String startTime) {
+        this.startTime = startTime;
     }
 
     public void setStatus(String status) {

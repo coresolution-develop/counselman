@@ -2,6 +2,8 @@ package com.coresolution.cancertreatment.service;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -83,6 +85,26 @@ public class TreatmentScheduleService {
         }
         TreatmentSchedule schedule = findSchedule(id);
         schedule.setStatus(normalizedStatus);
+        sendScheduleChanged("UPDATED", schedule);
+        return schedule;
+    }
+
+    public TreatmentSchedule updateStartTime(Long id, String startTime) {
+        String normalized = normalize(startTime);
+        if (!StringUtils.hasText(normalized)) {
+            throw new IllegalArgumentException("시작시간을 입력해주세요.");
+        }
+        if (normalized.length() == 4 && normalized.charAt(1) == ':') {
+            normalized = "0" + normalized;
+        }
+        try {
+            LocalTime parsed = LocalTime.parse(normalized);
+            normalized = String.format("%02d:%02d", parsed.getHour(), parsed.getMinute());
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException("시작시간은 HH:mm 형식이어야 합니다.");
+        }
+        TreatmentSchedule schedule = findSchedule(id);
+        schedule.setStartTime(normalized);
         sendScheduleChanged("UPDATED", schedule);
         return schedule;
     }
