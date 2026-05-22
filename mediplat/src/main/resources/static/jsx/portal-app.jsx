@@ -94,6 +94,7 @@ function Header({ user, tweaks, onLogout }) {
           <div className="ph__user-meta">{user.org} · {user.role}</div>
         </div>
         <button className="ph__pill" onClick={() => window.location.href = '/admin'}><PIcon.Settings width={14} height={14} />관리</button>
+        <button className="ph__pill" onClick={() => window.location.href = '/admin/login-audit'}><PIcon.Search width={14} height={14} />로그인 기록</button>
         <button className="ph__pill ph__pill--ghost" onClick={onLogout}><PIcon.Logout width={14} height={14} />로그아웃</button>
       </div>
     </header>
