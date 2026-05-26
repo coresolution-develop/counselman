@@ -1,6 +1,6 @@
 # MediPlat 작업 현황
 
-> 최종 업데이트: 2026-05-19
+> 최종 업데이트: 2026-05-26
 
 ---
 
@@ -10,17 +10,18 @@
 
 ### 🔥 P0 — 운영 차단 / 명시적 요청
 
-#### [P0-1] `/csm/chat` 페이지 진입 불가
-- **증상**: 운영 cutover 후 chat 페이지 접근 실패
-- **시작**: 응답 코드 / 콘솔 에러 / 서버 로그 확인 (`grep "chat" logs/csm-next.log`)
-- **의심 영역**: [PageController.java](src/main/java/com/coresolution/csm/controller/PageController.java) chat 매핑, [chat-page.html](src/main/resources/templates/design/chat-page.html), Spring Security 권한
-- **작업량**: 진단 30분 + 수정 1~2시간 (원인에 따라 변동)
-
-#### [P0-2] 헤더 영역 축소 + 상단/하단 고정 (2026-05-14 운영 요청)
+#### [P0-1] 헤더 영역 축소 + 상단/하단 고정 (2026-05-14 운영 요청)
 - **목표**: 콘텐츠 영역 확보 — 헤더 높이 축소 + 헤더/푸터 sticky
 - **시작**: [chrome.js](src/main/resources/static/assets/js/chrome.js) MPChrome.mount 헤더 마크업, [layout.css](src/main/resources/static/assets/css/layout.css) `.header` height
 - **수정 방향**: 헤더 64px → 48px, `position: sticky; top: 0`, 페이지 본문 padding-top 조정
 - **작업량**: 2~3시간 (모든 design 페이지 회귀 확인 포함)
+
+#### [P0-2] cancer-treatment 권한 관리 dev 검증
+- **상태**: 코드 작업 완료 + 푸시 (2026-05-26), dev 배포·브라우저 검증 미완료
+- **시나리오**: (a) admin에서 사용자를 VIEWER로 강등 → 재로그인 → 등록 버튼 안 보이는지, (b) 기관 사용자가 기본값으로 MEMBER 동작하는지, (c) 일정 등록/수정/삭제 정상 동작
+- **시작**: `cd /Users/leesumin/csm && ./scripts/deploy-dev.sh` → 시나리오 1~3 실행 → `mp_user_service_role` row 확인
+- **연관 커밋**: `72c10f9` `64fa5d9` `50a35d4` `05794f4` `ed3bdb5` `a92809d`
+- **작업량**: 검증 1시간
 
 ### ⚠️ P1 — 반복 버그 / 사용자 경험
 
@@ -80,6 +81,42 @@
 ---
 
 ## ✅ 완료된 작업
+
+### 2026-05-22 ~ 2026-05-26 채팅 기관별 격리 + 토큰 URL + 암센터 권한 관리
+
+#### CSM 채팅 — 기관별 격리 + 토큰 URL ([커밋 be3bb0f](https://github.com/coresolution-develop/counselman/commit/be3bb0f), [870bdaa](https://github.com/coresolution-develop/counselman/commit/870bdaa))
+- [x] **WebSocket 토픽을 기관별로 네임스페이스** — `/topic/chat/{token}/{roomId}`, `/topic/admin/rooms/{token}`. 토픽 SUBSCRIBE 시 새 `ChatWsAuthInterceptor`가 발신자 신원과 자원 소유권 검증
+- [x] **관리자 chat API를 세션 inst로 강제** — `/api/chat/rooms` · `/room/{id}/join` · `/room/{id}/close` 가 더 이상 `?inst=` 쿼리를 신뢰하지 않음
+- [x] **고객 chat API에 채팅방 소유권 검증** — `/room/{id}/messages` · `/room/{id}/status` 가 kakao_id로 본인 방인지 확인
+- [x] **WebSocket SEND 발신자 신뢰성 확보** — payload의 senderType/senderName 무시, 세션 주체로 서버가 직접 결정 (고객의 COUNSELOR 사칭 차단)
+- [x] **inst 코드를 16자리 불투명 토큰으로 대체** — `csm.chat_inst_token` 테이블 + `ChatTokenService`, 부트스트랩 시 기관별 토큰 자동 발급. 임베드 URL은 `?t=Xj7nQ...` 형태로 영구 고정
+- [x] **레거시 `?inst=` URL 자동 redirect** — `?inst=falh` 도 case-insensitive resolve 후 토큰 URL로 302
+- [x] **기관명 동적 렌더링** — 하드코딩된 "효사랑가족요양병원" 제거, `mp_institution.inst_name` 조회 결과를 모델로 주입
+- [x] **회귀 테스트 20케이스** — `ChatWsAuthInterceptorTest`(13), `ChatWebSocketControllerTest`(7)
+
+#### Cancer-treatment 권한 관리 (VIEWER / MEMBER) ([커밋 72c10f9](https://github.com/coresolution-develop/counselman/commit/72c10f9), [64fa5d9](https://github.com/coresolution-develop/counselman/commit/64fa5d9), [50a35d4](https://github.com/coresolution-develop/counselman/commit/50a35d4), [ed3bdb5](https://github.com/coresolution-develop/counselman/commit/ed3bdb5), [a92809d](https://github.com/coresolution-develop/counselman/commit/a92809d))
+- [x] **`mp_user_service_role` 테이블 신설** — `(user_id, service_code) → role_code (VIEWER|MEMBER)`. 부트스트랩 시 PLATFORM_ADMIN 자동 MEMBER 시드
+- [x] **SSO launch URL에 role 포함** — CANCER_TREATMENT 서비스만 5-필드 HMAC 페이로드(`inst|userId|expires|target|role`). CSM/RoomBoard/SeminarRoom 시그니처는 기존 4-필드 유지(receiver 무영향)
+- [x] **cancer-treatment 측 role 검증 + 쓰기 가드** — `SessionUser.role`, `requireMember(session)` 헬퍼, 18개 write 엔드포인트(POST/PUT/PATCH/DELETE) 가드. GET 엔드포인트는 VIEWER 통과
+- [x] **기관 관리자/기관 사용자 기본 MEMBER** — `resolveServiceRoleByUsername` fallback: PLATFORM_ADMIN / INSTITUTION_ADMIN / USER → MEMBER, ROOM_BOARD_VIEWER 등 → VIEWER. 명시 행이 있으면 그 값이 우선
+- [x] **mediplat admin UI — 사용자별 service-role 오버라이드** — `/admin` "사용자 기능 권한" 카드에 라디오 (기본/MEMBER/VIEWER), `POST /admin/users/service-role` 엔드포인트
+- [x] **cancer-treatment 프론트 VIEWER UI 가드** — `body[data-user-role]` + `role-guard.js` (CSS 주입 + click intercept). 등록/저장/삭제 버튼 숨김 + 인라인 편집 차단
+- [x] **회귀 테스트 6케이스** — `SsoServiceTests` (legacy 4-필드 launch, 5-필드 launch, role 위변조, role drop, 만료, canonical 정규화)
+
+#### Cancer-treatment 운영 편의 ([커밋 17b0c11](https://github.com/coresolution-develop/counselman/commit/17b0c11), [05794f4](https://github.com/coresolution-develop/counselman/commit/05794f4))
+- [x] 환자명·치료종류 자동완성 (서버 검색 + 키보드 ↑↓Enter Esc, 차트번호·병실 표시)
+- [x] 일별 스케줄 인쇄 레이아웃 (`@page A4`, 치료정보·메모 노출)
+- [x] 스케줄 드래그&드롭 시간 변경 + `PATCH /api/treatment-schedules/{id}/time` 엔드포인트
+- [x] 암센터 사용자 매뉴얼 (`docs/cancer-treatment-user-guide.md`)
+- [x] JS API ReferenceError 핫픽스 — `API` 변수가 IIFE 안에 갇혀 saveScheduleModal/deleteScheduleFromModal에서 깨지던 문제 (var 선언을 IIFE 밖으로 이동)
+
+#### MediPlat 운영 자잘한 추가 ([커밋 47b0c28](https://github.com/coresolution-develop/counselman/commit/47b0c28))
+- [x] 포털 헤더에 "로그인 기록" 바로가기 버튼 추가
+
+#### Dev 인프라 (운영자 시스템 수정 — 코드 변경 없음)
+- [x] mediplat systemd unit에 `CANCER_TREATMENT_BASE_URL=https://dev.sosyge.net/cancer-treatment` 추가
+- [x] cancer-treatment systemd unit에 `CANCER_TREATMENT_MEDIPLAT_PORTAL_URL=https://dev.sosyge.net/portal` 추가
+- [x] nginx에 `location /cancer-treatment/` proxy_pass 추가 (백엔드는 포트 18083)
 
 ### 2026-05-19 MediPlat 직원 관리 확장 (감사 로깅 / 사용자 필드)
 
@@ -290,6 +327,8 @@
 ## 🔍 검증 필요 (브라우저 확인 미완료)
 
 - [x] ~~**MediPlat 기관 관리자 사용자 권한 저장 오류**~~ — **2026-05-14 해결**. 실제 원인은 CSM의 두 버그(`UserApiController.toLong`이 String roleId 거부, `RolesApiController.getAllUsers`의 `us_col_09 = 1` 필터). 핫픽스 두 개로 dev/prod 검증 통과
+- [ ] **채팅 기관별 격리 + 토큰 URL** (2026-05-22) — `./scripts/deploy-dev.sh` 후 (a) `?inst=falh` → `?t=...` redirect, (b) 다른 기관 토픽 SUBSCRIBE 차단, (c) 고객 사칭 차단(senderType=COUNSELOR 보내도 USER 표시), (d) 다른 기관 토큰으로 접속해도 기관명 동적 표시
+- [ ] **cancer-treatment VIEWER/MEMBER 권한** (2026-05-26) — dev 배포 후 (a) admin에서 사용자 VIEWER 강등 → 등록 버튼 안 보임 + 일정 클릭 시 alert, (b) MEMBER 사용자는 정상 등록·수정 가능, (c) `mp_user_service_role` row 확인
 - [ ] **CSM 허용 버튼** (`/csm/access`) — toggle POST가 `mp_user_service` 행을 실제로 생성/수정하는지 확인 필요 (현재 FALH 데이터 없어 모두 비활성 상태로 표시됨)
 - [ ] **서류관리 TipTap 에디터** — 표 삽입·필드 칩 삽입 → 저장 → 입원서약서(`admissionPledge.html`) 렌더링 흐름 브라우저 E2E 검증
 - [ ] **채팅 페이지 폰트 CORS** — `common.css`의 `fonts.gstatic.com/ea/notosanskr/v2/` URL이 deprecated되어 CORS 에러 발생. `https://fonts.googleapis.com/css2?family=Noto+Sans+KR` CDN 또는 로컬 폰트로 교체 필요
@@ -317,7 +356,7 @@
 - [ ] **상담중 상태 행 진입 차단** — 다른 사용자가 진행 중인 상담은 진입 불가 처리 (락 표시 또는 disable)
 
 ### 💬 챗봇 / 채팅
-- [ ] **`/csm/chat` 페이지 진입 불가** — 운영 cutover 후 발견. 응답 코드/콘솔 에러로 원인 추적 필요
+- [x] ~~**`/csm/chat` 페이지 진입 불가**~~ — **2026-05-22 해결** (chat 보안 강화 및 토큰 URL 작업 중 함께 정리됨)
 
 ### 🛏️ 병실현황판
 - [ ] 퇴원예고 등록 후 현황판 자동 새로고침 (현재 수동 새로고침 필요)
@@ -385,8 +424,13 @@
 | CLOVA/GPT 연동 | 백엔드 준비됨, webm 제외 mp3/wav/m4a 지원 |
 | 챗봇 상담 접수 | `csm.counsel_reservation_{inst}` (patient_name, patient_phone, call_summary, created_by, status) |
 | 챗봇 채팅방 | `csm.chat_room_{inst}`, `csm.chat_message_{inst}`, `csm.faq_{inst}` |
+| 챗봇 임베드 URL | `?t={token}` (16자리 URL-safe). 기관별 토큰은 `csm.chat_inst_token (token PK, inst UNIQUE)` 에 1:1 저장 — 부트스트랩 시 자동 발급, 영구 불변 |
+| 챗봇 WS 토픽 | `/topic/chat/{token}/{roomId}`, `/topic/admin/rooms/{token}` — 양쪽 모두 토큰 기반 |
+| 챗봇 권한 가드 | `ChatWsAuthInterceptor` (SUBSCRIBE), `ChatWebSocketController` (SEND) — 세션 inst와 토픽 inst 비교 + chat_room.kakao_id 소유권 확인 |
 | MediPlat 사용자 | `mediplat.mp_user` (inst_code, username, display_name, dept, email, phone, role_code) — email/phone은 nullable, CSM `us_col_10/11` 호환 |
 | MediPlat 로그인 이력 | `mediplat.mp_login_audit` (inst_code, username, login_at, logout_at, session_seconds) — `HttpSessionListener`가 logout 기록 |
+| MediPlat 서비스별 권한 | `mediplat.mp_user_service_role (user_id, service_code, role_code)` — VIEWER/MEMBER. 행 없으면 platform role 기반 fallback (PLATFORM_ADMIN/INSTITUTION_ADMIN/USER → MEMBER, else → VIEWER) |
+| Cancer-treatment SSO 페이로드 | 5필드 HMAC: `inst|userId|expires|target|role` (role=VIEWER\|MEMBER). 다른 서비스(CSM/RoomBoard/SeminarRoom)는 기존 4필드 유지 |
 | 비밀번호 찾기 — OTP 발신번호 | `csm.phone_number_{inst}` 첫 행 사용 (없으면 발송 거부) |
 | 비밀번호 찾기 엔드포인트 | `POST /findpwd/post` (channel=email\|sms), `POST /findpwd/verify-otp`, `POST /api/me/password` |
 | 비밀번호 reset 도메인 환경변수 | `CSM_BASE_URL` — 빈 값이면 `X-Forwarded-Host` 폴백. prod default `https://csm.sosyge.net/csm` |

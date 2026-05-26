@@ -1,13 +1,22 @@
 # 암센터 치료스케줄 관리 — TODO
 
+> 최종 업데이트: 2026-05-26
+
 ## 완료 (Done)
 
 ### 기반 구조
-- [x] Spring Boot + Thymeleaf 기반 독립 앱 구성 (포트 8083)
-- [x] HMAC-SHA256 SSO 인증 연동 (`/mediplat/sso/entry`)
+- [x] Spring Boot + Thymeleaf 기반 독립 앱 구성 (dev 포트 **18083**, application default 8083)
+- [x] HMAC-SHA256 SSO 인증 연동 (`/mediplat/sso/entry`) — 2026-05-26부터 role을 포함하는 5-필드 페이로드
 - [x] 공통 레이아웃 시스템 (`fragments/layout.html` — topnav, sidebar)
 - [x] 디자인 토큰 정의 (`--brand`, `--accent`, `--fg*`, `--bg*`, `--border*`)
 - [x] SSE(Server-Sent Events) 실시간 일정 동기화
+
+### 권한 관리 (VIEWER / MEMBER) — 2026-05-26
+- [x] **SessionUser에 role 필드** + 5-필드 HMAC 서명 검증 (`SsoService.validateAndResolveTarget`)
+- [x] **`requireMember(session)` 가드** — 18개 write 엔드포인트(POST/PUT/PATCH/DELETE) 적용, GET은 VIEWER 통과
+- [x] **프론트 UI 가드** — `body[data-user-role]` + `role-guard.js` (등록·저장·삭제 버튼 숨김, 세션 블록 드래그 차단, 인라인 편집 alert)
+- [x] **역할 기본 매핑** — mediplat의 PLATFORM_ADMIN / INSTITUTION_ADMIN / USER → MEMBER 자동, ROOM_BOARD_VIEWER 등 → VIEWER. mediplat admin의 라디오로 사용자별 오버라이드 가능
+- [x] **회귀 테스트 6케이스** — `SsoServiceTests` (legacy 4필드 launch, 5필드 launch, role 위변조, role drop, 만료, canonical 정규화)
 
 ### 스케줄 관리 페이지 (`/cancer-treatment-schedule`)
 - [x] 오늘의 스케줄 시간표 뷰 (일별 시간 그리드)
@@ -44,19 +53,40 @@
 - [x] 날짜별 요약 카드 (전체/예약/완료/취소)
 - [x] 사이드바 배지 실시간 반영
 
+### 운영 편의 — 2026-05-22
+- [x] 스케줄 등록 모달 — 환자명 자동완성 (서버 검색 + 키보드 ↑↓Enter Esc, 차트번호·병실 표시)
+- [x] 스케줄 등록 모달 — 치료종류 자동완성 (설정 API 연동, 자유 입력 허용)
+- [x] 일별 스케줄 인쇄 레이아웃 (`인쇄` 버튼 연결, `@page A4`, 치료정보·메모 노출)
+- [x] 스케줄 드래그&드롭 시간 변경 (시간 그리드 내 기존 슬롯 간 이동, `PATCH /api/treatment-schedules/{id}/time`)
+- [x] 사용자 매뉴얼 (`docs/cancer-treatment-user-guide.md`)
+- [x] JS API 핫픽스 — `API` 변수가 IIFE 안에 갇혀 `saveScheduleModal`/`deleteScheduleFromModal`에서 깨지던 ReferenceError
+
+### Dev 인프라 — 2026-05-22 (운영자 systemd/nginx 작업, 코드 변경 없음)
+- [x] mediplat systemd에 `CANCER_TREATMENT_BASE_URL=https://dev.sosyge.net/cancer-treatment` 추가 → SSO launch URL이 도메인 형태로 발급
+- [x] cancer-treatment systemd에 `CANCER_TREATMENT_MEDIPLAT_PORTAL_URL=https://dev.sosyge.net/portal` 추가 → MediPlat 버튼/로그아웃 redirect 정상화
+- [x] nginx `location /cancer-treatment/` → `proxy_pass http://127.0.0.1:18083/cancer-treatment/` 등록
+
+---
+
+## 🔍 검증 필요 (브라우저 확인 미완료)
+
+- [ ] **VIEWER/MEMBER 권한 흐름** (2026-05-26 dev 배포 후)
+  - admin에서 사용자를 VIEWER 강등 → 재로그인 → 등록·저장·삭제 버튼 안 보이는지
+  - 일정 클릭 시 alert("조회 권한입니다…") 표시
+  - 기본값(역할 기반 자동)인 기관 사용자는 정상 등록·수정 가능
+  - DB row 확인: `SELECT * FROM mp_user_service_role`
+- [ ] **자동완성/인쇄/드래그&드롭** (2026-05-22 작업) — 환자/치료종류 자동완성 키보드 네비게이션, 인쇄 미리보기 레이아웃, 드래그 시간 변경 후 SSE로 다른 세션에 반영되는지
+
 ---
 
 ## 진행 예정 (Planned)
 
 ### 기능 개선
 - [ ] 치료 캘린더 — 치료명 필터 옵션을 설정 API에서 동적으로 로드
-- [x] 스케줄 등록 모달 — 환자명 자동완성 (서버 검색 + 키보드 ↑↓Enter Esc, 차트번호·병실 표시)
-- [x] 스케줄 등록 모달 — 치료종류 자동완성 (설정 API 연동, 자유 입력 허용)
 - [ ] 주간 뷰 — 날짜 범위 이동 시 이전/다음 주 네비게이션 버튼 추가
 - [ ] 월간 뷰 — 날짜 셀 클릭 시 해당 날짜 스케줄 모달 또는 드로어 표시
 
 ### 인쇄 / 내보내기
-- [x] 일별 스케줄 인쇄 레이아웃 (`인쇄` 버튼 연결, @media print, 치료정보·메모 노출)
 - [ ] CSV 내보내기 (날짜 범위 지정)
 
 ### 통계 강화
@@ -65,8 +95,12 @@
 
 ### 운영 편의
 - [ ] 반복 스케줄 등록 (매주 특정 요일 자동 생성)
-- [x] 스케줄 드래그&드롭 시간 변경 (시간 그리드 내 기존 슬롯 간 이동, PATCH /time)
 - [ ] 알림 기능 (치료 시작 전 N분 브라우저 알림)
+
+### 권한 모델 확장 (필요 시)
+- [ ] 추가 역할 분리 — 현재 VIEWER/MEMBER 2단계. 일반 설정 변경/사용자 관리까지 분리하려면 ADMIN 등급 추가
+- [ ] mediplat admin에서 일괄 권한 부여/회수 (현재 1명씩 라디오)
+- [ ] role 변경 즉시 반영 — 현재 세션에 박혀있어 재로그인 필요. 강제 만료 또는 짧은 캐시 도입
 
 ### 인프라 / 품질
 - [ ] 단위 테스트 (Service 레이어) 커버리지 확보
