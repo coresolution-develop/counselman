@@ -1,5 +1,9 @@
+// API base path shared with top-level handlers (modal save/delete/onclick).
+// Declared at file scope so functions outside the IIFE (saveScheduleModal,
+// deleteScheduleFromModal, …) can reference it without ReferenceError.
+var API = (window.__ctx || '/');
+
 (function () {
-    var API = (window.__ctx || '/');
 
     var state = {
         eventSource: null,
