@@ -28,11 +28,17 @@ public class SsoService {
         this.defaultTarget = normalizeTarget(defaultTarget);
     }
 
+    /**
+     * Validates the SSO signature and returns the resolved target path.
+     * Backwards compatible: legacy launches with no role still verify against the 4-field
+     * payload; new launches must supply role and verify against the 5-field payload.
+     */
     public String validateAndResolveTarget(
             String inst,
             String userId,
             long expires,
             String targetToken,
+            String role,
             String signature) {
         if (!StringUtils.hasText(sharedSecret)) {
             throw new IllegalArgumentException("SSO shared secret is not configured.");
@@ -47,7 +53,10 @@ public class SsoService {
         }
 
         String normalizedTargetToken = targetToken == null ? "" : targetToken.trim();
-        String expectedSignature = sign(inst.trim(), userId.trim(), expires, normalizedTargetToken);
+        String normalizedRole = role == null ? null : role.trim();
+        if (normalizedRole != null && normalizedRole.isEmpty()) normalizedRole = null;
+
+        String expectedSignature = sign(inst.trim(), userId.trim(), expires, normalizedTargetToken, normalizedRole);
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.UTF_8),
                 signature.trim().getBytes(StandardCharsets.UTF_8))) {
@@ -56,11 +65,16 @@ public class SsoService {
         return decodeTarget(normalizedTargetToken);
     }
 
-    private String sign(String inst, String userId, long expires, String targetToken) {
+    /** Returns canonical role: "MEMBER" or "VIEWER" (default). Anything else maps to VIEWER. */
+    public String canonicalRole(String role) {
+        return "MEMBER".equalsIgnoreCase(role == null ? null : role.trim()) ? "MEMBER" : "VIEWER";
+    }
+
+    private String sign(String inst, String userId, long expires, String targetToken, String role) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(sharedSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-            byte[] hash = mac.doFinal(canonicalPayload(inst, userId, expires, targetToken).getBytes(StandardCharsets.UTF_8));
+            byte[] hash = mac.doFinal(canonicalPayload(inst, userId, expires, targetToken, role).getBytes(StandardCharsets.UTF_8));
             return toHex(hash);
         } catch (Exception e) {
             throw new IllegalStateException("SSO signature generation failed.", e);
@@ -90,12 +104,16 @@ public class SsoService {
         return target;
     }
 
-    private String canonicalPayload(String inst, String userId, long expires, String targetToken) {
+    private String canonicalPayload(String inst, String userId, long expires, String targetToken, String role) {
         String normalizedTargetToken = targetToken == null ? "" : targetToken.trim();
-        return "inst=" + inst.trim()
+        String payload = "inst=" + inst.trim()
                 + "&userId=" + userId.trim()
                 + "&expires=" + expires
                 + "&target=" + normalizedTargetToken;
+        if (role != null) {
+            payload = payload + "&role=" + role;
+        }
+        return payload;
     }
 
     private String toHex(byte[] bytes) {
