@@ -643,7 +643,17 @@ public class MediplatController {
                 ? storeService.listEnabledServiceCodesForUser(selectedInstCode, selectedUserAccessUsername)
                 : List.of();
 
+        // Per-service role overrides for the selected user (empty when no user is selected).
+        Map<String, String> userServiceRoleOverrides = java.util.Map.of();
+        if (StringUtils.hasText(selectedUserAccessUsername)) {
+            Long uid = storeService.findUserIdByUsername(selectedInstCode, selectedUserAccessUsername);
+            if (uid != null) {
+                userServiceRoleOverrides = storeService.listUserServiceRoleOverrides(uid);
+            }
+        }
+
         model.addAttribute("user", user);
+        model.addAttribute("userServiceRoleOverrides", userServiceRoleOverrides);
         model.addAttribute("instName", storeService.getInstName(selectedInstCode));
         model.addAttribute("canManagePlatform", user.isPlatformAdmin());
         model.addAttribute("canManageInstitutionUsers", user.isPlatformAdmin() || user.isInstitutionAdmin());
@@ -908,6 +918,49 @@ public class MediplatController {
             if (StringUtils.hasText(managedInstCode)) {
                 redirectAttributes.addAttribute("instCode", managedInstCode);
             }
+            if (StringUtils.hasText(username)) {
+                redirectAttributes.addAttribute("userAccessUsername", username.trim());
+            }
+        }
+        return "redirect:/admin";
+    }
+
+    /**
+     * Sets or clears a user's per-service role override (currently only CANCER_TREATMENT).
+     * roleCode "VIEWER" or "MEMBER" sets the override; blank/missing clears it so the user
+     * falls back to the role-based default mapping in PlatformStoreService.
+     */
+    @PostMapping("/admin/users/service-role")
+    public String saveUserServiceRole(
+            @RequestParam("instCode") String instCode,
+            @RequestParam("username") String username,
+            @RequestParam("serviceCode") String serviceCode,
+            @RequestParam(name = "roleCode", required = false) String roleCode,
+            HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        PlatformSessionUser sessionUser = sessionUser(session);
+        if (!isAdminUser(sessionUser)) {
+            return "redirect:/login";
+        }
+        String managedInstCode = resolveManagedInstCode(sessionUser, instCode);
+        if (!StringUtils.hasText(managedInstCode)) {
+            redirectAttributes.addAttribute("error", "관리 대상 기관을 찾을 수 없습니다.");
+            return "redirect:/admin";
+        }
+        try {
+            PlatformUser target = storeService.findUserForAdmin(managedInstCode, username);
+            if (target == null) {
+                redirectAttributes.addAttribute("error", "사용자를 찾을 수 없습니다.");
+            } else {
+                Long actorId = storeService.findUserIdByUsername(sessionUser.getInstCode(), sessionUser.getUsername());
+                storeService.setUserServiceRole(target.getId(), serviceCode, roleCode, actorId);
+                redirectAttributes.addAttribute("message", "서비스 권한이 저장되었습니다.");
+            }
+            redirectAttributes.addAttribute("instCode", managedInstCode);
+            redirectAttributes.addAttribute("userAccessUsername", username);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addAttribute("error", e.getMessage());
+            redirectAttributes.addAttribute("instCode", managedInstCode);
             if (StringUtils.hasText(username)) {
                 redirectAttributes.addAttribute("userAccessUsername", username.trim());
             }

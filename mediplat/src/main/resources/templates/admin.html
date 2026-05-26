@@ -320,6 +320,38 @@ kim2,pass5678,김철수,간호부,,"></textarea>
             </form>
             <p class="service-form-mode" id="admin-user-access-empty-services"
                th:hidden="${#lists.isEmpty(institutionUsers) or !#lists.isEmpty(institutionEnabledServices)}">기관에 활성화된 서비스가 없습니다.</p>
+
+            <!-- 암센터 치료스케줄 — 사용자별 쓰기 권한 (VIEWER / MEMBER / 기본) -->
+            <form method="post" th:action="@{/admin/users/service-role}" class="stack-form"
+                  th:if="${not #lists.isEmpty(institutionUsers)}"
+                  style="margin-top:16px; padding-top:12px; border-top:1px solid #e5e7eb;">
+                <input type="hidden" name="instCode" th:value="${selectedInstCode}">
+                <input type="hidden" name="username" th:value="${selectedUserAccessUsername}">
+                <input type="hidden" name="serviceCode" value="CANCER_TREATMENT">
+                <div style="font-size:13px; font-weight:600; color:#374151;">암센터 치료스케줄 권한</div>
+                <div style="display:flex; gap:14px; align-items:center; font-size:13px;">
+                    <label style="display:flex; gap:6px; align-items:center;">
+                        <input type="radio" name="roleCode" value=""
+                               th:checked="${userServiceRoleOverrides['CANCER_TREATMENT'] == null}">
+                        기본 (역할 기반 자동)
+                    </label>
+                    <label style="display:flex; gap:6px; align-items:center;">
+                        <input type="radio" name="roleCode" value="MEMBER"
+                               th:checked="${userServiceRoleOverrides['CANCER_TREATMENT'] == 'MEMBER'}">
+                        전체 사용 (MEMBER)
+                    </label>
+                    <label style="display:flex; gap:6px; align-items:center;">
+                        <input type="radio" name="roleCode" value="VIEWER"
+                               th:checked="${userServiceRoleOverrides['CANCER_TREATMENT'] == 'VIEWER'}">
+                        조회만 (VIEWER)
+                    </label>
+                </div>
+                <p style="font-size:12px; color:#6b7280; margin:0;">
+                    "기본"이면 기관 관리자·기관 사용자는 자동으로 전체 사용 권한을 받습니다. 일부 사용자를 조회만으로 제한하려면 "조회만"을 선택하세요. 변경 후 다음 SSO 로그인부터 적용됩니다.
+                </p>
+                <button type="submit"
+                        th:disabled="${selectedUserAccessUsername == null or selectedUserAccessUsername == ''}">암센터 권한 저장</button>
+            </form>
         </div>
 
         <!-- ══════════════════════════════════════════

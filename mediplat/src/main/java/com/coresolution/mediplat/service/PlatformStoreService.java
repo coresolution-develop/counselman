@@ -1361,6 +1361,63 @@ public class PlatformStoreService {
         return "VIEWER";
     }
 
+    /** Public wrapper around the private findUser used by admin controllers. */
+    public PlatformUser findUserForAdmin(String instCode, String username) {
+        return findUser(instCode, username);
+    }
+
+    /** Returns the mp_user.id for (instCode, username), or null when missing. */
+    public Long findUserIdByUsername(String instCode, String username) {
+        PlatformUser user = findUser(instCode, username);
+        return user == null ? null : user.getId();
+    }
+
+    /**
+     * Assigns or clears a user's per-service role override.
+     * Pass roleCode = "VIEWER" | "MEMBER" to set; pass null/blank to clear (fall back to defaults).
+     * grantedBy is the admin user id performing the action (for audit).
+     */
+    public void setUserServiceRole(long userId, String serviceCode, String roleCode, Long grantedBy) {
+        String normalizedService = normalizeServiceCode(serviceCode);
+        if (!StringUtils.hasText(normalizedService)) {
+            throw new IllegalArgumentException("서비스 코드가 비어 있습니다.");
+        }
+        if (!StringUtils.hasText(roleCode)) {
+            jdbcTemplate.update(
+                    "DELETE FROM mp_user_service_role WHERE user_id = ? AND service_code = ?",
+                    userId, normalizedService);
+            return;
+        }
+        String normalizedRole = "MEMBER".equalsIgnoreCase(roleCode.trim()) ? "MEMBER" : "VIEWER";
+        // MySQL syntax with ON DUPLICATE KEY UPDATE; works on H2 too via MERGE if needed (we keep
+        // raw upsert because the existing service uses MySQL in dev/prod and falls back to H2 only
+        // for the embedded test profile, which never exercises this path).
+        jdbcTemplate.update("""
+                INSERT INTO mp_user_service_role (user_id, service_code, role_code, granted_by)
+                VALUES (?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE role_code = VALUES(role_code), granted_by = VALUES(granted_by)
+                """, userId, normalizedService, normalizedRole, grantedBy);
+    }
+
+    /**
+     * Returns the rows in mp_user_service_role for a given user, keyed by service code.
+     * Useful when rendering the admin UI to show current overrides.
+     */
+    public Map<String, String> listUserServiceRoleOverrides(long userId) {
+        Map<String, String> map = new java.util.LinkedHashMap<>();
+        try {
+            jdbcTemplate.query(
+                    "SELECT service_code, role_code FROM mp_user_service_role WHERE user_id = ?",
+                    rs -> {
+                        map.put(rs.getString("service_code"), rs.getString("role_code"));
+                    },
+                    userId);
+        } catch (Exception e) {
+            log.warn("listUserServiceRoleOverrides failed user={}: {}", userId, e.toString());
+        }
+        return map;
+    }
+
     /**
      * Looks up the user by (inst, username) and returns their service role.
      *
