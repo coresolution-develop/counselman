@@ -9,7 +9,7 @@
     <script th:inline="javascript">window.__ctx = /*[[@{/}]]*/ '/';</script>
     <script th:src="@{/js/settings.js}" defer></script>
 </head>
-<body>
+<body th:attr="data-user-role=${user?.role}">
 <nav th:replace="~{fragments/layout :: topnav(${user}, ${activeMenu}, ${mediplatPortalUrl})}"></nav>
 <div class="layout">
     <aside th:replace="~{fragments/layout :: sidebar(${activeMenu})}"></aside>
@@ -103,5 +103,6 @@
         </div>
     </form>
 </dialog>
+<script th:src="@{/js/role-guard.js}" defer></script>
 </body>
 </html>

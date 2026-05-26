@@ -666,7 +666,7 @@ textarea.modal-input { resize: vertical; min-height: 56px; }
 }
 </style>
 </head>
-<body>
+<body th:attr="data-user-role=${user?.role}">
 
 <!-- ── Top Nav ──────────────────────────────────────────────── -->
 <nav class="topnav">
@@ -1530,5 +1530,6 @@ document.getElementById('tp-dropdown') && document.getElementById('tp-dropdown')
 dpInit();
 tpInit();
 </script>
+<script th:src="@{/js/role-guard.js}" defer></script>
 </body>
 </html>

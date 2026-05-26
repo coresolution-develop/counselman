@@ -401,7 +401,7 @@
 }
 </style>
 </head>
-<body>
+<body th:attr="data-user-role=${user?.role}">
 
 <nav th:replace="~{fragments/layout :: topnav(${user}, ${activeMenu}, ${mediplatPortalUrl})}"></nav>
 
@@ -472,5 +472,6 @@
 
 </div><!-- /layout -->
 
+<script th:src="@{/js/role-guard.js}" defer></script>
 </body>
 </html>
