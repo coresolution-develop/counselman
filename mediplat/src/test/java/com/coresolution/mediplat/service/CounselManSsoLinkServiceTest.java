@@ -132,7 +132,10 @@ class CounselManSsoLinkServiceTest {
     }
 
     private CounselManSsoLinkService newLinkService(String configuredBaseUrl) {
-        CounselManSsoLinkService service = new CounselManSsoLinkService();
+        // PlatformStoreService is only consulted for SERVICES_WITH_ROLE; tests use COUNSELMAN so
+        // resolveServiceRoleByUsername is never invoked. A mock with no stubs is safe.
+        CounselManSsoLinkService service = new CounselManSsoLinkService(
+                org.mockito.Mockito.mock(PlatformStoreService.class));
         ReflectionTestUtils.setField(service, "configuredCounselManBaseUrl", configuredBaseUrl);
         ReflectionTestUtils.setField(service, "sharedSecret", "test-shared-secret");
         ReflectionTestUtils.setField(service, "expireSeconds", 120L);

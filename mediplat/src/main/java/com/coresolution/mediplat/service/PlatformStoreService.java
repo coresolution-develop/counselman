@@ -37,6 +37,8 @@ import jakarta.annotation.PostConstruct;
 @Service
 public class PlatformStoreService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PlatformStoreService.class);
+
     private static final String USE_Y = "Y";
     private static final String ROLE_PLATFORM_ADMIN = "PLATFORM_ADMIN";
     private static final String ROLE_INSTITUTION_ADMIN = "INSTITUTION_ADMIN";
@@ -1115,6 +1117,20 @@ public class PlatformStoreService {
                     INDEX idx_mp_login_audit_username (username)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
                 """);
+
+        // Per-service role assignment (e.g. CANCER_TREATMENT → VIEWER/MEMBER).
+        // Missing row = VIEWER (default). PLATFORM_ADMIN is auto-promoted to MEMBER at bootstrap.
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS mp_user_service_role (
+                    user_id      BIGINT       NOT NULL,
+                    service_code VARCHAR(50)  NOT NULL,
+                    role_code    VARCHAR(20)  NOT NULL,
+                    granted_at   DATETIME     DEFAULT CURRENT_TIMESTAMP,
+                    granted_by   BIGINT       NULL,
+                    PRIMARY KEY (user_id, service_code),
+                    INDEX idx_mp_user_service_role_svc (service_code, role_code)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """);
     }
 
     private void createH2Tables() {
@@ -1231,6 +1247,21 @@ public class PlatformStoreService {
                 CREATE INDEX IF NOT EXISTS idx_mp_login_audit_username
                 ON mp_login_audit (username)
                 """);
+
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS mp_user_service_role (
+                    user_id      BIGINT      NOT NULL,
+                    service_code VARCHAR(50) NOT NULL,
+                    role_code    VARCHAR(20) NOT NULL,
+                    granted_at   TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
+                    granted_by   BIGINT      NULL,
+                    PRIMARY KEY (user_id, service_code)
+                )
+                """);
+        jdbcTemplate.execute("""
+                CREATE INDEX IF NOT EXISTS idx_mp_user_service_role_svc
+                ON mp_user_service_role (service_code, role_code)
+                """);
     }
 
     private void bootstrapDefaults() {
@@ -1304,6 +1335,64 @@ public class PlatformStoreService {
         saveInstitutionServiceAccess(
                 bootstrapAdminInstCode,
                 List.of(DEFAULT_SERVICE_CODE, SERVICE_CODE_ROOM_BOARD, SERVICE_CODE_SEMINAR_ROOM, SERVICE_CODE_CANCER_TREATMENT));
+
+        seedPlatformAdminServiceRoles();
+    }
+
+    /**
+     * Returns the user's role for the given service ("VIEWER" or "MEMBER").
+     * Defaults to VIEWER when no explicit assignment exists. PLATFORM_ADMIN users are
+     * pre-seeded as MEMBER for every supported service.
+     */
+    public String resolveServiceRole(long userId, String serviceCode) {
+        String normalizedService = normalizeServiceCode(serviceCode);
+        if (!StringUtils.hasText(normalizedService)) return "VIEWER";
+        try {
+            List<String> rows = jdbcTemplate.queryForList(
+                    "SELECT role_code FROM mp_user_service_role WHERE user_id = ? AND service_code = ? LIMIT 1",
+                    String.class, userId, normalizedService);
+            if (!rows.isEmpty()) {
+                String role = rows.get(0);
+                return "MEMBER".equalsIgnoreCase(role) ? "MEMBER" : "VIEWER";
+            }
+        } catch (Exception e) {
+            log.warn("resolveServiceRole failed user={} service={}: {}", userId, normalizedService, e.toString());
+        }
+        return "VIEWER";
+    }
+
+    /**
+     * Looks up the user by (inst, username) and returns their service role.
+     * PLATFORM_ADMIN is always MEMBER (defense-in-depth, in case the seed missed).
+     * Returns "VIEWER" for unknown users.
+     */
+    public String resolveServiceRoleByUsername(String instCode, String username, String serviceCode) {
+        PlatformUser user = findUser(instCode, username);
+        if (user == null) return "VIEWER";
+        if ("PLATFORM_ADMIN".equalsIgnoreCase(user.getRoleCode())) return "MEMBER";
+        return resolveServiceRole(user.getId(), serviceCode);
+    }
+
+    /**
+     * Idempotent: every PLATFORM_ADMIN account becomes MEMBER for every per-service role table.
+     * Currently only CANCER_TREATMENT has a member-grade role; other services may be added later.
+     * Existing assignments are not overwritten so manual VIEWER/MEMBER changes survive restarts.
+     */
+    private void seedPlatformAdminServiceRoles() {
+        try {
+            jdbcTemplate.update("""
+                    INSERT INTO mp_user_service_role (user_id, service_code, role_code)
+                    SELECT u.id, ?, 'MEMBER'
+                    FROM mp_user u
+                    WHERE u.role_code = 'PLATFORM_ADMIN'
+                      AND NOT EXISTS (
+                        SELECT 1 FROM mp_user_service_role r
+                         WHERE r.user_id = u.id AND r.service_code = ?
+                      )
+                    """, SERVICE_CODE_CANCER_TREATMENT, SERVICE_CODE_CANCER_TREATMENT);
+        } catch (Exception e) {
+            log.warn("[bootstrap] seed PLATFORM_ADMIN service roles failed: {}", e.toString());
+        }
     }
 
     private PlatformUser findUser(String instCode, String username) {

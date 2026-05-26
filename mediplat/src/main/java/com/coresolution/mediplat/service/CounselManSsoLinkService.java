@@ -23,6 +23,9 @@ import jakarta.servlet.http.HttpServletRequest;
 @Service
 public class CounselManSsoLinkService {
 
+    /** Services that participate in per-service role enforcement. Others ignore the role param. */
+    private static final java.util.Set<String> SERVICES_WITH_ROLE = java.util.Set.of("CANCER_TREATMENT");
+
     @Value("${platform.bootstrap.counselman-base-url:http://localhost:8081/csm}")
     private String configuredCounselManBaseUrl;
 
@@ -31,6 +34,12 @@ public class CounselManSsoLinkService {
 
     @Value("${platform.counselman.sso-expire-seconds:60}")
     private long expireSeconds;
+
+    private final PlatformStoreService platformStoreService;
+
+    public CounselManSsoLinkService(PlatformStoreService platformStoreService) {
+        this.platformStoreService = platformStoreService;
+    }
 
     public String createLaunchUrl(PlatformService service, PlatformSessionUser user) {
         String target = user.isPlatformAdmin() ? service.getAdminTarget() : service.getUserTarget();
@@ -52,22 +61,42 @@ public class CounselManSsoLinkService {
                 .withoutPadding()
                 .encodeToString(normalizedTargetPath.getBytes(StandardCharsets.UTF_8));
         long expires = Instant.now().getEpochSecond() + expireSeconds;
-        String signature = sign(resolvedInstCode, user.getUsername(), expires, targetToken);
+
+        // Per-service role enforcement (currently only CANCER_TREATMENT).
+        // When governed, role is appended to URL and signed as part of the payload so the receiver
+        // can trust it. Other services keep the original 4-field payload to avoid breaking signature
+        // verification on already-deployed receivers (CSM, room-board, seminar-room).
+        String serviceCode = service == null ? null : service.getServiceCode();
+        String role = null;
+        if (serviceCode != null && SERVICES_WITH_ROLE.contains(serviceCode.toUpperCase())) {
+            role = platformStoreService.resolveServiceRoleByUsername(
+                    resolvedInstCode, user.getUsername(), serviceCode);
+        }
+
+        String signature = sign(resolvedInstCode, user.getUsername(), expires, targetToken, role);
         String resolvedEntryPath = normalizeEntryPath(service.getSsoEntryPath());
         String dedupedEntryPath = dedupeEntryPath(resolvedBaseUrl, resolvedEntryPath);
-        return resolvedBaseUrl + dedupedEntryPath
-                + "?inst=" + encode(resolvedInstCode)
-                + "&userId=" + encode(user.getUsername())
-                + "&expires=" + expires
-                + "&target=" + encode(targetToken)
-                + "&signature=" + encode(signature);
+        StringBuilder url = new StringBuilder(resolvedBaseUrl)
+                .append(dedupedEntryPath)
+                .append("?inst=").append(encode(resolvedInstCode))
+                .append("&userId=").append(encode(user.getUsername()))
+                .append("&expires=").append(expires)
+                .append("&target=").append(encode(targetToken));
+        if (role != null) {
+            url.append("&role=").append(encode(role));
+        }
+        url.append("&signature=").append(encode(signature));
+        return url.toString();
     }
 
-    private String sign(String instCode, String username, long expires, String targetToken) {
+    private String sign(String instCode, String username, long expires, String targetToken, String role) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(sharedSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
             String payload = "inst=" + instCode + "&userId=" + username + "&expires=" + expires + "&target=" + targetToken;
+            if (role != null) {
+                payload = payload + "&role=" + role;
+            }
             byte[] hash = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
             StringBuilder sb = new StringBuilder(hash.length * 2);
             for (byte b : hash) {
