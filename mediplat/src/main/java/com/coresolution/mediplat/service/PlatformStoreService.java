@@ -1363,14 +1363,44 @@ public class PlatformStoreService {
 
     /**
      * Looks up the user by (inst, username) and returns their service role.
-     * PLATFORM_ADMIN is always MEMBER (defense-in-depth, in case the seed missed).
-     * Returns "VIEWER" for unknown users.
+     *
+     * Resolution order:
+     *   1. Explicit row in mp_user_service_role (admin-managed override, can demote to VIEWER
+     *      or promote a normally-VIEWER role to MEMBER).
+     *   2. Fallback by platform role:
+     *      - PLATFORM_ADMIN / INSTITUTION_ADMIN (기관 관리자) / USER (기관 사용자) → MEMBER
+     *        (institution-affiliated staff are full operators by default)
+     *      - Anything else (e.g. ROOM_BOARD_VIEWER) → VIEWER
+     *   3. Unknown user → VIEWER (safe default).
      */
     public String resolveServiceRoleByUsername(String instCode, String username, String serviceCode) {
         PlatformUser user = findUser(instCode, username);
         if (user == null) return "VIEWER";
-        if ("PLATFORM_ADMIN".equalsIgnoreCase(user.getRoleCode())) return "MEMBER";
-        return resolveServiceRole(user.getId(), serviceCode);
+
+        String normalizedService = normalizeServiceCode(serviceCode);
+        if (!StringUtils.hasText(normalizedService)) return "VIEWER";
+
+        // 1. explicit per-service override
+        try {
+            List<String> rows = jdbcTemplate.queryForList(
+                    "SELECT role_code FROM mp_user_service_role WHERE user_id = ? AND service_code = ? LIMIT 1",
+                    String.class, user.getId(), normalizedService);
+            if (!rows.isEmpty()) {
+                return "MEMBER".equalsIgnoreCase(rows.get(0)) ? "MEMBER" : "VIEWER";
+            }
+        } catch (Exception e) {
+            log.warn("resolveServiceRoleByUsername explicit-lookup failed user={} service={}: {}",
+                    user.getId(), normalizedService, e.toString());
+        }
+
+        // 2. fallback by platform role
+        String platformRole = user.getRoleCode();
+        if ("PLATFORM_ADMIN".equalsIgnoreCase(platformRole)
+                || "INSTITUTION_ADMIN".equalsIgnoreCase(platformRole)
+                || "USER".equalsIgnoreCase(platformRole)) {
+            return "MEMBER";
+        }
+        return "VIEWER";
     }
 
     /**
