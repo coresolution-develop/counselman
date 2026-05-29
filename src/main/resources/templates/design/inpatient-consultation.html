@@ -441,7 +441,7 @@
     .sms-head__close { background: none; border: 0; width: 34px; height: 34px; display: grid; place-items: center; color: var(--text-tertiary); border-radius: 8px; cursor: pointer; transition: all .14s; }
     .sms-head__close:hover { background: var(--gray-100); color: var(--text-primary); }
     .sms-head__close svg { width: 18px; height: 18px; }
-    .sms-body { display: grid; grid-template-columns: 420px 1fr 280px; flex: 1 1 0; min-height: 0; overflow: hidden; }
+    .sms-body { display: grid; grid-template-columns: 420px minmax(0,1fr) 360px; flex: 1 1 0; min-height: 0; overflow: hidden; }
     .sms-col { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
     .sms-col--left { background: var(--gray-50); padding: 16px; gap: 12px; border-right: 1px solid var(--border-subtle); }
     .sms-col--center { padding: 16px; gap: 12px; display: flex; flex-direction: column; background: #fff; }
@@ -508,7 +508,9 @@
     .sms-history__item { background: #fff; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px 12px; cursor: pointer; transition: all .14s; text-align: left; width: 100%; font-family: inherit; }
     .sms-history__item:hover { border-color: var(--brand-400); background: color-mix(in oklab,var(--brand-500) 4%,#fff); }
     .sms-history__body { font-size: 12.5px; color: var(--text-primary); margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.45; white-space: pre-line; }
-    .sms-history__meta { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; border-top: 1px solid var(--border-subtle); padding-top: 6px; }
+    .sms-history__meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; white-space: nowrap; font-size: 11px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; border-top: 1px solid var(--border-subtle); padding-top: 6px; }
+    .sms-history__meta > span { display: inline-flex; align-items: center; }
+    .sms-history__type { display: inline-block; margin-right: 5px; padding: 1px 5px; border-radius: 4px; font-size: 10px; font-weight: 700; color: var(--brand-600); background: color-mix(in oklab,var(--brand-500) 10%,#fff); }
     .sms-foot { display: flex; align-items: center; padding: 14px 24px; border-top: 1px solid var(--border-subtle); background: var(--gray-50); gap: 12px; flex-shrink: 0; }
     .sms-foot__ad { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); }
     .sms-foot__ad input { accent-color: var(--brand-500); }
@@ -1907,9 +1909,12 @@
                   </template>
                   <template x-for="(h, hi) in sms.history" :key="hi">
                     <button type="button" class="sms-history__item" @click="sms.body = h.body">
-                      <div class="sms-history__body" x-text="h.body"></div>
+                      <div class="sms-history__body" x-text="h.body || (h.type === 'MMS' ? '(이미지 전송)' : '')"></div>
                       <div class="sms-history__meta">
-                        <span x-text="h.phone"></span>
+                        <span>
+                          <span class="sms-history__type" x-show="h.type" x-text="h.type"></span>
+                          <span x-text="h.phone"></span>
+                        </span>
                         <span x-text="h.date"></span>
                       </div>
                     </button>
@@ -2554,6 +2559,12 @@ function inpatientForm() {
       return d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7);
     },
 
+    formatSmsDate(v) {
+      if (!v) return '';
+      const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+      return m ? `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}` : String(v);
+    },
+
     refreshSmsHistory() {
       const phones = this.sms.recipients.map(r => r.phone).filter(Boolean);
       if (!phones.length) return;
@@ -2566,9 +2577,10 @@ function inpatientForm() {
       .then(r => r.ok ? r.json() : [])
       .then(data => {
         this.sms.history = (data || []).map(h => ({
-          body:  h.message  || h.body  || '',
-          phone: h.to_phone || h.to    || '',
-          date:  h.sent_at  || h.date  || '',
+          body:  h.contents   || h.message || h.body || '',
+          phone: this.formatPhone(h.to_phone || h.to || ''),
+          date:  this.formatSmsDate(h.created_at || h.sent_at || h.date || ''),
+          type:  (h.send_type || h.type || '').toUpperCase(),
         }));
       })
       .catch(() => {});
@@ -2649,6 +2661,7 @@ function inpatientForm() {
       }
       if (failCount === 0) {
         alert('문자가 전송되었습니다.');
+        this.refreshSmsHistory();
         this.closeSms();
       } else {
         alert('일부 전송에 실패했습니다 (' + failCount + '/' + active.length + '건)');
