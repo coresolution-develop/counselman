@@ -121,10 +121,24 @@ tasks.register('cancerTreatmentDevJar', GradleBuild) {
 	tasks = ['devJar']
 }
 
-tasks.register('packageDevDeploy') {
-	dependsOn 'devWar', 'mediplatDevJar', 'cancerTreatmentDevJar'
+tasks.register('smsDevJar', GradleBuild) {
 	group = 'build'
-	description = 'Build CSM DEV WAR, MediPlat DEV JAR, and Cancer Treatment DEV JAR, then collect them in one folder'
+	description = 'Build SMS JAR for DEV deployment'
+	dir = file('sms')
+	tasks = ['devJar']
+}
+
+tasks.register('smsProdJar', GradleBuild) {
+	group = 'build'
+	description = 'Build SMS JAR for PROD deployment'
+	dir = file('sms')
+	tasks = ['prodJar']
+}
+
+tasks.register('packageDevDeploy') {
+	dependsOn 'devWar', 'mediplatDevJar', 'cancerTreatmentDevJar', 'smsDevJar'
+	group = 'build'
+	description = 'Build CSM DEV WAR, MediPlat DEV JAR, Cancer Treatment DEV JAR, and SMS DEV JAR, then collect them in one folder'
 
 	doLast {
 		def deployDir = file("$buildDir/deploy/dev")
@@ -135,6 +149,7 @@ tasks.register('packageDevDeploy') {
 			from "$buildDir/libs/csm-dev.war"
 			from "${projectDir}/mediplat/build/libs/mediplat-dev.jar"
 			from "${projectDir}/cancer-treatment/build/libs/cancer-treatment-dev.jar"
+			from "${projectDir}/sms/build/libs/sms-dev.jar"
 			into deployDir
 		}
 
@@ -142,13 +157,14 @@ tasks.register('packageDevDeploy') {
 		println "- ${deployDir}/csm-dev.war"
 		println "- ${deployDir}/mediplat-dev.jar"
 		println "- ${deployDir}/cancer-treatment-dev.jar"
+		println "- ${deployDir}/sms-dev.jar"
 	}
 }
 
 tasks.register('packageProdDeploy') {
-	dependsOn 'prodWar', 'mediplatProdJar'
+	dependsOn 'prodWar', 'mediplatProdJar', 'smsProdJar'
 	group = 'build'
-	description = 'Build CSM PROD WAR and MediPlat PROD JAR, then collect them in one folder'
+	description = 'Build CSM PROD WAR, MediPlat PROD JAR, and SMS PROD JAR, then collect them in one folder'
 
 	doLast {
 		def deployDir = file("$buildDir/deploy/prod")
@@ -158,11 +174,13 @@ tasks.register('packageProdDeploy') {
 		copy {
 			from "$buildDir/libs/csm-prod.war"
 			from "${projectDir}/mediplat/build/libs/mediplat-prod.jar"
+			from "${projectDir}/sms/build/libs/sms-prod.jar"
 			into deployDir
 		}
 
 		println "PROD deploy bundle created: ${deployDir}"
 		println "- ${deployDir}/csm-prod.war"
 		println "- ${deployDir}/mediplat-prod.jar"
+		println "- ${deployDir}/sms-prod.jar"
 	}
 }

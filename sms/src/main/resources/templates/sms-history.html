@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>발송 내역</title>
+    <link rel="stylesheet" th:href="@{/css/layout.css}">
+    <link rel="stylesheet" th:href="@{/css/sms.css}">
+    <script th:inline="javascript">window.__ctx = /*[[@{/}]]*/ '/';</script>
+    <script th:src="@{/js/sms-history.js}" defer></script>
+</head>
+<body th:attr="data-user-role=${user?.role}">
+<nav th:replace="~{fragments/layout :: topnav(${user}, ${activeMenu}, ${mediplatPortalUrl})}"></nav>
+<div class="layout">
+    <aside th:replace="~{fragments/layout :: sidebar(${activeMenu}, ${isPlatformAdmin})}"></aside>
+    <main class="main">
+        <div class="page-header">
+            <div>
+                <div class="page-title">발송 내역</div>
+                <div class="page-subtitle">CounselMan 발송분을 포함한 전체 문자 발송 이력입니다.</div>
+            </div>
+        </div>
+        <div class="page-body">
+            <div class="card">
+                <div class="toolbar">
+                    <select id="type-filter">
+                        <option value="">전체</option>
+                        <option value="sent">즉시 발송</option>
+                        <option value="reserved">예약 발송</option>
+                    </select>
+                    <input type="text" id="keyword" placeholder="번호 또는 내용 검색">
+                    <button type="button" class="btn-ghost" id="search-btn">검색</button>
+                </div>
+                <table class="data">
+                    <thead>
+                        <tr>
+                            <th style="width:150px;">발송시각</th>
+                            <th style="width:60px;">유형</th>
+                            <th style="width:130px;">수신번호</th>
+                            <th>내용</th>
+                            <th style="width:90px;">상태</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body">
+                        <tr><td colspan="5" class="empty">불러오는 중…</td></tr>
+                    </tbody>
+                </table>
+                <div class="pager" id="pager"></div>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>

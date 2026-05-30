@@ -48,6 +48,7 @@ public class PlatformStoreService {
     private static final String SERVICE_CODE_ROOM_BOARD = "ROOM_BOARD";
     private static final String SERVICE_CODE_SEMINAR_ROOM = "SEMINAR_ROOM";
     private static final String SERVICE_CODE_CANCER_TREATMENT = "CANCER_TREATMENT";
+    private static final String SERVICE_CODE_SMS = "SMS";
     private static final String INTEGRATION_CODE_ROOMBOARD_CSM_LINK = "ROOMBOARD_CSM_LINK";
     private static final String DEFAULT_SERVICE_CODE = SERVICE_CODE_COUNSELMAN;
     private static final String VIEWER_ACCOUNT_INST_CODE = "core";
@@ -79,6 +80,9 @@ public class PlatformStoreService {
 
     @Value("${platform.bootstrap.cancer-treatment-base-url:http://localhost:8083/cancer-treatment}")
     private String bootstrapCancerTreatmentBaseUrl;
+
+    @Value("${platform.bootstrap.sms-base-url:http://localhost:8084/sms}")
+    private String bootstrapSmsBaseUrl;
 
     @Value("${platform.runtime-env:}")
     private String configuredRuntimeEnv;
@@ -1272,6 +1276,9 @@ public class PlatformStoreService {
         String cancerLocalBaseUrl = ENV_LOCAL.equals(runtimeEnvCode) ? bootstrapCancerTreatmentBaseUrl : null;
         String cancerDevBaseUrl = ENV_DEV.equals(runtimeEnvCode) ? bootstrapCancerTreatmentBaseUrl : null;
         String cancerProdBaseUrl = ENV_PROD.equals(runtimeEnvCode) ? bootstrapCancerTreatmentBaseUrl : null;
+        String smsLocalBaseUrl = ENV_LOCAL.equals(runtimeEnvCode) ? bootstrapSmsBaseUrl : null;
+        String smsDevBaseUrl = ENV_DEV.equals(runtimeEnvCode) ? bootstrapSmsBaseUrl : null;
+        String smsProdBaseUrl = ENV_PROD.equals(runtimeEnvCode) ? bootstrapSmsBaseUrl : null;
         saveInstitution(bootstrapAdminInstCode, bootstrapAdminInstName, USE_Y);
         saveUser(
                 bootstrapAdminInstCode,
@@ -1332,9 +1339,23 @@ public class PlatformStoreService {
                 "암센터 치료 예약 및 치료상태 실시간 관리 서비스",
                 USE_Y,
                 4);
+        saveService(
+                SERVICE_CODE_SMS,
+                "문자/SMS",
+                bootstrapSmsBaseUrl,
+                smsLocalBaseUrl,
+                smsDevBaseUrl,
+                smsProdBaseUrl,
+                "/mediplat/sso/entry",
+                "/sms-send",
+                "/sms-send",
+                "문자(SMS/LMS/MMS) 발송 · 내역 · 비용 관리 서비스",
+                USE_Y,
+                5);
         saveInstitutionServiceAccess(
                 bootstrapAdminInstCode,
-                List.of(DEFAULT_SERVICE_CODE, SERVICE_CODE_ROOM_BOARD, SERVICE_CODE_SEMINAR_ROOM, SERVICE_CODE_CANCER_TREATMENT));
+                List.of(DEFAULT_SERVICE_CODE, SERVICE_CODE_ROOM_BOARD, SERVICE_CODE_SEMINAR_ROOM, SERVICE_CODE_CANCER_TREATMENT,
+                        SERVICE_CODE_SMS));
 
         seedPlatformAdminServiceRoles();
     }

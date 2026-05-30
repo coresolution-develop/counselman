@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>요금·비용</title>
+    <link rel="stylesheet" th:href="@{/css/layout.css}">
+    <link rel="stylesheet" th:href="@{/css/sms.css}">
+    <script th:inline="javascript">
+        window.__ctx = /*[[@{/}]]*/ '/';
+        window.__isPlatformAdmin = /*[[${isPlatformAdmin}]]*/ false;
+    </script>
+    <script th:src="@{/js/sms-cost.js}" defer></script>
+</head>
+<body th:attr="data-user-role=${user?.role}">
+<nav th:replace="~{fragments/layout :: topnav(${user}, ${activeMenu}, ${mediplatPortalUrl})}"></nav>
+<div class="layout">
+    <aside th:replace="~{fragments/layout :: sidebar(${activeMenu}, ${isPlatformAdmin})}"></aside>
+    <main class="main">
+        <div class="page-header">
+            <div>
+                <div class="page-title">요금·비용</div>
+                <div class="page-subtitle">CounselMan에서 사용한 문자 비용을 합산해 보여줍니다.</div>
+            </div>
+        </div>
+        <div class="page-body">
+            <div class="grid-3">
+                <div class="stat-card">
+                    <div class="stat-label">이번 달</div>
+                    <div class="stat-value" id="this-month">-</div>
+                    <div class="stat-sub" id="this-month-sub"></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">지난 달</div>
+                    <div class="stat-value" id="last-month">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">누적 합계</div>
+                    <div class="stat-value" id="grand-total">-</div>
+                    <div class="stat-sub" id="unit-prices"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">월별 청구 내역 (기관)</div>
+                <table class="data">
+                    <thead>
+                        <tr>
+                            <th>월</th>
+                            <th class="num">SMS</th>
+                            <th class="num">LMS</th>
+                            <th class="num">MMS</th>
+                            <th class="num">합계</th>
+                        </tr>
+                    </thead>
+                    <tbody id="monthly-body">
+                        <tr><td colspan="5" class="empty">불러오는 중…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card" id="platform-section" style="display:none;">
+                <div class="card-title">플랫폼 합계 (전 기관) · 관리자</div>
+                <div class="stat-card" style="margin-bottom:14px;">
+                    <div class="stat-label">전 기관 누적 합계</div>
+                    <div class="stat-value" id="platform-total">-</div>
+                </div>
+                <div class="grid-2">
+                    <div>
+                        <div class="card-title" style="font-size:13px;">월별</div>
+                        <table class="data">
+                            <thead><tr><th>월</th><th class="num">건수</th><th class="num">합계</th></tr></thead>
+                            <tbody id="platform-monthly-body">
+                                <tr><td colspan="3" class="empty">-</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div>
+                        <div class="card-title" style="font-size:13px;">기관별</div>
+                        <table class="data">
+                            <thead><tr><th>기관</th><th class="num">합계</th></tr></thead>
+                            <tbody id="platform-inst-body">
+                                <tr><td colspan="2" class="empty">-</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>

@@ -40,6 +40,8 @@ function AppIcon({ k, size = 22, color = '#fff' }) {
       return <svg {...p}><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8 19h7a4 4 0 0 0 0-8H9a4 4 0 0 1 0-8h6"/></svg>;
     case 'ambulance':
       return <svg {...p}><rect x="2" y="8" width="13" height="9" rx="1.5"/><path d="M15 11h4l2 3v3h-6"/><circle cx="7" cy="18.5" r="1.8"/><circle cx="17" cy="18.5" r="1.8"/><path d="M7 11.5h3M8.5 10v3"/></svg>;
+    case 'message':
+      return <svg {...p}><path d="M21 11.5a8 8 0 0 1-11.5 7.2L4 20l1.3-4A8 8 0 1 1 21 11.5z"/><path d="M8 10h8M8 13.5h5"/></svg>;
     default:
       return <svg {...p}><rect x="4" y="4" width="16" height="16" rx="3"/></svg>;
   }

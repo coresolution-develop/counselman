@@ -1,0 +1,63 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.4.10'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.coresolution'
+version = '0.0.1-SNAPSHOT'
+description = 'SMS (문자) send / history / cost service'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+	implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+	runtimeOnly 'com.mysql:mysql-connector-j'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+tasks.register('devJar') {
+    dependsOn 'bootJar'
+    group = 'build'
+    description = 'Build JAR for DEV deployment'
+
+    doLast {
+        def src = tasks.named('bootJar').get().archiveFile.get().asFile
+        copy {
+            from src
+            into "$buildDir/libs"
+            rename { 'sms-dev.jar' }
+        }
+        println "DEV JAR created: ${buildDir}/libs/sms-dev.jar"
+    }
+}
+
+tasks.register('prodJar') {
+    dependsOn 'bootJar'
+    group = 'build'
+    description = 'Build JAR for PROD deployment'
+
+    doLast {
+        def src = tasks.named('bootJar').get().archiveFile.get().asFile
+        copy {
+            from src
+            into "$buildDir/libs"
+            rename { 'sms-prod.jar' }
+        }
+        println "PROD JAR created: ${buildDir}/libs/sms-prod.jar"
+    }
+}

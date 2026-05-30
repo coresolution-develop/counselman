@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>문자 전송</title>
+    <link rel="stylesheet" th:href="@{/css/layout.css}">
+    <link rel="stylesheet" th:href="@{/css/sms.css}">
+    <script th:inline="javascript">window.__ctx = /*[[@{/}]]*/ '/';</script>
+    <script th:src="@{/js/sms-send.js}" defer></script>
+</head>
+<body th:attr="data-user-role=${user?.role}">
+<nav th:replace="~{fragments/layout :: topnav(${user}, ${activeMenu}, ${mediplatPortalUrl})}"></nav>
+<div class="layout">
+    <aside th:replace="~{fragments/layout :: sidebar(${activeMenu}, ${isPlatformAdmin})}"></aside>
+    <main class="main">
+        <div class="page-header">
+            <div>
+                <div class="page-title">문자 전송</div>
+                <div class="page-subtitle">SMS / LMS / MMS 발송. 예약 발송도 지원합니다.</div>
+            </div>
+        </div>
+        <div class="page-body">
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-title">메시지 작성</div>
+
+                    <div class="form-row">
+                        <label>유형</label>
+                        <div class="type-toggle" id="type-toggle">
+                            <button type="button" data-type="sms" class="active">SMS</button>
+                            <button type="button" data-type="lms">LMS</button>
+                            <button type="button" data-type="mms">MMS</button>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="from">발신번호</label>
+                        <input type="tel" id="from" placeholder="0312345678" autocomplete="off">
+                    </div>
+
+                    <div class="form-row">
+                        <label for="to">수신번호</label>
+                        <input type="tel" id="to" placeholder="01012345678" autocomplete="off">
+                    </div>
+
+                    <div class="form-row" id="subject-row" style="display:none;">
+                        <label for="subject">제목</label>
+                        <input type="text" id="subject" placeholder="LMS/MMS 제목">
+                    </div>
+
+                    <div class="form-row">
+                        <label for="message">내용</label>
+                        <textarea id="message" placeholder="메시지 내용을 입력하세요."></textarea>
+                        <div class="char-count"><span id="char-len">0</span> bytes · <span id="msg-kind">SMS</span></div>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="reserve">예약 발송 (선택)</label>
+                        <input type="datetime-local" id="reserve">
+                    </div>
+
+                    <p class="form-message" id="send-message" role="status"></p>
+                    <div style="display:flex; justify-content:flex-end;">
+                        <button type="button" class="btn-primary" id="send-btn">전송</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">미리보기</div>
+                    <div style="background:var(--bg-surface); border-radius:10px; padding:16px; min-height:160px;">
+                        <div style="font-size:12px; color:var(--fg4);">받는 사람: <span id="pv-to">-</span></div>
+                        <div style="font-size:12px; color:var(--fg4); margin-top:2px;">제목: <span id="pv-subject">-</span></div>
+                        <div style="margin-top:12px; white-space:pre-wrap; color:var(--fg1);" id="pv-message">메시지 내용이 여기에 표시됩니다.</div>
+                    </div>
+                    <p class="page-subtitle" style="margin-top:12px;">
+                        SMS는 90바이트, LMS/MMS는 2,000바이트까지 권장됩니다. 한글은 1자당 2바이트로 계산됩니다.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>
