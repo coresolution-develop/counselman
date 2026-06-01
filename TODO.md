@@ -23,6 +23,22 @@
 - **연관 커밋**: `72c10f9` `64fa5d9` `50a35d4` `05794f4` `ed3bdb5` `a92809d`
 - **작업량**: 검증 1시간
 
+#### [P0-3] cancer-treatment 스케줄 — DB 영속화 + 환자/치료정보 연동 (2026-06-01 진단)
+- **현황**: 스케줄 모듈이 DB·환자·치료 도메인과 단절된 프론트 프로토타입 상태 (환자/치료비/설정 모듈은 정상 DB 연동)
+- **확인된 문제** (코드 근거):
+  - 🔴 **영속화 없음** — `TreatmentScheduleService`가 인메모리 `CopyOnWriteArrayList` + 하드코딩 시드 6건. `ct_treatment_schedule` 테이블은 스키마에만 존재, 코드에서 미사용(grep 0건), ScheduleRepository 부재 → **앱 재시작 시 스케줄 전부 초기화(소실)**
+  - 🔴 **테넌트 격리 위반** — 스케줄 저장/조회에 `inst_code` 필터 전무 → 모든 기관이 동일 인메모리 데이터 공유
+  - **환자 연동 없음** — 모달에서 환자 선택 시 이름·병동만 텍스트 복사([treatment-schedule.js:195-199](cancer-treatment/src/main/resources/static/js/treatment-schedule.js)). DTO/모델에 `patientId` 필드 자체 없음(`patientName` 문자열만)
+  - **치료정보 연동 없음** — `modal-info`는 자유 입력, 환자 처방 항목(prescriptionItemIds)·치료비 카탈로그와 무관. 치료명도 `treatment_type_id` FK 아닌 문자열
+  - 대시보드/통계도 동일 인메모리 시드 기반
+- **수정 방향** (결정됨: **FK만, 항상 최신**):
+  1. `ScheduleRepository`(JDBC) 신설 — `ct_treatment_schedule` 사용, `inst_code` 스코프 적용
+  2. `patientId` 필드 추가 — 모달에서 환자 선택 시 id 캡처, FK 저장. 이름·치료정보는 **스냅샷 저장하지 않고** 조회 시 환자 테이블에서 실시간 join (환자 정보 변경 시 과거 일정도 최신 반영)
+  3. 환자 선택 시 처방/치료정보를 모달에 표시(자동 채움은 선택)
+  4. 대시보드/통계를 DB 쿼리로 전환
+- **주의**: FK-only 방식이라 환자 삭제(soft delete) 시 과거 일정 표시 정책 필요(이름 보존 vs "삭제된 환자")
+- **작업량**: 중 (Repository + 모델/DTO + 모달 JS + 대시보드 전환, 회귀 테스트 포함)
+
 ### ⚠️ P1 — 반복 버그 / 사용자 경험
 
 #### [P1-1] 상담 통계 Alpine ECharts 간헐 충돌
