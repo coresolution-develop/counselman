@@ -357,6 +357,39 @@ class PlatformStoreServiceTest {
         assertEquals(firstSeconds, second.getSessionSeconds());
     }
 
+    @Test
+    void bootstrap_skipsServiceWithLocalhostDevUrl_andStillRegistersValidServices() {
+        CounselManAccountService counselManAccountService = org.mockito.Mockito.mock(CounselManAccountService.class);
+        when(counselManAccountService.listInstitutions()).thenReturn(List.of());
+        when(counselManAccountService.isRoomBoardEnabled(anyString())).thenReturn(true);
+
+        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        dataSource.setDriverClassName("org.h2.Driver");
+        dataSource.setUrl("jdbc:h2:mem:platform-store-" + UUID.randomUUID() + ";MODE=MySQL;DB_CLOSE_DELAY=-1");
+
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        PlatformStoreService storeService = new PlatformStoreService(jdbcTemplate, counselManAccountService);
+        ReflectionTestUtils.setField(storeService, "bootstrapAdminInstCode", "core");
+        ReflectionTestUtils.setField(storeService, "bootstrapAdminInstName", "MediPlat Platform");
+        ReflectionTestUtils.setField(storeService, "bootstrapAdminUsername", "platformadmin");
+        ReflectionTestUtils.setField(storeService, "bootstrapAdminPassword", "ChangeMe123!");
+        ReflectionTestUtils.setField(storeService, "bootstrapAdminName", "Platform Admin");
+        // counselman/cancer have valid DEV URLs; sms is left at the localhost default
+        ReflectionTestUtils.setField(storeService, "bootstrapCounselmanBaseUrl", "https://dev.sosyge.net/csm");
+        ReflectionTestUtils.setField(storeService, "bootstrapCancerTreatmentBaseUrl", "https://dev.sosyge.net/cancer-treatment");
+        ReflectionTestUtils.setField(storeService, "bootstrapSmsBaseUrl", "http://localhost:8084/sms");
+        ReflectionTestUtils.setField(storeService, "configuredRuntimeEnv", "DEV");
+        ReflectionTestUtils.setField(storeService, "activeProfiles", "dev");
+
+        // Before the fix this threw "DEV URL에는 localhost를 사용할 수 없습니다." and aborted boot.
+        assertDoesNotThrow(storeService::initialize);
+
+        // Valid services are still registered; only the misconfigured SMS service is skipped.
+        assertNotNull(storeService.findService("COUNSELMAN"));
+        assertNotNull(storeService.findService("CANCER_TREATMENT"));
+        assertNull(storeService.findService("SMS"));
+    }
+
     private PlatformStoreService newInitializedStoreService(CounselManAccountService counselManAccountService) {
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
         dataSource.setDriverClassName("org.h2.Driver");

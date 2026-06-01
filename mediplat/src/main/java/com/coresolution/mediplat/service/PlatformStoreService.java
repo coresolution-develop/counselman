@@ -1287,7 +1287,7 @@ public class PlatformStoreService {
                 bootstrapAdminName,
                 ROLE_PLATFORM_ADMIN,
                 USE_Y);
-        saveService(
+        bootstrapService(DEFAULT_SERVICE_CODE, () -> saveService(
                 DEFAULT_SERVICE_CODE,
                 "CounselMan",
                 bootstrapCounselmanBaseUrl,
@@ -1299,8 +1299,8 @@ public class PlatformStoreService {
                 "/core/admin",
                 "기관별 상담관리 서비스",
                 USE_Y,
-                1);
-        saveService(
+                1));
+        bootstrapService(SERVICE_CODE_ROOM_BOARD, () -> saveService(
                 SERVICE_CODE_ROOM_BOARD,
                 "병실현황판",
                 bootstrapCounselmanBaseUrl,
@@ -1312,8 +1312,8 @@ public class PlatformStoreService {
                 "/room-board?popup=1",
                 "기관별 병실현황판 서비스",
                 USE_Y,
-                2);
-        saveService(
+                2));
+        bootstrapService(SERVICE_CODE_SEMINAR_ROOM, () -> saveService(
                 SERVICE_CODE_SEMINAR_ROOM,
                 "세미나실 예약",
                 bootstrapCounselmanBaseUrl,
@@ -1325,8 +1325,8 @@ public class PlatformStoreService {
                 "/seminar-room",
                 "기관별 세미나실 예약 관리 서비스",
                 USE_Y,
-                3);
-        saveService(
+                3));
+        bootstrapService(SERVICE_CODE_CANCER_TREATMENT, () -> saveService(
                 SERVICE_CODE_CANCER_TREATMENT,
                 "암센터 치료스케줄 관리",
                 bootstrapCancerTreatmentBaseUrl,
@@ -1338,8 +1338,8 @@ public class PlatformStoreService {
                 "/cancer-treatment-schedule",
                 "암센터 치료 예약 및 치료상태 실시간 관리 서비스",
                 USE_Y,
-                4);
-        saveService(
+                4));
+        bootstrapService(SERVICE_CODE_SMS, () -> saveService(
                 SERVICE_CODE_SMS,
                 "문자/SMS",
                 bootstrapSmsBaseUrl,
@@ -1351,13 +1351,27 @@ public class PlatformStoreService {
                 "/sms-send",
                 "문자(SMS/LMS/MMS) 발송 · 내역 · 비용 관리 서비스",
                 USE_Y,
-                5);
+                5));
         saveInstitutionServiceAccess(
                 bootstrapAdminInstCode,
                 List.of(DEFAULT_SERVICE_CODE, SERVICE_CODE_ROOM_BOARD, SERVICE_CODE_SEMINAR_ROOM, SERVICE_CODE_CANCER_TREATMENT,
                         SERVICE_CODE_SMS));
 
         seedPlatformAdminServiceRoles();
+    }
+
+    /**
+     * Registers a single default service, isolating its failure so a misconfigured
+     * (e.g. missing/localhost endpoint) service never aborts the whole bootstrap and
+     * takes the portal down. The service is skipped with a WARN; once its endpoint is
+     * configured the next boot registers it.
+     */
+    private void bootstrapService(String serviceCode, Runnable register) {
+        try {
+            register.run();
+        } catch (RuntimeException e) {
+            log.warn("Skipping bootstrap of service '{}': {}", serviceCode, e.getMessage());
+        }
     }
 
     /**
