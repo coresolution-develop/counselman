@@ -50,19 +50,8 @@ body {
   flex-direction: column;
 }
 
-/* ── Top Nav ──────────────────────────────────────────────── */
-.topnav {
-  height: 48px;
-  background: var(--bg-panel);
-  border-bottom: 1px solid var(--border-subtle);
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  gap: 0;
-  flex-shrink: 0;
-  z-index: 100;
-}
-.nav-logo { display: flex; align-items: center; gap: 8px; margin-right: 20px; text-decoration: none; flex-shrink: 0; }
+/* ── Brand / Logo ─────────────────────────────────────────── */
+.nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; flex-shrink: 0; }
 .logo-mark {
   width: 26px; height: 26px;
   border-radius: 7px;
@@ -71,16 +60,6 @@ body {
 }
 .logo-mark svg { width: 18px; height: 18px; }
 .logo-name { font-size: 14px; font-weight: 590; color: var(--fg1); letter-spacing: -0.2px; }
-.nav-links { display: flex; align-items: center; gap: 2px; flex: 1; }
-.nav-link {
-  font-size: 13px; font-weight: 510; color: var(--fg3);
-  padding: 5px 10px; border-radius: 6px;
-  text-decoration: none; cursor: pointer;
-  transition: color 0.12s, background 0.12s;
-}
-.nav-link:hover { color: var(--fg1); background: rgba(0,0,0,0.05); }
-.nav-link.active { color: var(--fg1); }
-.nav-actions { display: flex; align-items: center; gap: 8px; }
 .btn-primary {
   height: 30px; padding: 0 12px; border-radius: 6px; border: none;
   background: var(--brand); color: #fff; font-size: 12px; font-weight: 590;
@@ -106,7 +85,7 @@ body {
 /* ── Layout ───────────────────────────────────────────────── */
 .layout { display: flex; flex: 1; overflow: hidden; }
 
-/* ── Sidebar ──────────────────────────────────────────────── */
+/* ── Sidebar (primary navigation) ─────────────────────────── */
 .sidebar {
   width: 220px; background: var(--bg-panel);
   border-right: 1px solid var(--border-subtle);
@@ -114,6 +93,16 @@ body {
   padding: 12px 8px; gap: 1px; overflow-y: auto;
 }
 .sidebar::-webkit-scrollbar { width: 0; }
+.sidebar .nav-logo { margin: 4px 8px 14px; }
+.sb-nav { display: flex; flex-direction: column; gap: 1px; }
+.sb-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.sb-footer .avatar { flex-shrink: 0; }
+.sb-footer .btn-ghost { flex: 1; text-align: center; }
 .sidebar-section {
   padding: 10px 8px 4px;
   font-size: 10px; font-weight: 590; color: var(--fg4);
@@ -668,126 +657,11 @@ textarea.modal-input { resize: vertical; min-height: 56px; }
 </head>
 <body th:attr="data-user-role=${user?.role}">
 
-<!-- ── Top Nav ──────────────────────────────────────────────── -->
-<nav class="topnav">
-  <a class="nav-logo" href="#">
-    <div class="logo-mark">
-      <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="1" y="1" width="7" height="7" rx="1.5" fill="#5e6ad2" opacity="0.9"/>
-        <rect x="10" y="1" width="7" height="7" rx="1.5" fill="#5e6ad2" opacity="0.6"/>
-        <rect x="1" y="10" width="7" height="7" rx="1.5" fill="#5e6ad2" opacity="0.6"/>
-        <rect x="10" y="10" width="7" height="7" rx="1.5" fill="#5e6ad2" opacity="0.3"/>
-      </svg>
-    </div>
-    <span class="logo-name">암센터</span>
-  </a>
-
-  <div class="nav-links">
-    <a th:href="@{/cancer-treatment-schedule}" class="nav-link"
-       th:classappend="${activeMenu == 'schedule'}   ? ' active' : ''">스케줄</a>
-    <a th:href="@{/treatment-calendar}"        class="nav-link"
-       th:classappend="${activeMenu == 'calendar'}   ? ' active' : ''">캘린더</a>
-    <a th:href="@{/patients}"                  class="nav-link"
-       th:classappend="${activeMenu == 'patients'}   ? ' active' : ''">환자</a>
-    <a th:href="@{/treatment-rooms}"           class="nav-link"
-       th:classappend="${activeMenu == 'rooms'}      ? ' active' : ''">치료실</a>
-    <a th:href="@{/dashboard}"                 class="nav-link"
-       th:classappend="${activeMenu == 'dashboard'}  ? ' active' : ''">통계</a>
-    <a th:href="@{/settings}"                  class="nav-link"
-       th:classappend="${activeMenu == 'settings'}   ? ' active' : ''">설정</a>
-  </div>
-
-  <div class="nav-actions">
-    <div class="avatar"
-         th:text="${user?.username != null ? user.username.substring(0,1).toUpperCase() : '?'}">?</div>
-    <a class="btn-ghost" th:href="${mediplatPortalUrl}">MediPlat</a>
-    <a class="btn-ghost" th:href="@{/logout}">로그아웃</a>
-  </div>
-</nav>
-
 <!-- ── Layout ───────────────────────────────────────────────── -->
 <div class="layout">
 
-  <!-- ── Sidebar ──────────────────────────────────────────── -->
-  <aside class="sidebar">
-    <div class="sidebar-section">일정</div>
-    <a th:href="@{/cancer-treatment-schedule}" class="sb-item"
-       th:classappend="${activeMenu == 'schedule'} ? ' active' : ''">
-      <span class="sb-icon">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-          <rect x="2" y="3" width="12" height="11" rx="2"/><path d="M5 1v2M11 1v2M2 7h12"/>
-        </svg>
-      </span>
-      오늘 일정
-      <span class="sb-badge" id="badge-today"
-            th:text="${summary?.total != null ? summary.total : 0}">0</span>
-    </a>
-    <a th:href="@{/treatment-calendar}" class="sb-item"
-       th:classappend="${activeMenu == 'calendar'} ? ' active' : ''">
-      <span class="sb-icon">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-          <rect x="1" y="3" width="14" height="11" rx="2"/><path d="M1 7h14M5 1v2M11 1v2"/>
-        </svg>
-      </span>
-      이번 주
-    </a>
-    <a th:href="@{/treatment-calendar}" class="sb-item">
-      <span class="sb-icon">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-          <circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/>
-        </svg>
-      </span>
-      이번 달
-    </a>
-
-    <div class="sb-divider"></div>
-    <div class="sidebar-section">환자</div>
-    <a th:href="@{/patients}" class="sb-item"
-       th:classappend="${activeMenu == 'patients'} ? ' active' : ''">
-      <span class="sb-icon">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-          <path d="M8 8a3 3 0 100-6 3 3 0 000 6zM2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/>
-        </svg>
-      </span>
-      전체 환자
-    </a>
-    <a href="#" class="sb-item" onclick="filterByStatus('예약'); return false;">
-      <span class="sb-icon">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-          <circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6"/>
-          <path d="M11 10l1.5 1.5L15 9" stroke-width="1.5"/>
-        </svg>
-      </span>
-      진행 중
-      <span class="sb-badge" id="badge-reserved" style="background:var(--success);"
-            th:text="${summary?.reserved != null ? summary.reserved : 0}">0</span>
-    </a>
-
-    <div class="sb-divider"></div>
-    <div class="sidebar-section">최근 환자</div>
-    <div id="patient-list"></div>
-
-    <div class="sb-divider"></div>
-    <div class="sidebar-section">분석</div>
-    <a th:href="@{/dashboard}" class="sb-item"
-       th:classappend="${activeMenu == 'dashboard'} ? ' active' : ''">
-      <span class="sb-icon">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-          <rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/>
-          <rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/>
-        </svg>
-      </span>
-      대시보드
-    </a>
-    <a th:href="@{/dashboard}" class="sb-item">
-      <span class="sb-icon">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-          <path d="M2 13l3-4 3 2 3-5 3 2"/>
-        </svg>
-      </span>
-      보고서
-    </a>
-  </aside>
+  <!-- ── Sidebar (primary navigation) ─────────────────────── -->
+  <aside th:replace="~{fragments/layout :: sidebar(${user}, ${activeMenu}, ${mediplatPortalUrl})}"></aside>
 
   <!-- ── Main ─────────────────────────────────────────────── -->
   <main class="main">

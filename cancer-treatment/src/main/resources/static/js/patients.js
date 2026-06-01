@@ -166,7 +166,8 @@
     function computePatientTotal(patient) {
         if (!patient || !patient.prescriptionItemIds || !patient.prescriptionItemIds.length) return 0;
         const weeks = Number(patient.prescriptionWeeks || 0);
-        const copayment = Number(patient.copaymentRate == null ? 100 : patient.copaymentRate);
+        // 본인부담율: 저장값이 0/없음이면 기본값 100% (0%는 본인부담 계산기에서 의미 없음)
+        const copayment = patient.copaymentRate ? Number(patient.copaymentRate) : 100;
         const selectedIds = new Set((patient.prescriptionItemIds || []).map(Number));
         let subtotal = 0;
         state.packages.forEach(function (p) {
@@ -218,7 +219,7 @@
         document.getElementById('patient-discharge-date').value = isEdit ? (patient.dischargeDate || '') : '';
         document.getElementById('patient-note').value = isEdit ? (patient.note || '') : '';
         els.weeks.value         = isEdit ? (patient.prescriptionWeeks  ?? 4) : 4;
-        els.copayment.value     = isEdit ? (patient.copaymentRate      ?? 100) : 100;
+        els.copayment.value     = isEdit ? (patient.copaymentRate || 100) : 100;
         els.discountType.value  = isEdit ? (patient.totalDiscountType  || 'NONE') : 'NONE';
         els.discountValue.value = isEdit ? (patient.totalDiscountValue ?? 0) : 0;
 

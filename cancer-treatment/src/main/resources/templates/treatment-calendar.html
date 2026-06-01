@@ -403,10 +403,8 @@
 </head>
 <body th:attr="data-user-role=${user?.role}">
 
-<nav th:replace="~{fragments/layout :: topnav(${user}, ${activeMenu}, ${mediplatPortalUrl})}"></nav>
-
 <div class="layout">
-  <aside th:replace="~{fragments/layout :: sidebar(${activeMenu})}"></aside>
+  <aside th:replace="~{fragments/layout :: sidebar(${user}, ${activeMenu}, ${mediplatPortalUrl})}"></aside>
 
   <main class="main">
 

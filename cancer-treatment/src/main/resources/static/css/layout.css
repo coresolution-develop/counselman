@@ -44,19 +44,8 @@ body {
   flex-direction: column;
 }
 
-/* ── Top Nav ──────────────────────────────────────────────── */
-.topnav {
-  height: 48px;
-  background: var(--bg-panel);
-  border-bottom: 1px solid var(--border-subtle);
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  gap: 0;
-  flex-shrink: 0;
-  z-index: 100;
-}
-.nav-logo { display: flex; align-items: center; gap: 8px; margin-right: 20px; text-decoration: none; flex-shrink: 0; }
+/* ── Brand / Logo ─────────────────────────────────────────── */
+.nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; flex-shrink: 0; }
 .logo-mark {
   width: 26px; height: 26px;
   border-radius: 7px;
@@ -65,16 +54,6 @@ body {
 }
 .logo-mark svg { width: 18px; height: 18px; }
 .logo-name { font-size: 14px; font-weight: 590; color: var(--fg1); letter-spacing: -0.2px; }
-.nav-links { display: flex; align-items: center; gap: 2px; flex: 1; }
-.nav-link {
-  font-size: 13px; font-weight: 510; color: var(--fg3);
-  padding: 5px 10px; border-radius: 6px;
-  text-decoration: none; cursor: pointer;
-  transition: color 0.12s, background 0.12s;
-}
-.nav-link:hover { color: var(--fg1); background: rgba(0,0,0,0.05); }
-.nav-link.active { color: var(--fg1); }
-.nav-actions { display: flex; align-items: center; gap: 8px; }
 .btn-primary {
   height: 30px; padding: 0 12px; border-radius: 6px; border: none;
   background: var(--brand); color: #fff; font-size: 12px; font-weight: 590;
@@ -100,7 +79,7 @@ body {
 /* ── Layout ───────────────────────────────────────────────── */
 .layout { display: flex; flex: 1; overflow: hidden; }
 
-/* ── Sidebar ──────────────────────────────────────────────── */
+/* ── Sidebar (primary navigation) ─────────────────────────── */
 .sidebar {
   width: 220px; background: var(--bg-panel);
   border-right: 1px solid var(--border-subtle);
@@ -108,6 +87,16 @@ body {
   padding: 12px 8px; gap: 1px; overflow-y: auto;
 }
 .sidebar::-webkit-scrollbar { width: 0; }
+.sidebar .nav-logo { margin: 4px 8px 14px; }
+.sb-nav { display: flex; flex-direction: column; gap: 1px; }
+.sb-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.sb-footer .avatar { flex-shrink: 0; }
+.sb-footer .btn-ghost { flex: 1; text-align: center; }
 .sidebar-section {
   padding: 10px 8px 4px;
   font-size: 10px; font-weight: 590; color: var(--fg4);

@@ -26,16 +26,13 @@
             title: '병동/외래 구분',
             fields: { code: false, name: true, detail: false },
             labels: { name: '병동명' }
-        },
-        'package-categories': {
-            title: '치료비 카테고리',
-            fields: { code: false, name: true, detail: false },
-            labels: { name: '카테고리명' }
         }
+        // 치료비 카테고리(package-categories)는 치료비 페이지에서 관리합니다.
     };
 
     const els = {
-        grid: document.getElementById('settings-grid'),
+        grid: document.getElementById('settings-groups'),
+        tabs: document.getElementById('settings-tabs'),
         message: document.getElementById('settings-message'),
         dialog: document.getElementById('settings-dialog'),
         form: document.getElementById('settings-form'),
@@ -58,7 +55,20 @@
         els.grid.addEventListener('click', onGridClick);
         els.form.addEventListener('submit', saveItem);
         els.cancel.addEventListener('click', closeDialog);
+        if (els.tabs) els.tabs.addEventListener('click', onTabClick);
         loadSettings();
+    }
+
+    function onTabClick(event) {
+        const button = event.target.closest('button[data-tab]');
+        if (!button) return;
+        const tab = button.dataset.tab;
+        els.tabs.querySelectorAll('button[data-tab]').forEach(function (b) {
+            b.classList.toggle('is-active', b === button);
+        });
+        els.grid.querySelectorAll('.settings-grid[data-group]').forEach(function (group) {
+            group.hidden = group.dataset.group !== tab;
+        });
     }
 
     function loadSettings() {
@@ -73,8 +83,7 @@
                     'treatment-options': payload.treatmentOptions || [],
                     'treatment-statuses': payload.treatmentStatuses || [],
                     'time-slots': payload.timeSlots || [],
-                    wards: payload.wards || [],
-                    'package-categories': payload.packageCategories || []
+                    wards: payload.wards || []
                 };
                 renderAll();
             })

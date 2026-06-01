@@ -16,6 +16,7 @@
         'body[data-user-role="VIEWER"] #patient-create-open,',
         'body[data-user-role="VIEWER"] #room-create-open,',
         'body[data-user-role="VIEWER"] #pkg-create-open,',
+        'body[data-user-role="VIEWER"] #cat-add,',
         'body[data-user-role="VIEWER"] .btn-danger,',
         'body[data-user-role="VIEWER"] [onclick*="openScheduleModal"],',
         'body[data-user-role="VIEWER"] [onclick*="saveScheduleModal"],',

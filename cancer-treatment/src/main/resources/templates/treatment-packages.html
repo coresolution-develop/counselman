@@ -10,9 +10,8 @@
     <script th:src="@{/js/treatment-packages.js}" defer></script>
 </head>
 <body th:attr="data-user-role=${user?.role}">
-<nav th:replace="~{fragments/layout :: topnav(${user}, ${activeMenu}, ${mediplatPortalUrl})}"></nav>
 <div class="layout">
-    <aside th:replace="~{fragments/layout :: sidebar(${activeMenu})}"></aside>
+    <aside th:replace="~{fragments/layout :: sidebar(${user}, ${activeMenu}, ${mediplatPortalUrl})}"></aside>
     <main class="main">
         <div class="page-header">
             <div>
@@ -20,38 +19,60 @@
                 <div class="page-subtitle">치료실 · 카테고리별 처방 항목과 단가를 관리합니다. 환자 등록 시 이 항목들을 선택해 본인부담 비용을 계산합니다.</div>
             </div>
             <div class="header-right">
+                <div class="segmented-control" id="pkg-tabs" role="tablist">
+                    <button type="button" data-tab="catalog" class="is-active">항목</button>
+                    <button type="button" data-tab="categories">카테고리</button>
+                </div>
                 <button type="button" class="btn-primary" id="pkg-create-open">+ 항목 등록</button>
             </div>
         </div>
         <div class="page-body">
             <p class="form-message" id="pkg-message" role="status"></p>
-            <form class="filter-bar" id="pkg-filter">
-                <select id="pkg-filter-category">
-                    <option value="">전체 카테고리</option>
-                </select>
-                <select id="pkg-filter-room">
-                    <option value="">전체 치료실</option>
-                </select>
-                <button type="submit">조회</button>
-            </form>
-            <div class="table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>카테고리</th>
-                            <th>치료실</th>
-                            <th>항목명</th>
-                            <th>약어</th>
-                            <th style="text-align:right">단가</th>
-                            <th>주기</th>
-                            <th style="text-align:right">순서</th>
-                            <th>관리</th>
-                        </tr>
-                    </thead>
-                    <tbody id="pkg-body">
-                        <tr><td colspan="8" class="empty">카탈로그를 불러오는 중입니다.</td></tr>
-                    </tbody>
-                </table>
+
+            <!-- 항목(카탈로그) 뷰 -->
+            <div data-view="catalog">
+                <form class="filter-bar" id="pkg-filter">
+                    <select id="pkg-filter-category">
+                        <option value="">전체 카테고리</option>
+                    </select>
+                    <select id="pkg-filter-room">
+                        <option value="">전체 치료실</option>
+                    </select>
+                    <button type="submit">조회</button>
+                </form>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>카테고리</th>
+                                <th>치료실</th>
+                                <th>항목명</th>
+                                <th>약어</th>
+                                <th style="text-align:right">단가</th>
+                                <th>주기</th>
+                                <th style="text-align:right">순서</th>
+                                <th>관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pkg-body">
+                            <tr><td colspan="8" class="empty">카탈로그를 불러오는 중입니다.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 카테고리 관리 뷰 -->
+            <div data-view="categories" hidden>
+                <div class="settings-grid">
+                    <article class="settings-card">
+                        <div class="settings-card-head">
+                            <strong>치료비 카테고리</strong>
+                            <button type="button" class="secondary-button" id="cat-add">추가</button>
+                        </div>
+                        <p class="page-subtitle" style="margin:0 0 10px;">항목 등록 시 선택하는 카테고리 목록입니다. 도수·림프·주사 등 치료비 분류를 관리합니다.</p>
+                        <div class="settings-list" id="cat-list"></div>
+                    </article>
+                </div>
             </div>
         </div>
     </main>
@@ -109,6 +130,25 @@
         <p class="form-message" id="pkg-dialog-message" role="status"></p>
         <div class="form-actions">
             <button type="button" class="secondary-button" id="pkg-cancel">취소</button>
+            <button type="submit">저장</button>
+        </div>
+    </form>
+</dialog>
+<dialog class="settings-dialog" id="cat-dialog">
+    <form method="dialog" id="cat-form">
+        <h3 id="cat-dialog-title">카테고리 추가</h3>
+        <input type="hidden" id="cat-id">
+        <label>
+            <span>카테고리명 <span class="req" style="color:#c0392b">*</span></span>
+            <input type="text" id="cat-name" maxlength="100" required>
+        </label>
+        <label>
+            <span>정렬 순서</span>
+            <input type="number" id="cat-order" value="0">
+        </label>
+        <p class="form-message" id="cat-dialog-message" role="status"></p>
+        <div class="form-actions">
+            <button type="button" class="secondary-button" id="cat-cancel">취소</button>
             <button type="submit">저장</button>
         </div>
     </form>
