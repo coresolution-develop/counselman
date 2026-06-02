@@ -749,6 +749,16 @@ public class MediplatController {
             return serviceMap;
         }).toList());
         payload.put("userEnabledServiceCodes", userEnabledServiceCodes);
+
+        // Per-service role overrides for the selected user (mirrors GET /admin).
+        Map<String, String> userServiceRoleOverrides = Map.of();
+        if (StringUtils.hasText(selectedUserAccess)) {
+            Long uid = storeService.findUserIdByUsername(selectedInstCode, selectedUserAccess);
+            if (uid != null) {
+                userServiceRoleOverrides = storeService.listUserServiceRoleOverrides(uid);
+            }
+        }
+        payload.put("userServiceRoleOverrides", userServiceRoleOverrides);
         return ResponseEntity.ok(payload);
     }
 

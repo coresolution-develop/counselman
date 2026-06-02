@@ -579,6 +579,7 @@ function UserPermPanel({ selectedInstCode, users, allServices, accent }) {
   const a = IA_ACCENTS[accent] || IA_ACCENTS.blue;
   const [selUser, setSelUser] = React.useState(users[0]?.userId || '');
   const [perms, setPerms] = React.useState({});
+  const [ctRole, setCtRole] = React.useState({}); // { [userId]: '' | 'MEMBER' | 'VIEWER' } — 암센터 쓰기 권한 override
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [toast, showToast] = useToast();
@@ -592,7 +593,10 @@ function UserPermPanel({ selectedInstCode, users, allServices, accent }) {
     setLoading(true);
     fetch(`/admin/async-data?instCode=${encodeURIComponent(selectedInstCode)}&userAccessUsername=${encodeURIComponent(selUser)}`)
       .then(r => r.json())
-      .then(d => setPerms(p => ({ ...p, [selUser]: new Set(d.userEnabledServiceCodes || []) })))
+      .then(d => {
+        setPerms(p => ({ ...p, [selUser]: new Set(d.userEnabledServiceCodes || []) }));
+        setCtRole(r => ({ ...r, [selUser]: (d.userServiceRoleOverrides && d.userServiceRoleOverrides.CANCER_TREATMENT) || '' }));
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [selUser, selectedInstCode]);
@@ -608,7 +612,14 @@ function UserPermPanel({ selectedInstCode, users, allServices, accent }) {
   async function handleSave() {
     setSaving(true);
     try {
-      await postForm('/admin/user-access', { instCode: selectedInstCode, username: selUser, enabledServiceCodes: [...(perms[selUser] || new Set())] });
+      const enabled = [...(perms[selUser] || new Set())];
+      await postForm('/admin/user-access', { instCode: selectedInstCode, username: selUser, enabledServiceCodes: enabled });
+      if (enabled.includes('CANCER_TREATMENT')) {
+        await postForm('/admin/users/service-role', {
+          instCode: selectedInstCode, username: selUser,
+          serviceCode: 'CANCER_TREATMENT', roleCode: ctRole[selUser] || '',
+        });
+      }
       showToast('권한이 저장되었습니다.');
     } catch (err) { showToast(err.message || '저장 실패', true); }
     finally { setSaving(false); }
@@ -649,6 +660,29 @@ function UserPermPanel({ selectedInstCode, users, allServices, accent }) {
             <CheckItem key={svc.serviceCode} on={curPerms.has(svc.serviceCode)} label={svc.serviceName} sub={svc.serviceCode} accent={accent} onToggle={() => toggle(svc.serviceCode)} />
           ))}
           {allServices.length === 0 && <div className="ia-empty">서비스 없음</div>}
+
+          {curPerms.has('CANCER_TREATMENT') && (
+            <div style={{ marginTop: 4, paddingTop: 12, borderTop: '1px solid var(--ink-100, #e5e7eb)' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>암센터 치료스케줄 권한</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, fontSize: 13 }}>
+                {[
+                  { value: '', label: '기본 (역할 기반 자동)' },
+                  { value: 'MEMBER', label: '전체 사용' },
+                  { value: 'VIEWER', label: '조회만' },
+                ].map(opt => (
+                  <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                    <input type="radio" name="ct-role" value={opt.value}
+                      checked={(ctRole[selUser] || '') === opt.value}
+                      onChange={() => setCtRole(r => ({ ...r, [selUser]: opt.value }))} />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--ink-500)', margin: '8px 0 0' }}>
+                "기본"이면 기관관리자·기관사용자는 자동으로 전체 사용 권한을 받습니다. 변경은 다음 SSO 로그인부터 적용됩니다.
+              </p>
+            </div>
+          )}
         </div>
       )}
 

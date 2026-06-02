@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -302,5 +303,32 @@ class MediplatControllerTest {
 
         assertEquals("redirect:/seminar-room", view);
         verify(seminarRoomService).markNotificationsRead("FALH", "manager1");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void adminAsyncData_includesUserServiceRoleOverrides_forSelectedUser() {
+        MockHttpSession session = new MockHttpSession();
+        PlatformSessionUser admin = new PlatformSessionUser("FALH", "admin1", "Admin", "INSTITUTION_ADMIN");
+        session.setAttribute(SESSION_USER, admin);
+
+        PlatformUser targetUser = new PlatformUser(
+                42L, "FALH", "user1", null, "User One", "", null, null, "USER", "Y");
+        when(storeService.listAllServices()).thenReturn(List.of());
+        when(storeService.listEnabledServiceCodes("FALH")).thenReturn(List.of());
+        when(storeService.listEnabledIntegrationCodes("FALH")).thenReturn(List.of());
+        when(storeService.isRoomBoardCounselPairEnabled("FALH")).thenReturn(false);
+        when(storeService.listInstitutionUsers("FALH")).thenReturn(List.of(targetUser));
+        when(storeService.listEnabledServiceCodesForUser("FALH", "user1"))
+                .thenReturn(List.of("CANCER_TREATMENT"));
+        when(storeService.findUserIdByUsername("FALH", "user1")).thenReturn(42L);
+        when(storeService.listUserServiceRoleOverrides(42L))
+                .thenReturn(Map.of("CANCER_TREATMENT", "VIEWER"));
+
+        Map<String, Object> body = controller.adminAsyncData("FALH", "user1", session).getBody();
+
+        assertNotNull(body);
+        assertEquals(Map.of("CANCER_TREATMENT", "VIEWER"), body.get("userServiceRoleOverrides"));
+        verify(storeService).listUserServiceRoleOverrides(42L);
     }
 }
