@@ -1,6 +1,6 @@
 # 암센터 치료스케줄 관리 — TODO
 
-> 최종 업데이트: 2026-05-26
+> 최종 업데이트: 2026-06-02
 
 ## 완료 (Done)
 
@@ -53,6 +53,14 @@
 - [x] 날짜별 요약 카드 (전체/예약/완료/취소)
 - [x] 사이드바 배지 실시간 반영
 
+### 스케줄 DB 영속화 + 환자 FK 연동 — 2026-06-02
+- [x] **`TreatmentScheduleRepository`(JDBC) 신설** — `ct_treatment_schedule` 사용, 전 쿼리 `inst_code` 스코프 (테넌트 격리)
+- [x] **인메모리 시드 제거** — `CopyOnWriteArrayList` + 하드코딩 6건 제거 → 재시작 시 일정 소실 문제 해결
+- [x] **`patientId` FK** — 모달에서 환자 선택 시 id 캡처/저장, 자유입력 시 링크 해제. 환자명·병동은 `ct_patient` live join(항상 최신), 자유입력/삭제 환자는 `patient_name_snapshot` fallback
+- [x] **치료명/옵션 자유텍스트 스냅샷 컬럼** (`treatment_name_snapshot`/`treatment_option_snapshot`) — `treatment_type_id` FK 전환은 별도 작업
+- [x] **prod 스키마 보장** — `CancerTreatmentSchemaService`가 MySQL CREATE/ALTER 자동 (SQL_INIT_MODE=never 대응)
+- [x] **통합 테스트 7건** — 영속성·테넌트 격리·status 매핑·live-join·스냅샷 fallback·시간 정규화·삭제
+
 ### 운영 편의 — 2026-05-22
 - [x] 스케줄 등록 모달 — 환자명 자동완성 (서버 검색 + 키보드 ↑↓Enter Esc, 차트번호·병실 표시)
 - [x] 스케줄 등록 모달 — 치료종류 자동완성 (설정 API 연동, 자유 입력 허용)
@@ -70,11 +78,7 @@
 
 ## 🔍 검증 필요 (브라우저 확인 미완료)
 
-- [ ] **VIEWER/MEMBER 권한 흐름** (2026-05-26 dev 배포 후)
-  - admin에서 사용자를 VIEWER 강등 → 재로그인 → 등록·저장·삭제 버튼 안 보이는지
-  - 일정 클릭 시 alert("조회 권한입니다…") 표시
-  - 기본값(역할 기반 자동)인 기관 사용자는 정상 등록·수정 가능
-  - DB row 확인: `SELECT * FROM mp_user_service_role`
+- [x] ~~**VIEWER/MEMBER 권한 흐름** (2026-05-26)~~ — **2026-06-02 검증 통과**. mediplat admin React UI에 권한 라디오 누락이 실제 원인이었고, 추가 후 VIEWER 강등 → 등록 버튼 숨김 확인
 - [ ] **자동완성/인쇄/드래그&드롭** (2026-05-22 작업) — 환자/치료종류 자동완성 키보드 네비게이션, 인쇄 미리보기 레이아웃, 드래그 시간 변경 후 SSE로 다른 세션에 반영되는지
 
 ---

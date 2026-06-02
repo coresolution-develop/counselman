@@ -1,6 +1,6 @@
 # MediPlat 작업 현황
 
-> 최종 업데이트: 2026-05-29
+> 최종 업데이트: 2026-06-02
 
 ---
 
@@ -10,34 +10,7 @@
 
 ### 🔥 P0 — 운영 차단 / 명시적 요청
 
-#### [P0-1] 헤더 영역 축소 + 상단/하단 고정 (2026-05-14 운영 요청)
-- **목표**: 콘텐츠 영역 확보 — 헤더 높이 축소 + 헤더/푸터 sticky
-- **시작**: [chrome.js](src/main/resources/static/assets/js/chrome.js) MPChrome.mount 헤더 마크업, [layout.css](src/main/resources/static/assets/css/layout.css) `.header` height
-- **수정 방향**: 헤더 64px → 48px, `position: sticky; top: 0`, 페이지 본문 padding-top 조정
-- **작업량**: 2~3시간 (모든 design 페이지 회귀 확인 포함)
-
-#### [P0-2] cancer-treatment 권한 관리 dev 검증
-- **상태**: 코드 작업 완료 + 푸시 (2026-05-26), dev 배포·브라우저 검증 미완료
-- **시나리오**: (a) admin에서 사용자를 VIEWER로 강등 → 재로그인 → 등록 버튼 안 보이는지, (b) 기관 사용자가 기본값으로 MEMBER 동작하는지, (c) 일정 등록/수정/삭제 정상 동작
-- **시작**: `cd /Users/leesumin/csm && ./scripts/deploy-dev.sh` → 시나리오 1~3 실행 → `mp_user_service_role` row 확인
-- **연관 커밋**: `72c10f9` `64fa5d9` `50a35d4` `05794f4` `ed3bdb5` `a92809d`
-- **작업량**: 검증 1시간
-
-#### [P0-3] cancer-treatment 스케줄 — DB 영속화 + 환자/치료정보 연동 (2026-06-01 진단)
-- **현황**: 스케줄 모듈이 DB·환자·치료 도메인과 단절된 프론트 프로토타입 상태 (환자/치료비/설정 모듈은 정상 DB 연동)
-- **확인된 문제** (코드 근거):
-  - 🔴 **영속화 없음** — `TreatmentScheduleService`가 인메모리 `CopyOnWriteArrayList` + 하드코딩 시드 6건. `ct_treatment_schedule` 테이블은 스키마에만 존재, 코드에서 미사용(grep 0건), ScheduleRepository 부재 → **앱 재시작 시 스케줄 전부 초기화(소실)**
-  - 🔴 **테넌트 격리 위반** — 스케줄 저장/조회에 `inst_code` 필터 전무 → 모든 기관이 동일 인메모리 데이터 공유
-  - **환자 연동 없음** — 모달에서 환자 선택 시 이름·병동만 텍스트 복사([treatment-schedule.js:195-199](cancer-treatment/src/main/resources/static/js/treatment-schedule.js)). DTO/모델에 `patientId` 필드 자체 없음(`patientName` 문자열만)
-  - **치료정보 연동 없음** — `modal-info`는 자유 입력, 환자 처방 항목(prescriptionItemIds)·치료비 카탈로그와 무관. 치료명도 `treatment_type_id` FK 아닌 문자열
-  - 대시보드/통계도 동일 인메모리 시드 기반
-- **수정 방향** (결정됨: **FK만, 항상 최신**):
-  1. `ScheduleRepository`(JDBC) 신설 — `ct_treatment_schedule` 사용, `inst_code` 스코프 적용
-  2. `patientId` 필드 추가 — 모달에서 환자 선택 시 id 캡처, FK 저장. 이름·치료정보는 **스냅샷 저장하지 않고** 조회 시 환자 테이블에서 실시간 join (환자 정보 변경 시 과거 일정도 최신 반영)
-  3. 환자 선택 시 처방/치료정보를 모달에 표시(자동 채움은 선택)
-  4. 대시보드/통계를 DB 쿼리로 전환
-- **주의**: FK-only 방식이라 환자 삭제(soft delete) 시 과거 일정 표시 정책 필요(이름 보존 vs "삭제된 환자")
-- **작업량**: 중 (Repository + 모델/DTO + 모달 JS + 대시보드 전환, 회귀 테스트 포함)
+> ✅ **P0-1 / P0-2 / P0-3 모두 2026-06-02 완료** — 상세는 아래 "완료된 작업" 참조.
 
 ### ⚠️ P1 — 반복 버그 / 사용자 경험
 
@@ -104,6 +77,29 @@
 ---
 
 ## ✅ 완료된 작업
+
+### 2026-06-02 P0 일괄 처리 (헤더 / 권한 UI / 스케줄 영속화)
+
+#### [P0-1] 헤더 고정 — **완료(close)**
+- 헤더 `position: sticky; top: 0`은 [layout.css](src/main/resources/static/assets/css/layout.css)에 이미 적용돼 있어 "콘텐츠 영역 확보 + 고정" 목적 달성
+- 헤더 높이 64px → 48px 축소는 **현행 64px 유지로 결정** (운영자: "64px가 시원해서 보기 좋음"). 코드 변경 없음
+
+#### [P0-2] cancer-treatment VIEWER/MEMBER 권한 UI — **완료 + dev 검증 통과**
+- 근본 원인: 권한 라디오가 라우팅 안 되는 `admin.html`(Thymeleaf)에만 있었음. 실제 렌더되는 React 화면(`institution-admin-app.jsx`)엔 누락 (`ed3bdb5`가 잘못된 템플릿에 추가)
+- [x] React "사용자 권한" 패널에 암센터 권한 라디오(`기본/전체사용(MEMBER)/조회만(VIEWER)`) 추가 + `/admin/users/service-role` 연동
+- [x] `/admin/async-data` payload에 `userServiceRoleOverrides` 추가
+- [x] 회귀 테스트 1건 (`MediplatControllerTest.adminAsyncData_includesUserServiceRoleOverrides`)
+- [x] dev 브라우저 검증 통과 (VIEWER 강등 → 등록 버튼 숨김)
+
+#### [P0-3] cancer-treatment 스케줄 DB 영속화 + 환자 FK 연동 — **완료**
+- [x] `TreatmentScheduleRepository`(JDBC) 신설 — `ct_treatment_schedule` 사용, 전 쿼리 `inst_code` 스코프 (테넌트 격리)
+- [x] 인메모리 `CopyOnWriteArrayList` + 하드코딩 시드 제거 → **재시작 시 소실 문제 해결**
+- [x] `patientId` FK — 모달에서 환자 선택 시 id 캡처/저장, 자유입력 시 링크 해제
+- [x] 환자명·병동은 조회마다 `ct_patient` live join (항상 최신), 자유입력/삭제 환자는 `patient_name_snapshot` fallback
+- [x] 치료명/옵션은 자유텍스트 스냅샷 컬럼(`treatment_name_snapshot`/`treatment_option_snapshot`)에 저장 — `treatment_type_id` FK 전환은 별도 작업으로 미룸
+- [x] prod(`SQL_INIT_MODE=never`) 대응 — `CancerTreatmentSchemaService`가 테이블/컬럼 자동 보강 (수동 DBA 불필요)
+- [x] 통합 테스트 7건 (영속성·테넌트 격리·status 매핑·live-join 이름 갱신·스냅샷 fallback·시간 정규화·삭제)
+- 프론트 JSON 계약 유지 → 캘린더·대시보드 무수정 동작 (`patientId`만 추가)
 
 ### 2026-05-29 입원상담 SMS 최근 전송 내역 표시·레이아웃 개선
 
@@ -362,7 +358,7 @@
 
 - [x] ~~**MediPlat 기관 관리자 사용자 권한 저장 오류**~~ — **2026-05-14 해결**. 실제 원인은 CSM의 두 버그(`UserApiController.toLong`이 String roleId 거부, `RolesApiController.getAllUsers`의 `us_col_09 = 1` 필터). 핫픽스 두 개로 dev/prod 검증 통과
 - [ ] **채팅 기관별 격리 + 토큰 URL** (2026-05-22) — `./scripts/deploy-dev.sh` 후 (a) `?inst=falh` → `?t=...` redirect, (b) 다른 기관 토픽 SUBSCRIBE 차단, (c) 고객 사칭 차단(senderType=COUNSELOR 보내도 USER 표시), (d) 다른 기관 토큰으로 접속해도 기관명 동적 표시
-- [ ] **cancer-treatment VIEWER/MEMBER 권한** (2026-05-26) — dev 배포 후 (a) admin에서 사용자 VIEWER 강등 → 등록 버튼 안 보임 + 일정 클릭 시 alert, (b) MEMBER 사용자는 정상 등록·수정 가능, (c) `mp_user_service_role` row 확인
+- [x] ~~**cancer-treatment VIEWER/MEMBER 권한** (2026-05-26)~~ — **2026-06-02 검증 통과**. admin React UI에 권한 라디오 누락이 실제 원인이었고, 추가 후 VIEWER 강등 → 등록 버튼 숨김 확인
 - [ ] **CSM 허용 버튼** (`/csm/access`) — toggle POST가 `mp_user_service` 행을 실제로 생성/수정하는지 확인 필요 (현재 FALH 데이터 없어 모두 비활성 상태로 표시됨)
 - [ ] **서류관리 TipTap 에디터** — 표 삽입·필드 칩 삽입 → 저장 → 입원서약서(`admissionPledge.html`) 렌더링 흐름 브라우저 E2E 검증
 - [ ] **채팅 페이지 폰트 CORS** — `common.css`의 `fonts.gstatic.com/ea/notosanskr/v2/` URL이 deprecated되어 CORS 에러 발생. `https://fonts.googleapis.com/css2?family=Noto+Sans+KR` CDN 또는 로컬 폰트로 교체 필요
