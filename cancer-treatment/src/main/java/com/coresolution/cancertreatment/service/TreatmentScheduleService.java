@@ -19,42 +19,31 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.coresolution.cancertreatment.model.TreatmentSchedule;
 import com.coresolution.cancertreatment.model.TreatmentScheduleRequest;
+import com.coresolution.cancertreatment.repository.TreatmentScheduleRepository;
 
 @Service
 public class TreatmentScheduleService {
 
     private static final long SSE_TIMEOUT_MILLIS = 30 * 60 * 1000L;
+    private static final List<String> ALLOWED_STATUSES = List.of("예약", "치료완료", "예약취소");
 
-    private final List<TreatmentSchedule> schedules = new CopyOnWriteArrayList<>();
+    private final TreatmentScheduleRepository scheduleRepository;
     private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
-    private final java.util.concurrent.atomic.AtomicLong nextId = new java.util.concurrent.atomic.AtomicLong(7);
 
-    public TreatmentScheduleService() {
-        seedSchedules();
+    public TreatmentScheduleService(TreatmentScheduleRepository scheduleRepository) {
+        this.scheduleRepository = scheduleRepository;
     }
 
-    public List<TreatmentSchedule> listSchedules(String date, String keyword, String treatmentName, String status) {
-        String normalizedDate = normalize(date);
-        String normalizedKeyword = normalize(keyword).toLowerCase(Locale.ROOT);
-        String normalizedTreatment = normalize(treatmentName);
-        String normalizedStatus = normalize(status);
-
-        return schedules.stream()
-                .filter(schedule -> !StringUtils.hasText(normalizedDate)
-                        || normalizedDate.equals(schedule.getTreatmentDate()))
-                .filter(schedule -> !StringUtils.hasText(normalizedKeyword)
-                        || schedule.getPatientName().toLowerCase(Locale.ROOT).contains(normalizedKeyword)
-                        || schedule.getWard().toLowerCase(Locale.ROOT).contains(normalizedKeyword))
-                .filter(schedule -> !StringUtils.hasText(normalizedTreatment)
-                        || normalizedTreatment.equals(schedule.getTreatmentName()))
-                .filter(schedule -> !StringUtils.hasText(normalizedStatus)
-                        || normalizedStatus.equals(schedule.getStatus()))
-                .toList();
+    public List<TreatmentSchedule> listSchedules(
+            String instCode, String date, String keyword, String treatmentName, String status) {
+        return scheduleRepository.findSchedules(
+                requireInst(instCode), normalize(date), normalize(keyword),
+                normalize(treatmentName), normalize(status));
     }
 
-    public Map<String, Long> getSummary(String date) {
+    public Map<String, Long> getSummary(String instCode, String date) {
         String targetDate = StringUtils.hasText(date) ? date.trim() : LocalDate.now().toString();
-        List<TreatmentSchedule> targetSchedules = listSchedules(targetDate, null, null, null);
+        List<TreatmentSchedule> targetSchedules = listSchedules(instCode, targetDate, null, null, null);
         long reserved = targetSchedules.stream().filter(schedule -> "예약".equals(schedule.getStatus())).count();
         long completed = targetSchedules.stream().filter(schedule -> "치료완료".equals(schedule.getStatus())).count();
         long canceled = targetSchedules.stream().filter(schedule -> "예약취소".equals(schedule.getStatus())).count();
@@ -65,11 +54,11 @@ public class TreatmentScheduleService {
                 "canceled", canceled);
     }
 
-    public Map<String, Object> getDashboard(String date) {
+    public Map<String, Object> getDashboard(String instCode, String date) {
         String targetDate = StringUtils.hasText(date) ? date.trim() : LocalDate.now().toString();
-        List<TreatmentSchedule> targetSchedules = listSchedules(targetDate, null, null, null);
+        List<TreatmentSchedule> targetSchedules = listSchedules(instCode, targetDate, null, null, null);
         return Map.of(
-                "summary", getSummary(targetDate),
+                "summary", getSummary(instCode, targetDate),
                 "byTreatment", countBy(targetSchedules, TreatmentSchedule::getTreatmentName),
                 "byWard", countBy(targetSchedules, TreatmentSchedule::getWard),
                 "recent", targetSchedules.stream()
@@ -78,65 +67,43 @@ public class TreatmentScheduleService {
                         .toList());
     }
 
-    public TreatmentSchedule updateStatus(Long id, String status) {
+    public TreatmentSchedule updateStatus(String instCode, Long id, String status) {
         String normalizedStatus = normalize(status);
-        if (!List.of("예약", "치료완료", "예약취소").contains(normalizedStatus)) {
+        if (!ALLOWED_STATUSES.contains(normalizedStatus)) {
             throw new IllegalArgumentException("지원하지 않는 치료상태입니다.");
         }
-        TreatmentSchedule schedule = findSchedule(id);
-        schedule.setStatus(normalizedStatus);
+        TreatmentSchedule schedule = scheduleRepository.updateStatus(requireInst(instCode), id, normalizedStatus);
         sendScheduleChanged("UPDATED", schedule);
         return schedule;
     }
 
-    public TreatmentSchedule updateStartTime(Long id, String startTime) {
-        String normalized = normalize(startTime);
-        if (!StringUtils.hasText(normalized)) {
-            throw new IllegalArgumentException("시작시간을 입력해주세요.");
-        }
-        if (normalized.length() == 4 && normalized.charAt(1) == ':') {
-            normalized = "0" + normalized;
-        }
-        try {
-            LocalTime parsed = LocalTime.parse(normalized);
-            normalized = String.format("%02d:%02d", parsed.getHour(), parsed.getMinute());
-        } catch (DateTimeParseException e) {
-            throw new IllegalArgumentException("시작시간은 HH:mm 형식이어야 합니다.");
-        }
-        TreatmentSchedule schedule = findSchedule(id);
-        schedule.setStartTime(normalized);
+    public TreatmentSchedule updateStartTime(String instCode, Long id, String startTime) {
+        String normalized = normalizeStartTime(startTime);
+        TreatmentSchedule schedule = scheduleRepository.updateStartTime(requireInst(instCode), id, normalized);
         sendScheduleChanged("UPDATED", schedule);
         return schedule;
     }
 
-    public TreatmentSchedule updateTextField(Long id, String field, String value) {
-        TreatmentSchedule schedule = findSchedule(id);
+    public TreatmentSchedule updateTextField(String instCode, Long id, String field, String value) {
         String normalizedValue = normalize(value);
         if (normalizedValue.length() > 1000) {
             throw new IllegalArgumentException("입력값은 1000자 이하로 입력해주세요.");
         }
-        if ("treatmentInfo".equals(field)) {
-            schedule.setTreatmentInfo(normalizedValue);
-        } else if ("note".equals(field)) {
-            schedule.setNote(normalizedValue);
-        } else {
-            throw new IllegalArgumentException("수정할 수 없는 항목입니다.");
-        }
+        String column = switch (field == null ? "" : field) {
+            case "treatmentInfo" -> "treatment_info";
+            case "note" -> "note";
+            default -> throw new IllegalArgumentException("수정할 수 없는 항목입니다.");
+        };
+        TreatmentSchedule schedule = scheduleRepository.updateTextField(requireInst(instCode), id, column, normalizedValue);
         sendScheduleChanged("UPDATED", schedule);
         return schedule;
     }
 
     public TreatmentSchedule createSchedule(String instCode, TreatmentScheduleRequest req) {
-        if (!StringUtils.hasText(req.getTreatmentDate()) || !StringUtils.hasText(req.getStartTime())
-                || !StringUtils.hasText(req.getPatientName()) || !StringUtils.hasText(req.getTreatmentName())) {
-            throw new IllegalArgumentException("필수 항목을 입력해주세요.");
-        }
-        if (StringUtils.hasText(req.getStatus())
-                && !List.of("예약", "치료완료", "예약취소").contains(req.getStatus().trim())) {
-            throw new IllegalArgumentException("지원하지 않는 치료상태입니다.");
-        }
-        TreatmentSchedule schedule = new TreatmentSchedule(
-                nextId.getAndIncrement(),
+        validateRequest(req);
+        TreatmentSchedule schedule = scheduleRepository.create(
+                requireInst(instCode),
+                req.getPatientId(),
                 req.getTreatmentDate().trim(),
                 req.getStartTime().trim(),
                 req.getPatientName().trim(),
@@ -146,24 +113,16 @@ public class TreatmentScheduleService {
                 StringUtils.hasText(req.getStatus()) ? req.getStatus().trim() : "예약",
                 normalize(req.getTreatmentInfo()),
                 normalize(req.getNote()));
-        schedules.add(schedule);
         sendScheduleChanged("CREATED", schedule);
         return schedule;
     }
 
-    public TreatmentSchedule updateSchedule(Long id, TreatmentScheduleRequest req) {
-        if (!StringUtils.hasText(req.getTreatmentDate()) || !StringUtils.hasText(req.getStartTime())
-                || !StringUtils.hasText(req.getPatientName()) || !StringUtils.hasText(req.getTreatmentName())) {
-            throw new IllegalArgumentException("필수 항목을 입력해주세요.");
-        }
-        if (StringUtils.hasText(req.getStatus())
-                && !List.of("예약", "치료완료", "예약취소").contains(req.getStatus().trim())) {
-            throw new IllegalArgumentException("지원하지 않는 치료상태입니다.");
-        }
-        findSchedule(id);
-        schedules.removeIf(s -> s.getId().equals(id));
-        TreatmentSchedule updated = new TreatmentSchedule(
+    public TreatmentSchedule updateSchedule(String instCode, Long id, TreatmentScheduleRequest req) {
+        validateRequest(req);
+        TreatmentSchedule schedule = scheduleRepository.update(
+                requireInst(instCode),
                 id,
+                req.getPatientId(),
                 req.getTreatmentDate().trim(),
                 req.getStartTime().trim(),
                 req.getPatientName().trim(),
@@ -173,14 +132,15 @@ public class TreatmentScheduleService {
                 StringUtils.hasText(req.getStatus()) ? req.getStatus().trim() : "예약",
                 normalize(req.getTreatmentInfo()),
                 normalize(req.getNote()));
-        schedules.add(updated);
-        sendScheduleChanged("UPDATED", updated);
-        return updated;
+        sendScheduleChanged("UPDATED", schedule);
+        return schedule;
     }
 
-    public void deleteSchedule(Long id) {
-        TreatmentSchedule captured = findSchedule(id);
-        schedules.removeIf(s -> s.getId().equals(id));
+    public void deleteSchedule(String instCode, Long id) {
+        String inst = requireInst(instCode);
+        TreatmentSchedule captured = scheduleRepository.findById(inst, id)
+                .orElseThrow(() -> new IllegalArgumentException("치료 스케줄을 찾을 수 없습니다."));
+        scheduleRepository.delete(inst, id);
         sendScheduleChanged("DELETED", captured);
     }
 
@@ -194,6 +154,48 @@ public class TreatmentScheduleService {
         return emitter;
     }
 
+    private void validateRequest(TreatmentScheduleRequest req) {
+        if (req == null || !StringUtils.hasText(req.getTreatmentDate()) || !StringUtils.hasText(req.getStartTime())
+                || !StringUtils.hasText(req.getPatientName()) || !StringUtils.hasText(req.getTreatmentName())) {
+            throw new IllegalArgumentException("필수 항목을 입력해주세요.");
+        }
+        if (StringUtils.hasText(req.getStatus()) && !ALLOWED_STATUSES.contains(req.getStatus().trim())) {
+            throw new IllegalArgumentException("지원하지 않는 치료상태입니다.");
+        }
+        if (req.getPatientName().trim().length() > 100) {
+            throw new IllegalArgumentException("환자명은 100자 이하로 입력해주세요.");
+        }
+        if (req.getTreatmentName().trim().length() > 100) {
+            throw new IllegalArgumentException("치료종류는 100자 이하로 입력해주세요.");
+        }
+        validateDate(req.getTreatmentDate().trim());
+        normalizeStartTime(req.getStartTime());
+    }
+
+    private void validateDate(String date) {
+        try {
+            LocalDate.parse(date);
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException("치료일 형식이 올바르지 않습니다.");
+        }
+    }
+
+    private String normalizeStartTime(String startTime) {
+        String normalized = normalize(startTime);
+        if (!StringUtils.hasText(normalized)) {
+            throw new IllegalArgumentException("시작시간을 입력해주세요.");
+        }
+        if (normalized.length() == 4 && normalized.charAt(1) == ':') {
+            normalized = "0" + normalized;
+        }
+        try {
+            LocalTime parsed = LocalTime.parse(normalized);
+            return String.format("%02d:%02d", parsed.getHour(), parsed.getMinute());
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException("시작시간은 HH:mm 형식이어야 합니다.");
+        }
+    }
+
     private void sendScheduleChanged(String type, TreatmentSchedule schedule) {
         Map<String, Object> payload = Map.of(
                 "type", type,
@@ -203,13 +205,6 @@ public class TreatmentScheduleService {
         for (SseEmitter emitter : new ArrayList<>(emitters)) {
             sendEvent(emitter, "schedule-changed", payload);
         }
-    }
-
-    private TreatmentSchedule findSchedule(Long id) {
-        return schedules.stream()
-                .filter(item -> item.getId().equals(id))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("치료 스케줄을 찾을 수 없습니다."));
     }
 
     private void sendEvent(SseEmitter emitter, String eventName, Object payload) {
@@ -223,14 +218,11 @@ public class TreatmentScheduleService {
         }
     }
 
-    private void seedSchedules() {
-        String today = LocalDate.now().toString();
-        schedules.add(new TreatmentSchedule(1L, today, "08:30", "김진수(외)", "외래", "파동", "J", "예약", "싸이2+압2+메90+pj월2", "고주파 호흡 부담으로 중단"));
-        schedules.add(new TreatmentSchedule(2L, today, "09:20", "이해섭(1)", "1병동", "고주파(온코)", "K", "치료완료", "고주파 주2+싸이 주1", "항암 전후 서비스"));
-        schedules.add(new TreatmentSchedule(3L, today, "10:10", "신금희(1)", "1병동", "림프1", "C", "예약", "pj주3(도수2,림1)", "항암 후 영양제 서비스"));
-        schedules.add(new TreatmentSchedule(4L, today, "11:00", "이영애(1)", "1병동", "도수", "", "예약취소", "메시마90포+PJ주2", "재입원"));
-        schedules.add(new TreatmentSchedule(5L, today, "13:30", "박정심(1)", "1병동", "페인잼머", "S", "예약", "고2+싸이 월2+압2", "실비 확인 필요"));
-        schedules.add(new TreatmentSchedule(6L, today, "14:20", "서경례(1)", "1병동", "파동", "J", "치료완료", "싸이 주2+압F 주3", "자궁내막암 수술 후"));
+    private String requireInst(String instCode) {
+        if (!StringUtils.hasText(instCode)) {
+            throw new IllegalArgumentException("병원 코드가 없습니다.");
+        }
+        return instCode.trim();
     }
 
     private String normalize(String value) {

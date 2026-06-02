@@ -3,6 +3,7 @@ package com.coresolution.cancertreatment.model;
 public class TreatmentSchedule {
 
     private final Long id;
+    private final Long patientId;
     private final String treatmentDate;
     private String startTime;
     private final String patientName;
@@ -15,6 +16,7 @@ public class TreatmentSchedule {
 
     public TreatmentSchedule(
             Long id,
+            Long patientId,
             String treatmentDate,
             String startTime,
             String patientName,
@@ -25,6 +27,7 @@ public class TreatmentSchedule {
             String treatmentInfo,
             String note) {
         this.id = id;
+        this.patientId = patientId;
         this.treatmentDate = treatmentDate;
         this.startTime = startTime;
         this.patientName = patientName;
@@ -38,6 +41,10 @@ public class TreatmentSchedule {
 
     public Long getId() {
         return id;
+    }
+
+    public Long getPatientId() {
+        return patientId;
     }
 
     public String getTreatmentDate() {

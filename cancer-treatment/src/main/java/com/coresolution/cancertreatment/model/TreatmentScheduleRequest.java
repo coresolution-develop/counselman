@@ -2,6 +2,7 @@ package com.coresolution.cancertreatment.model;
 
 public class TreatmentScheduleRequest {
 
+    private Long patientId;
     private String treatmentDate;
     private String startTime;
     private String patientName;
@@ -11,6 +12,14 @@ public class TreatmentScheduleRequest {
     private String status;
     private String treatmentInfo;
     private String note;
+
+    public Long getPatientId() {
+        return patientId;
+    }
+
+    public void setPatientId(Long patientId) {
+        this.patientId = patientId;
+    }
 
     public String getTreatmentDate() {
         return treatmentDate;

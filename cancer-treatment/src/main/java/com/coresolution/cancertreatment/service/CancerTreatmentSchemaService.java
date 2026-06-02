@@ -25,6 +25,53 @@ public class CancerTreatmentSchemaService {
             relaxTreatmentRoomTreatmentItem();
             ensurePatientPrescriptionColumns();
             ensureTreatmentPackageAbbreviation();
+            ensureTreatmentScheduleTable();
+            ensureTreatmentScheduleSnapshotColumns();
+        }
+    }
+
+    /**
+     * Guarantees the schedule table on MySQL where schema.sql is not auto-applied
+     * (prod runs with spring.sql.init.mode=never). Idempotent via IF NOT EXISTS.
+     */
+    private void ensureTreatmentScheduleTable() {
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS ct_treatment_schedule (
+                    id BIGINT NOT NULL AUTO_INCREMENT,
+                    inst_code VARCHAR(50) NOT NULL,
+                    patient_id BIGINT,
+                    treatment_date DATE NOT NULL,
+                    start_time TIME NOT NULL,
+                    treatment_type_id BIGINT,
+                    treatment_option_id BIGINT,
+                    status_code VARCHAR(30) NOT NULL DEFAULT 'RESERVED',
+                    ward VARCHAR(50),
+                    patient_name_snapshot VARCHAR(100) NOT NULL,
+                    treatment_name_snapshot VARCHAR(100) NOT NULL,
+                    treatment_option_snapshot VARCHAR(100),
+                    treatment_info TEXT,
+                    note TEXT,
+                    created_by VARCHAR(100),
+                    updated_by VARCHAR(100),
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    INDEX idx_ct_schedule_daily (inst_code, treatment_date, start_time),
+                    INDEX idx_ct_schedule_status (inst_code, status_code, treatment_date),
+                    INDEX idx_ct_schedule_patient (patient_id, treatment_date)
+                )
+                """);
+    }
+
+    /** Adds the free-text snapshot columns to a pre-existing schedule table. */
+    private void ensureTreatmentScheduleSnapshotColumns() {
+        if (!columnExists("ct_treatment_schedule", "treatment_name_snapshot")) {
+            jdbcTemplate.execute(
+                    "ALTER TABLE ct_treatment_schedule ADD COLUMN treatment_name_snapshot VARCHAR(100) NOT NULL DEFAULT ''");
+        }
+        if (!columnExists("ct_treatment_schedule", "treatment_option_snapshot")) {
+            jdbcTemplate.execute(
+                    "ALTER TABLE ct_treatment_schedule ADD COLUMN treatment_option_snapshot VARCHAR(100) NULL");
         }
     }
 

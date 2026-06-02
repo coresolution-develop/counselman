@@ -883,6 +883,7 @@ textarea.modal-input { resize: vertical; min-height: 56px; }
         <div class="modal-field">
           <span class="modal-label">환자명 <span class="req">*</span></span>
           <div class="combobox-wrap">
+            <input type="hidden" id="modal-patient-id">
             <input type="text" id="modal-patient" class="modal-input combobox-input"
                    autocomplete="off" maxlength="100" placeholder="환자명 검색">
             <div id="modal-patient-dropdown" class="combobox-dropdown" role="listbox" style="display:none"></div>

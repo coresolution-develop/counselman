@@ -191,10 +191,10 @@ public class TreatmentScheduleController {
             @RequestParam(name = "treatmentName", required = false) String treatmentName,
             @RequestParam(name = "status", required = false) String status,
             HttpSession session) {
-        requireUser(session);
+        SessionUser user = requireUser(session);
         return ResponseEntity.ok(Map.of(
-                "summary", scheduleService.getSummary(date),
-                "items", scheduleService.listSchedules(date, keyword, treatmentName, status)));
+                "summary", scheduleService.getSummary(user.getInstCode(), date),
+                "items", scheduleService.listSchedules(user.getInstCode(), date, keyword, treatmentName, status)));
     }
 
     @GetMapping("/api/dashboard")
@@ -202,8 +202,8 @@ public class TreatmentScheduleController {
     public ResponseEntity<?> dashboardData(
             @RequestParam(name = "date", required = false) String date,
             HttpSession session) {
-        requireUser(session);
-        return ResponseEntity.ok(scheduleService.getDashboard(date));
+        SessionUser user = requireUser(session);
+        return ResponseEntity.ok(scheduleService.getDashboard(user.getInstCode(), date));
     }
 
     @GetMapping("/api/patients")
@@ -448,9 +448,9 @@ public class TreatmentScheduleController {
             @PathVariable("id") Long id,
             @RequestBody TreatmentScheduleRequest request,
             HttpSession session) {
-        requireMember(session);
+        SessionUser user = requireMember(session);
         try {
-            return ResponseEntity.ok(scheduleService.updateSchedule(id, request));
+            return ResponseEntity.ok(scheduleService.updateSchedule(user.getInstCode(), id, request));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -461,9 +461,9 @@ public class TreatmentScheduleController {
     public ResponseEntity<?> deleteSchedule(
             @PathVariable("id") Long id,
             HttpSession session) {
-        requireMember(session);
+        SessionUser user = requireMember(session);
         try {
-            scheduleService.deleteSchedule(id);
+            scheduleService.deleteSchedule(user.getInstCode(), id);
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -476,9 +476,9 @@ public class TreatmentScheduleController {
             @PathVariable("id") Long id,
             @RequestBody Map<String, String> body,
             HttpSession session) {
-        requireMember(session);
+        SessionUser user = requireMember(session);
         try {
-            return ResponseEntity.ok(scheduleService.updateStatus(id, body.get("status")));
+            return ResponseEntity.ok(scheduleService.updateStatus(user.getInstCode(), id, body.get("status")));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -490,9 +490,9 @@ public class TreatmentScheduleController {
             @PathVariable("id") Long id,
             @RequestBody Map<String, String> body,
             HttpSession session) {
-        requireMember(session);
+        SessionUser user = requireMember(session);
         try {
-            return ResponseEntity.ok(scheduleService.updateStartTime(id, body.get("startTime")));
+            return ResponseEntity.ok(scheduleService.updateStartTime(user.getInstCode(), id, body.get("startTime")));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -504,9 +504,9 @@ public class TreatmentScheduleController {
             @PathVariable("id") Long id,
             @RequestBody Map<String, String> body,
             HttpSession session) {
-        requireMember(session);
+        SessionUser user = requireMember(session);
         try {
-            return ResponseEntity.ok(scheduleService.updateTextField(id, body.get("field"), body.get("value")));
+            return ResponseEntity.ok(scheduleService.updateTextField(user.getInstCode(), id, body.get("field"), body.get("value")));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -547,6 +547,6 @@ public class TreatmentScheduleController {
     private void populateShell(Model model, SessionUser user) {
         model.addAttribute("user", user);
         model.addAttribute("mediplatPortalUrl", mediplatPortalUrl);
-        model.addAttribute("summary", scheduleService.getSummary(null));
+        model.addAttribute("summary", scheduleService.getSummary(user.getInstCode(), null));
     }
 }

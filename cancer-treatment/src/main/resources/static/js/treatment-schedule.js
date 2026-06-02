@@ -172,7 +172,13 @@ var API = (window.__ctx || '/');
         var input    = document.getElementById('modal-patient');
         var dropdown = document.getElementById('modal-patient-dropdown');
         var empty    = document.getElementById('modal-patient-empty');
+        var idField  = document.getElementById('modal-patient-id');
         if (!input || !dropdown) return;
+
+        // Typing manually breaks the link to a selected patient (free-text entry).
+        input.addEventListener('input', function () {
+            if (idField) idField.value = '';
+        });
 
         attachCombobox({
             input: input,
@@ -194,6 +200,7 @@ var API = (window.__ctx || '/');
             },
             onSelect: function (p) {
                 input.value = p.name || '';
+                if (idField) idField.value = (p.id != null ? p.id : '');
                 var wardSelect = document.getElementById('modal-ward');
                 if (wardSelect && p.ward) setSelectValue(wardSelect, p.ward);
             }
@@ -381,6 +388,7 @@ var API = (window.__ctx || '/');
 
         return '<div class="' + blockCls + '" draggable="true"' +
             ' data-id="' + escapeHtml(String(item.id || '')) + '"' +
+            ' data-patient-id="' + escapeHtml(String(item.patientId == null ? '' : item.patientId)) + '"' +
             ' data-date="' + escapeHtml(item.treatmentDate || '') + '"' +
             ' data-time="' + escapeHtml(item.startTime || '') + '"' +
             ' data-patient="' + escapeHtml(item.patientName || '') + '"' +
@@ -735,6 +743,7 @@ function openScheduleModal() {
     if (window.__sm_helpers) window.__sm_helpers.populate();
     document.getElementById('modal-title').textContent = '스케줄 등록';
     document.getElementById('modal-schedule-id').value = '';
+    document.getElementById('modal-patient-id').value = '';
     document.getElementById('modal-date').value = document.getElementById('filter-date').value || new Date().toISOString().slice(0, 10);
     document.getElementById('modal-time').value = '';
     document.getElementById('modal-patient').value = '';
@@ -765,6 +774,7 @@ function selectSession(el) {
     if (window.__sm_helpers) window.__sm_helpers.populate();
     document.getElementById('modal-title').textContent = '스케줄 수정';
     document.getElementById('modal-schedule-id').value = id;
+    document.getElementById('modal-patient-id').value = el.dataset.patientId || '';
     document.getElementById('modal-date').value = date;
     document.getElementById('modal-time').value = time;
     document.getElementById('modal-patient').value = patient;
@@ -788,7 +798,9 @@ function closeScheduleModal() {
 
 function saveScheduleModal() {
     var id = document.getElementById('modal-schedule-id').value;
+    var patientIdRaw = document.getElementById('modal-patient-id').value;
     var body = {
+        patientId:       patientIdRaw ? Number(patientIdRaw) : null,
         treatmentDate:   document.getElementById('modal-date').value,
         startTime:       document.getElementById('modal-time').value,
         patientName:     document.getElementById('modal-patient').value.trim(),

@@ -183,7 +183,12 @@ CREATE TABLE IF NOT EXISTS ct_treatment_schedule (
     treatment_option_id BIGINT,
     status_code VARCHAR(30) NOT NULL DEFAULT 'RESERVED',
     ward VARCHAR(50),
+    -- Denormalized snapshots (justified): patient_name preserves a label when the
+    -- linked patient is removed; treatment_name/option hold free-typed values that
+    -- have no row in the treatment catalog. Live patient data is joined when linked.
     patient_name_snapshot VARCHAR(100) NOT NULL,
+    treatment_name_snapshot VARCHAR(100) NOT NULL,
+    treatment_option_snapshot VARCHAR(100),
     treatment_info TEXT,
     note TEXT,
     created_by VARCHAR(100),
