@@ -6814,16 +6814,10 @@ public class PageController {
                 subLabels.put(fieldKey, c2.getCc_col_02()); // 서브카테고리 라벨(예: "말기암(암명)")
 
                 var opts = c2w.getOptions();
-                Set<String> labels = (opts == null) ? java.util.Collections.emptySet()
-                        : opts.stream()
-                                .map(opt -> {
-                                    if (opt == null)
-                                        return null;
-                                    String label = opt.getCc_col_03AsString();
-                                    return (label == null || label.isBlank()) ? opt.getCc_col_02() : label;
-                                })
-                                .filter(s -> s != null && !s.isBlank())
-                                .collect(java.util.stream.Collectors.toSet());
+                // split each option's cc_col_03 (never the joined CSV) so saved-value
+                // text extraction matches individual option tokens, not "a,b,c"
+                Set<String> labels = new java.util.LinkedHashSet<>(
+                        buildSelectOptions(opts, c2.getCc_col_02()));
                 optionLabels.put(fieldKey, labels);
             }
         }
@@ -9180,6 +9174,54 @@ public class PageController {
         return Collections.emptyList();
     }
 
+    /**
+     * Split a possibly comma-joined option label ("a,b,c") into individual,
+     * trimmed, non-blank labels. Package-private for regression tests.
+     */
+    static List<String> splitOptionLabels(String raw) {
+        List<String> out = new ArrayList<>();
+        if (raw == null || raw.isBlank()) {
+            return out;
+        }
+        for (String piece : raw.split(",")) {
+            String p = piece.trim();
+            if (!p.isEmpty()) {
+                out.add(p);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Build the flat option list for a dynamic select/checkbox/radio field.
+     * Iterates each Category3's already-split cc_col_03 list (never the joined
+     * CSV from getCc_col_03AsString) and defensively re-splits, so "a,b,c"
+     * renders as separate options instead of one collapsed row. Falls back to
+     * cc_col_02 when an option has no cc_col_03 value; excludes the field's own
+     * label. Package-private for regression tests.
+     */
+    static List<String> buildSelectOptions(List<Category3> opts, String fieldLabel) {
+        String label = safeString(fieldLabel).trim();
+        List<String> out = new ArrayList<>();
+        for (Category3 opt : Optional.ofNullable(opts).orElse(Collections.emptyList())) {
+            if (opt == null) {
+                continue;
+            }
+            List<String> raw = Optional.ofNullable(opt.getCc_col_03()).orElse(Collections.emptyList());
+            if (raw.isEmpty()) {
+                raw = splitOptionLabels(safeString(opt.getCc_col_02()));
+            }
+            for (String entry : raw) {
+                for (String piece : splitOptionLabels(entry)) {
+                    if (!piece.equals(label)) {
+                        out.add(piece);
+                    }
+                }
+            }
+        }
+        return out;
+    }
+
     private String toDynamicCategoryJson(
             List<Category1WithSubcategoriesAndOptions> categoryData,
             Map<String, String> fieldTypeMapping) {
@@ -9206,16 +9248,7 @@ public class PageController {
                 value.put("fieldKey", fieldKey);
                 value.put("kind", fieldTypeMapping == null ? "" : safeString(fieldTypeMapping.get(fieldKey)));
 
-                List<String> options = Optional.ofNullable(c2Wrap.getOptions()).orElse(Collections.emptyList()).stream()
-                        .filter(Objects::nonNull)
-                        .map(opt -> {
-                            String label = safeString(opt.getCc_col_03AsString()).trim();
-                            return label.isEmpty() ? safeString(opt.getCc_col_02()).trim() : label;
-                        })
-                        .filter(label -> !label.isBlank())
-                        .filter(label -> !label.equals(safeString(c2.getCc_col_02()).trim()))
-                        .collect(Collectors.toList());
-                value.put("options", options);
+                value.put("options", buildSelectOptions(c2Wrap.getOptions(), c2.getCc_col_02()));
                 values.add(value);
             }
             item.put("values", values);
@@ -9260,8 +9293,8 @@ public class PageController {
                     List<Map<String, Object>> srcOptions = (List<Map<String, Object>>) srcVal.get("options");
                     for (Map<String, Object> opt : Optional.ofNullable(srcOptions).orElse(Collections.emptyList())) {
                         if (opt == null) continue;
-                        String optName = safeString((String) opt.get("name")).trim();
-                        if (!optName.isBlank()) options.add(optName);
+                        // a single option name may itself be a comma-joined CSV ("a,b,c") — split it
+                        options.addAll(splitOptionLabels(safeString((String) opt.get("name"))));
                     }
                     value.put("options", options);
                     values.add(value);
