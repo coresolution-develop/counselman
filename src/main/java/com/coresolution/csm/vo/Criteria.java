@@ -55,7 +55,7 @@ public class Criteria {
         this.perPageNum = 10;
         this.keyword = "";
         this.keywordBytes = null; // ✅ 기본값 설정
-        this.dateRange = "10";
+        this.dateRange = "all";
         this.type = "";
         this.counselor = "";
         this.startDate = "";
