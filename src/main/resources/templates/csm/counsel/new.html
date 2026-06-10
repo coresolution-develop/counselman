@@ -334,13 +334,14 @@
         <select th:if="${opts != null and !#lists.isEmpty(opts)}"
                 th:name="|${fieldKey}_select|">
           <option value="">선택하세요</option>
-          <th:block th:each="opt : ${opts}"
-                    th:with="label=${#strings.isEmpty(opt.cc_col_03AsString) ? opt.cc_col_02 : opt.cc_col_03AsString}">
-            <option th:if="${!#strings.isEmpty(label) and #strings.trim(label) != #strings.trim(c2.cc_col_02)}"
-                    th:value="${label}"
-                    th:text="${label}"
-                    th:selected="${valueMap[fieldKey + '_select'] == label}">
-            </option>
+          <th:block th:each="opt : ${opts}">
+            <th:block th:each="label : ${opt.cc_col_03}">
+              <option th:if="${!#strings.isEmpty(label) and #strings.trim(label) != #strings.trim(c2.cc_col_02)}"
+                      th:value="${label}"
+                      th:text="${label}"
+                      th:selected="${valueMap[fieldKey + '_select'] == label}">
+              </option>
+            </th:block>
           </th:block>
         </select>
       </div>
@@ -366,13 +367,14 @@
         <span></span>
         <select th:name="|${fieldKey}_select|">
           <option value="">선택하세요</option>
-          <th:block th:each="opt : ${opts}"
-                    th:with="label=${#strings.isEmpty(opt.cc_col_03AsString) ? opt.cc_col_02 : opt.cc_col_03AsString}">
-            <option th:if="${!#strings.isEmpty(label) and #strings.trim(label) != #strings.trim(c2.cc_col_02)}"
-                    th:value="${label}"
-                    th:text="${label}"
-                    th:selected="${valueMap[fieldKey + '_select'] == label}">
-            </option>
+          <th:block th:each="opt : ${opts}">
+            <th:block th:each="label : ${opt.cc_col_03}">
+              <option th:if="${!#strings.isEmpty(label) and #strings.trim(label) != #strings.trim(c2.cc_col_02)}"
+                      th:value="${label}"
+                      th:text="${label}"
+                      th:selected="${valueMap[fieldKey + '_select'] == label}">
+              </option>
+            </th:block>
           </th:block>
         </select>
       </div>
@@ -392,13 +394,14 @@
         <span></span>
         <select th:name="|${fieldKey}_select|">
           <option value="">선택하세요</option>
-          <th:block th:each="opt : ${opts}"
-                    th:with="label=${#strings.isEmpty(opt.cc_col_03AsString) ? opt.cc_col_02 : opt.cc_col_03AsString}">
-            <option th:if="${!#strings.isEmpty(label) and #strings.trim(label) != #strings.trim(c2.cc_col_02)}"
-                    th:value="${label}"
-                    th:text="${label}"
-                    th:selected="${valueMap[fieldKey + '_select'] == label}">
-            </option>
+          <th:block th:each="opt : ${opts}">
+            <th:block th:each="label : ${opt.cc_col_03}">
+              <option th:if="${!#strings.isEmpty(label) and #strings.trim(label) != #strings.trim(c2.cc_col_02)}"
+                      th:value="${label}"
+                      th:text="${label}"
+                      th:selected="${valueMap[fieldKey + '_select'] == label}">
+              </option>
+            </th:block>
           </th:block>
         </select>
       </div>
