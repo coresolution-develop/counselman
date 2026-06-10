@@ -3816,7 +3816,7 @@ public class PageController {
             return "redirect:/counsel/list";
         } catch (IllegalArgumentException e) {
             log.warn("[counsel] validation fail inst={}, err={}", inst, e.getMessage());
-            return "redirect:/counsel/new";
+            return "redirect:/counsel/inpatient";
         } catch (Exception e) {
             log.error("[counsel] save fail inst={}", inst, e);
             return "";
@@ -3879,7 +3879,7 @@ public class PageController {
             return "redirect:/counsel/list";
         } catch (IllegalArgumentException e) {
             log.warn("[counselupdate] validation fail inst={}, cs_idx={}, err={}", inst, csIdx, e.getMessage());
-            return "redirect:/counsel/new/" + csIdx;
+            return "redirect:/counsel/inpatient?cs_idx=" + csIdx;
         } catch (Exception e) {
             log.error("[counselupdate] update fail inst={}, cs_idx={}", inst, csIdx, e);
             return "";
@@ -6511,205 +6511,18 @@ public class PageController {
     /** 신규 페이지 (빈 폼) */
     @GetMapping({ "counsel/new", "/counsel/new" })
     public String counselNew(
-            @RequestParam(value = "reservationId", required = false) Long reservationId,
-            Model model,
-            HttpSession session,
-            HttpServletRequest req) {
-        String inst = ensureInst(session);
-        if (inst == null)
-            return "redirect:/login";
-
-        Userdata userinfo = ensureUserInfo(session, inst);
-        populateCommon(model, inst, userinfo);
-        populateModuleFeatureModel(model, inst);
-
-        CounselData prefill = new CounselData();
-        List<Guardian> prefillGuardians = new ArrayList<>();
-        Map<String, Object> reservationLink = Collections.emptyMap();
-        String prefillReservedTime = ""; // 예정시간 (HH:mm)
-        if (reservationId != null && reservationId > 0) {
-            CounselReservation reservation = cs.getCounselReservationById(inst, reservationId);
-            if (reservation != null) {
-                prefill.setCs_col_01(safeString(reservation.getPatient_name()));
-                prefill.setCs_col_06(safeString(reservation.getPatient_phone()));
-                prefill.setCs_col_18("전화");
-                prefill.setCs_col_19("입원예약");
-                // reserved_at = "2026-04-22 13:44:00" → 날짜와 시간 분리
-                String reservedAt = safeString(reservation.getReserved_at());
-                String datePart = reservedAt.length() >= 10 ? reservedAt.substring(0, 10) : reservedAt;
-                prefillReservedTime = reservedAt.length() >= 16 ? reservedAt.substring(11, 16) : "";
-                prefill.setCs_col_21(datePart);
-                prefill.setCs_col_32(safeString(reservation.getCall_summary()));
-                if (!isBlank(reservation.getGuardian_name()) || !isBlank(reservation.getPatient_phone())) {
-                    Guardian guardian = new Guardian();
-                    guardian.setName(safeString(reservation.getGuardian_name()));
-                    guardian.setRelationship("");
-                    guardian.setContact_number(safeString(reservation.getPatient_phone()));
-                    prefillGuardians.add(guardian);
-                }
-                reservationLink = toReservationLink(reservation);
-            }
-        }
-
-        // 신규 화면 렌더에 필요한 기본 모델값
-        model.addAttribute("inst", inst);
-        model.addAttribute("cs_idx", null);
-        model.addAttribute("csData", prefill);
-        model.addAttribute("csEntries", Collections.emptyList());
-        model.addAttribute("guardians", prefillGuardians);
-        model.addAttribute("valueMap", Collections.emptyMap());
-        model.addAttribute("cslog", Collections.emptyList());
-        model.addAttribute("admissionPledge", Collections.emptyMap());
-        model.addAttribute("reservationId", reservationLink.get("id"));
-        model.addAttribute("reservationLink", reservationLink);
-        model.addAttribute("prefillReservedTime", prefillReservedTime);
-        model.addAttribute("isEdit", false);
-
-        // nav fragment 파라미터 기본값
-        model.addAttribute("endVar", "on");
-        model.addAttribute("st", "");
-        model.addAttribute("kw", "");
-
-        return isMobile(req) ? "csm/counsel/newMobile" : "csm/counsel/new";
+            @RequestParam(value = "reservationId", required = false) Long reservationId) {
+        // Legacy counsel form retired — /counsel/inpatient is the live replacement.
+        return (reservationId != null && reservationId > 0)
+                ? "redirect:/counsel/inpatient?reservationId=" + reservationId
+                : "redirect:/counsel/inpatient";
     }
 
     /** 기존 데이터 로딩(수정/상세) */
     @GetMapping({ "counsel/new/{cs_idx}", "/counsel/new/{cs_idx}" })
-    public String counselLog(@PathVariable("cs_idx") int csIdx,
-            Authentication auth,
-            Model model,
-            HttpServletRequest req,
-            HttpSession session) {
-
-        String inst = ensureInst(session);
-        if (inst == null)
-            return "redirect:/login";
-
-        Userdata userinfo = (Userdata) session.getAttribute("userInfo");
-        populateCommon(model, inst, userinfo);
-        populateModuleFeatureModel(model, inst);
-
-        model.addAttribute("cs_idx", csIdx);
-        var username = auth.getName();
-        var info = cs.loadUserInfo(inst, username);
-        model.addAttribute("info", info);
-
-        // 1) 기본 데이터 로딩 및 널-정규화
-        CounselData data = cs.getCounselById(inst, csIdx);
-        log.debug("[getCounselById] inst={}, csIdx={}, data={}", inst, csIdx, data);
-        // if (data == null) {
-        // // 잘못된 cs_idx 이거나 Mapper 문제가 있는 상황 – 빈 객체로 덮어쓰면 화면이 항상 빈값이 됨
-        // throw new ResponseStatusException(HttpStatus.NOT_FOUND, "cs_idx not found: "
-        // + csIdx);
-        // }
-        boolean isEdit = (data != null);
-        if (!isEdit)
-            data = new CounselData();
-        // boolean isEdit = true; // 이 엔드포인트는 수정/상세 전용
-        log.debug("isEdit={}", isEdit);
-        log.debug("[Controller] cs bean class = {}", cs.getClass().getName());
-        // 2) 엔트리 로딩은 항상 (신규면 빈 리스트일 수도)
-        List<CounselDataEntry> entries = cs.getEntriesByInstAndCsIdx(inst, csIdx);
-        data.setEntries(entries);
-        log.warn("[SMOKE] entries size={}", entries == null ? null : entries.size());
-        List<CounselLog> counselLogs = normalizeCounselLogs(
-                Optional.ofNullable(cs.getCounselLog(inst, csIdx)).orElse(Collections.emptyList()));
-        model.addAttribute("cslog", counselLogs);
-        Map<String, Object> admissionPledge = Optional.ofNullable(cs.getAdmissionPledge(inst, csIdx))
-                .orElse(Collections.emptyMap());
-        model.addAttribute("admissionPledge", admissionPledge);
-        CounselReservation linkedReservation = cs.getCounselReservationByLinkedCsIdx(inst, csIdx);
-        model.addAttribute("reservationId", linkedReservation != null ? linkedReservation.getId() : null);
-        model.addAttribute("reservationLink",
-                linkedReservation != null ? toReservationLink(linkedReservation) : Collections.emptyMap());
-
-        // 3) isEdit일 때만 추가 정보(복호화/보호자)
-        if (isEdit) {
-            // 1) 환자명: 이미 평문이면 그대로 두고, HEX처럼 보일 때만 복호화
-            String p = data.getCs_col_01();
-            log.debug("[BEFORE DEC] cs_col_01 = {}", p);
-            boolean looksHex = (p != null && p.matches("(?i)^[0-9a-f]{32,}$")); // 단순 HEX 판별
-
-            if (isEdit && looksHex) {
-                try {
-                    String dec = mysqlAesDecryptHexToUtf8(p, aesKey);
-                    if (dec == null || dec.isBlank()) {
-                        log.warn("patient name decrypt blank; set empty. cs_idx={}", csIdx);
-                        data.setCs_col_01("");
-                    } else {
-                        data.setCs_col_01(dec);
-                    }
-                } catch (Exception e) {
-                    log.warn("patient name decrypt fail; set empty. cs_idx={}, err={}", csIdx, e.toString());
-                    data.setCs_col_01("");
-                }
-            }
-
-            // 디버그
-            log.debug("[CHECK] cs_idx={}, cs_col_01(raw)={}, isEdit={}, looksHex={}, cs_col_01(final)={}",
-                    csIdx, p, isEdit, looksHex, data.getCs_col_01());
-            log.debug("[AFTER  DEC] cs_col_01 = {}", data.getCs_col_01());
-
-            // 2) 보호자: 각 값이 HEX처럼 보일 때만 복호화
-            List<Guardian> guardians = Optional.ofNullable(cs.getGuardiansById(inst, csIdx))
-                    .orElseGet(Collections::emptyList)
-                    .stream()
-                    .filter(Objects::nonNull) // ★ null 요소 제거
-                    .toList();
-
-            for (Guardian g : guardians) {
-                String n = g.getName();
-                if (n != null && isLikelyHex(n)) {
-                    try {
-                        g.setName(mysqlAesDecryptHexToUtf8(n, aesKey));
-                    } catch (Exception ignored) {
-                        g.setName("");
-                    }
-                }
-                String c = g.getContact_number();
-                if (c != null && isLikelyHex(c)) {
-                    try {
-                        String dec = mysqlAesDecryptHexToUtf8(c, aesKey);
-                        g.setContact_number(dec);
-                        log.warn("[DIAG] guardian contact decrypt: hex_len={}, result_blank={}", c.length(), isBlank(dec));
-                    } catch (Exception e) {
-                        log.warn("[DIAG] guardian contact decrypt FAILED: {}", e.toString());
-                        g.setContact_number("");
-                    }
-                } else {
-                    log.warn("[DIAG] guardian contact: value={}", c == null ? "null" : "(not hex, len=" + c.length() + ")");
-                }
-            }
-            model.addAttribute("guardians", guardians);
-        } else
-
-        {
-            model.addAttribute("guardians", Collections.emptyList());
-        }
-
-        // 4) 공통 모델
-        Map<String, Object> m = model.asMap();
-        @SuppressWarnings("unchecked")
-        List<Category1WithSubcategoriesAndOptions> categoryData = (List<Category1WithSubcategoriesAndOptions>) m
-                .get("categoryData");
-        @SuppressWarnings("unchecked")
-        Map<String, String> fieldTypeMapping = (Map<String, String>) m.get("fieldTypeMapping");
-        @SuppressWarnings("unchecked")
-        Map<String, List<Category3>> fieldOptionsMapping = (Map<String, List<Category3>>) m.get("fieldOptionsMapping");
-
-        // 5) valueMap 빌드(이 타이밍에 entries가 셋팅돼 있어야 함)
-        log.warn("[DIAG] entries for valueMap = {}", data.getEntries() == null ? null : data.getEntries().size());
-        Map<String, String> valueMap = buildValueMap(data, categoryData, fieldTypeMapping, fieldOptionsMapping);
-        // 6) 모델 바인딩
-        model.addAttribute("csData", data);
-        model.addAttribute("csEntries", Optional.ofNullable(data.getEntries()).orElseGet(Collections::emptyList));
-        model.addAttribute("isEdit", isEdit);
-        model.addAttribute("valueMap", valueMap);
-        log.warn("[DIAG] valueMap size={}, keys={}", valueMap.size(), valueMap.keySet().stream().limit(5).toList());
-
-        return
-
-        isMobile(req) ? "csm/counsel/newMobile" : "csm/counsel/new";
+    public String counselLog(@PathVariable("cs_idx") int csIdx) {
+        // Legacy counsel form retired — /counsel/inpatient is the live replacement.
+        return "redirect:/counsel/inpatient?cs_idx=" + csIdx;
     }
 
     @GetMapping({ "getGuardianData", "/getGuardianData", "csm/getGuardianData", "/csm/getGuardianData" })
