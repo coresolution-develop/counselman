@@ -44,6 +44,7 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:3.0.5'
 	testImplementation 'org.springframework.security:spring-security-test'
+	testImplementation 'ognl:ognl:3.3.4' // standalone Thymeleaf TemplateEngine (OGNL) for template render tests
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
 	implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
