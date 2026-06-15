@@ -946,7 +946,9 @@ public interface CsmMapper {
         }
       }
 
-      sb.append(" ORDER BY STR_TO_DATE(c.cs_col_16, '%Y-%m-%d') DESC ");
+      // Tiebreak by cs_idx DESC so same-date rows are deterministic (newest first)
+      // and pagination stays stable; cs_col_16 alone left ties in arbitrary order.
+      sb.append(" ORDER BY STR_TO_DATE(c.cs_col_16, '%Y-%m-%d') DESC, c.cs_idx DESC ");
       sb.append(" LIMIT #{pageStart}, #{perPageNum} ");
       return sb.toString();
     }
