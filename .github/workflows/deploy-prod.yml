@@ -1,14 +1,12 @@
 name: Deploy PROD
 
-# Push to the `prod` branch → build that commit and ship csm-prod.war to the
-# production Tomcat. Mirrors Deploy DEV but adds a test gate and a backup.
+# Push to `prod` → build + test on a GitHub-hosted runner, then a self-hosted
+# runner ON the prod server deploys the artifact locally (no inbound SSH).
 #
-# SETUP — stays INERT until BOTH are configured (Settings → Secrets and variables → Actions):
-#   - Repo variable  PROD_HOST              (prod app server host/IP)
-#   - Repo secret    PROD_SSH_PRIVATE_KEY   (private key for root@PROD_HOST)
-#
-# This bypasses the interactive preflight/confirmation in scripts/deploy-prod.sh,
-# so the `prod` branch should only ever receive reviewed/tested commits.
+# SETUP: register a self-hosted runner on the prod server with the label `prod`
+#   (Settings → Actions → Runners → New self-hosted runner; add `--labels prod`).
+#   The runner user needs write access to the Tomcat webapps dir (run as root is
+#   simplest). The `prod` branch should only ever receive reviewed/tested commits.
 
 on:
   push:
@@ -21,35 +19,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Check prod config (skip if unset)
-        id: cfg
-        env:
-          PROD_HOST: ${{ vars.PROD_HOST }}
-          PROD_KEY: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
-        run: |
-          if [ -n "$PROD_HOST" ] && [ -n "$PROD_KEY" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::PROD_HOST (var) or PROD_SSH_PRIVATE_KEY (secret) not set — skipping prod deploy."
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Checkout
-        if: steps.cfg.outputs.ready == 'true'
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Set up Java 17
-        if: steps.cfg.outputs.ready == 'true'
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-
       - name: Cache Gradle
-        if: steps.cfg.outputs.ready == 'true'
         uses: actions/cache@v4
         with:
           path: |
@@ -57,29 +36,29 @@ jobs:
             ~/.gradle/wrapper
           key: gradle-${{ hashFiles('**/*.gradle', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-
-
       - name: Test gate (abort prod deploy if red)
-        if: steps.cfg.outputs.ready == 'true'
         run: ./gradlew test --console=plain
-
       - name: Build PROD war
-        if: steps.cfg.outputs.ready == 'true'
         run: ./gradlew prodWar --console=plain
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-war
+          path: build/libs/csm-prod.war
+          retention-days: 1
 
-      - name: Install SSH key
-        if: steps.cfg.outputs.ready == 'true'
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.PROD_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ vars.PROD_HOST }}" >> ~/.ssh/known_hosts
-
-      - name: Back up live war and deploy (CSM)
-        if: steps.cfg.outputs.ready == 'true'
-        env:
-          PROD_HOST: ${{ vars.PROD_HOST }}
+  deploy:
+    needs: build
+    runs-on: [self-hosted, prod]
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: prod-war
+          path: artifact
+      - name: Deploy on prod server (local, with backup)
         run: |
           TS=$(date +%Y%m%d-%H%M%S)
-          ssh root@"$PROD_HOST" "cp -a /usr/local/tomcat10/webapps/csm.war /usr/local/tomcat10/webapps/csm.war.bak-$TS 2>/dev/null || true"
-          scp build/libs/csm-prod.war root@"$PROD_HOST":/usr/local/tomcat10/webapps/csm.war
-          echo "Deployed prod branch → PROD csm.war (rollback: csm.war.bak-$TS). Tomcat auto-reloads."
+          cp -a /usr/local/tomcat10/webapps/csm.war /usr/local/tomcat10/webapps/csm.war.bak-$TS 2>/dev/null || true
+          cp artifact/csm-prod.war /usr/local/tomcat10/webapps/csm.war
+          echo "PROD deployed: csm.war (rollback: csm.war.bak-$TS). Tomcat auto-reloads."
