@@ -2191,15 +2191,6 @@ function inpatientForm() {
         }
       } catch (e) { /* sessionStorage unavailable — ignore */ }
 
-      // Surface the post-save confirmation that was handed across a new-record reload.
-      try {
-        const savedMsg = sessionStorage.getItem('ic_saved_toast');
-        if (savedMsg) {
-          sessionStorage.removeItem('ic_saved_toast');
-          queueMicrotask(() => this.showToast(savedMsg));
-        }
-      } catch (e) { /* sessionStorage unavailable — ignore */ }
-
       document.addEventListener('counsel-file-text', (event) => {
         const detail = event.detail || {};
         const matched = Number(detail.matchedCount || 0);
@@ -2564,11 +2555,11 @@ function inpatientForm() {
           return;
         }
         if (wasNew && data.csIdx) {
-          // New record reloads to pick up the saved cs_idx; hand the confirmation
-          // across the reload so it still shows on the refreshed page.
-          try { sessionStorage.setItem('ic_saved_toast', '저장되었습니다.'); } catch (e) {}
-          location.href = ctx + '/counsel/inpatient?cs_idx=' + data.csIdx;
-          return;
+          // Reflect the saved cs_idx in the URL WITHOUT a full reload, so the page
+          // doesn't flicker and the confirmation toast doesn't appear to shift.
+          try {
+            history.replaceState(history.state, '', ctx + '/counsel/inpatient?cs_idx=' + data.csIdx);
+          } catch (e) {}
         }
         this._bypassDirtyCheck = false;
         this.showToast('저장되었습니다.');
