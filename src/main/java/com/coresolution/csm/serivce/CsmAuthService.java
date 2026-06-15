@@ -725,15 +725,48 @@ public class CsmAuthService {
     private void ensureCounselDataEntryColumns(String safe) {
         ensureTableColumn("csm", "counsel_data_" + safe + "_entries", "field_type",
                 "ALTER TABLE csm.counsel_data_" + safe + "_entries ADD COLUMN field_type varchar(30) default null");
-        ensureTableColumn("csm", "counsel_data_" + safe, "cs_col_01_hash",
-                "ALTER TABLE csm.counsel_data_" + safe + " ADD COLUMN cs_col_01_hash varbinary(32) default null");
+        ensureBinaryHashColumn("csm", "counsel_data_" + safe, "cs_col_01_hash");
     }
 
     private void ensureCounselGuardianColumns(String safe) {
-        ensureTableColumn("csm", "counsel_data_" + safe + "_guardians", "name_hash",
-                "ALTER TABLE csm.counsel_data_" + safe + "_guardians ADD COLUMN name_hash varbinary(32) default null");
-        ensureTableColumn("csm", "counsel_data_" + safe + "_guardians", "contact_number_hash",
-                "ALTER TABLE csm.counsel_data_" + safe + "_guardians ADD COLUMN contact_number_hash varbinary(32) default null");
+        ensureBinaryHashColumn("csm", "counsel_data_" + safe + "_guardians", "name_hash");
+        ensureBinaryHashColumn("csm", "counsel_data_" + safe + "_guardians", "contact_number_hash");
+    }
+
+    /**
+     * Ensure a SHA-256 hash column exists AND can store the raw 32-byte digest.
+     *
+     * The app binds the digest with PreparedStatement#setBytes. Some legacy
+     * institution tables were provisioned with the hash column as a character type
+     * (e.g. char(64)/utf8mb4); MySQL then rejects the binary value with "Incorrect
+     * string value" (error 1366) under STRICT_TRANS_TABLES, so every counsel/guardian
+     * save fails for that institution. ensureTableColumn only adds a missing column
+     * and never corrected a wrong type — this adds the column as varbinary(32) when
+     * absent and converts a character-typed column to varbinary(32). Columns already
+     * binary(32) or varbinary(32) store the 32-byte digest correctly and are left
+     * untouched, so this never rewrites a healthy (possibly large) table. Idempotent.
+     * Package-private for regression testing.
+     */
+    void ensureBinaryHashColumn(String schemaName, String tableName, String columnName) {
+        try {
+            List<String> types = jdbcTemplate.queryForList(
+                    "SELECT data_type FROM information_schema.columns "
+                            + "WHERE table_schema = ? AND table_name = ? AND column_name = ?",
+                    String.class, schemaName, tableName, columnName);
+            String dataType = types.isEmpty() ? null : types.get(0);
+            if (dataType == null) {
+                jdbcTemplate.execute("ALTER TABLE " + schemaName + "." + tableName
+                        + " ADD COLUMN " + columnName + " varbinary(32) default null");
+            } else if (!"binary".equalsIgnoreCase(dataType) && !"varbinary".equalsIgnoreCase(dataType)) {
+                // A character/text type (e.g. char(64) utf8mb4) is the bug — it rejects a
+                // raw 32-byte digest. binary(32) and varbinary(32) both store it fine and
+                // are deliberately left alone to avoid needless rebuilds of large tables.
+                jdbcTemplate.execute("ALTER TABLE " + schemaName + "." + tableName
+                        + " MODIFY COLUMN " + columnName + " varbinary(32) default null");
+            }
+        } catch (Exception e) {
+            log.warn("[schema] ensure binary hash column fail table={}, col={}, err={}", tableName, columnName, e.toString());
+        }
     }
 
     public Map<String, Object> inspectCoreInstSchema(String inst) {

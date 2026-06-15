@@ -5700,8 +5700,6 @@ public class PageController {
                 guardian.setContact_number(aes.encryptHexECB(phone));
                 guardian.setContact_number_hash(hashSHA256(phone));
             }
-            log.warn("[DIAG] guardian[{}]: name_blank={}, phone_blank={}, phone_isHex={}, contact_set={}",
-                    i, isBlank(name), isBlank(phone), isLikelyHex(phone), guardian.getContact_number() != null);
             guardians.add(guardian);
         }
         counselData.setGuardians(guardians);
@@ -6016,8 +6014,6 @@ public class PageController {
             entry.setFieldType(fieldTypeMapping.get(baseParam));
             entries.add(entry);
         }
-        long fieldParamCount = request.getParameterMap().keySet().stream().filter(k -> k.startsWith("field_")).count();
-        log.warn("[DIAG] parseDynamicEntries: field_* params={}, entries built={}", fieldParamCount, entries.size());
         return entries;
     }
 
