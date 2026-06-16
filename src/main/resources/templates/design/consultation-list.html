@@ -928,17 +928,17 @@
       <div class="list-sticky-section">
       <div class="section-head">
         <span class="section-head__title">상담 기록 목록</span>
-        <span class="section-head__hint" x-text="viewMode === 'calendar' ? calendarMonthCount + '건' : filtered.length + '건'"></span>
+        <span class="section-head__hint" x-text="viewMode === 'calendar' ? calendarMonthCount + '건' : activeCount + '건'"></span>
         <div style="flex:1"></div>
         <div class="filter-pills">
           <button class="pill" :class="{ 'is-active': activeFilter === 'all' }" @click="setFilter('all')">
-            전체 <span class="pill__count" x-text="allRecords.length"></span>
+            전체 <span class="pill__count" x-text="counts.total"></span>
           </button>
           <button class="pill" :class="{ 'is-active': activeFilter === 'today' }" @click="setFilter('today')">
-            오늘 <span class="pill__count" x-text="todayCount"></span>
+            오늘 <span class="pill__count" x-text="counts.today"></span>
           </button>
           <button class="pill" :class="{ 'is-active': activeFilter === 'incomplete' }" @click="setFilter('incomplete')">
-            미완료 <span class="pill__count" x-text="incompleteCount"></span>
+            미완료 <span class="pill__count" x-text="counts.incomplete"></span>
           </button>
         </div>
         <button class="btn-xs" @click="settingsOpen = true" title="리스트 항목 설정" style="margin-left:8px;">
@@ -977,6 +977,10 @@
             </template>
           </tbody>
         </table>
+        <div x-show="filtered.length === 0 && !loadingMore" style="text-align:center;padding:24px;color:#94a3b8;">조회된 상담이 없습니다.</div>
+        <div x-ref="listSentinel" style="height:1px;"></div>
+        <div x-show="loadingMore" style="text-align:center;padding:12px;color:#94a3b8;">불러오는 중…</div>
+        <div x-show="!hasMore && filtered.length > 0" style="text-align:center;padding:12px;color:#94a3b8;font-size:12px;">모든 상담을 불러왔습니다 (<span x-text="activeCount"></span>건)</div>
       </div>
 
       <div class="calendar-panel" x-show="viewMode === 'calendar'" x-cloak>
@@ -1190,6 +1194,10 @@ function listPage() {
   const lockOwnerName = /*[[${reservationLockOwnerName}]]*/ '';
   const lockPatientName = /*[[${reservationLockPatientName}]]*/ '';
   const today   = new Date().toISOString().slice(0, 10);
+  const initialHasMore     = /*[[${hasMore}]]*/ false;
+  const initialCounts      = { total: /*[[${cnt}]]*/ 0, today: /*[[${todayCnt}]]*/ 0, incomplete: /*[[${incompleteCnt}]]*/ 0 };
+  const initialQuickFilter = /*[[${quickFilter}]]*/ 'all';
+  const pageSize           = /*[[${perPageNum}]]*/ 30;
 
   // ── 유틸 ──
   function esc(v) {
@@ -1218,9 +1226,16 @@ function listPage() {
     ctx,
     queue:        /*[[${queueItems}]]*/ [],
     queueLoading: false,
-    allRecords:   records,
     filtered:     records,
-    activeFilter: 'all',
+    counts:       initialCounts,
+    activeFilter: initialQuickFilter,
+    page:         1,
+    perPageNum:   pageSize,
+    hasMore:      initialHasMore,
+    loadingMore:  false,
+    calendarRows: [],
+    calendarLoading: false,
+    calendarLoadedYm: '',
     viewMode:     'table',
     calendarMonth: today.slice(0, 7),
     calendarWeekdays: ['일', '월', '화', '수', '목', '금', '토'],
@@ -1256,6 +1271,7 @@ function listPage() {
       this.$nextTick(() => {
         if (typeof window.applyFreezePositions === 'function') window.applyFreezePositions();
         this.refreshQueue({ silent: true });
+        this.setupInfiniteScroll();
       });
       this._refreshOnPageShow = () => this.refreshQueue({ silent: true });
       this._refreshOnFocus = () => this.refreshQueue({ silent: true });
@@ -1275,6 +1291,7 @@ function listPage() {
       window.removeEventListener('focus', this._refreshOnFocus);
       document.removeEventListener('visibilitychange', this._refreshOnVisibility);
       clearInterval(this._queueRefreshTimer);
+      this._listObserver?.disconnect();
     },
 
     visit(path) {
@@ -1286,6 +1303,87 @@ function listPage() {
       } else {
         window.location.href = url;
       }
+    },
+
+    // ── 목록 페이지네이션 / 빠른필터 / 캘린더 데이터 로드 ──
+    buildQuery(extra) {
+      const p = new URLSearchParams(window.location.search);
+      ['_lockedBy', '_lockedPatient', 'page', 'perPageNum', 'quickFilter', 'requestType', 'ym'].forEach(k => p.delete(k));
+      p.set('requestType', 'json');
+      Object.entries(extra || {}).forEach(([k, v]) => p.set(k, v));
+      return p;
+    },
+
+    handleAuthRedirect(res, body) {
+      if (res.redirected || (res.url && res.url.includes('/login')) || res.status === 401 || res.status === 403 || (body && body.success === false)) {
+        this.visit('/login');
+        return true;
+      }
+      return false;
+    },
+
+    async reloadList() {
+      this.loadingMore = true;
+      try {
+        const p = this.buildQuery({ page: 1, perPageNum: this.perPageNum, quickFilter: this.activeFilter });
+        const res = await fetch(this.ctx + '/counsel/list?' + p.toString(), { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+        const body = await res.json().catch(() => ({}));
+        if (this.handleAuthRedirect(res, body)) return;
+        this.filtered = Array.isArray(body.cslist) ? body.cslist : [];
+        this.page = 1;
+        this.hasMore = !!body.hasMore;
+        this.selectedIds = new Set();
+      } catch (e) {
+        console.error('목록을 불러오지 못했습니다.', e);
+      } finally {
+        this.loadingMore = false;
+      }
+    },
+
+    async loadMore() {
+      if (this.loadingMore || !this.hasMore || this.viewMode !== 'table') return;
+      this.loadingMore = true;
+      const nextPage = this.page + 1;
+      try {
+        const p = this.buildQuery({ page: nextPage, perPageNum: this.perPageNum, quickFilter: this.activeFilter });
+        const res = await fetch(this.ctx + '/counsel/list?' + p.toString(), { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+        const body = await res.json().catch(() => ({}));
+        if (this.handleAuthRedirect(res, body)) return;
+        const more = Array.isArray(body.cslist) ? body.cslist : [];
+        this.filtered = this.filtered.concat(more);
+        this.page = nextPage;
+        this.hasMore = !!body.hasMore;
+      } catch (e) {
+        console.error('추가 목록을 불러오지 못했습니다.', e);
+      } finally {
+        this.loadingMore = false;
+      }
+    },
+
+    async loadCalendarMonth(force) {
+      if (!force && this.calendarLoadedYm === this.calendarMonth) return;
+      this.calendarLoading = true;
+      try {
+        const p = this.buildQuery({ ym: this.calendarMonth });
+        const res = await fetch(this.ctx + '/counsel/list/calendar?' + p.toString(), { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+        const body = await res.json().catch(() => ({}));
+        if (this.handleAuthRedirect(res, body)) return;
+        this.calendarRows = Array.isArray(body.cslist) ? body.cslist : [];
+        this.calendarLoadedYm = this.calendarMonth;
+      } catch (e) {
+        console.error('캘린더를 불러오지 못했습니다.', e);
+      } finally {
+        this.calendarLoading = false;
+      }
+    },
+
+    setupInfiniteScroll() {
+      const sentinel = this.$refs.listSentinel;
+      if (!sentinel || typeof IntersectionObserver === 'undefined') return;
+      this._listObserver = new IntersectionObserver((entries) => {
+        if (entries.some(e => e.isIntersecting)) this.loadMore();
+      }, { rootMargin: '240px' });
+      this._listObserver.observe(sentinel);
     },
 
     openReservation(q) {
@@ -1369,15 +1467,18 @@ function listPage() {
       }
     },
 
-    // pill 카운트
-    get todayCount()      { return this.allRecords.filter(r => (r['cs_col_16'] || '').slice(0,10) === today).length; },
-    get incompleteCount() { return this.allRecords.filter(r => String(r['cs_col_19'] || '') !== '입원완료').length; },
+    // 상단 빠른필터 활성 건수 (서버 카운트 기준)
+    get activeCount() {
+      if (this.activeFilter === 'today') return this.counts.today;
+      if (this.activeFilter === 'incomplete') return this.counts.incomplete;
+      return this.counts.total;
+    },
     get calendarTitle() {
       const [year, month] = this.calendarMonth.split('-').map(Number);
       return `${year}년 ${month}월`;
     },
     get calendarMonthCount() {
-      return this.filtered.filter(r => this.getRecordDate(r).slice(0, 7) === this.calendarMonth).length;
+      return this.calendarRows.length;
     },
     get calendarDays() {
       const [year, month] = this.calendarMonth.split('-').map(Number);
@@ -1395,7 +1496,7 @@ function listPage() {
           day: d.getDate(),
           inMonth: d.getMonth() === month - 1,
           isToday: date === today,
-          records: this.filtered.filter(r => this.getRecordDate(r) === date),
+          records: this.calendarRows.filter(r => this.getRecordDate(r) === date),
         });
       }
       return days;
@@ -1406,11 +1507,9 @@ function listPage() {
     },
 
     setFilter(f) {
+      if (this.activeFilter === f) return;
       this.activeFilter = f;
-      if (f === 'today')           this.filtered = this.allRecords.filter(r => (r['cs_col_16'] || '').slice(0,10) === today);
-      else if (f === 'incomplete') this.filtered = this.allRecords.filter(r => String(r['cs_col_19'] || '') !== '입원완료');
-      else                         this.filtered = this.allRecords;
-      this.selectedIds = new Set();
+      this.reloadList();
     },
 
     toggleRow(id) {
@@ -1426,6 +1525,7 @@ function listPage() {
     toggleRecordView() {
       this.viewMode = this.viewMode === 'calendar' ? 'table' : 'calendar';
       this.activeCalendarDate = '';
+      if (this.viewMode === 'calendar') this.loadCalendarMonth();
     },
 
     formatCalendarDate(date) {
@@ -1446,11 +1546,13 @@ function listPage() {
       const next = new Date(year, month - 1 + delta, 1);
       this.calendarMonth = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`;
       this.activeCalendarDate = '';
+      this.loadCalendarMonth();
     },
 
     setCalendarToday() {
       this.calendarMonth = today.slice(0, 7);
       this.activeCalendarDate = '';
+      this.loadCalendarMonth();
     },
 
     openCalendarDay(day) {

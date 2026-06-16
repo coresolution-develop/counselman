@@ -2014,7 +2014,8 @@ public class PageController {
             @RequestParam(value = "keyword", defaultValue = "") String keyword,
             @RequestParam(value = "end", defaultValue = "on") String end,
             @RequestParam(value = "page", defaultValue = "1") int page,
-            @RequestParam(value = "perPageNum", defaultValue = "30") int perPageNum) {
+            @RequestParam(value = "perPageNum", defaultValue = "30") int perPageNum,
+            @RequestParam(value = "quickFilter", defaultValue = "all") String quickFilter) {
 
         ModelAndView mv = new ModelAndView();
         String inst = ensureInst(session);
@@ -2024,9 +2025,24 @@ public class PageController {
         bindCriteria(cri, inst, page, perPageNum, dateRange, startDate, endDate, status, pathType, searchType, keyword,
                 end);
 
+        // 상단 빠른필터별 건수(검색 필터 기준 분해) — 활성 필터와 무관하게 항상 3종 계산
+        cri.setQuickFilter("all");
+        int totalCnt = cs.CounselListCnt(cri);
+        cri.setQuickFilter("today");
+        int todayCnt = cs.CounselListCnt(cri);
+        cri.setQuickFilter("incomplete");
+        int incompleteCnt = cs.CounselListCnt(cri);
+
+        // 목록은 활성 빠른필터 기준 첫 페이지만(LIMIT) 조회 — 이후는 무한 스크롤로 로드
+        cri.setQuickFilter(quickFilter);
         List<CounselData> cslist = cs.searchCounselData(cri);
         if (cslist == null) cslist = Collections.emptyList();
-        int totalCnt = cs.CounselListCnt(cri);
+        int activeCnt = switch (cri.getQuickFilter()) {
+            case "today" -> todayCnt;
+            case "incomplete" -> incompleteCnt;
+            default -> totalCnt;
+        };
+        boolean hasMore = ((long) page * perPageNum) < activeCnt;
         postProcessDecryptAndMask(cslist, inst, cri.getSearchType(), cri.getKeyword());
 
         List<Map<String, Object>> queueItems = listCounselReservationQueueItems(inst);
@@ -2057,6 +2073,11 @@ public class PageController {
         mv.addObject("orderItems", orderItems != null ? orderItems : List.of());
         mv.addObject("innerContentItems", innerContentItems != null ? innerContentItems : List.of());
         mv.addObject("cnt", totalCnt);
+        mv.addObject("todayCnt", todayCnt);
+        mv.addObject("incompleteCnt", incompleteCnt);
+        mv.addObject("hasMore", hasMore);
+        mv.addObject("quickFilter", cri.getQuickFilter());
+        mv.addObject("perPageNum", perPageNum);
         mv.addObject("cri", cri);
         mv.addObject("statusOptions", cs.getCounselStatusOptions(inst));
         mv.addObject("pathTypeOptions", cs.getCounselPathTypeOptions(inst));
@@ -2078,11 +2099,12 @@ public class PageController {
             @RequestParam(value = "keyword", defaultValue = "") String keyword,
             @RequestParam(value = "end", defaultValue = "on") String end,
             @RequestParam(value = "page", defaultValue = "1") int page,
-            @RequestParam(value = "perPageNum", defaultValue = "30") int perPageNum) {
+            @RequestParam(value = "perPageNum", defaultValue = "30") int perPageNum,
+            @RequestParam(value = "quickFilter", defaultValue = "all") String quickFilter) {
 
         log.warn(
-                "[JSON] /counsel/list ENTER page={} perPageNum={} range={} start={} endDate={} status={} pathType={} st={} kw='{}' end={}",
-                page, perPageNum, dateRange, startDate, endDate, status, pathType, searchType, keyword, end);
+                "[JSON] /counsel/list ENTER page={} perPageNum={} range={} start={} endDate={} status={} pathType={} st={} kw='{}' end={} qf={}",
+                page, perPageNum, dateRange, startDate, endDate, status, pathType, searchType, keyword, end, quickFilter);
 
         String inst = ensureInst(session);
         if (inst == null) {
@@ -2092,6 +2114,7 @@ public class PageController {
 
         bindCriteria(cri, inst, page, perPageNum, dateRange, startDate, endDate, status, pathType, searchType, keyword,
                 end);
+        cri.setQuickFilter(quickFilter);
 
         // 1) 조회
         List<CounselData> raw = cs.searchCounselData(cri);
@@ -2139,6 +2162,54 @@ public class PageController {
         log.warn("[JSON] /counsel/list EXIT rows={} (from={} nulls={}) hasMore={} orderItems.size={}",
                 rows.size(), before, nulls, hasMore, (orderItems != null ? orderItems.size() : -1));
         log.warn("[JSON] sample row0 = {}", rows.isEmpty() ? null : rows.get(0));
+        return body;
+    }
+
+    /** 월별 캘린더 전용: 보고 있는 달(ym=YYYY-MM)의 상담을 검색 필터(상태/경로/키워드)와 함께 전체 조회. */
+    @GetMapping(value = "counsel/list/calendar", params = "requestType=json", produces = "application/json;charset=UTF-8")
+    @ResponseBody
+    public Map<String, Object> getCounselListCalendarJson(
+            HttpSession session, HttpServletRequest request, Criteria cri,
+            @RequestParam(value = "ym", defaultValue = "") String ym,
+            @RequestParam(value = "status", defaultValue = "all") String status,
+            @RequestParam(value = "pathType", defaultValue = "all") String pathType,
+            @RequestParam(value = "searchType", defaultValue = "") String searchType,
+            @RequestParam(value = "keyword", defaultValue = "") String keyword,
+            @RequestParam(value = "end", defaultValue = "on") String end) {
+
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return Map.of("success", false, "redirect", loginRedirectPath(request));
+        }
+
+        // ym(YYYY-MM) → 해당 월의 1일~말일을 custom 날짜 범위로 사용
+        java.time.YearMonth month;
+        try {
+            month = java.time.YearMonth.parse(ym);
+        } catch (Exception e) {
+            return Map.of("success", false, "message", "invalid ym");
+        }
+        String startDate = month.atDay(1).toString();
+        String endDate = month.atEndOfMonth().toString();
+
+        // 날짜는 보는 달로 고정, 빠른필터/페이지 제한 없이 그 달 전체 조회
+        bindCriteria(cri, inst, 1, 100, "custom", startDate, endDate, status, pathType, searchType, keyword, end);
+        cri.setQuickFilter("all");
+        cri.setFetchAll(true);
+
+        List<CounselData> cslist = cs.searchCounselData(cri);
+        if (cslist == null)
+            cslist = Collections.emptyList();
+        postProcessDecryptAndMask(cslist, inst, cri.getSearchType(), cri.getKeyword());
+
+        Set<String> hiddenListColumns = getHiddenListColumns();
+        List<Map<String, Object>> orderItems = normalizeDynamicOrderItemComments(
+                inst, filterListSettingItems(cs.getOrderItems(inst), hiddenListColumns));
+        List<Map<String, Object>> rows = toRowMaps(cslist, orderItems, inst);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("success", true);
+        body.put("cslist", rows);
         return body;
     }
 

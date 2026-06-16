@@ -946,10 +946,15 @@ public interface CsmMapper {
         }
       }
 
+      appendQuickFilter(sb, cri);
+
       // Tiebreak by cs_idx DESC so same-date rows are deterministic (newest first)
       // and pagination stays stable; cs_col_16 alone left ties in arbitrary order.
       sb.append(" ORDER BY STR_TO_DATE(c.cs_col_16, '%Y-%m-%d') DESC, c.cs_idx DESC ");
-      sb.append(" LIMIT #{pageStart}, #{perPageNum} ");
+      // 목록은 페이지네이션(무한 스크롤) 유지. fetchAll(월별 캘린더의 그 달 조회)일 때만 LIMIT 생략.
+      if (!cri.isFetchAll()) {
+        sb.append(" LIMIT #{pageStart}, #{perPageNum} ");
+      }
       return sb.toString();
     }
 
@@ -1003,7 +1008,19 @@ public interface CsmMapper {
             /* no-op */ }
         }
       }
+
+      appendQuickFilter(sb, cri);
       return sb.toString();
+    }
+
+    /** 상단 빠른필터(오늘/미완료) 술어. 목록·카운트 양쪽에서 공통 사용. */
+    private static void appendQuickFilter(StringBuilder sb, Criteria cri) {
+      String qf = cri.getQuickFilter();
+      if ("today".equals(qf)) {
+        sb.append(" AND STR_TO_DATE(c.cs_col_16, '%Y-%m-%d') = CURDATE() ");
+      } else if ("incomplete".equals(qf)) {
+        sb.append(" AND c.cs_col_19 != '입원완료' ");
+      }
     }
 
     private static boolean nonEmpty(String s) {
