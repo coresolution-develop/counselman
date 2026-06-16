@@ -50,6 +50,9 @@ jobs:
   deploy:
     needs: build
     runs-on: [self-hosted, prod]
+    # Gate: waits for a required reviewer to approve in the Actions UI before
+    # the artifact touches the live prod server (GitHub Environment `prod`).
+    environment: prod
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v4
