@@ -61,6 +61,7 @@ public class RoomBoardController {
     @PreAuthorize("hasAuthority('ROOM_BOARD:READ') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public String roomBoard(
             @RequestParam(value = "snapshotDate", required = false) String snapshotDate,
+            @RequestParam(value = "snapshotId", required = false) Long snapshotId,
             @RequestParam(value = "popup", required = false, defaultValue = "0") int popup,
             @RequestParam(value = "patientName", required = false) String patientName,
             @RequestParam(value = "gender", required = false) String gender,
@@ -90,13 +91,14 @@ public class RoomBoardController {
                     "병실현황판 기능이 비활성화되었습니다.");
         }
         populateCommon(model, inst, userinfo);
-        var board = roomBoardService.getBoard(inst, snapshotDate);
+        var board = roomBoardService.getBoard(inst, snapshotDate, snapshotId);
         model.addAttribute("board", board);
         try {
             model.addAttribute("boardJson", objectMapper.writeValueAsString(board));
         } catch (JsonProcessingException e) {
             model.addAttribute("boardJson", "{}");
         }
+        model.addAttribute("snapshots", roomBoardService.getSnapshotHistory(inst, 30));
         model.addAttribute("canManageRoomBoard", canManageRoomBoard(userinfo));
         model.addAttribute("popupMode", popup == 1);
         model.addAttribute("selectedPatientName", safeString(patientName));
@@ -226,6 +228,7 @@ public class RoomBoardController {
         populateCommon(model, inst, userinfo);
         model.addAttribute("roomConfigs", roomBoardService.getRoomConfigs(inst));
         model.addAttribute("snapshotHistory", roomBoardService.getSnapshotHistory(inst, 10));
+        model.addAttribute("roomConfigHistory", roomBoardService.getRoomConfigHistory(inst, 50));
         model.addAttribute("roomConfigForm", new RoomBoardRoomConfig());
         model.addAttribute("endVar", "on");
         model.addAttribute("st", "");
@@ -237,40 +240,53 @@ public class RoomBoardController {
             "room-board/manage/room/save", "/room-board/manage/room/save",
             "admin/room-board/room/save", "/admin/room-board/room/save"
     })
-    public String saveRoomConfig(RoomBoardRoomConfig form, HttpSession session) {
+    public ResponseEntity<?> saveRoomConfig(RoomBoardRoomConfig form, HttpSession session) {
         String inst = ensureInst(session);
         if (inst == null) {
-            return "redirect:/login";
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "로그인이 필요합니다."));
         }
         if (!isRoomBoardEnabled(inst)) {
-            return "redirect:/admin";
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "병실현황판 기능이 비활성화되었습니다."));
         }
         Userdata userinfo = ensureUserInfo(session, inst);
         if (!canManageRoomBoard(userinfo)) {
-            return "redirect:/admin";
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "권한이 없습니다."));
         }
-        roomBoardService.saveRoomConfig(inst, form, userinfo == null ? "" : userinfo.getUs_col_02());
-        return "redirect:/room-board/manage";
+        try {
+            RoomBoardRoomConfig saved = roomBoardService.saveRoomConfig(
+                    inst, form, userinfo == null ? "" : userinfo.getUs_col_02());
+            return ResponseEntity.ok(Map.of("item", saved));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            log.warn("[room-board] room config save fail inst={}, err={}", inst, e.toString());
+            return ResponseEntity.badRequest().body(Map.of("message", "병실 기준정보 저장에 실패했습니다."));
+        }
     }
 
     @PostMapping({
             "room-board/manage/room/delete", "/room-board/manage/room/delete",
             "admin/room-board/room/delete", "/admin/room-board/room/delete"
     })
-    public String deleteRoomConfig(@RequestParam("id") long id, HttpSession session) {
+    public ResponseEntity<?> deleteRoomConfig(@RequestParam("id") long id, HttpSession session) {
         String inst = ensureInst(session);
         if (inst == null) {
-            return "redirect:/login";
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "로그인이 필요합니다."));
         }
         if (!isRoomBoardEnabled(inst)) {
-            return "redirect:/admin";
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "병실현황판 기능이 비활성화되었습니다."));
         }
         Userdata userinfo = ensureUserInfo(session, inst);
         if (!canManageRoomBoard(userinfo)) {
-            return "redirect:/admin";
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "권한이 없습니다."));
         }
-        roomBoardService.deleteRoomConfig(inst, id);
-        return "redirect:/room-board/manage";
+        try {
+            roomBoardService.deleteRoomConfig(inst, id, userinfo == null ? "" : userinfo.getUs_col_02());
+            return ResponseEntity.ok(Map.of("id", id));
+        } catch (Exception e) {
+            log.warn("[room-board] room config delete fail inst={}, id={}, err={}", inst, id, e.toString());
+            return ResponseEntity.badRequest().body(Map.of("message", "병실 기준정보 삭제에 실패했습니다."));
+        }
     }
 
     @PostMapping({

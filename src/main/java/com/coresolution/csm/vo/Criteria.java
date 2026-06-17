@@ -5,6 +5,8 @@ import java.util.Arrays;
 public class Criteria {
     private int page;
     private int perPageNum;
+    private boolean fetchAll;
+    private String quickFilter;
 
     private String keyword;
     private byte[] keywordBytes;
@@ -53,6 +55,8 @@ public class Criteria {
     public Criteria() {
         this.page = 1;
         this.perPageNum = 10;
+        this.fetchAll = false;
+        this.quickFilter = "all";
         this.keyword = "";
         this.keywordBytes = null; // ✅ 기본값 설정
         this.dateRange = "all";
@@ -185,6 +189,24 @@ public class Criteria {
         }
     }
 
+    public boolean isFetchAll() {
+        return fetchAll;
+    }
+
+    /** true면 목록 조회 시 LIMIT를 생략하고 조건에 맞는 전체 행을 반환한다. (캘린더 월 조회 전용) */
+    public void setFetchAll(boolean fetchAll) {
+        this.fetchAll = fetchAll;
+    }
+
+    public String getQuickFilter() {
+        return quickFilter;
+    }
+
+    /** 상단 빠른필터: all(기본) | today(오늘) | incomplete(미완료, 입원완료 제외). */
+    public void setQuickFilter(String quickFilter) {
+        this.quickFilter = (quickFilter == null || quickFilter.isBlank()) ? "all" : quickFilter;
+    }
+
     public byte[] getKeywordBytes() {
         return keywordBytes;
     }
@@ -200,7 +222,7 @@ public class Criteria {
                 + Arrays.toString(keywordBytes) + ", type=" + type + ", dateRange=" + dateRange + ", counselor="
                 + counselor + ", inst=" + inst + ", startDate=" + startDate + ", endDate=" + endDate + ", key=" + key
                 + ", searchType=" + searchType + ", end=" + end + ", status=" + status + ", pathType=" + pathType
-                + ", fail=" + fail + "]";
+                + ", fail=" + fail + ", fetchAll=" + fetchAll + ", quickFilter=" + quickFilter + "]";
     }
 
 }

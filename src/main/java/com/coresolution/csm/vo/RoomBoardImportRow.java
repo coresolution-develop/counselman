@@ -13,5 +13,8 @@ public class RoomBoardImportRow {
     private String admissionDate;
     private String doctorName;
     private String patientType;
+    private String diseaseCode;
+    private String diseaseName;
+    private String phoneGuardian;
     private String memo;
 }

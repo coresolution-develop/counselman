@@ -38,6 +38,17 @@
     .ws-hero__btn:hover { background: rgba(255,255,255,.22); }
     .ws-hero__btn--solid { background: #fff; color: var(--brand-700); border-color: #fff; }
     .ws-hero__btn--solid:hover { background: #f8f9fb; }
+    .ws-hero__select {
+      height: 36px; border-radius: 8px; padding: 0 10px; font-size: 12.5px; font-weight: 600;
+      background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.25);
+      cursor: pointer; max-width: 240px;
+    }
+    .ws-hero__select option { color: #1a2332; }
+    .ws-hist-badge {
+      display: inline-block; margin-left: 8px; font-size: 11px; font-weight: 700;
+      padding: 1px 8px; border-radius: 999px; background: #fde047; color: #854d0e;
+      vertical-align: middle;
+    }
 
     /* ===== Stat cards ===== */
     .ws-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0; }
@@ -178,12 +189,12 @@
     .ws-beds {
       display: grid;
       grid-auto-flow: column;
-      grid-auto-columns: 86px;
+      grid-auto-columns: 150px;
       gap: 8px;
     }
     /* 기본 = 빈 병상 (입원 가능) → 녹색으로 강조 */
     .ws-bed-slot {
-      height: 56px;
+      min-height: 56px;
       border-radius: 8px;
       border: 1px solid color-mix(in oklab, var(--brand-500) 30%, transparent);
       background: color-mix(in oklab, var(--brand-500) 12%, #fff);
@@ -236,6 +247,32 @@
       text-align: center;
       line-height: 1.1;
     }
+    /* 재원 환자 카드 (차트번호·유형·나이·성별·입원일·입원일수) */
+    .ws-bed-slot.is-filled {
+      align-items: stretch;
+      justify-content: flex-start;
+      flex-direction: column;
+      padding: 16px 9px 8px;
+      text-align: left;
+      cursor: default;
+    }
+    .ws-bed-card { display: flex; flex-direction: column; gap: 3px; width: 100%; min-width: 0; }
+    .ws-bed-card__name { display: flex; align-items: center; justify-content: space-between; gap: 5px; min-width: 0; }
+    .ws-bed-card__name b {
+      font-size: 12.5px; font-weight: 700; color: var(--text-primary);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .ws-bed-card__type {
+      flex: none; font-size: 9.5px; font-weight: 700; line-height: 1.4;
+      padding: 1px 6px; border-radius: 999px; white-space: nowrap;
+      background: color-mix(in oklab, var(--brand-500) 14%, #fff); color: var(--brand-700);
+    }
+    .ws-bed-card__row {
+      display: flex; align-items: center; justify-content: space-between; gap: 6px;
+      font-size: 10.5px; font-weight: 500; color: var(--text-tertiary); min-width: 0;
+    }
+    .ws-bed-card__row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ws-bed-card__days { flex: none; color: var(--brand-700); font-weight: 600; }
     .ws-discharge-mark {
       display: inline-flex;
       align-items: center;
@@ -404,11 +441,11 @@
       }
       .ws-beds {
         grid-auto-flow: row;
-        grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
         grid-auto-columns: auto;
       }
       .ws-bed-slot {
-        height: 52px;
+        min-height: 52px;
       }
       .ws-select-btn {
         width: 100%;
@@ -471,11 +508,11 @@
         gap: 8px;
       }
       .ws-beds {
-        grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
         gap: 6px;
       }
       .ws-bed-slot {
-        height: 50px;
+        min-height: 50px;
         font-size: 11px;
       }
     }
@@ -501,10 +538,19 @@
     <div class="ws-hero">
       <div>
         <div class="ws-hero__title">병실현황판</div>
-        <div class="ws-hero__meta">기준일 <span x-text="now"></span></div>
+        <div class="ws-hero__meta">
+          기준일 <span x-text="now"></span>
+          <span class="ws-hist-badge" x-show="isHistorical" x-cloak>과거 시점 보기</span>
+        </div>
       </div>
       <div class="ws-hero__actions">
-        <button type="button" class="ws-hero__btn" @click="location.reload()" x-show="!popupMode">
+        <select class="ws-hero__select" x-show="!popupMode && snapshots.length" x-cloak
+                x-model="snapshotId" @change="goToSnapshot(snapshotId)" aria-label="과거 시점 선택">
+          <template x-for="s in snapshots" :key="s.id">
+            <option :value="String(s.id)" x-text="snapshotLabel(s)"></option>
+          </template>
+        </select>
+        <button type="button" class="ws-hero__btn" @click="goLatest()" x-show="!popupMode">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
           최신 현황
         </button>
@@ -592,6 +638,7 @@
               <tr>
                 <th>병실</th>
                 <th>허가병상수</th>
+                <th>가용병상수</th>
                 <th>성별</th>
                 <th>재원자 수</th>
                 <th>입원 T.O</th>
@@ -615,6 +662,7 @@
                     <span class="ws-discharge-summary" x-show="room.discharge > 0" x-text="'퇴원 ' + room.discharge + ' · 오후가능 ' + room.afternoon"></span>
                   </td>
                   <td data-label="허가병상수" x-text="room.capacity + '병실'"></td>
+                  <td data-label="가용병상수" x-text="room.availableBeds + '병상'"></td>
                   <td data-label="성별" x-text="room.gender || '—'"></td>
                   <td data-label="재원자 수" x-text="room.occupied + '명'"></td>
                   <td data-label="입원 T.O">
@@ -632,9 +680,30 @@
                     <div class="ws-beds">
                       <template x-for="i in room.capacity" :key="i">
                         <div class="ws-bed-slot"
-                             :class="{ 'is-filled': room.patients[i-1], 'is-reserved': !room.patients[i-1] && i <= room.occupied + room.reserved, 'has-discharge': room.dischargeLabels[i-1] }">
+                             :class="{ 'is-filled': room.cards[i-1] && room.cards[i-1].kind === 'patient',
+                                       'is-reserved': room.cards[i-1] && room.cards[i-1].kind === 'reservation',
+                                       'has-discharge': room.dischargeLabels[i-1] }"
+                             :title="bedTooltip(room.cards[i-1])">
                           <span class="ws-bed-slot__num" x-text="i"></span>
-                          <span class="ws-bed-slot__name" x-text="room.patients[i-1] || ''"></span>
+                          <template x-if="room.cards[i-1] && room.cards[i-1].kind === 'patient'">
+                            <span class="ws-bed-card">
+                              <span class="ws-bed-card__name">
+                                <b x-text="room.cards[i-1].name"></b>
+                                <span class="ws-bed-card__type" x-show="room.cards[i-1].type" x-text="room.cards[i-1].type"></span>
+                              </span>
+                              <span class="ws-bed-card__row">
+                                <span x-text="room.cards[i-1].chartNo"></span>
+                                <span x-text="[room.cards[i-1].age ? room.cards[i-1].age + '세' : '', room.cards[i-1].gender].filter(Boolean).join(' · ')"></span>
+                              </span>
+                              <span class="ws-bed-card__row">
+                                <span x-text="room.cards[i-1].admissionDate"></span>
+                                <span class="ws-bed-card__days" x-show="room.cards[i-1].days" x-text="'입원 ' + room.cards[i-1].days + '일'"></span>
+                              </span>
+                            </span>
+                          </template>
+                          <template x-if="room.cards[i-1] && room.cards[i-1].kind === 'reservation'">
+                            <span class="ws-bed-slot__name" x-text="room.cards[i-1].name + ' (예약)'"></span>
+                          </template>
                           <span class="ws-discharge-mark"
                                 x-show="room.dischargeLabels[i-1]"
                                 :title="dischargeTooltip(room.dischargeLabels[i-1], room.dischargeAvailability[i-1])"
@@ -676,18 +745,20 @@ function wardStatus() {
     if (r.statusSuction) care.push('석션');
     if (r.statusWalk)    care.push('보행');
     const cap = r.licensedBeds || 0;
+    const avail = r.availableBeds != null ? r.availableBeds : cap;
     const occ = r.occupiedCount || 0;
     const res = r.reservationCount || 0;
     return {
       id:        r.roomName    || '',
       capacity:  cap,
+      availableBeds: avail,
       occupied:  occ,
       reserved:  res,
-      available: r.availableCount != null ? r.availableCount : Math.max(0, cap - occ - res),
+      available: r.availableCount != null ? r.availableCount : Math.max(0, avail - occ - res),
       occupancy: cap > 0 ? Math.round((occ / cap) * 100) : 0,
       care,
-      patients:  (r.patientSlots || []).map(s => s === '-' ? '' : s),
-      gender:    r.genderSummary || '',
+      cards:     r.patientCards || [],
+      gender:    r.roomGender || r.genderSummary || '',
       admitDate: r.reservationNames || '',
       careType:  r.careType || '',
       note:      r.note || '',
@@ -719,11 +790,18 @@ function wardStatus() {
     ? ((_board.snapshotDate || '') + ' ' + (_board.snapshotTime || '')).trim()
     : new Date().toISOString().slice(0, 16).replace('T', ' ');
 
+  const _snapshots = /*[[${snapshots}]]*/ [];
+  const _snapshotId = _board && _board.snapshotId != null ? String(_board.snapshotId) : '';
+  const _latestId   = _snapshots.length ? String(_snapshots[0].id) : '';
+
   return {
     wards: _wards,
     canManage: _canManage,
     popupMode: new URLSearchParams(location.search).get('popup') === '1',
     now: _now,
+    snapshots: _snapshots,
+    snapshotId: _snapshotId,
+    isHistorical: _snapshotId !== '' && _latestId !== '' && _snapshotId !== _latestId,
     filters: [
       { key: 'diaper',  label: '기저귀', on: false },
       { key: 'oxygen',  label: '산소',   on: false },
@@ -789,6 +867,31 @@ function wardStatus() {
     dischargeTooltip(label, availability) {
       if (!label) return '';
       return availability ? label + ' · ' + availability : label;
+    },
+
+    bedTooltip(card) {
+      if (!card || card.kind !== 'patient') return '';
+      const lines = [];
+      const disease = [card.diseaseCode, card.diseaseName].filter(Boolean).join(' ');
+      if (disease) lines.push('상병 ' + disease);
+      if (card.guardianPhone) lines.push('보호자 ' + card.guardianPhone);
+      return lines.join('\n');
+    },
+
+    snapshotLabel(s) {
+      return ((s.snapshotDate || '') + ' ' + (s.snapshotTime || '')).trim() + (s.sourceType ? ' · ' + s.sourceType : '');
+    },
+
+    goToSnapshot(id) {
+      const params = new URLSearchParams();
+      if (id) params.set('snapshotId', id);
+      if (this.popupMode) params.set('popup', '1');
+      const qs = params.toString();
+      location.href = ctx + '/room-board' + (qs ? '?' + qs : '');
+    },
+
+    goLatest() {
+      this.goToSnapshot('');
     },
 
     closePage() {
