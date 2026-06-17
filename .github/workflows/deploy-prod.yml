@@ -62,6 +62,9 @@ jobs:
       - name: Deploy on prod server (local, with backup)
         run: |
           TS=$(date +%Y%m%d-%H%M%S)
-          cp -a /usr/local/tomcat10/webapps/csm.war /usr/local/tomcat10/webapps/csm.war.bak-$TS 2>/dev/null || true
-          cp artifact/csm-prod.war /usr/local/tomcat10/webapps/csm.war
+          WEBAPPS=/opt/csm-next/tomcat/webapps
+          cp -a "$WEBAPPS/csm.war" "$WEBAPPS/csm.war.bak-$TS" 2>/dev/null || true
+          # copy to a temp file then atomically rename, so Tomcat never auto-deploys a half-written war
+          cp artifact/csm-prod.war "$WEBAPPS/csm.war.new"
+          mv -f "$WEBAPPS/csm.war.new" "$WEBAPPS/csm.war"
           echo "PROD deployed: csm.war (rollback: csm.war.bak-$TS). Tomcat auto-reloads."
