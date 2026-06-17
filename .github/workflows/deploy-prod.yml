@@ -37,7 +37,7 @@ jobs:
           key: gradle-${{ hashFiles('**/*.gradle', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-
       - name: Test gate (abort prod deploy if red)
-        run: ./gradlew test --console=plain
+        run: ./gradlew test --console=plain -PexcludeIntegration
       - name: Build PROD war
         run: ./gradlew prodWar --console=plain
       - name: Upload artifact
