@@ -84,6 +84,34 @@ class RoomBoardServiceWardDetailParseTest {
         assertEquals("F009", joRow.getDiseaseCode());
     }
 
+    @Test
+    void parsesWardDetailExport_withoutLeadingBlankColumn() {
+        // Some exports place the slot code in column 0 (no leading blank), so values align with the header.
+        String kim = row("1병동-0101-01", "4", "", "문창근", "김은식", "20354", "보험", "92", "F", "2021-04-26",
+                "1878", "", "", "고혈압          ,비강영양", "", "천정민", "", "", "", "",
+                "001-0101-01", "20210819", "", "", "F009", "상세불명의 알츠하이머병에서의 치매(G30.9†)", "4", "");
+        String raw = String.join("\n", HEADER, kim);
+
+        RoomBoardService service = new RoomBoardService(jdbcTemplate);
+        RoomBoardImportResult result = service.previewImport("FALH", "EXCEL_DETAIL", "2026-06-17", "10:00", raw);
+
+        assertEquals("WARD_DETAIL", result.getSourceType());
+        assertEquals(1, result.getRows().size());
+
+        RoomBoardImportRow kimRow = result.getRows().get(0);
+        assertEquals("1병동", kimRow.getWardName());
+        assertEquals("101호", kimRow.getRoomName());
+        assertEquals("김은식", kimRow.getPatientName());
+        assertEquals("20354", kimRow.getPatientNo());
+        assertEquals("보험", kimRow.getPatientType());
+        assertEquals("92", kimRow.getAge());
+        assertEquals("F", kimRow.getGender());
+        assertEquals("2021-04-26", kimRow.getAdmissionDate());
+        assertEquals("F009", kimRow.getDiseaseCode());
+        assertTrue(kimRow.getDiseaseName().contains("알츠하이머"));
+        assertEquals("", kimRow.getPhoneGuardian());
+    }
+
     private String row(String... cells) {
         return String.join("\t", cells);
     }
