@@ -1,6 +1,7 @@
 package com.coresolution.csm.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -13,12 +14,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.ui.Model;
 import org.springframework.web.server.ResponseStatusException;
@@ -28,6 +34,7 @@ import com.coresolution.csm.serivce.MediplatSsoService;
 import com.coresolution.csm.serivce.ModuleFeatureService;
 import com.coresolution.csm.serivce.RoomBoardService;
 import com.coresolution.csm.serivce.SmsService;
+import com.coresolution.csm.vo.RoomBoardRoomConfig;
 import com.coresolution.csm.vo.RoomBoardView;
 import com.coresolution.csm.vo.Userdata;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -75,6 +82,7 @@ class RoomBoardControllerTest {
 
         String view = controller.roomBoard(
                 null,
+                null,
                 0,
                 null,
                 null,
@@ -100,6 +108,7 @@ class RoomBoardControllerTest {
         when(csmAuthService.isRoomBoardCounselLinkEnabled("FALH")).thenReturn(false);
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> controller.roomBoard(
+                null,
                 null,
                 1,
                 null,
@@ -131,6 +140,7 @@ class RoomBoardControllerTest {
 
         String view = controller.roomBoard(
                 null,
+                null,
                 1,
                 null,
                 null,
@@ -148,8 +158,97 @@ class RoomBoardControllerTest {
     }
 
     @Test
+    void roomBoard_forwardsSnapshotId_toGetBoard() {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("inst", "FALH");
+        session.setAttribute("userInfo", managerUser("manager"));
+        Model model = new ExtendedModelMap();
+
+        when(moduleFeatureService.isEnabled("FALH", ModuleFeatureService.FEATURE_ROOM_BOARD)).thenReturn(true);
+        stubCommonData("FALH");
+
+        controller.roomBoard(null, 42L, 0, null, null, null, null, null, null, null, model, session);
+
+        verify(roomBoardService).getBoard("FALH", null, 42L);
+    }
+
+    @Test
     void legacyRoomBoardAdmin_redirectsToManagePath() {
         assertEquals("redirect:/room-board/manage", controller.legacyRoomBoardAdmin());
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void saveRoomConfig_returnsSavedItemAsJson_whenAuthorized() {
+        MockHttpSession session = sessionWith("FALH", managerUser("manager"));
+        authorizeAs("ROLE_INST_ADMIN");
+        when(moduleFeatureService.isEnabled("FALH", ModuleFeatureService.FEATURE_ROOM_BOARD)).thenReturn(true);
+
+        RoomBoardRoomConfig saved = new RoomBoardRoomConfig();
+        saved.setId(42L);
+        saved.setWardName("1병동");
+        saved.setRoomName("101호");
+        when(roomBoardService.saveRoomConfig(eq("FALH"), any(RoomBoardRoomConfig.class), any()))
+                .thenReturn(saved);
+
+        ResponseEntity<?> response = controller.saveRoomConfig(new RoomBoardRoomConfig(), session);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertSame(saved, ((Map<?, ?>) response.getBody()).get("item"));
+    }
+
+    @Test
+    void saveRoomConfig_returnsForbidden_whenCannotManage() {
+        MockHttpSession session = sessionWith("FALH", managerUser("viewer"));
+        authorizeAs("ROLE_USER");
+        when(moduleFeatureService.isEnabled("FALH", ModuleFeatureService.FEATURE_ROOM_BOARD)).thenReturn(true);
+
+        ResponseEntity<?> response = controller.saveRoomConfig(new RoomBoardRoomConfig(), session);
+
+        assertEquals(403, response.getStatusCode().value());
+        verify(roomBoardService, never()).saveRoomConfig(any(), any(), any());
+    }
+
+    @Test
+    void deleteRoomConfig_returnsOkAsJson_whenAuthorized() {
+        MockHttpSession session = sessionWith("FALH", managerUser("manager"));
+        authorizeAs("ROOM_BOARD:SNAPSHOT_MANAGE");
+        when(moduleFeatureService.isEnabled("FALH", ModuleFeatureService.FEATURE_ROOM_BOARD)).thenReturn(true);
+
+        ResponseEntity<?> response = controller.deleteRoomConfig(7L, session);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(7L, ((Map<?, ?>) response.getBody()).get("id"));
+        verify(roomBoardService).deleteRoomConfig("FALH", 7L, "manager");
+    }
+
+    @Test
+    void deleteRoomConfig_returnsForbidden_whenCannotManage() {
+        MockHttpSession session = sessionWith("FALH", managerUser("viewer"));
+        authorizeAs("ROLE_USER");
+        when(moduleFeatureService.isEnabled("FALH", ModuleFeatureService.FEATURE_ROOM_BOARD)).thenReturn(true);
+
+        ResponseEntity<?> response = controller.deleteRoomConfig(7L, session);
+
+        assertEquals(403, response.getStatusCode().value());
+        verify(roomBoardService, never()).deleteRoomConfig(any(), anyLong(), any());
+    }
+
+    private MockHttpSession sessionWith(String inst, Userdata user) {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("inst", inst);
+        session.setAttribute("userInfo", user);
+        return session;
+    }
+
+    private void authorizeAs(String authority) {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("u", "n/a",
+                        List.of(new SimpleGrantedAuthority(authority))));
     }
 
     private Userdata managerUser(String userId) {
@@ -162,7 +261,7 @@ class RoomBoardControllerTest {
     }
 
     private void stubCommonData(String inst) {
-        when(roomBoardService.getBoard(eq(inst), any())).thenReturn(new RoomBoardView());
+        when(roomBoardService.getBoard(eq(inst), any(), any())).thenReturn(new RoomBoardView());
         when(csmAuthService.userSelect(any(Userdata.class))).thenReturn(List.of());
         when(csmAuthService.selectPhone(any())).thenReturn(List.of());
         when(csmAuthService.getCategoryData(inst)).thenReturn(Map.of(

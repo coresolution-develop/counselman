@@ -2,6 +2,7 @@ package com.coresolution.csm.vo;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import lombok.Data;
 
@@ -10,6 +11,8 @@ public class RoomBoardRoomView {
     private String wardName;
     private String roomName;
     private Integer licensedBeds;
+    private Integer availableBeds;
+    private String roomGender;
     private String genderSummary;
     private Integer occupiedCount;
     private Integer availableCount;
@@ -27,6 +30,7 @@ public class RoomBoardRoomView {
     private boolean statusSuction;
     private String note;
     private List<String> patientSlots = new ArrayList<>();
+    private List<Map<String, Object>> patientCards = new ArrayList<>();
     private List<String> dischargeSlotLabels = new ArrayList<>();
     private List<String> dischargeSlotAvailability = new ArrayList<>();
 }

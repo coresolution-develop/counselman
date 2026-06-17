@@ -3,8 +3,10 @@ package com.coresolution.csm.vo;
 import lombok.Data;
 
 @Data
-public class RoomBoardRoomConfig {
+public class RoomBoardRoomConfigHistory {
     private Long id;
+    private Long rbmId;
+    private String action;
     private String wardName;
     private String roomName;
     private String startDate;
@@ -20,10 +22,24 @@ public class RoomBoardRoomConfig {
     private String nursingCost;
     private String note;
     private String useYn;
-    private String createdAt;
-    private String createdBy;
-    private String updatedAt;
-    private String updatedBy;
+    private String changedBy;
+    private String changedAt;
+
+    public String getActionLabel() {
+        if (action == null) {
+            return "";
+        }
+        switch (action) {
+            case "CREATE":
+                return "생성";
+            case "UPDATE":
+                return "수정";
+            case "DELETE":
+                return "삭제";
+            default:
+                return action;
+        }
+    }
 
     public String getStatusLabel() {
         StringBuilder sb = new StringBuilder();

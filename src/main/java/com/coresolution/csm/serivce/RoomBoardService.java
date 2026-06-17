@@ -2,6 +2,8 @@ package com.coresolution.csm.serivce;
 
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -32,6 +34,7 @@ import com.coresolution.csm.vo.AdmissionReservationItem;
 import com.coresolution.csm.vo.RoomBoardImportResult;
 import com.coresolution.csm.vo.RoomBoardImportRow;
 import com.coresolution.csm.vo.RoomBoardRoomConfig;
+import com.coresolution.csm.vo.RoomBoardRoomConfigHistory;
 import com.coresolution.csm.vo.RoomBoardRoomConfigPasteResult;
 import com.coresolution.csm.vo.RoomBoardRoomView;
 import com.coresolution.csm.vo.RoomBoardSnapshot;
@@ -72,6 +75,8 @@ public class RoomBoardService {
                     start_date date not null,
                     end_date date not null,
                     licensed_beds int not null default 0,
+                    available_beds int default null,
+                    room_gender varchar(10) default null,
                     care_type varchar(100) default null,
                     status_walk char(1) not null default 'N',
                     status_diaper char(1) not null default 'N',
@@ -143,6 +148,58 @@ public class RoomBoardService {
                     key idx_room_date (room_name, discharge_date)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """.formatted(safe));
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS csm.room_board_room_master_history_%s (
+                    rbmh_id bigint auto_increment primary key,
+                    rbm_id bigint default null,
+                    action varchar(10) not null,
+                    ward_name varchar(50) default null,
+                    room_name varchar(50) default null,
+                    start_date date default null,
+                    end_date date default null,
+                    licensed_beds int default null,
+                    available_beds int default null,
+                    room_gender varchar(10) default null,
+                    care_type varchar(100) default null,
+                    status_walk char(1) default null,
+                    status_diaper char(1) default null,
+                    status_oxygen char(1) default null,
+                    status_suction char(1) default null,
+                    nursing_cost varchar(100) default null,
+                    note varchar(500) default null,
+                    use_yn char(1) default null,
+                    changed_by varchar(100) default null,
+                    changed_at timestamp default current_timestamp,
+                    key idx_rbm (rbm_id),
+                    key idx_changed (changed_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """.formatted(safe));
+        ensureRoomMasterColumns(safe);
+    }
+
+    /**
+     * Adds columns introduced after the initial room_master schema to existing
+     * per-institution tables (CREATE TABLE IF NOT EXISTS does not alter them).
+     */
+    private void ensureRoomMasterColumns(String safe) {
+        String table = "room_board_room_master_" + safe;
+        addColumnIfMissing(table, "available_beds", "available_beds int default null AFTER licensed_beds");
+        addColumnIfMissing(table, "room_gender", "room_gender varchar(10) default null AFTER available_beds");
+    }
+
+    private void addColumnIfMissing(String tableName, String columnName, String columnDefinition) {
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS "
+                            + "WHERE TABLE_SCHEMA = 'csm' AND TABLE_NAME = ? AND COLUMN_NAME = ?",
+                    Integer.class, tableName, columnName);
+            if (count == null || count == 0) {
+                jdbcTemplate.execute("ALTER TABLE csm." + tableName + " ADD COLUMN " + columnDefinition);
+                log.info("[room-board] added column {} to {}", columnName, tableName);
+            }
+        } catch (Exception e) {
+            log.warn("[room-board] column migration skipped {}.{}: {}", tableName, columnName, e.toString());
+        }
     }
 
     public List<RoomBoardRoomConfig> getRoomConfigs(String inst) {
@@ -150,7 +207,7 @@ public class RoomBoardService {
         String safe = sanitizeInst(inst);
         String sql = """
                 SELECT rbm_id, ward_name, room_name, DATE_FORMAT(start_date,'%%Y-%%m-%%d') AS start_date,
-                       DATE_FORMAT(end_date,'%%Y-%%m-%%d') AS end_date, licensed_beds, care_type,
+                       DATE_FORMAT(end_date,'%%Y-%%m-%%d') AS end_date, licensed_beds, available_beds, room_gender, care_type,
                        status_walk, status_diaper, status_oxygen, status_suction,
                        nursing_cost, note, use_yn,
                        DATE_FORMAT(created_at,'%%Y-%%m-%%d %%H:%%i:%%s') AS created_at,
@@ -160,14 +217,114 @@ public class RoomBoardService {
                   FROM csm.room_board_room_master_%s
                  ORDER BY start_date DESC, ward_name ASC, room_name ASC, rbm_id DESC
                 """.formatted(safe);
+        return jdbcTemplate.query(sql, (rs, rowNum) -> mapRoomConfig(rs));
+    }
+
+    public RoomBoardRoomConfig getRoomConfig(String inst, long id) {
+        String safe = sanitizeInst(inst);
+        String sql = """
+                SELECT rbm_id, ward_name, room_name, DATE_FORMAT(start_date,'%%Y-%%m-%%d') AS start_date,
+                       DATE_FORMAT(end_date,'%%Y-%%m-%%d') AS end_date, licensed_beds, available_beds, room_gender, care_type,
+                       status_walk, status_diaper, status_oxygen, status_suction,
+                       nursing_cost, note, use_yn,
+                       DATE_FORMAT(created_at,'%%Y-%%m-%%d %%H:%%i:%%s') AS created_at,
+                       created_by,
+                       DATE_FORMAT(updated_at,'%%Y-%%m-%%d %%H:%%i:%%s') AS updated_at,
+                       updated_by
+                  FROM csm.room_board_room_master_%s
+                 WHERE rbm_id = ?
+                """.formatted(safe);
+        return jdbcTemplate.query(sql, (rs, rowNum) -> mapRoomConfig(rs), id)
+                .stream().findFirst().orElse(null);
+    }
+
+    private RoomBoardRoomConfig mapRoomConfig(ResultSet rs) throws SQLException {
+        RoomBoardRoomConfig item = new RoomBoardRoomConfig();
+        item.setId(rs.getLong("rbm_id"));
+        item.setWardName(rs.getString("ward_name"));
+        item.setRoomName(rs.getString("room_name"));
+        item.setStartDate(rs.getString("start_date"));
+        item.setEndDate(rs.getString("end_date"));
+        item.setLicensedBeds(rs.getInt("licensed_beds"));
+        int availableBeds = rs.getInt("available_beds");
+        item.setAvailableBeds(rs.wasNull() ? null : availableBeds);
+        item.setRoomGender(rs.getString("room_gender"));
+        item.setCareType(rs.getString("care_type"));
+        item.setStatusWalk(rs.getString("status_walk"));
+        item.setStatusDiaper(rs.getString("status_diaper"));
+        item.setStatusOxygen(rs.getString("status_oxygen"));
+        item.setStatusSuction(rs.getString("status_suction"));
+        item.setNursingCost(rs.getString("nursing_cost"));
+        item.setNote(rs.getString("note"));
+        item.setUseYn(rs.getString("use_yn"));
+        item.setCreatedAt(rs.getString("created_at"));
+        item.setCreatedBy(rs.getString("created_by"));
+        item.setUpdatedAt(rs.getString("updated_at"));
+        item.setUpdatedBy(rs.getString("updated_by"));
+        return item;
+    }
+
+    @Transactional
+    public RoomBoardRoomConfig saveRoomConfig(String inst, RoomBoardRoomConfig config, String username) {
+        ensureTables(inst);
+        String safe = sanitizeInst(inst);
+        long id = config.getId() == null ? 0L : config.getId();
+        PreparedRoomConfig prepared = prepareRoomConfig(config);
+        String action;
+        if (id > 0) {
+            updateRoomConfig(safe, id, prepared, username);
+            action = "UPDATE";
+        } else {
+            id = insertRoomConfig(safe, prepared, username);
+            action = "CREATE";
+        }
+        RoomBoardRoomConfig saved = getRoomConfig(safe, id);
+        logRoomConfigChange(safe, action, saved, username);
+        return saved;
+    }
+
+    @Transactional
+    public void deleteRoomConfig(String inst, long id, String username) {
+        ensureTables(inst);
+        String safe = sanitizeInst(inst);
+        RoomBoardRoomConfig existing = getRoomConfig(safe, id);
+        jdbcTemplate.update("DELETE FROM csm.room_board_room_master_" + safe + " WHERE rbm_id = ?", id);
+        if (existing != null) {
+            logRoomConfigChange(safe, "DELETE", existing, username);
+        }
+    }
+
+    public List<RoomBoardRoomConfigHistory> getRoomConfigHistory(String inst, int limit) {
+        ensureTables(inst);
+        String safe = sanitizeInst(inst);
+        int size = Math.max(1, Math.min(limit, 100));
+        String sql = """
+                SELECT rbmh_id, rbm_id, action, ward_name, room_name,
+                       DATE_FORMAT(start_date,'%%Y-%%m-%%d') AS start_date,
+                       DATE_FORMAT(end_date,'%%Y-%%m-%%d') AS end_date,
+                       licensed_beds, available_beds, room_gender, care_type,
+                       status_walk, status_diaper, status_oxygen, status_suction,
+                       nursing_cost, note, use_yn, changed_by,
+                       DATE_FORMAT(changed_at,'%%Y-%%m-%%d %%H:%%i:%%s') AS changed_at
+                  FROM csm.room_board_room_master_history_%s
+                 ORDER BY changed_at DESC, rbmh_id DESC
+                 LIMIT %d
+                """.formatted(safe, size);
         return jdbcTemplate.query(sql, (rs, rowNum) -> {
-            RoomBoardRoomConfig item = new RoomBoardRoomConfig();
-            item.setId(rs.getLong("rbm_id"));
+            RoomBoardRoomConfigHistory item = new RoomBoardRoomConfigHistory();
+            item.setId(rs.getLong("rbmh_id"));
+            long rbmId = rs.getLong("rbm_id");
+            item.setRbmId(rs.wasNull() ? null : rbmId);
+            item.setAction(rs.getString("action"));
             item.setWardName(rs.getString("ward_name"));
             item.setRoomName(rs.getString("room_name"));
             item.setStartDate(rs.getString("start_date"));
             item.setEndDate(rs.getString("end_date"));
-            item.setLicensedBeds(rs.getInt("licensed_beds"));
+            int licensedBeds = rs.getInt("licensed_beds");
+            item.setLicensedBeds(rs.wasNull() ? null : licensedBeds);
+            int availableBeds = rs.getInt("available_beds");
+            item.setAvailableBeds(rs.wasNull() ? null : availableBeds);
+            item.setRoomGender(rs.getString("room_gender"));
             item.setCareType(rs.getString("care_type"));
             item.setStatusWalk(rs.getString("status_walk"));
             item.setStatusDiaper(rs.getString("status_diaper"));
@@ -176,31 +333,43 @@ public class RoomBoardService {
             item.setNursingCost(rs.getString("nursing_cost"));
             item.setNote(rs.getString("note"));
             item.setUseYn(rs.getString("use_yn"));
-            item.setCreatedAt(rs.getString("created_at"));
-            item.setCreatedBy(rs.getString("created_by"));
-            item.setUpdatedAt(rs.getString("updated_at"));
-            item.setUpdatedBy(rs.getString("updated_by"));
+            item.setChangedBy(rs.getString("changed_by"));
+            item.setChangedAt(rs.getString("changed_at"));
             return item;
         });
     }
 
-    @Transactional
-    public void saveRoomConfig(String inst, RoomBoardRoomConfig config, String username) {
-        ensureTables(inst);
-        String safe = sanitizeInst(inst);
-        long id = config.getId() == null ? 0L : config.getId();
-        PreparedRoomConfig prepared = prepareRoomConfig(config);
-        if (id > 0) {
-            updateRoomConfig(safe, id, prepared, username);
+    private void logRoomConfigChange(String inst, String action, RoomBoardRoomConfig config, String username) {
+        if (config == null) {
             return;
         }
-        insertRoomConfig(safe, prepared, username);
-    }
-
-    public void deleteRoomConfig(String inst, long id) {
-        ensureTables(inst);
         String safe = sanitizeInst(inst);
-        jdbcTemplate.update("DELETE FROM csm.room_board_room_master_" + safe + " WHERE rbm_id = ?", id);
+        String sql = """
+                INSERT INTO csm.room_board_room_master_history_%s
+                (rbm_id, action, ward_name, room_name, start_date, end_date, licensed_beds, available_beds,
+                 room_gender, care_type, status_walk, status_diaper, status_oxygen, status_suction,
+                 nursing_cost, note, use_yn, changed_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """.formatted(safe);
+        jdbcTemplate.update(sql,
+                config.getId(),
+                action,
+                config.getWardName(),
+                config.getRoomName(),
+                parseDate(config.getStartDate(), null),
+                parseDate(config.getEndDate(), null),
+                config.getLicensedBeds(),
+                config.getAvailableBeds(),
+                config.getRoomGender(),
+                config.getCareType(),
+                normalizeYn(config.getStatusWalk()),
+                normalizeYn(config.getStatusDiaper()),
+                normalizeYn(config.getStatusOxygen()),
+                normalizeYn(config.getStatusSuction()),
+                config.getNursingCost(),
+                config.getNote(),
+                config.getUseYn(),
+                safeText(username, 100));
     }
 
     public RoomBoardRoomConfigPasteResult previewRoomConfigPaste(String inst, String rawText) {
@@ -405,7 +574,9 @@ public class RoomBoardService {
         result.setSourceType(effectiveSourceType);
 
         List<RoomBoardImportRow> parsed;
-        if ("CLICKSOFT".equalsIgnoreCase(effectiveSourceType)) {
+        if ("WARD_DETAIL".equalsIgnoreCase(effectiveSourceType)) {
+            parsed = parseWardDetailRows(rows);
+        } else if ("CLICKSOFT".equalsIgnoreCase(effectiveSourceType)) {
             parsed = parseClicksoftRows(rows);
         } else if ("ROOM_SLOT".equalsIgnoreCase(effectiveSourceType)) {
             parsed = parseRoomSlotRows(rows);
@@ -472,10 +643,10 @@ public class RoomBoardService {
                     safeText(row.getAdmissionDate(), 20),
                     safeText(row.getDoctorName(), 100),
                     safeText(row.getPatientType(), 50),
+                    safeText(row.getDiseaseName(), 200),
+                    safeText(row.getDiseaseCode(), 100),
                     null,
-                    null,
-                    null,
-                    null,
+                    safeText(row.getPhoneGuardian(), 50),
                     safeText(row.getMemo(), 1000),
                     buildRawRow(row));
         }
@@ -483,9 +654,15 @@ public class RoomBoardService {
     }
 
     public RoomBoardView getBoard(String inst, String snapshotDate) {
+        return getBoard(inst, snapshotDate, null);
+    }
+
+    public RoomBoardView getBoard(String inst, String snapshotDate, Long snapshotId) {
         ensureTables(inst);
         String safe = sanitizeInst(inst);
-        RoomBoardSnapshot snapshot = findSnapshot(safe, snapshotDate);
+        RoomBoardSnapshot snapshot = snapshotId != null
+                ? findSnapshotById(safe, snapshotId)
+                : findSnapshot(safe, snapshotDate);
         LocalDate baseDate = snapshot != null && snapshot.getSnapshotDate() != null
                 ? parseDate(snapshot.getSnapshotDate(), LocalDate.now())
                 : parseDate(snapshotDate, LocalDate.now());
@@ -522,7 +699,8 @@ public class RoomBoardService {
             List<String> reservationNames = reservationNamesByRoom.getOrDefault(roomName, List.of());
             int occupiedCount = roomPatients.size();
             int licensedBeds = config.getLicensedBeds() == null ? 0 : config.getLicensedBeds();
-            int availableCount = Math.max(licensedBeds - occupiedCount - reservationNames.size(), 0);
+            int availableBeds = effectiveAvailableBeds(config.getAvailableBeds(), licensedBeds);
+            int availableCount = Math.max(availableBeds - occupiedCount - reservationNames.size(), 0);
             long afternoonAvailableCount = roomDischargeNotices.stream()
                     .filter(row -> "오후 입원 가능".equals(dischargeAvailabilityLabel(
                             Objects.toString(row.get("status"), ""),
@@ -533,6 +711,8 @@ public class RoomBoardService {
             room.setWardName(wardName);
             room.setRoomName(roomName);
             room.setLicensedBeds(licensedBeds);
+            room.setAvailableBeds(availableBeds);
+            room.setRoomGender(safeText(config.getRoomGender(), 10));
             room.setOccupiedCount(occupiedCount);
             room.setReservationCount(reservationNames.size());
             room.setAvailableCount(availableCount);
@@ -547,6 +727,7 @@ public class RoomBoardService {
             room.setGenderSummary(buildGenderSummary(roomPatients));
             room.setReservationNames(String.join(", ", reservationNames));
             room.setPatientSlots(buildPatientSlots(roomPatients, reservationNames, Math.max(licensedBeds, 8)));
+            room.setPatientCards(buildPatientCards(roomPatients, reservationNames, Math.max(licensedBeds, 8), baseDate));
             room.setDischargeNoticeCount(roomDischargeNotices.size());
             room.setAfternoonAvailableCount((int) afternoonAvailableCount);
             room.setDischargePatientNames(roomDischargeNotices.stream()
@@ -626,10 +807,39 @@ public class RoomBoardService {
         return history.isEmpty() ? null : history.get(0);
     }
 
+    private RoomBoardSnapshot findSnapshotById(String inst, Long snapshotId) {
+        String safe = sanitizeInst(inst);
+        if (snapshotId == null) {
+            return findSnapshot(safe, null);
+        }
+        String sql = """
+                SELECT rbs_id, source_type, DATE_FORMAT(snapshot_date,'%%Y-%%m-%%d') AS snapshot_date,
+                       snapshot_time, uploaded_by,
+                       DATE_FORMAT(uploaded_at,'%%Y-%%m-%%d %%H:%%i:%%s') AS uploaded_at,
+                       parse_status, parse_message
+                  FROM csm.room_board_snapshot_%s
+                 WHERE rbs_id = ?
+                """.formatted(safe);
+        List<RoomBoardSnapshot> rows = jdbcTemplate.query(sql, (rs, rowNum) -> {
+            RoomBoardSnapshot item = new RoomBoardSnapshot();
+            item.setId(rs.getLong("rbs_id"));
+            item.setSourceType(rs.getString("source_type"));
+            item.setSnapshotDate(rs.getString("snapshot_date"));
+            item.setSnapshotTime(rs.getString("snapshot_time"));
+            item.setUploadedBy(rs.getString("uploaded_by"));
+            item.setUploadedAt(rs.getString("uploaded_at"));
+            item.setParseStatus(rs.getString("parse_status"));
+            item.setParseMessage(rs.getString("parse_message"));
+            return item;
+        }, snapshotId);
+        return rows.isEmpty() ? findSnapshot(safe, null) : rows.get(0);
+    }
+
     private List<Map<String, Object>> loadSnapshotPatients(String inst, Long snapshotId) {
         String safe = sanitizeInst(inst);
         String sql = """
-                SELECT rbp_id, patient_no, room_name, ward_name, patient_name, gender
+                SELECT rbp_id, patient_no, room_name, ward_name, patient_name, gender, age,
+                       admission_date, patient_type, disease_code, disease_name, phone_guardian
                   FROM csm.room_board_patient_%s
                  WHERE rbs_id = ?
                  ORDER BY room_name ASC, patient_name ASC
@@ -714,7 +924,7 @@ public class RoomBoardService {
         String safe = sanitizeInst(inst);
         String sql = """
                 SELECT rbm_id, ward_name, room_name, DATE_FORMAT(start_date,'%%Y-%%m-%%d') AS start_date,
-                       DATE_FORMAT(end_date,'%%Y-%%m-%%d') AS end_date, licensed_beds, care_type,
+                       DATE_FORMAT(end_date,'%%Y-%%m-%%d') AS end_date, licensed_beds, available_beds, room_gender, care_type,
                        status_walk, status_diaper, status_oxygen, status_suction,
                        nursing_cost, note, use_yn
                   FROM csm.room_board_room_master_%s
@@ -730,6 +940,9 @@ public class RoomBoardService {
             item.setStartDate(rs.getString("start_date"));
             item.setEndDate(rs.getString("end_date"));
             item.setLicensedBeds(rs.getInt("licensed_beds"));
+            int availableBeds = rs.getInt("available_beds");
+            item.setAvailableBeds(rs.wasNull() ? null : availableBeds);
+            item.setRoomGender(rs.getString("room_gender"));
             item.setCareType(rs.getString("care_type"));
             item.setStatusWalk(rs.getString("status_walk"));
             item.setStatusDiaper(rs.getString("status_diaper"));
@@ -797,6 +1010,75 @@ public class RoomBoardService {
             slots.add("-");
         }
         return slots;
+    }
+
+    /**
+     * Per-bed patient cards for the board view, in the same order as
+     * {@link #buildPatientSlots} (patients, then reservations, then empty) so the
+     * index aligns with the discharge slot lists.
+     */
+    private List<Map<String, Object>> buildPatientCards(
+            List<Map<String, Object>> roomPatients, List<String> reservationNames, int size, LocalDate baseDate) {
+        List<Map<String, Object>> cards = new ArrayList<>();
+        for (Map<String, Object> patient : roomPatients) {
+            String name = safeText(patient.get("patient_name"), 100);
+            if (name.isBlank()) {
+                continue;
+            }
+            Map<String, Object> card = new LinkedHashMap<>();
+            card.put("kind", "patient");
+            card.put("name", name);
+            card.put("chartNo", safeText(patient.get("patient_no"), 100));
+            card.put("type", safeText(patient.get("patient_type"), 50));
+            card.put("age", safeText(patient.get("age"), 20));
+            card.put("gender", genderLabel(safeText(patient.get("gender"), 10)));
+            String admissionDate = safeText(patient.get("admission_date"), 20);
+            card.put("admissionDate", admissionDate);
+            card.put("days", admissionDays(admissionDate, baseDate));
+            card.put("diseaseCode", safeText(patient.get("disease_code"), 100));
+            card.put("diseaseName", safeText(patient.get("disease_name"), 200));
+            card.put("guardianPhone", safeText(patient.get("phone_guardian"), 50));
+            cards.add(card);
+        }
+        if (reservationNames != null) {
+            for (String reservationName : reservationNames) {
+                String name = safeText(reservationName, 100);
+                if (name.isBlank()) {
+                    continue;
+                }
+                Map<String, Object> card = new LinkedHashMap<>();
+                card.put("kind", "reservation");
+                card.put("name", name);
+                cards.add(card);
+            }
+        }
+        while (cards.size() < size) {
+            Map<String, Object> empty = new LinkedHashMap<>();
+            empty.put("kind", "empty");
+            cards.add(empty);
+        }
+        return cards;
+    }
+
+    /** 입원일수: 입원일부터 기준일까지의 경과 일수(입원일=1일차). 유효하지 않으면 null. */
+    Integer admissionDays(String admissionDate, LocalDate baseDate) {
+        LocalDate admitted = parseDate(admissionDate, null);
+        if (admitted == null || baseDate == null) {
+            return null;
+        }
+        long days = java.time.temporal.ChronoUnit.DAYS.between(admitted, baseDate) + 1;
+        return days < 1 ? null : (int) days;
+    }
+
+    String genderLabel(String gender) {
+        String value = safeText(gender, 10).toUpperCase(Locale.ROOT);
+        if (value.equals("M") || value.equals("남")) {
+            return "남";
+        }
+        if (value.equals("F") || value.equals("여")) {
+            return "여";
+        }
+        return safeText(gender, 10);
     }
 
     private List<String> buildDischargeSlotLabels(
@@ -1112,13 +1394,76 @@ public class RoomBoardService {
         return out;
     }
 
+    /**
+     * Rich ward-detail export (병실현황판 상세조회). The slot code (e.g. "3병동-0319-04")
+     * sits at column 0 or 1 (a leading blank grouping column is common); all other
+     * fields are positioned relative to that slot column. This is the only source
+     * that carries 상병코드/상병명/보호자전화/유형(보험).
+     */
+    private List<RoomBoardImportRow> parseWardDetailRows(List<String[]> rows) {
+        List<RoomBoardImportRow> out = new ArrayList<>();
+        boolean headerSkipped = false;
+        for (String[] row : rows) {
+            if (!headerSkipped && hasAnyToken(row, "상병코드", "수진자", "차트번호", "보호자전화번호")) {
+                headerSkipped = true;
+                continue;
+            }
+            int base = wardDetailSlotIndex(row);
+            if (base < 0) {
+                continue;
+            }
+            ParsedSlot slot = parseSlotCode(getCell(row, base));
+            if (slot == null) {
+                continue;
+            }
+            String patientName = safeText(getCell(row, base + 4), 100);
+            if (patientName.isBlank()) {
+                continue;
+            }
+            RoomBoardImportRow item = new RoomBoardImportRow();
+            item.setWardName(slot.wardName());
+            item.setRoomName(slot.roomName());
+            item.setDoctorName(getCell(row, base + 3));
+            item.setPatientName(patientName);
+            item.setPatientNo(getCell(row, base + 5));
+            item.setPatientType(getCell(row, base + 6));
+            item.setAge(getCell(row, base + 7));
+            item.setGender(getCell(row, base + 8));
+            item.setAdmissionDate(getCell(row, base + 9));
+            // 보호자전화번호 전용 칸만 사용한다(휴대전화/전화번호는 피보자 번호라 보호자와 다름).
+            item.setPhoneGuardian(getCell(row, base + 19));
+            item.setDiseaseCode(getCell(row, base + 24));
+            item.setDiseaseName(getCell(row, base + 25));
+            item.setMemo(firstNonBlank(getCell(row, base + 13), getCell(row, base + 23)));
+            out.add(item);
+        }
+        return out;
+    }
+
+    private int wardDetailSlotIndex(String[] row) {
+        for (int i = 0; i <= 1 && i < row.length; i++) {
+            if (looksLikeRoomSlotCode(getCell(row, i))) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private boolean looksLikeWardDetail(String[] headerRow) {
+        return hasAnyToken(headerRow, "상병코드", "상병명칭", "보호자전화번호");
+    }
+
     private String detectSourceType(String sourceType, List<String[]> rows) {
         if (rows == null || rows.isEmpty()) {
             return sourceType;
         }
         String requested = safeText(sourceType, 30);
-        if ("CLICKSOFT".equalsIgnoreCase(requested) || "ROOM_SLOT".equalsIgnoreCase(requested)) {
+        if ("CLICKSOFT".equalsIgnoreCase(requested) || "ROOM_SLOT".equalsIgnoreCase(requested)
+                || "WARD_DETAIL".equalsIgnoreCase(requested)) {
             return requested;
+        }
+        if (looksLikeWardDetail(rows.get(0))) {
+            return "WARD_DETAIL";
         }
         String firstCell = safeText(getCell(rows.get(0), 0), 100);
         if (looksLikeRoomSlotCode(firstCell)) {
@@ -1174,6 +1519,9 @@ public class RoomBoardService {
                 safeText(row.getAdmissionDate(), 20),
                 safeText(row.getDoctorName(), 100),
                 safeText(row.getPatientType(), 50),
+                safeText(row.getDiseaseCode(), 100),
+                safeText(row.getDiseaseName(), 200),
+                safeText(row.getPhoneGuardian(), 50),
                 safeText(row.getMemo(), 1000));
     }
 
@@ -1370,12 +1718,15 @@ public class RoomBoardService {
         if (licensedBeds <= 0) {
             throw new IllegalArgumentException("허가병상수는 1 이상이어야 합니다.");
         }
+        int availableBeds = effectiveAvailableBeds(config.getAvailableBeds(), licensedBeds);
         return new PreparedRoomConfig(
                 wardName,
                 roomName,
                 startDate,
                 endDate,
                 licensedBeds,
+                availableBeds,
+                normalizeRoomGender(config.getRoomGender()),
                 safeText(config.getCareType(), 100),
                 normalizeYn(config.getStatusWalk()),
                 normalizeYn(config.getStatusDiaper()),
@@ -1386,31 +1737,67 @@ public class RoomBoardService {
                 normalizeYn(config.getUseYn()));
     }
 
-    private void insertRoomConfig(String inst, PreparedRoomConfig config, String username) {
+    /**
+     * Operational available beds (가용병상수): defaults to licensed beds when unset,
+     * never negative, and never exceeds licensed beds.
+     */
+    int effectiveAvailableBeds(Integer availableBeds, int licensedBeds) {
+        if (availableBeds == null) {
+            return licensedBeds;
+        }
+        int value = Math.max(0, availableBeds);
+        if (value <= 0) {
+            return licensedBeds;
+        }
+        return Math.min(value, licensedBeds);
+    }
+
+    String normalizeRoomGender(String roomGender) {
+        String value = safeText(roomGender, 10).replace(" ", "");
+        switch (value.toUpperCase(Locale.ROOT)) {
+            case "남", "남성", "M":
+                return "남";
+            case "여", "여성", "F":
+                return "여";
+            case "혼용", "공용", "혼합", "MIX", "MIXED":
+                return "혼용";
+            default:
+                return "";
+        }
+    }
+
+    private long insertRoomConfig(String inst, PreparedRoomConfig config, String username) {
         String safe = sanitizeInst(inst);
         String sql = """
                 INSERT INTO csm.room_board_room_master_%s
-                (ward_name, room_name, start_date, end_date, licensed_beds, care_type,
+                (ward_name, room_name, start_date, end_date, licensed_beds, available_beds, room_gender, care_type,
                  status_walk, status_diaper, status_oxygen, status_suction,
                  nursing_cost, note, use_yn, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """.formatted(safe);
-        jdbcTemplate.update(sql,
-                config.wardName(),
-                config.roomName(),
-                config.startDate(),
-                config.endDate(),
-                config.licensedBeds(),
-                config.careType(),
-                config.statusWalk(),
-                config.statusDiaper(),
-                config.statusOxygen(),
-                config.statusSuction(),
-                config.nursingCost(),
-                config.note(),
-                config.useYn(),
-                safeText(username, 100),
-                safeText(username, 100));
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(con -> {
+            java.sql.PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            ps.setString(1, config.wardName());
+            ps.setString(2, config.roomName());
+            ps.setObject(3, config.startDate());
+            ps.setObject(4, config.endDate());
+            ps.setInt(5, config.licensedBeds());
+            ps.setInt(6, config.availableBeds());
+            ps.setString(7, config.roomGender());
+            ps.setString(8, config.careType());
+            ps.setString(9, config.statusWalk());
+            ps.setString(10, config.statusDiaper());
+            ps.setString(11, config.statusOxygen());
+            ps.setString(12, config.statusSuction());
+            ps.setString(13, config.nursingCost());
+            ps.setString(14, config.note());
+            ps.setString(15, config.useYn());
+            ps.setString(16, safeText(username, 100));
+            ps.setString(17, safeText(username, 100));
+            return ps;
+        }, keyHolder);
+        return Objects.requireNonNull(keyHolder.getKey()).longValue();
     }
 
     private void updateRoomConfig(String inst, long id, PreparedRoomConfig config, String username) {
@@ -1422,6 +1809,8 @@ public class RoomBoardService {
                        start_date=?,
                        end_date=?,
                        licensed_beds=?,
+                       available_beds=?,
+                       room_gender=?,
                        care_type=?,
                        status_walk=?,
                        status_diaper=?,
@@ -1439,6 +1828,8 @@ public class RoomBoardService {
                 config.startDate(),
                 config.endDate(),
                 config.licensedBeds(),
+                config.availableBeds(),
+                config.roomGender(),
                 config.careType(),
                 config.statusWalk(),
                 config.statusDiaper(),
@@ -1457,6 +1848,8 @@ public class RoomBoardService {
             LocalDate startDate,
             LocalDate endDate,
             int licensedBeds,
+            int availableBeds,
+            String roomGender,
             String careType,
             String statusWalk,
             String statusDiaper,

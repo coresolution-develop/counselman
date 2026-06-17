@@ -36,7 +36,8 @@ class ChromeNavigationTemplateTest {
         assertThat(users).contains("@{/room-board/manage}").doesNotContain("@{/admin/room-board}");
         assertThat(access).contains("@{/room-board/manage}").doesNotContain("@{/admin/room-board}");
         assertThat(ward).contains("@{/room-board/manage}").doesNotContain("@{/admin/room-board}");
-        assertThat(roomBoard).contains("@{/room-board/manage/room/save}");
+        assertThat(roomBoard).contains("/room-board/manage/room/save");
+        assertThat(roomBoard).contains("/room-board/manage/room/delete");
         assertThat(roomBoard).contains("/room-board/manage/import/preview");
         assertThat(roomBoard).doesNotContain("@{/admin/room-board");
         assertThat(roomBoard).doesNotContain("'/admin/room-board");
