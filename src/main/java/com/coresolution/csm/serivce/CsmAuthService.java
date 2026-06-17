@@ -734,33 +734,43 @@ public class CsmAuthService {
     }
 
     /**
-     * Ensure a SHA-256 hash column exists AND can store the raw 32-byte digest.
+     * Ensure a SHA-256 hash column exists, can store the raw 32-byte digest, AND
+     * accepts null.
      *
-     * The app binds the digest with PreparedStatement#setBytes. Some legacy
-     * institution tables were provisioned with the hash column as a character type
-     * (e.g. char(64)/utf8mb4); MySQL then rejects the binary value with "Incorrect
-     * string value" (error 1366) under STRICT_TRANS_TABLES, so every counsel/guardian
-     * save fails for that institution. ensureTableColumn only adds a missing column
-     * and never corrected a wrong type — this adds the column as varbinary(32) when
-     * absent and converts a character-typed column to varbinary(32). Columns already
-     * binary(32) or varbinary(32) store the 32-byte digest correctly and are left
-     * untouched, so this never rewrites a healthy (possibly large) table. Idempotent.
-     * Package-private for regression testing.
+     * The app binds the digest with PreparedStatement#setBytes and writes null when
+     * the source field (name/phone) is blank. Two legacy provisioning bugs each make
+     * every "incomplete" counsel/guardian save fail under STRICT_TRANS_TABLES:
+     *   1. a character type (e.g. char(64)/utf8mb4) rejects the raw 32-byte value —
+     *      "Incorrect string value" (error 1366);
+     *   2. a NOT NULL column rejects the null digest written for a blank field —
+     *      "Column ... cannot be null" (error 1048) — e.g. a relationship-only
+     *      guardian on HSFH/HSJH whose hash columns are binary(32) NOT NULL.
+     * ensureTableColumn only adds a missing column and never corrected a wrong type
+     * or nullability — this adds the column as varbinary(32) when absent and converts
+     * any character-typed OR NOT NULL column to a nullable varbinary(32). A column
+     * already nullable binary(32)/varbinary(32) stores the digest and accepts null,
+     * so it is left untouched and a healthy (possibly large) table is never needlessly
+     * rewritten. Idempotent. Package-private for regression testing.
      */
     void ensureBinaryHashColumn(String schemaName, String tableName, String columnName) {
         try {
-            List<String> types = jdbcTemplate.queryForList(
-                    "SELECT data_type FROM information_schema.columns "
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                    "SELECT data_type, is_nullable FROM information_schema.columns "
                             + "WHERE table_schema = ? AND table_name = ? AND column_name = ?",
-                    String.class, schemaName, tableName, columnName);
-            String dataType = types.isEmpty() ? null : types.get(0);
-            if (dataType == null) {
+                    schemaName, tableName, columnName);
+            if (rows.isEmpty()) {
                 jdbcTemplate.execute("ALTER TABLE " + schemaName + "." + tableName
                         + " ADD COLUMN " + columnName + " varbinary(32) default null");
-            } else if (!"binary".equalsIgnoreCase(dataType) && !"varbinary".equalsIgnoreCase(dataType)) {
-                // A character/text type (e.g. char(64) utf8mb4) is the bug — it rejects a
-                // raw 32-byte digest. binary(32) and varbinary(32) both store it fine and
-                // are deliberately left alone to avoid needless rebuilds of large tables.
+                return;
+            }
+            String dataType = String.valueOf(rows.get(0).get("data_type"));
+            boolean binaryCapable = "binary".equalsIgnoreCase(dataType) || "varbinary".equalsIgnoreCase(dataType);
+            boolean nullable = "YES".equalsIgnoreCase(String.valueOf(rows.get(0).get("is_nullable")));
+            // Convert a character type (rejects the raw digest, error 1366) or a NOT NULL
+            // column (rejects the null digest for a blank field, error 1048) to a nullable
+            // varbinary(32). An already-nullable binary/varbinary column is healthy and is
+            // left alone to avoid needless rebuilds of large tables.
+            if (!binaryCapable || !nullable) {
                 jdbcTemplate.execute("ALTER TABLE " + schemaName + "." + tableName
                         + " MODIFY COLUMN " + columnName + " varbinary(32) default null");
             }
