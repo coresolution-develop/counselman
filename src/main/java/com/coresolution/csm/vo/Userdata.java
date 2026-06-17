@@ -1,6 +1,11 @@
 package com.coresolution.csm.vo;
 
-public class Userdata {
+import java.io.Serializable;
+
+// [2단계] 세션 외부화(JDBC) 시 'userInfo' 세션 속성으로 저장되므로 직렬화 가능해야 한다.
+public class Userdata implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     /*
      * CREATE TABLE `user_data_hsop_0001` (
