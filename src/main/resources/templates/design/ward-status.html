@@ -11,8 +11,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="병실현황판" />
-  <link rel="apple-touch-icon" th:href="@{/assets/pwa/icon-180.png}" />
-  <link rel="icon" type="image/png" sizes="32x32" th:href="@{/assets/pwa/favicon-32.png}" />
+  <link rel="apple-touch-icon" sizes="180x180" th:href="@{/icon/new/C-cross/mediplat-c-appicon-180.png}" />
+  <link rel="icon" type="image/png" sizes="32x32" th:href="@{/icon/new/C-cross/mediplat-c-favicon-32.png}" />
+  <link rel="icon" type="image/png" sizes="16x16" th:href="@{/icon/new/C-cross/mediplat-c-favicon-16.png}" />
+  <link rel="shortcut icon" th:href="@{/icon/new/C-cross/favicon.ico}" />
   <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
   <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
   <link rel="stylesheet" th:href="@{/assets/css/layout.css}" />
@@ -23,6 +25,28 @@
   <meta name="_csrf_header" th:content="${_csrf.headerName}" />
   <style>
     [x-cloak] { display: none !important; }
+
+    /* ===== 앱 실행 스플래시(홈 화면/standalone 에서만) ===== */
+    .ws-splash {
+      position: fixed; inset: 0; z-index: 9999;
+      display: none; align-items: center; justify-content: center;
+      background: linear-gradient(160deg, var(--brand-700, #0f766e) 0%, var(--brand-500, #10b981) 100%);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ws-splash.is-on { display: flex; }
+    .ws-splash__inner { display: flex; flex-direction: column; align-items: center; gap: 16px;
+      animation: wsSplashPop .55s cubic-bezier(.2,.8,.2,1) both; }
+    .ws-splash__logo { width: 116px; height: 116px; border-radius: 26px;
+      box-shadow: 0 16px 40px rgba(0,0,0,.28); }
+    .ws-splash__title { color: #fff; font-size: 18px; font-weight: 700; letter-spacing: -.01em; opacity: .96; }
+    .ws-splash__sub { color: #fff; font-size: 12px; opacity: .72; margin-top: -8px; }
+    .ws-splash.is-leaving { animation: wsSplashFade .36s ease forwards; }
+    @keyframes wsSplashPop { from { opacity: 0; transform: scale(.86); } to { opacity: 1; transform: scale(1); } }
+    @keyframes wsSplashFade { to { opacity: 0; visibility: hidden; } }
+    @media (prefers-reduced-motion: reduce) {
+      .ws-splash__inner { animation: none; }
+      .ws-splash.is-leaving { animation: none; opacity: 0; }
+    }
 
     .ws-wrap { padding: 20px; }
 
@@ -568,6 +592,33 @@
 </head>
 <body>
 <script>if (new URLSearchParams(location.search).get('popup') === '1') document.documentElement.classList.add('ws-popup');</script>
+
+<!-- 앱 실행 스플래시: 홈 화면(standalone)으로 켰을 때만, 세션당 1회 -->
+<div id="wsSplash" class="ws-splash" aria-hidden="true">
+  <div class="ws-splash__inner">
+    <img class="ws-splash__logo" th:src="@{/icon/new/C-cross/mediplat-c-appicon-512.png}" alt="" />
+    <div class="ws-splash__title">병실현황판</div>
+    <div class="ws-splash__sub">실시간 병상 현황</div>
+  </div>
+</div>
+<script>
+  (function () {
+    var el = document.getElementById('wsSplash');
+    if (!el) return;
+    var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+        || window.navigator.standalone === true;
+    // 홈 화면 앱으로 실행했고, 이번 실행에서 아직 안 보여줬을 때만
+    if (!standalone || sessionStorage.getItem('ws_splash_shown')) { el.remove(); return; }
+    sessionStorage.setItem('ws_splash_shown', '1');
+    el.classList.add('is-on');
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var hold = reduce ? 350 : 1100;
+    setTimeout(function () {
+      el.classList.add('is-leaving');
+      setTimeout(function () { if (el && el.parentNode) el.remove(); }, 380);
+    }, hold);
+  })();
+</script>
 <script th:src="@{/assets/js/sprite.js}"></script>
 
 <div class="app"
