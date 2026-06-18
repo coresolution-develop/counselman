@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>치료스케줄관리(캘린더형)</title>
+    <link rel="stylesheet" th:href="@{/css/treatment.css}">
+    <link rel="stylesheet" th:href="@{/css/layout.css}">
+    <script th:inline="javascript">window.__ctx = /*[[@{/}]]*/ '/';</script>
+    <script th:src="@{/js/patient-cost.js}" defer></script>
+    <script th:src="@{/js/schedule-register.js}" defer></script>
+</head>
+<body th:attr="data-user-role=${user?.role}">
+<div class="layout">
+    <aside th:replace="~{fragments/layout :: sidebar(${user}, ${activeMenu}, ${mediplatPortalUrl})}"></aside>
+    <main class="main">
+        <div class="page-header">
+            <div>
+                <div class="page-title">치료스케줄관리(캘린더형)</div>
+                <div class="page-subtitle">치료실을 선택한 뒤 날짜를 눌러 스케줄을 등록합니다. 한 번만 또는 반복(요일) 등록을 지원합니다.</div>
+            </div>
+            <div class="header-right">
+                <select id="reg-room-select">
+                    <option value="">치료실 선택</option>
+                </select>
+                <button type="button" class="btn-primary" id="reg-open" disabled>+ 스케줄 등록</button>
+            </div>
+        </div>
+        <div class="page-body">
+            <p class="form-message" id="reg-message" role="status"></p>
+            <div class="calendar-toolbar no-print">
+                <button type="button" class="btn-outline" id="cal-prev">‹</button>
+                <button type="button" class="btn-outline" id="cal-today">오늘</button>
+                <button type="button" class="btn-outline" id="cal-next">›</button>
+                <strong id="cal-title" style="margin-left:8px;"></strong>
+            </div>
+            <div class="reg-calendar-grid no-print" id="cal-grid" aria-label="등록 캘린더"></div>
+            <p class="page-subtitle no-print" style="margin-top:8px;">치료실을 먼저 선택하고 날짜를 누르면 해당 날짜의 치료 계층(시간 &gt; 자리 &gt; 환자 &gt; 옵션 &gt; 상태)을 봅니다.</p>
+
+            <!-- 선택 날짜의 계층 day-detail -->
+            <section id="day-detail" hidden>
+                <div class="print-only print-head">
+                    <h2>치료스케줄 (병실/치료실별)</h2>
+                    <div id="dd-print-meta"></div>
+                </div>
+                <div class="day-detail-head">
+                    <div>
+                        <strong id="dd-title">날짜</strong>
+                        <span class="day-detail-sub" id="dd-sub"></span>
+                    </div>
+                    <div class="header-right no-print">
+                        <span class="day-detail-unassigned" id="dd-unassigned"></span>
+                        <button type="button" class="secondary-button" id="dd-register">+ 이 날짜에 등록</button>
+                        <button type="button" class="btn-primary" id="dd-print">인쇄</button>
+                    </div>
+                </div>
+                <div id="dd-body"></div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<dialog class="settings-dialog" id="reg-dialog">
+    <form method="dialog" id="reg-form">
+        <h3 id="reg-dialog-title">스케줄 등록</h3>
+        <p class="reg-room-label">치료실: <strong id="reg-room-name">-</strong></p>
+
+        <label>
+            <span>환자</span>
+            <select id="reg-patient" required>
+                <option value="">환자 선택</option>
+            </select>
+        </label>
+
+        <div class="reg-autofill" id="reg-autofill" hidden>
+            <div><span class="reg-auto-label">치료정보</span><span id="reg-auto-info">-</span></div>
+            <div><span class="reg-auto-label">참고사항</span><span id="reg-auto-note">-</span></div>
+            <div><span class="reg-auto-label">본인부담 금액</span><strong id="reg-auto-amount">-</strong></div>
+        </div>
+
+        <label>
+            <span>치료종류</span>
+            <input type="text" id="reg-treatment-name" maxlength="100" required placeholder="환자 선택 시 치료정보로 자동 채움 (수정 가능)">
+        </label>
+
+        <label>
+            <span>자리(호실) <small>· 선택</small></span>
+            <select id="reg-seat">
+                <option value="">자리 미지정</option>
+            </select>
+        </label>
+
+        <div class="form-grid">
+            <label>
+                <span>시작일</span>
+                <input type="date" id="reg-start-date" required>
+            </label>
+            <label>
+                <span>시작시간</span>
+                <input type="time" id="reg-start-time" value="10:00" required>
+            </label>
+        </div>
+
+        <div class="reg-repeat-toggle">
+            <label><input type="radio" name="reg-mode" value="once" checked> 한 번만</label>
+            <label><input type="radio" name="reg-mode" value="repeat"> 반복</label>
+        </div>
+
+        <div id="reg-repeat-area" hidden>
+            <div class="reg-weekdays" id="reg-weekdays">
+                <label><input type="checkbox" data-bit="0"> 월</label>
+                <label><input type="checkbox" data-bit="1"> 화</label>
+                <label><input type="checkbox" data-bit="2"> 수</label>
+                <label><input type="checkbox" data-bit="3"> 목</label>
+                <label><input type="checkbox" data-bit="4"> 금</label>
+                <label><input type="checkbox" data-bit="5"> 토</label>
+                <label><input type="checkbox" data-bit="6"> 일</label>
+            </div>
+            <label>
+                <span>반복 횟수 (총 회차)</span>
+                <input type="number" id="reg-count" min="1" max="200" placeholder="처방 정보가 없으면 직접 입력">
+                <small id="reg-count-hint" class="reg-hint"></small>
+            </label>
+        </div>
+
+        <p class="form-message" id="reg-dialog-message" role="status"></p>
+        <p class="reg-warning" id="reg-warning" hidden></p>
+        <div class="form-actions">
+            <button type="button" class="secondary-button" id="reg-cancel">취소</button>
+            <button type="submit" id="reg-submit">등록</button>
+        </div>
+    </form>
+</dialog>
+<script th:src="@{/js/role-guard.js}" defer></script>
+</body>
+</html>

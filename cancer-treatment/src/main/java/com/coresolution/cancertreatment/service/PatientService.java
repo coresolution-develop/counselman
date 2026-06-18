@@ -27,11 +27,15 @@ public class PatientService {
         return patientRepository.findPatients(normalizeRequired(instCode, "병원 코드가 없습니다."), keyword, ward);
     }
 
+    public List<String> listDoctors(String instCode) {
+        return patientRepository.findDistinctDoctors(normalizeRequired(instCode, "병원 코드가 없습니다."));
+    }
+
     public Patient createPatient(String instCode, PatientRequest request) {
         ValidPatient valid = validate(instCode, request);
         return patientRepository.createPatient(
-                valid.instCode(), valid.name(), valid.chartNo(), valid.room(), valid.ward(),
-                valid.admissionDate(), valid.dischargeDate(), valid.treatmentInfo(), valid.note(),
+                valid.instCode(), valid.name(), valid.chartNo(), valid.room(), valid.ward(), valid.attendingDoctor(),
+                valid.admissionDate(), valid.treatmentStartDate(), valid.treatmentInfo(), valid.note(),
                 valid.prescriptionWeeks(), valid.copaymentRate(),
                 valid.totalDiscountType(), valid.totalDiscountValue(),
                 valid.prescriptionItemIds());
@@ -43,8 +47,8 @@ public class PatientService {
         }
         ValidPatient valid = validate(instCode, request);
         return patientRepository.updatePatient(
-                valid.instCode(), id, valid.name(), valid.chartNo(), valid.room(), valid.ward(),
-                valid.admissionDate(), valid.dischargeDate(), valid.treatmentInfo(), valid.note(),
+                valid.instCode(), id, valid.name(), valid.chartNo(), valid.room(), valid.ward(), valid.attendingDoctor(),
+                valid.admissionDate(), valid.treatmentStartDate(), valid.treatmentInfo(), valid.note(),
                 valid.prescriptionWeeks(), valid.copaymentRate(),
                 valid.totalDiscountType(), valid.totalDiscountValue(),
                 valid.prescriptionItemIds());
@@ -62,10 +66,11 @@ public class PatientService {
         String chartNo = normalizeMax(request.getChartNo(), 50, "차트번호");
         String room = normalizeMax(request.getRoom(), 50, "병실/외래");
         String ward = normalizeMax(request.getWard(), 50, "병동");
+        String attendingDoctor = normalizeMax(request.getAttendingDoctor(), 100, "주치의");
         LocalDate admissionDate = parseDate(request.getAdmissionDate(), "입원일");
-        LocalDate dischargeDate = parseDate(request.getDischargeDate(), "퇴원일");
-        if (admissionDate != null && dischargeDate != null && dischargeDate.isBefore(admissionDate)) {
-            throw new IllegalArgumentException("퇴원일은 입원일보다 빠를 수 없습니다.");
+        LocalDate treatmentStartDate = parseDate(request.getTreatmentStartDate(), "치료 시작일");
+        if (admissionDate != null && treatmentStartDate != null && treatmentStartDate.isBefore(admissionDate)) {
+            throw new IllegalArgumentException("치료 시작일은 입원일보다 빠를 수 없습니다.");
         }
         int weeks = request.getPrescriptionWeeks() == null ? 0 : request.getPrescriptionWeeks();
         if (weeks < 0 || weeks > 520) {
@@ -87,16 +92,16 @@ public class PatientService {
             throw new IllegalArgumentException("비율 할인은 100%를 초과할 수 없습니다.");
         }
         return new ValidPatient(
-                normalizedInst, name, chartNo, room, ward,
-                admissionDate, dischargeDate,
+                normalizedInst, name, chartNo, room, ward, attendingDoctor,
+                admissionDate, treatmentStartDate,
                 normalize(request.getTreatmentInfo()), normalize(request.getNote()),
                 weeks, copayment, discountType, discountValue,
                 request.getPrescriptionItemIds() == null ? List.of() : List.copyOf(request.getPrescriptionItemIds()));
     }
 
     private record ValidPatient(
-            String instCode, String name, String chartNo, String room, String ward,
-            LocalDate admissionDate, LocalDate dischargeDate,
+            String instCode, String name, String chartNo, String room, String ward, String attendingDoctor,
+            LocalDate admissionDate, LocalDate treatmentStartDate,
             String treatmentInfo, String note,
             int prescriptionWeeks, int copaymentRate,
             String totalDiscountType, int totalDiscountValue,
@@ -120,8 +125,9 @@ public class PatientService {
             case "chartNo" -> normalizeMax(value, 50, "차트번호");
             case "room" -> normalizeMax(value, 50, "병실/외래");
             case "ward" -> normalizeMax(value, 50, "병동");
+            case "attendingDoctor" -> normalizeMax(value, 100, "주치의");
             case "admissionDate" -> parseDate(value, "입원일");
-            case "dischargeDate" -> parseDate(value, "퇴원일");
+            case "treatmentStartDate" -> parseDate(value, "치료 시작일");
             case "treatmentInfo", "note" -> {
                 if (value.length() > 1000) {
                     throw new IllegalArgumentException("입력값은 1000자 이하로 입력해주세요.");

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>치료별 소요시간</title>
+    <link rel="stylesheet" th:href="@{/css/treatment.css}">
+    <link rel="stylesheet" th:href="@{/css/layout.css}">
+    <script th:inline="javascript">window.__ctx = /*[[@{/}]]*/ '/';</script>
+    <script th:src="@{/js/treatment-durations.js}" defer></script>
+</head>
+<body th:attr="data-user-role=${user?.role}">
+<div class="layout">
+    <aside th:replace="~{fragments/layout :: sidebar(${user}, ${activeMenu}, ${mediplatPortalUrl})}"></aside>
+    <main class="main">
+        <div class="page-header">
+            <div>
+                <div class="page-title">치료별 소요시간</div>
+                <div class="page-subtitle">치료 항목별 소요시간(분)을 관리합니다. 치료 항목 추가는 '치료 설정'에서 합니다.</div>
+            </div>
+            <div class="header-right">
+                <a class="secondary-button" th:href="@{/treatment-rooms}">치료실 관리</a>
+                <a class="secondary-button" th:href="@{/settings}">치료 설정</a>
+            </div>
+        </div>
+        <div class="page-body">
+            <p class="form-message" id="dur-message" role="status"></p>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr><th>치료 항목</th><th>치료실</th><th>소요시간(분)</th><th>관리</th></tr>
+                    </thead>
+                    <tbody id="dur-body">
+                        <tr><td colspan="4" class="empty">치료 항목을 불러오는 중입니다.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+<script th:src="@{/js/role-guard.js}" defer></script>
+</body>
+</html>

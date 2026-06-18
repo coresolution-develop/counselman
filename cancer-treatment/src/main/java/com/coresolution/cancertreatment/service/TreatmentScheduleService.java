@@ -36,9 +36,21 @@ public class TreatmentScheduleService {
 
     public List<TreatmentSchedule> listSchedules(
             String instCode, String date, String keyword, String treatmentName, String status) {
+        return listSchedules(instCode, date, keyword, treatmentName, status, null);
+    }
+
+    public List<TreatmentSchedule> listSchedules(
+            String instCode, String date, String keyword, String treatmentName, String status, Long roomId) {
         return scheduleRepository.findSchedules(
                 requireInst(instCode), normalize(date), normalize(keyword),
-                normalize(treatmentName), normalize(status));
+                normalize(treatmentName), normalize(status), roomId);
+    }
+
+    public List<TreatmentSchedule> listSchedulesByRange(String instCode, String from, String to) {
+        if (!StringUtils.hasText(from) || !StringUtils.hasText(to)) {
+            throw new IllegalArgumentException("조회 기간(from/to)이 필요합니다.");
+        }
+        return scheduleRepository.findSchedulesByRange(requireInst(instCode), from, to);
     }
 
     public Map<String, Long> getSummary(String instCode, String date) {

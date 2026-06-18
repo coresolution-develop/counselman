@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>자리(호실) 관리</title>
+    <link rel="stylesheet" th:href="@{/css/treatment.css}">
+    <link rel="stylesheet" th:href="@{/css/layout.css}">
+    <script th:inline="javascript">window.__ctx = /*[[@{/}]]*/ '/';</script>
+    <script th:src="@{/js/treatment-seats.js}" defer></script>
+</head>
+<body th:attr="data-user-role=${user?.role}">
+<div class="layout">
+    <aside th:replace="~{fragments/layout :: sidebar(${user}, ${activeMenu}, ${mediplatPortalUrl})}"></aside>
+    <main class="main">
+        <div class="page-header">
+            <div>
+                <div class="page-title">자리(호실) 관리</div>
+                <div class="page-subtitle">치료실 안의 자리/베드를 관리합니다. 치료 스케줄의 호실 단위로 사용됩니다.</div>
+            </div>
+            <div class="header-right">
+                <a class="secondary-button" th:href="@{/treatment-rooms}">치료실 관리</a>
+                <button type="button" class="btn-primary" id="seat-create-open">+ 자리 등록</button>
+            </div>
+        </div>
+        <div class="page-body">
+            <form class="filter-bar" id="seat-filter">
+                <select id="seat-filter-room">
+                    <option value="">전체 치료실</option>
+                </select>
+            </form>
+            <p class="form-message" id="seat-message" role="status"></p>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>치료실</th>
+                            <th>자리 코드</th>
+                            <th>자리명</th>
+                            <th style="text-align:right">정렬</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="seat-body">
+                        <tr><td colspan="5" class="empty">자리 정보를 불러오는 중입니다.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<dialog class="settings-dialog" id="seat-dialog">
+    <form method="dialog" id="seat-form">
+        <h3 id="seat-dialog-title">자리 등록</h3>
+        <input type="hidden" id="seat-id">
+        <label>
+            <span>치료실</span>
+            <select id="seat-room" required>
+                <option value="">선택</option>
+            </select>
+        </label>
+        <label>
+            <span>자리 코드</span>
+            <input type="text" id="seat-code" maxlength="50" required placeholder="예: A, 1, 베드1">
+        </label>
+        <label>
+            <span>자리명</span>
+            <input type="text" id="seat-name" maxlength="100" required placeholder="예: A자리">
+        </label>
+        <label>
+            <span>정렬 순서</span>
+            <input type="number" id="seat-display-order" value="0">
+        </label>
+        <p class="form-message" id="seat-dialog-message" role="status"></p>
+        <div class="form-actions">
+            <button type="button" class="secondary-button" id="seat-cancel">취소</button>
+            <button type="submit">저장</button>
+        </div>
+    </form>
+</dialog>
+<script th:src="@{/js/role-guard.js}" defer></script>
+</body>
+</html>

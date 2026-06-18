@@ -53,6 +53,8 @@
             fetch(API + 'api/treatment-packages', { headers: { Accept: 'application/json' } })
                 .then(function (r) { return r.ok ? r.json() : { items: [] }; }),
             fetch(API + 'api/treatment-rooms', { headers: { Accept: 'application/json' } })
+                .then(function (r) { return r.ok ? r.json() : { items: [] }; }),
+            fetch(API + 'api/patients/doctors', { headers: { Accept: 'application/json' } })
                 .then(function (r) { return r.ok ? r.json() : { items: [] }; })
         ]).then(function (results) {
             const settings = results[0] || {};
@@ -61,8 +63,25 @@
             const wards = settings.wards || [];
             fillWardSelect(els.createWard, wards, '선택 안함');
             fillWardSelect(els.ward,       wards, '전체 병동');
+            fillDoctorList((results[3] && results[3].items) || []);
             renderPackageGroups();
         });
+    }
+
+    function fillDoctorList(doctors) {
+        const list = document.getElementById('patient-doctor-list');
+        if (!list) return;
+        list.innerHTML = doctors.map(function (d) {
+            return '<option value="' + escapeHtml(d) + '"></option>';
+        }).join('');
+    }
+
+    // 저장 후 신규 주치의를 추천 목록에 즉시 반영 (가벼운 단일 조회)
+    function refreshDoctorList() {
+        fetch(API + 'api/patients/doctors', { headers: { Accept: 'application/json' } })
+            .then(function (r) { return r.ok ? r.json() : { items: [] }; })
+            .then(function (payload) { fillDoctorList(payload.items || []); })
+            .catch(function () {});
     }
 
     function fillWardSelect(select, wards, placeholder) {
@@ -139,7 +158,7 @@
                 '<td class="editable-cell" data-field="chartNo">' + escapeHtml(item.chartNo || '-') + '</td>' +
                 '<td class="editable-cell" data-field="room">' + escapeHtml(item.room || '-') + '</td>' +
                 '<td class="editable-cell" data-field="admissionDate" data-input-type="date">' + escapeHtml(item.admissionDate || '-') + '</td>' +
-                '<td class="editable-cell" data-field="dischargeDate" data-input-type="date">' + escapeHtml(item.dischargeDate || '-') + '</td>' +
+                '<td class="editable-cell" data-field="treatmentStartDate" data-input-type="date">' + escapeHtml(item.treatmentStartDate || '-') + '</td>' +
                 '<td class="memo-cell">' + renderTreatmentSummary(item) + '</td>' +
                 '<td class="' + noteClass + '" data-field="note">' + escapeHtml(item.note || '-') + '</td>' +
                 '<td style="text-align:right"><strong>' + total.toLocaleString('ko-KR') + ' 원</strong></td>' +
@@ -163,33 +182,13 @@
         return labels.join(' ');
     }
 
+    // 본인부담 총액 계산은 공용 모듈(patient-cost.js)로 위임 — 동일 로직을 치료현황(병실별)과 공유.
     function computePatientTotal(patient) {
-        if (!patient || !patient.prescriptionItemIds || !patient.prescriptionItemIds.length) return 0;
-        const weeks = Number(patient.prescriptionWeeks || 0);
-        // 본인부담율: 저장값이 0/없음이면 기본값 100% (0%는 본인부담 계산기에서 의미 없음)
-        const copayment = patient.copaymentRate ? Number(patient.copaymentRate) : 100;
-        const selectedIds = new Set((patient.prescriptionItemIds || []).map(Number));
-        let subtotal = 0;
-        state.packages.forEach(function (p) {
-            if (!selectedIds.has(Number(p.id))) return;
-            subtotal += packageAmount(p, weeks);
-        });
-        let total = subtotal * copayment / 100;
-        if (patient.totalDiscountType === 'PERCENT') {
-            total = total * (1 - Math.min(100, patient.totalDiscountValue || 0) / 100);
-        } else if (patient.totalDiscountType === 'AMOUNT') {
-            total = Math.max(0, total - (patient.totalDiscountValue || 0));
-        }
-        return Math.round(total);
+        return window.CtPatientCost.computePatientTotal(patient, state.packages);
     }
 
     function packageAmount(p, weeks) {
-        const unitPrice = Number(p.unitPrice || 0);
-        const frequency = Number(p.frequency || 1);
-        if (p.billingUnit === 'DAY') {
-            return unitPrice * frequency * (weeks * DAYS_PER_WEEK);
-        }
-        return unitPrice * frequency * weeks;
+        return window.CtPatientCost.packageAmount(p, weeks);
     }
 
     function handleRowAction(event) {
@@ -215,8 +214,9 @@
         document.getElementById('patient-chart-no').value = isEdit ? patient.chartNo || '' : '';
         document.getElementById('patient-room').value = isEdit ? patient.room || '' : '';
         els.createWard.value = isEdit ? (patient.ward || '') : '';
+        document.getElementById('patient-doctor').value = isEdit ? (patient.attendingDoctor || '') : '';
         document.getElementById('patient-admission-date').value = isEdit ? (patient.admissionDate || '') : '';
-        document.getElementById('patient-discharge-date').value = isEdit ? (patient.dischargeDate || '') : '';
+        document.getElementById('patient-treatment-start-date').value = isEdit ? (patient.treatmentStartDate || '') : '';
         document.getElementById('patient-note').value = isEdit ? (patient.note || '') : '';
         els.weeks.value         = isEdit ? (patient.prescriptionWeeks  ?? 4) : 4;
         els.copayment.value     = isEdit ? (patient.copaymentRate || 100) : 100;
@@ -295,8 +295,9 @@
                 chartNo:             document.getElementById('patient-chart-no').value.trim(),
                 room:                document.getElementById('patient-room').value.trim(),
                 ward:                els.createWard.value,
+                attendingDoctor:     document.getElementById('patient-doctor').value.trim(),
                 admissionDate:       document.getElementById('patient-admission-date').value,
-                dischargeDate:       document.getElementById('patient-discharge-date').value,
+                treatmentStartDate:  document.getElementById('patient-treatment-start-date').value,
                 treatmentInfo:       '',
                 note:                document.getElementById('patient-note').value.trim(),
                 prescriptionWeeks:   Number(els.weeks.value || 0),
@@ -316,6 +317,7 @@
             .then(function () {
                 closeForm();
                 loadPatients();
+                refreshDoctorList();
             })
             .catch(function (error) {
                 setMessage(error.message);

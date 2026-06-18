@@ -117,13 +117,25 @@ public class SettingService {
             }
             case WARDS -> {
                 String code = requireMax(request.getCode(), 50, "병동 코드");
-                yield new ValidSetting(code, requireMax(request.getName(), 100, "병동명"), "", "", displayOrder);
+                String name = requireMax(request.getName(), 100, "병동명");
+                yield new ValidSetting(code, name, normalizeAdmissionType(request.getDetail()), "", displayOrder);
             }
             case PACKAGE_CATEGORIES -> {
                 String name = requireMax(request.getName(), 100, "카테고리명");
                 yield new ValidSetting(name, name, "", "", displayOrder);
             }
         };
+    }
+
+    private String normalizeAdmissionType(String value) {
+        String normalized = normalize(value).toUpperCase();
+        if (!StringUtils.hasText(normalized)) {
+            return "INPATIENT";
+        }
+        if (!normalized.equals("INPATIENT") && !normalized.equals("OUTPATIENT")) {
+            throw new IllegalArgumentException("입원/외래 구분은 INPATIENT 또는 OUTPATIENT여야 합니다.");
+        }
+        return normalized;
     }
 
     private String normalizeColor(String value) {

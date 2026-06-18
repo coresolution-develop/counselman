@@ -22,15 +22,24 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.coresolution.cancertreatment.model.SessionUser;
 import com.coresolution.cancertreatment.model.PatientRequest;
+import com.coresolution.cancertreatment.model.PatientRoomRequest;
 import com.coresolution.cancertreatment.model.TreatmentPackageRequest;
 import com.coresolution.cancertreatment.model.TreatmentScheduleRequest;
+import com.coresolution.cancertreatment.model.ScheduleRecurrenceRequest;
 import com.coresolution.cancertreatment.model.SettingItemRequest;
 import com.coresolution.cancertreatment.model.TreatmentRoomRequest;
+import com.coresolution.cancertreatment.model.TreatmentSeatRequest;
+import com.coresolution.cancertreatment.model.TherapistRequest;
 import com.coresolution.cancertreatment.service.PatientService;
+import com.coresolution.cancertreatment.service.TherapistService;
+import com.coresolution.cancertreatment.service.TreatmentDurationService;
+import com.coresolution.cancertreatment.service.PatientRoomService;
 import com.coresolution.cancertreatment.service.SettingService;
 import com.coresolution.cancertreatment.service.SsoService;
 import com.coresolution.cancertreatment.service.TreatmentPackageService;
 import com.coresolution.cancertreatment.service.TreatmentRoomService;
+import com.coresolution.cancertreatment.service.TreatmentSeatService;
+import com.coresolution.cancertreatment.service.ScheduleRecurrenceService;
 import com.coresolution.cancertreatment.service.TreatmentScheduleService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,6 +56,11 @@ public class TreatmentScheduleController {
     private final SettingService settingService;
     private final TreatmentRoomService treatmentRoomService;
     private final TreatmentPackageService treatmentPackageService;
+    private final PatientRoomService patientRoomService;
+    private final TreatmentSeatService treatmentSeatService;
+    private final ScheduleRecurrenceService scheduleRecurrenceService;
+    private final TherapistService therapistService;
+    private final TreatmentDurationService treatmentDurationService;
     private final String mediplatPortalUrl;
 
     public TreatmentScheduleController(
@@ -56,6 +70,11 @@ public class TreatmentScheduleController {
             SettingService settingService,
             TreatmentRoomService treatmentRoomService,
             TreatmentPackageService treatmentPackageService,
+            PatientRoomService patientRoomService,
+            TreatmentSeatService treatmentSeatService,
+            ScheduleRecurrenceService scheduleRecurrenceService,
+            TherapistService therapistService,
+            TreatmentDurationService treatmentDurationService,
             @Value("${cancer-treatment.mediplat-portal-url:http://localhost:8082/portal}") String mediplatPortalUrl) {
         this.ssoService = ssoService;
         this.scheduleService = scheduleService;
@@ -63,6 +82,11 @@ public class TreatmentScheduleController {
         this.settingService = settingService;
         this.treatmentRoomService = treatmentRoomService;
         this.treatmentPackageService = treatmentPackageService;
+        this.patientRoomService = patientRoomService;
+        this.treatmentSeatService = treatmentSeatService;
+        this.scheduleRecurrenceService = scheduleRecurrenceService;
+        this.therapistService = therapistService;
+        this.treatmentDurationService = treatmentDurationService;
         this.mediplatPortalUrl = mediplatPortalUrl;
     }
 
@@ -139,6 +163,17 @@ public class TreatmentScheduleController {
         return "patients";
     }
 
+    @GetMapping("/treatment-status-by-room")
+    public String treatmentStatusByRoomPage(Model model, HttpSession session) {
+        SessionUser user = sessionUser(session);
+        if (user == null) {
+            return "redirect:/login-required";
+        }
+        populateShell(model, user);
+        model.addAttribute("activeMenu", "status-room");
+        return "treatment-status-by-room";
+    }
+
     @GetMapping("/dashboard")
     public String dashboardPage(Model model, HttpSession session) {
         SessionUser user = sessionUser(session);
@@ -183,6 +218,99 @@ public class TreatmentScheduleController {
         return "treatment-packages";
     }
 
+    @GetMapping("/patient-rooms")
+    public String patientRoomsPage(Model model, HttpSession session) {
+        SessionUser user = sessionUser(session);
+        if (user == null) {
+            return "redirect:/login-required";
+        }
+        populateShell(model, user);
+        model.addAttribute("activeMenu", "patient-rooms");
+        return "patient-rooms";
+    }
+
+    @GetMapping("/schedule-by-patient")
+    public String scheduleByPatientPage(Model model, HttpSession session) {
+        return perspectivePage(model, session, "patient", "환자별 치료스케줄", "sched-patient");
+    }
+
+    @GetMapping("/schedule-by-ward")
+    public String scheduleByWardPage(Model model, HttpSession session) {
+        return perspectivePage(model, session, "ward", "병동별 치료스케줄", "sched-ward");
+    }
+
+    @GetMapping("/schedule-by-doctor")
+    public String scheduleByDoctorPage(Model model, HttpSession session) {
+        return perspectivePage(model, session, "doctor", "의사별 치료스케줄", "sched-doctor");
+    }
+
+    private String perspectivePage(Model model, HttpSession session, String perspective, String title, String activeMenu) {
+        SessionUser user = sessionUser(session);
+        if (user == null) {
+            return "redirect:/login-required";
+        }
+        populateShell(model, user);
+        model.addAttribute("activeMenu", activeMenu);
+        model.addAttribute("perspective", perspective);
+        model.addAttribute("perspectiveTitle", title);
+        return "schedule-perspective";
+    }
+
+    @GetMapping("/schedule-register")
+    public String scheduleRegisterPage(Model model, HttpSession session) {
+        SessionUser user = sessionUser(session);
+        if (user == null) {
+            return "redirect:/login-required";
+        }
+        populateShell(model, user);
+        model.addAttribute("activeMenu", "schedule-calendar");
+        return "schedule-register";
+    }
+
+    @GetMapping("/treatment-seats")
+    public String treatmentSeatsPage(Model model, HttpSession session) {
+        SessionUser user = sessionUser(session);
+        if (user == null) {
+            return "redirect:/login-required";
+        }
+        populateShell(model, user);
+        model.addAttribute("activeMenu", "rooms");
+        return "treatment-seats";
+    }
+
+    @GetMapping("/therapists")
+    public String therapistsPage(Model model, HttpSession session) {
+        SessionUser user = sessionUser(session);
+        if (user == null) {
+            return "redirect:/login-required";
+        }
+        populateShell(model, user);
+        model.addAttribute("activeMenu", "rooms");
+        return "therapists";
+    }
+
+    @GetMapping("/treatment-durations")
+    public String treatmentDurationsPage(Model model, HttpSession session) {
+        SessionUser user = sessionUser(session);
+        if (user == null) {
+            return "redirect:/login-required";
+        }
+        populateShell(model, user);
+        model.addAttribute("activeMenu", "rooms");
+        return "treatment-durations";
+    }
+
+    @GetMapping("/treatment-options")
+    public String treatmentOptionsPage(Model model, HttpSession session) {
+        SessionUser user = sessionUser(session);
+        if (user == null) {
+            return "redirect:/login-required";
+        }
+        populateShell(model, user);
+        model.addAttribute("activeMenu", "options");
+        return "treatment-options";
+    }
+
     @GetMapping("/api/treatment-schedules")
     @ResponseBody
     public ResponseEntity<?> listSchedules(
@@ -190,11 +318,18 @@ public class TreatmentScheduleController {
             @RequestParam(name = "keyword", required = false) String keyword,
             @RequestParam(name = "treatmentName", required = false) String treatmentName,
             @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "roomId", required = false) Long roomId,
+            @RequestParam(name = "from", required = false) String from,
+            @RequestParam(name = "to", required = false) String to,
             HttpSession session) {
         SessionUser user = requireUser(session);
+        if (org.springframework.util.StringUtils.hasText(from) && org.springframework.util.StringUtils.hasText(to)) {
+            return ResponseEntity.ok(Map.of(
+                    "items", scheduleService.listSchedulesByRange(user.getInstCode(), from, to)));
+        }
         return ResponseEntity.ok(Map.of(
                 "summary", scheduleService.getSummary(user.getInstCode(), date),
-                "items", scheduleService.listSchedules(user.getInstCode(), date, keyword, treatmentName, status)));
+                "items", scheduleService.listSchedules(user.getInstCode(), date, keyword, treatmentName, status, roomId)));
     }
 
     @GetMapping("/api/dashboard")
@@ -214,6 +349,13 @@ public class TreatmentScheduleController {
             HttpSession session) {
         SessionUser user = requireUser(session);
         return ResponseEntity.ok(Map.of("items", patientService.listPatients(user.getInstCode(), keyword, ward)));
+    }
+
+    @GetMapping("/api/patients/doctors")
+    @ResponseBody
+    public ResponseEntity<?> listPatientDoctors(HttpSession session) {
+        SessionUser user = requireUser(session);
+        return ResponseEntity.ok(Map.of("items", patientService.listDoctors(user.getInstCode())));
     }
 
     @PostMapping("/api/patients")
@@ -376,6 +518,155 @@ public class TreatmentScheduleController {
         }
     }
 
+    @GetMapping("/api/patient-rooms")
+    @ResponseBody
+    public ResponseEntity<?> listPatientRooms(HttpSession session) {
+        SessionUser user = requireUser(session);
+        return ResponseEntity.ok(Map.of("items", patientRoomService.listRooms(user.getInstCode())));
+    }
+
+    @PostMapping("/api/patient-rooms")
+    @ResponseBody
+    public ResponseEntity<?> createPatientRoom(
+            @RequestBody PatientRoomRequest request,
+            HttpSession session) {
+        SessionUser user = requireMember(session);
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(patientRoomService.createRoom(user.getInstCode(), request));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/api/patient-rooms/{id}")
+    @ResponseBody
+    public ResponseEntity<?> updatePatientRoom(
+            @PathVariable("id") Long id,
+            @RequestBody PatientRoomRequest request,
+            HttpSession session) {
+        SessionUser user = requireMember(session);
+        try {
+            return ResponseEntity.ok(patientRoomService.updateRoom(user.getInstCode(), id, request));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/api/patient-rooms/{id}")
+    @ResponseBody
+    public ResponseEntity<?> deletePatientRoom(
+            @PathVariable("id") Long id,
+            HttpSession session) {
+        SessionUser user = requireMember(session);
+        try {
+            patientRoomService.deleteRoom(user.getInstCode(), id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/api/therapists")
+    @ResponseBody
+    public ResponseEntity<?> listTherapists(HttpSession session) {
+        SessionUser user = requireUser(session);
+        return ResponseEntity.ok(Map.of("items", therapistService.listTherapists(user.getInstCode())));
+    }
+
+    @PostMapping("/api/therapists")
+    @ResponseBody
+    public ResponseEntity<?> createTherapist(@RequestBody TherapistRequest request, HttpSession session) {
+        SessionUser user = requireMember(session);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(therapistService.createTherapist(user.getInstCode(), request));
+    }
+
+    @PutMapping("/api/therapists/{id}")
+    @ResponseBody
+    public ResponseEntity<?> updateTherapist(
+            @PathVariable("id") Long id, @RequestBody TherapistRequest request, HttpSession session) {
+        SessionUser user = requireMember(session);
+        return ResponseEntity.ok(therapistService.updateTherapist(user.getInstCode(), id, request));
+    }
+
+    @DeleteMapping("/api/therapists/{id}")
+    @ResponseBody
+    public ResponseEntity<?> deleteTherapist(@PathVariable("id") Long id, HttpSession session) {
+        SessionUser user = requireMember(session);
+        therapistService.deleteTherapist(user.getInstCode(), id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/api/treatment-durations")
+    @ResponseBody
+    public ResponseEntity<?> listTreatmentDurations(HttpSession session) {
+        SessionUser user = requireUser(session);
+        return ResponseEntity.ok(Map.of("items", treatmentDurationService.listDurations(user.getInstCode())));
+    }
+
+    @PatchMapping("/api/treatment-durations/{id}")
+    @ResponseBody
+    public ResponseEntity<?> updateTreatmentDuration(
+            @PathVariable("id") Long id, @RequestBody Map<String, Object> body, HttpSession session) {
+        SessionUser user = requireMember(session);
+        Object raw = body.get("durationMinutes");
+        Integer minutes = raw == null ? null : ((Number) raw).intValue();
+        treatmentDurationService.updateDuration(user.getInstCode(), id, minutes);
+        return ResponseEntity.ok(Map.of("ok", true));
+    }
+
+    @GetMapping("/api/treatment-seats")
+    @ResponseBody
+    public ResponseEntity<?> listTreatmentSeats(
+            @RequestParam(name = "roomId", required = false) Long roomId,
+            HttpSession session) {
+        SessionUser user = requireUser(session);
+        return ResponseEntity.ok(Map.of("items", treatmentSeatService.listSeats(user.getInstCode(), roomId)));
+    }
+
+    @PostMapping("/api/treatment-seats")
+    @ResponseBody
+    public ResponseEntity<?> createTreatmentSeat(
+            @RequestBody TreatmentSeatRequest request,
+            HttpSession session) {
+        SessionUser user = requireMember(session);
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(treatmentSeatService.createSeat(user.getInstCode(), request));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/api/treatment-seats/{id}")
+    @ResponseBody
+    public ResponseEntity<?> updateTreatmentSeat(
+            @PathVariable("id") Long id,
+            @RequestBody TreatmentSeatRequest request,
+            HttpSession session) {
+        SessionUser user = requireMember(session);
+        try {
+            return ResponseEntity.ok(treatmentSeatService.updateSeat(user.getInstCode(), id, request));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/api/treatment-seats/{id}")
+    @ResponseBody
+    public ResponseEntity<?> deleteTreatmentSeat(
+            @PathVariable("id") Long id,
+            HttpSession session) {
+        SessionUser user = requireMember(session);
+        try {
+            treatmentSeatService.deleteSeat(user.getInstCode(), id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @GetMapping("/api/treatment-packages")
     @ResponseBody
     public ResponseEntity<?> listTreatmentPackages(
@@ -440,6 +731,16 @@ public class TreatmentScheduleController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    @PostMapping("/api/treatment-schedules/recurring")
+    @ResponseBody
+    public ResponseEntity<?> createRecurringSchedules(
+            @RequestBody ScheduleRecurrenceRequest request,
+            HttpSession session) {
+        SessionUser user = requireMember(session);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(scheduleRecurrenceService.createSchedules(user.getInstCode(), user.getUsername(), request));
     }
 
     @PutMapping("/api/treatment-schedules/{id}")

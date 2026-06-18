@@ -7,6 +7,7 @@
     <link rel="stylesheet" th:href="@{/css/treatment.css}">
     <link rel="stylesheet" th:href="@{/css/layout.css}">
     <script th:inline="javascript">window.__ctx = /*[[@{/}]]*/ '/';</script>
+    <script th:src="@{/js/patient-cost.js}" defer></script>
     <script th:src="@{/js/patients.js}" defer></script>
 </head>
 <body th:attr="data-user-role=${user?.role}">
@@ -46,12 +47,17 @@
                         </select>
                     </label>
                     <label>
+                        <span>주치의</span>
+                        <input type="text" id="patient-doctor" name="attendingDoctor" maxlength="100" placeholder="예: 김의사" list="patient-doctor-list" autocomplete="off">
+                        <datalist id="patient-doctor-list"></datalist>
+                    </label>
+                    <label>
                         <span>입원일</span>
                         <input type="date" id="patient-admission-date" name="admissionDate">
                     </label>
                     <label>
-                        <span>퇴원일</span>
-                        <input type="date" id="patient-discharge-date" name="dischargeDate">
+                        <span>치료 시작일</span>
+                        <input type="date" id="patient-treatment-start-date" name="treatmentStartDate">
                     </label>
                     <label class="form-grid-wide">
                         <span>참고사항</span>
@@ -123,7 +129,7 @@
                             <th>차트번호</th>
                             <th>병실/외래</th>
                             <th>입원일</th>
-                            <th>퇴원일</th>
+                            <th>치료 시작일</th>
                             <th>치료정보</th>
                             <th>참고사항</th>
                             <th style="text-align:right">본인부담 총액</th>

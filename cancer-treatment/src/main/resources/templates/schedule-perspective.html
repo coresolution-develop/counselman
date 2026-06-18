@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${perspectiveTitle}">치료스케줄</title>
+    <link rel="stylesheet" th:href="@{/css/treatment.css}">
+    <link rel="stylesheet" th:href="@{/css/layout.css}">
+    <script th:inline="javascript">
+        window.__ctx = /*[[@{/}]]*/ '/';
+        window.__perspective = /*[[${perspective}]]*/ 'patient';
+        window.__perspectiveTitle = /*[[${perspectiveTitle}]]*/ '치료스케줄';
+    </script>
+    <script th:src="@{/js/schedule-perspective.js}" defer></script>
+</head>
+<body th:attr="data-user-role=${user?.role}">
+<div class="layout">
+    <aside th:replace="~{fragments/layout :: sidebar(${user}, ${activeMenu}, ${mediplatPortalUrl})}"></aside>
+    <main class="main">
+        <div class="page-header">
+            <div>
+                <div class="page-title" th:text="${perspectiveTitle}">치료스케줄</div>
+                <div class="page-subtitle">동일 스케줄을 관점만 바꿔 조회·출력합니다. 날짜를 선택해 조회하세요.</div>
+            </div>
+            <div class="header-right no-print">
+                <div class="segmented-control" id="persp-mode" role="tablist">
+                    <button type="button" data-mode="day">일</button>
+                    <button type="button" data-mode="week" class="is-active">주</button>
+                    <button type="button" data-mode="month">월</button>
+                </div>
+                <button type="button" class="btn-outline" id="persp-prev">‹</button>
+                <button type="button" class="btn-outline" id="persp-today">오늘</button>
+                <button type="button" class="btn-outline" id="persp-next">›</button>
+                <input type="date" id="persp-date">
+                <span class="day-detail-unassigned" id="persp-unassigned"></span>
+                <button type="button" class="btn-primary" id="persp-print">인쇄</button>
+            </div>
+        </div>
+        <div class="page-body">
+            <div class="print-only print-head">
+                <h2 th:text="${perspectiveTitle}">치료스케줄</h2>
+                <div id="persp-print-meta"></div>
+            </div>
+            <div class="calendar-toolbar"><strong id="persp-range-label"></strong></div>
+            <p class="form-message" id="persp-message" role="status"></p>
+            <div id="persp-body"></div>
+        </div>
+    </main>
+</div>
+<script th:src="@{/js/role-guard.js}" defer></script>
+</body>
+</html>

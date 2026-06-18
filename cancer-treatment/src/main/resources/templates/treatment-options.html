@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>치료옵션</title>
+    <link rel="stylesheet" th:href="@{/css/treatment.css}">
+    <link rel="stylesheet" th:href="@{/css/layout.css}">
+    <script th:inline="javascript">window.__ctx = /*[[@{/}]]*/ '/';</script>
+    <script th:src="@{/js/treatment-options.js}" defer></script>
+</head>
+<body th:attr="data-user-role=${user?.role}">
+<div class="layout">
+    <aside th:replace="~{fragments/layout :: sidebar(${user}, ${activeMenu}, ${mediplatPortalUrl})}"></aside>
+    <main class="main">
+        <div class="page-header">
+            <div>
+                <div class="page-title">치료옵션</div>
+                <div class="page-subtitle">치료 옵션과 표시 색상을 관리합니다.</div>
+            </div>
+            <div class="header-right">
+                <button type="button" class="btn-primary" id="opt-create-open">+ 옵션 등록</button>
+            </div>
+        </div>
+        <div class="page-body">
+            <p class="form-message" id="opt-message" role="status"></p>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr><th>색상</th><th>옵션명</th><th style="text-align:right">정렬</th><th>관리</th></tr>
+                    </thead>
+                    <tbody id="opt-body">
+                        <tr><td colspan="4" class="empty">옵션 정보를 불러오는 중입니다.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<dialog class="settings-dialog" id="opt-dialog">
+    <form method="dialog" id="opt-form">
+        <h3 id="opt-dialog-title">옵션 등록</h3>
+        <input type="hidden" id="opt-id">
+        <label>
+            <span>옵션명</span>
+            <input type="text" id="opt-name" maxlength="100" required>
+        </label>
+        <label>
+            <span>표시 색상</span>
+            <input type="color" id="opt-color" value="#1a74bf">
+        </label>
+        <label>
+            <span>정렬 순서</span>
+            <input type="number" id="opt-display-order" value="0">
+        </label>
+        <p class="form-message" id="opt-dialog-message" role="status"></p>
+        <div class="form-actions">
+            <button type="button" class="secondary-button" id="opt-cancel">취소</button>
+            <button type="submit">저장</button>
+        </div>
+    </form>
+</dialog>
+<script th:src="@{/js/role-guard.js}" defer></script>
+</body>
+</html>

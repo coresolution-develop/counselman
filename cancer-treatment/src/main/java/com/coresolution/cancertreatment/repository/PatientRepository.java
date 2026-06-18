@@ -25,8 +25,8 @@ import com.coresolution.cancertreatment.model.Patient;
 public class PatientRepository {
 
     private static final String SELECT_COLUMNS = """
-            id, patient_name, chart_no, room, ward,
-            admission_date, discharge_date, treatment_info, note,
+            id, patient_name, chart_no, room, ward, attending_doctor,
+            admission_date, treatment_start_date, treatment_info, note,
             prescription_weeks, copayment_rate, total_discount_type, total_discount_value
             """;
 
@@ -38,8 +38,9 @@ public class PatientRepository {
             rs.getString("chart_no"),
             rs.getString("room"),
             rs.getString("ward"),
+            rs.getString("attending_doctor"),
             toStringDate(rs.getDate("admission_date")),
-            toStringDate(rs.getDate("discharge_date")),
+            toStringDate(rs.getDate("treatment_start_date")),
             rs.getString("treatment_info"),
             rs.getString("note"),
             rs.getInt("prescription_weeks"),
@@ -81,6 +82,16 @@ public class PatientRepository {
         return hydrate(rows);
     }
 
+    /** Distinct non-blank attending doctors — used as an autocomplete source (no separate master). */
+    public List<String> findDistinctDoctors(String instCode) {
+        return jdbcTemplate.queryForList(
+                "SELECT DISTINCT attending_doctor FROM ct_patient "
+                        + "WHERE inst_code = ? AND active_yn = 'Y' "
+                        + "AND attending_doctor IS NOT NULL AND attending_doctor <> '' "
+                        + "ORDER BY attending_doctor ASC",
+                String.class, instCode);
+    }
+
     @Transactional
     public Patient createPatient(
             String instCode,
@@ -88,8 +99,9 @@ public class PatientRepository {
             String chartNo,
             String room,
             String ward,
+            String attendingDoctor,
             LocalDate admissionDate,
-            LocalDate dischargeDate,
+            LocalDate treatmentStartDate,
             String treatmentInfo,
             String note,
             int prescriptionWeeks,
@@ -99,11 +111,11 @@ public class PatientRepository {
             List<Long> prescriptionItemIds) {
         String sql = """
                 INSERT INTO ct_patient (
-                    inst_code, chart_no, patient_name, room, ward,
-                    admission_date, discharge_date, treatment_info, note,
+                    inst_code, chart_no, patient_name, room, ward, attending_doctor,
+                    admission_date, treatment_start_date, treatment_info, note,
                     prescription_weeks, copayment_rate, total_discount_type, total_discount_value
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
@@ -113,14 +125,15 @@ public class PatientRepository {
             ps.setString(3, name);
             ps.setString(4, blankToNull(room));
             ps.setString(5, blankToNull(ward));
-            ps.setDate(6, toSqlDate(admissionDate));
-            ps.setDate(7, toSqlDate(dischargeDate));
-            ps.setString(8, blankToNull(treatmentInfo));
-            ps.setString(9, blankToNull(note));
-            ps.setInt(10, prescriptionWeeks);
-            ps.setInt(11, copaymentRate);
-            ps.setString(12, totalDiscountType);
-            ps.setInt(13, totalDiscountValue);
+            ps.setString(6, blankToNull(attendingDoctor));
+            ps.setDate(7, toSqlDate(admissionDate));
+            ps.setDate(8, toSqlDate(treatmentStartDate));
+            ps.setString(9, blankToNull(treatmentInfo));
+            ps.setString(10, blankToNull(note));
+            ps.setInt(11, prescriptionWeeks);
+            ps.setInt(12, copaymentRate);
+            ps.setString(13, totalDiscountType);
+            ps.setInt(14, totalDiscountValue);
             return ps;
         }, keyHolder);
 
@@ -142,8 +155,9 @@ public class PatientRepository {
             String chartNo,
             String room,
             String ward,
+            String attendingDoctor,
             LocalDate admissionDate,
-            LocalDate dischargeDate,
+            LocalDate treatmentStartDate,
             String treatmentInfo,
             String note,
             int prescriptionWeeks,
@@ -153,8 +167,8 @@ public class PatientRepository {
             List<Long> prescriptionItemIds) {
         String sql = """
                 UPDATE ct_patient
-                SET chart_no = ?, patient_name = ?, room = ?, ward = ?,
-                    admission_date = ?, discharge_date = ?, treatment_info = ?, note = ?,
+                SET chart_no = ?, patient_name = ?, room = ?, ward = ?, attending_doctor = ?,
+                    admission_date = ?, treatment_start_date = ?, treatment_info = ?, note = ?,
                     prescription_weeks = ?, copayment_rate = ?,
                     total_discount_type = ?, total_discount_value = ?
                 WHERE inst_code = ? AND id = ? AND active_yn = 'Y'
@@ -165,8 +179,9 @@ public class PatientRepository {
                 name,
                 blankToNull(room),
                 blankToNull(ward),
+                blankToNull(attendingDoctor),
                 toSqlDate(admissionDate),
-                toSqlDate(dischargeDate),
+                toSqlDate(treatmentStartDate),
                 blankToNull(treatmentInfo),
                 blankToNull(note),
                 prescriptionWeeks,
@@ -189,14 +204,15 @@ public class PatientRepository {
             case "chartNo" -> "chart_no";
             case "room" -> "room";
             case "ward" -> "ward";
+            case "attendingDoctor" -> "attending_doctor";
             case "admissionDate" -> "admission_date";
-            case "dischargeDate" -> "discharge_date";
+            case "treatmentStartDate" -> "treatment_start_date";
             case "treatmentInfo" -> "treatment_info";
             case "note" -> "note";
             default -> throw new IllegalArgumentException("수정할 수 없는 항목입니다.");
         };
         Object bindValue = switch (field) {
-            case "admissionDate", "dischargeDate" -> toSqlDate(StringUtils.hasText(value) ? LocalDate.parse(value) : null);
+            case "admissionDate", "treatmentStartDate" -> toSqlDate(StringUtils.hasText(value) ? LocalDate.parse(value) : null);
             default -> blankToNull(value);
         };
         int updated = jdbcTemplate.update(
@@ -274,8 +290,9 @@ public class PatientRepository {
                         row.chartNo(),
                         row.room(),
                         row.ward(),
+                        row.attendingDoctor(),
                         row.admissionDate(),
-                        row.dischargeDate(),
+                        row.treatmentStartDate(),
                         row.treatmentInfo(),
                         row.note(),
                         row.prescriptionWeeks(),
@@ -304,8 +321,9 @@ public class PatientRepository {
             String chartNo,
             String room,
             String ward,
+            String attendingDoctor,
             String admissionDate,
-            String dischargeDate,
+            String treatmentStartDate,
             String treatmentInfo,
             String note,
             Integer prescriptionWeeks,

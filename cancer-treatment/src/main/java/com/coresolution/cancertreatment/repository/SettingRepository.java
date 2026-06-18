@@ -130,7 +130,7 @@ public class SettingRepository {
                 "ct_ward",
                 "ward_code",
                 "ward_name",
-                null,
+                "admission_type",
                 false),
         PACKAGE_CATEGORIES(
                 "ct_package_category",
