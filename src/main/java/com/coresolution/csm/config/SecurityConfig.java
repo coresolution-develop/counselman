@@ -60,6 +60,9 @@ public class SecurityConfig {
                         "/csm/css/**", "/csm/js/**", "/csm/img/**", "/csm/webjars/**", "/csm/icon/**",
                         "/csm/fonts/**", "/csm/public/**",
                         "/favicon.ico", "/favicon/**", "/csm/favicon.ico", "/csm/favicon/**",
+                        // PWA(홈 화면 설치): 매니페스트·서비스워커는 익명에서도 로드되어야 함
+                        "/manifest.json", "/csm/manifest.json",
+                        "/sw.js", "/csm/sw.js",
                         "/chat", "/chat/**", "/csm/chat", "/csm/chat/**",
                         "/ws/chat/**", "/csm/ws/chat/**"
         };

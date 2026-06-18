@@ -9,8 +9,9 @@ public class Patient {
     private final String chartNo;
     private final String room;
     private final String ward;
+    private final String attendingDoctor;
     private final String admissionDate;
-    private final String dischargeDate;
+    private final String treatmentStartDate;
     private final String treatmentInfo;
     private final String note;
     private final Integer prescriptionWeeks;
@@ -25,8 +26,9 @@ public class Patient {
             String chartNo,
             String room,
             String ward,
+            String attendingDoctor,
             String admissionDate,
-            String dischargeDate,
+            String treatmentStartDate,
             String treatmentInfo,
             String note,
             Integer prescriptionWeeks,
@@ -39,8 +41,9 @@ public class Patient {
         this.chartNo = chartNo;
         this.room = room;
         this.ward = ward;
+        this.attendingDoctor = attendingDoctor;
         this.admissionDate = admissionDate;
-        this.dischargeDate = dischargeDate;
+        this.treatmentStartDate = treatmentStartDate;
         this.treatmentInfo = treatmentInfo;
         this.note = note;
         this.prescriptionWeeks = prescriptionWeeks;
@@ -70,12 +73,16 @@ public class Patient {
         return ward;
     }
 
+    public String getAttendingDoctor() {
+        return attendingDoctor;
+    }
+
     public String getAdmissionDate() {
         return admissionDate;
     }
 
-    public String getDischargeDate() {
-        return dischargeDate;
+    public String getTreatmentStartDate() {
+        return treatmentStartDate;
     }
 
     public String getTreatmentInfo() {

@@ -331,4 +331,35 @@ class MediplatControllerTest {
         assertEquals(Map.of("CANCER_TREATMENT", "VIEWER"), body.get("userServiceRoleOverrides"));
         verify(storeService).listUserServiceRoleOverrides(42L);
     }
+
+    @Test
+    void launchService_externalLink_redirectsToBaseUrl_withoutSsoSignature() {
+        MockHttpSession session = new MockHttpSession();
+        PlatformSessionUser user = new PlatformSessionUser("FALH", "user1", "User One", "USER");
+        session.setAttribute(SESSION_USER, user);
+        PlatformService formflow = new PlatformService(
+                5L,
+                "FORMFLOW",
+                "폼빌더",
+                "https://form.sosyge.net/",
+                null,
+                null,
+                null,
+                "/mediplat/sso/entry",
+                "/login",
+                "/login",
+                "",
+                "Y",
+                5,
+                "Y");
+        when(storeService.findService("FORMFLOW")).thenReturn(formflow);
+        when(storeService.listEnabledServiceCodesForUser(user)).thenReturn(List.of("FORMFLOW"));
+
+        String view = controller.launchService("formflow", session);
+
+        // Plain external link: straight to base URL (trailing slash trimmed), no SSO entry/signature.
+        assertEquals("redirect:https://form.sosyge.net", view);
+        verify(counselManSsoLinkService, never()).createLaunchUrl(any(), any());
+        verify(counselManSsoLinkService, never()).createLaunchUrl(any(), any(), any(), any());
+    }
 }

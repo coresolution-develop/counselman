@@ -149,8 +149,13 @@
         return state.patients.flatMap(function (patient) {
             const info = String(patient.treatmentInfo || '').trim();
             if (!info) return [];
-            const start = patient.admissionDate ? parseIsoDate(patient.admissionDate) : range.start;
-            const end = patient.dischargeDate ? parseIsoDate(patient.dischargeDate) : range.end;
+            // 후보 시작일: 치료 시작일(treatment_start_date) 우선, 없으면 입원일, 둘 다 없으면 조회 범위 시작.
+            const startSource = patient.treatmentStartDate || patient.admissionDate;
+            const start = startSource ? parseIsoDate(startSource) : range.start;
+            // 종료 경계(B-5, 옵션 A): 치료시작일 + (처방주수 × 7) − 1. 빈도/요일은 무시.
+            // 처방주수나 시작 기준일이 없으면 무경계(조회 범위 끝)로 방어 — 캘린더가 깨지지 않게 유지.
+            const weeks = Number(patient.prescriptionWeeks || 0);
+            const end = (startSource && weeks > 0) ? addDays(start, weeks * 7 - 1) : range.end;
             const weeklyCount = weeklyTreatmentCount(info);
             return days
                 .filter(function (date) { return date >= start && date <= end; })

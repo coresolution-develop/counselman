@@ -13,6 +13,10 @@ public class TreatmentSchedule {
     private String status;
     private String treatmentInfo;
     private String note;
+    private final Long treatmentRoomId;
+    private final Long seatId;
+    private final String seatName;
+    private final String attendingDoctor;
 
     public TreatmentSchedule(
             Long id,
@@ -25,7 +29,11 @@ public class TreatmentSchedule {
             String treatmentOption,
             String status,
             String treatmentInfo,
-            String note) {
+            String note,
+            Long treatmentRoomId,
+            Long seatId,
+            String seatName,
+            String attendingDoctor) {
         this.id = id;
         this.patientId = patientId;
         this.treatmentDate = treatmentDate;
@@ -37,6 +45,26 @@ public class TreatmentSchedule {
         this.status = status;
         this.treatmentInfo = treatmentInfo;
         this.note = note;
+        this.treatmentRoomId = treatmentRoomId;
+        this.seatId = seatId;
+        this.seatName = seatName;
+        this.attendingDoctor = attendingDoctor;
+    }
+
+    public String getAttendingDoctor() {
+        return attendingDoctor;
+    }
+
+    public Long getTreatmentRoomId() {
+        return treatmentRoomId;
+    }
+
+    public Long getSeatId() {
+        return seatId;
+    }
+
+    public String getSeatName() {
+        return seatName;
     }
 
     public Long getId() {

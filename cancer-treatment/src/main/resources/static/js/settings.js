@@ -7,11 +7,6 @@
             fields: { code: false, name: true, detail: true },
             labels: { name: '치료 항목명', detail: '치료실' }
         },
-        'treatment-options': {
-            title: '치료 옵션',
-            fields: { code: false, name: true, detail: false, color: true },
-            labels: { name: '옵션명', color: '표시 색상' }
-        },
         'treatment-statuses': {
             title: '치료 상태',
             fields: { code: true, name: true, detail: false },
@@ -25,7 +20,8 @@
         'wards': {
             title: '병동/외래 구분',
             fields: { code: false, name: true, detail: false },
-            labels: { name: '병동명' }
+            admissionType: true,
+            labels: { name: '병동명', admissionType: '입원/외래 구분' }
         }
         // 치료비 카테고리(package-categories)는 치료비 페이지에서 관리합니다.
     };
@@ -42,6 +38,7 @@
         code: document.getElementById('settings-code'),
         name: document.getElementById('settings-name'),
         detail: document.getElementById('settings-detail'),
+        admissionType: document.getElementById('settings-admission-type'),
         color: document.getElementById('settings-color'),
         order: document.getElementById('settings-display-order'),
         dialogMessage: document.getElementById('settings-dialog-message'),
@@ -80,7 +77,6 @@
             .then(function (payload) {
                 state = {
                     'treatment-types': payload.treatmentTypes || [],
-                    'treatment-options': payload.treatmentOptions || [],
                     'treatment-statuses': payload.treatmentStatuses || [],
                     'time-slots': payload.timeSlots || [],
                     wards: payload.wards || []
@@ -114,11 +110,17 @@
         });
     }
 
+    const ADMISSION_LABELS = { INPATIENT: '입원(병동)', OUTPATIENT: '외래' };
+
     function renderMeta(category, item) {
         const parts = [];
         const config = categories[category] || { fields: {} };
         if (config.fields.code && item.code && item.code !== item.name) parts.push(item.code);
-        if (item.detail) parts.push(item.detail);
+        if (config.admissionType) {
+            parts.push(ADMISSION_LABELS[item.detail] || ADMISSION_LABELS.INPATIENT);
+        } else if (item.detail) {
+            parts.push(item.detail);
+        }
         parts.push('순서 ' + (item.displayOrder || 0));
         return parts.map(escapeHtml).join(' · ');
     }
@@ -146,6 +148,7 @@
         els.code.value = item ? item.code || '' : '';
         els.name.value = item ? item.name || '' : '';
         els.detail.value = item ? item.detail || '' : '';
+        els.admissionType.value = (item && item.detail) ? item.detail : 'INPATIENT';
         els.color.value = item && item.color ? item.color : '#1a74bf';
         els.order.value = item ? item.displayOrder || 0 : 0;
         els.dialogMessage.textContent = '';
@@ -158,6 +161,12 @@
         configureField('name', config);
         configureField('detail', config);
         configureField('color', config);
+        const admissionLabel = els.form.querySelector('[data-field="admissionType"]');
+        if (admissionLabel) {
+            admissionLabel.hidden = !config.admissionType;
+            const text = document.getElementById('settings-admission-type-label');
+            if (text && config.labels.admissionType) text.textContent = config.labels.admissionType;
+        }
     }
 
     const DEFAULT_LABELS = { code: '코드', name: '이름', detail: '상세', color: '표시 색상' };
@@ -186,13 +195,14 @@
         const config = categories[category] || { fields: {} };
         const name = els.name.value.trim();
         const code = config.fields.code ? els.code.value.trim() : name;
+        const detail = config.admissionType ? els.admissionType.value : els.detail.value.trim();
         fetch(url, {
             method: method,
             headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 code: code,
                 name: name,
-                detail: els.detail.value.trim(),
+                detail: detail,
                 color: els.color.value,
                 displayOrder: Number(els.order.value || 0)
             })

@@ -16,7 +16,7 @@
         <div class="page-header">
             <div>
                 <div class="page-title">설정 관리</div>
-                <div class="page-subtitle">치료 항목, 옵션, 상태, 시간 슬롯, 병동/외래 구분을 관리합니다.</div>
+                <div class="page-subtitle">치료 항목, 상태, 시간 슬롯, 병동/외래 구분을 관리합니다. (치료옵션은 별도 메뉴)</div>
             </div>
             <div class="header-right">
                 <div class="segmented-control" id="settings-tabs" role="tablist">
@@ -32,13 +32,6 @@
                     <article class="settings-card" data-category="treatment-types">
                         <div class="settings-card-head">
                             <strong>치료 항목</strong>
-                            <button type="button" class="secondary-button" data-action="add">추가</button>
-                        </div>
-                        <div class="settings-list"></div>
-                    </article>
-                    <article class="settings-card" data-category="treatment-options">
-                        <div class="settings-card-head">
-                            <strong>치료 옵션</strong>
                             <button type="button" class="secondary-button" data-action="add">추가</button>
                         </div>
                         <div class="settings-list"></div>
@@ -88,6 +81,13 @@
         <label data-field="detail">
             <span id="settings-detail-label">상세</span>
             <input type="text" id="settings-detail">
+        </label>
+        <label data-field="admissionType">
+            <span id="settings-admission-type-label">입원/외래 구분</span>
+            <select id="settings-admission-type">
+                <option value="INPATIENT">입원(병동)</option>
+                <option value="OUTPATIENT">외래</option>
+            </select>
         </label>
         <label data-field="color">
             <span id="settings-color-label">표시 색상</span>

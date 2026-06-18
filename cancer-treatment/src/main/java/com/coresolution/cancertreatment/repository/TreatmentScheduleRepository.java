@@ -34,9 +34,12 @@ public class TreatmentScheduleRepository {
                    s.treatment_name_snapshot, s.treatment_option_snapshot,
                    s.patient_name_snapshot, s.ward AS schedule_ward,
                    s.treatment_info, s.note,
+                   s.treatment_room_id, s.seat_id, seat.seat_name AS seat_name,
+                   p.attending_doctor AS attending_doctor,
                    p.patient_name AS live_patient_name, p.ward AS live_ward, p.active_yn AS patient_active
             FROM ct_treatment_schedule s
             LEFT JOIN ct_patient p ON p.id = s.patient_id AND p.inst_code = s.inst_code
+            LEFT JOIN ct_treatment_seat seat ON seat.id = s.seat_id
             """;
 
     private final JdbcTemplate jdbcTemplate;
@@ -63,7 +66,11 @@ public class TreatmentScheduleRepository {
                 blankToEmpty(rs.getString("treatment_option_snapshot")),
                 statusToKorean(rs.getString("status_code")),
                 blankToEmpty(rs.getString("treatment_info")),
-                blankToEmpty(rs.getString("note")));
+                blankToEmpty(rs.getString("note")),
+                (Long) rs.getObject("treatment_room_id"),
+                (Long) rs.getObject("seat_id"),
+                rs.getString("seat_name"),
+                blankToEmpty(rs.getString("attending_doctor")));
     };
 
     public TreatmentScheduleRepository(JdbcTemplate jdbcTemplate) {
@@ -72,10 +79,19 @@ public class TreatmentScheduleRepository {
 
     public List<TreatmentSchedule> findSchedules(
             String instCode, String date, String keyword, String treatmentName, String status) {
+        return findSchedules(instCode, date, keyword, treatmentName, status, null);
+    }
+
+    public List<TreatmentSchedule> findSchedules(
+            String instCode, String date, String keyword, String treatmentName, String status, Long roomId) {
         List<Object> args = new ArrayList<>();
         StringBuilder sql = new StringBuilder(SELECT_SQL).append(" WHERE s.inst_code = ? ");
         args.add(instCode);
 
+        if (roomId != null) {
+            sql.append("AND s.treatment_room_id = ? ");
+            args.add(roomId);
+        }
         if (StringUtils.hasText(date)) {
             sql.append("AND s.treatment_date = ? ");
             args.add(Date.valueOf(LocalDate.parse(date.trim())));
@@ -101,6 +117,16 @@ public class TreatmentScheduleRepository {
         }
         sql.append("ORDER BY s.treatment_date ASC, s.start_time ASC, s.id ASC");
         return jdbcTemplate.query(sql.toString(), rowMapper, args.toArray());
+    }
+
+    /** 날짜 범위 조회(주/월 단위 관점 캘린더용). 단일 쿼리 — idx_ct_schedule_daily 활용. */
+    public List<TreatmentSchedule> findSchedulesByRange(String instCode, String from, String to) {
+        String sql = SELECT_SQL
+                + " WHERE s.inst_code = ? AND s.treatment_date BETWEEN ? AND ? "
+                + "ORDER BY s.treatment_date ASC, s.start_time ASC, s.id ASC";
+        return jdbcTemplate.query(sql, rowMapper, instCode,
+                Date.valueOf(LocalDate.parse(from.trim())),
+                Date.valueOf(LocalDate.parse(to.trim())));
     }
 
     public Optional<TreatmentSchedule> findById(String instCode, Long id) {
@@ -138,6 +164,52 @@ public class TreatmentScheduleRepository {
             return ps;
         }, keyHolder);
 
+        Number key = generatedId(keyHolder);
+        if (key == null) {
+            throw new IllegalStateException("스케줄 등록 결과를 확인할 수 없습니다.");
+        }
+        return findById(instCode, key.longValue())
+                .orElseThrow(() -> new IllegalStateException("등록된 스케줄을 찾을 수 없습니다."));
+    }
+
+    /**
+     * Inserts a single concrete occurrence carrying room/seat/recurrence context.
+     * recurrenceId is null for one-off registrations, or the rule id for materialized rows.
+     */
+    public TreatmentSchedule createOccurrence(
+            String instCode, Long patientId, Long treatmentRoomId, Long seatId, Long recurrenceId,
+            String treatmentDate, String startTime, String patientNameSnapshot, String ward,
+            String treatmentName, String treatmentOption, String koreanStatus,
+            String treatmentInfo, String note) {
+        Long linkedPatientId = resolveLinkedPatientId(instCode, patientId);
+        String sql = """
+                INSERT INTO ct_treatment_schedule (
+                    inst_code, patient_id, treatment_room_id, seat_id, recurrence_id,
+                    treatment_date, start_time, status_code, ward,
+                    patient_name_snapshot, treatment_name_snapshot, treatment_option_snapshot,
+                    treatment_info, note
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            ps.setString(1, instCode);
+            setNullableLong(ps, 2, linkedPatientId);
+            setNullableLong(ps, 3, treatmentRoomId);
+            setNullableLong(ps, 4, seatId);
+            setNullableLong(ps, 5, recurrenceId);
+            ps.setDate(6, Date.valueOf(LocalDate.parse(treatmentDate)));
+            ps.setTime(7, parseTime(startTime));
+            ps.setString(8, koreanToStatus(koreanStatus));
+            ps.setString(9, blankToNull(ward));
+            ps.setString(10, patientNameSnapshot);
+            ps.setString(11, treatmentName);
+            ps.setString(12, blankToNull(treatmentOption));
+            ps.setString(13, blankToNull(treatmentInfo));
+            ps.setString(14, blankToNull(note));
+            return ps;
+        }, keyHolder);
         Number key = generatedId(keyHolder);
         if (key == null) {
             throw new IllegalStateException("스케줄 등록 결과를 확인할 수 없습니다.");

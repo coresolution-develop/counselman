@@ -53,6 +53,8 @@ public class MediplatController {
     public static final String SESSION_LOGIN_AUDIT_ID = "mediplatLoginAuditId";
     private static final String SERVICE_CODE_ROOM_BOARD = "ROOM_BOARD";
     private static final String SERVICE_CODE_SEMINAR_ROOM = "SEMINAR_ROOM";
+    /** Service codes treated as plain external links: launched without SSO signing. */
+    private static final java.util.Set<String> EXTERNAL_LINK_SERVICE_CODES = java.util.Set.of("FORMFLOW");
 
     private final PlatformStoreService storeService;
     private final CounselManSsoLinkService counselManSsoLinkService;
@@ -260,8 +262,19 @@ public class MediplatController {
         if (!user.isPlatformAdmin() && !enabledCodes.contains(service.getServiceCode())) {
             return "redirect:/portal";
         }
+        // External-link services (e.g. FORMFLOW) are plain outbound links: redirect straight to
+        // their base URL with no SSO signature or user identity attached.
+        if (isExternalLinkService(service.getServiceCode())) {
+            String externalUrl = trimTrailingSlash(service.getBaseUrl());
+            return StringUtils.hasText(externalUrl) ? "redirect:" + externalUrl : "redirect:/portal";
+        }
         String launchUrl = counselManSsoLinkService.createLaunchUrl(service, user);
         return "redirect:" + launchUrl;
+    }
+
+    private boolean isExternalLinkService(String serviceCode) {
+        return serviceCode != null
+                && EXTERNAL_LINK_SERVICE_CODES.contains(serviceCode.trim().toUpperCase(Locale.ROOT));
     }
 
     private PlatformService resolveRoomBoardLaunchService() {

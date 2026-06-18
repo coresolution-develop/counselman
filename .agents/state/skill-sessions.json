@@ -1,10 +1,10 @@
 {
   "sessions": {
-    "019dffa6-f499-7513-89f6-c2f7bde64887": {
+    "dc8124bb-f8a0-479f-aaa4-11014f11a5fb": {
       "injected": [
-        ".agents/skills/oma-translator/SKILL.md"
+        ".agents/skills/oma-db/SKILL.md"
       ],
-      "timestamp": 1778110629610
+      "timestamp": 1781670100943
     }
   }
 }

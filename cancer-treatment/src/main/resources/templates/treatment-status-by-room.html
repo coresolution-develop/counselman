@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>치료현황(병실별)</title>
+    <link rel="stylesheet" th:href="@{/css/treatment.css}">
+    <link rel="stylesheet" th:href="@{/css/layout.css}">
+    <script th:inline="javascript">window.__ctx = /*[[@{/}]]*/ '/';</script>
+    <script th:src="@{/js/patient-cost.js}" defer></script>
+    <script th:src="@{/js/treatment-status-by-room.js}" defer></script>
+</head>
+<body th:attr="data-user-role=${user?.role}">
+<div class="layout">
+    <aside th:replace="~{fragments/layout :: sidebar(${user}, ${activeMenu}, ${mediplatPortalUrl})}"></aside>
+    <main class="main">
+        <div class="page-header">
+            <div>
+                <div class="page-title">치료현황(병실별)</div>
+                <div class="page-subtitle">병실 마스터 기준으로 환자 미배정 병실까지 전부 노출합니다. 입원/외래는 병동 설정에서 가져옵니다.</div>
+            </div>
+            <div class="header-right no-print">
+                <div class="segmented-control" id="status-filter" role="tablist">
+                    <button type="button" data-filter="ALL" class="is-active">전체</button>
+                    <button type="button" data-filter="INPATIENT">입원</button>
+                    <button type="button" data-filter="OUTPATIENT">외래</button>
+                </div>
+                <button type="button" class="btn-primary" id="status-print">인쇄</button>
+            </div>
+        </div>
+        <div class="page-body">
+            <!-- 인쇄 머리말: 화면에서는 숨고 인쇄 시에만 표시 -->
+            <div class="print-only print-head">
+                <h2>치료현황(병실별)</h2>
+                <div id="print-meta"></div>
+            </div>
+
+            <p class="form-message" id="status-message" role="status"></p>
+
+            <div class="status-summary-bar">
+                <div><span class="status-summary-label">표시 병실</span> <strong id="sum-rooms">0</strong></div>
+                <div><span class="status-summary-label">표시 환자</span> <strong id="sum-patients">0</strong></div>
+                <div><span class="status-summary-label">본인부담 총액 합계</span> <strong id="sum-amount">0 원</strong></div>
+            </div>
+
+            <!-- 매칭 현황(1단계 문자열 매칭 진단) — 운영자 확인용 -->
+            <details class="status-diagnostics no-print" id="status-diagnostics">
+                <summary>병실 매칭 현황 <span id="diag-badge"></span></summary>
+                <div id="diag-body" class="status-diag-body"></div>
+            </details>
+
+            <div id="status-rooms"></div>
+        </div>
+    </main>
+</div>
+<script th:src="@{/js/role-guard.js}" defer></script>
+</body>
+</html>

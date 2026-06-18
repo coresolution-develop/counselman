@@ -1,6 +1,7 @@
 package com.coresolution.cancertreatment.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 
@@ -51,5 +52,31 @@ class PatientServiceTests {
         Patient updated = patientService.updateTextField("core", created.getId(), "treatmentInfo", "파동 주3 + 림프");
 
         assertThat(updated.getTreatmentInfo()).isEqualTo("파동 주3 + 림프");
+    }
+
+    @Test
+    void createPatientPersistsTreatmentStartDate() {
+        PatientRequest request = new PatientRequest();
+        request.setName("치료시작환자");
+        request.setChartNo("CT-1003");
+        request.setWard("1병동");
+        request.setAdmissionDate("2026-05-12");
+        request.setTreatmentStartDate("2026-05-14");
+
+        Patient created = patientService.createPatient("core", request);
+
+        assertThat(created.getTreatmentStartDate()).isEqualTo("2026-05-14");
+    }
+
+    @Test
+    void rejectsTreatmentStartBeforeAdmission() {
+        PatientRequest request = new PatientRequest();
+        request.setName("역전환자");
+        request.setAdmissionDate("2026-05-12");
+        request.setTreatmentStartDate("2026-05-10");
+
+        assertThatThrownBy(() -> patientService.createPatient("core", request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("치료 시작일은 입원일보다");
     }
 }

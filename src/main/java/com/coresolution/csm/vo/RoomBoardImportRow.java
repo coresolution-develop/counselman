@@ -6,6 +6,7 @@ import lombok.Data;
 public class RoomBoardImportRow {
     private String wardName;
     private String roomName;
+    private Integer bedNo;
     private String patientNo;
     private String patientName;
     private String gender;
