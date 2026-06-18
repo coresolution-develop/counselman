@@ -159,8 +159,8 @@
                   <option value="">환자를 선택하세요</option>
                   <option th:each="p : ${currentPatients}"
                           th:value="${p.rbp_id}"
-                          th:text="${p.room_name + ' · ' + p.patient_name + (p.ward_name != null and p.ward_name != '' ? ' · ' + p.ward_name : '')}">
-                    301호 · 홍길동
+                          th:text="${(p.ward_name != null and p.ward_name != '' ? p.ward_name + ' · ' : '') + p.room_name + (p.patient_no != null and p.patient_no != '' ? ' · ' + p.patient_no : '') + ' · ' + p.patient_name}">
+                    3병동 · 301호 · 12345 · 홍길동
                   </option>
                 </select>
                 <div class="field__hint">병실현황판에 업로드된 최신 스냅샷의 환자 목록입니다.</div>

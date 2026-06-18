@@ -64,23 +64,30 @@
     .rb-btn-light:hover { background: var(--gray-200); }
     .rb-btn-danger { background: #fff3f1; color: #b42318; border: 1px solid #f3c7c2; }
     .rb-btn-danger:hover { background: #ffe4e1; }
+    /* 비활성 버튼: 색을 죽여 클릭 불가임을 명확히 (specificity 가 .rb-btn-primary 보다 높음) */
+    .rb-btn:disabled, .rb-btn[disabled] {
+      background: var(--gray-200); color: var(--text-tertiary); border: 1px solid var(--border-default);
+      cursor: not-allowed; box-shadow: none; opacity: .65;
+    }
 
     .rb-split { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 16px; align-items: start; }
     @media (max-width: 1024px) { .rb-split { grid-template-columns: 1fr; } }
 
-    .rb-table-wrap { overflow: auto; border: 1px solid var(--border-default); border-radius: var(--radius-lg); margin-top: 16px; }
+    /* 행이 많아도 헤더가 보이도록 표마다 자체 스크롤 박스(높이 제한)로 만든다. */
+    .rb-table-wrap { overflow: auto; max-height: 60vh; border: 1px solid var(--border-default); border-radius: var(--radius-lg); margin-top: 16px; }
     .rb-table { width: 100%; border-collapse: collapse; min-width: 900px; }
     .rb-table thead th {
       background: var(--gray-50); font-size: 11px; font-weight: 600; color: var(--text-tertiary);
       text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border-default);
-      text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; position: sticky; top: 0;
+      text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
+      position: sticky; top: 0; z-index: 2;
     }
     .rb-table tbody td { padding: 12px 12px; border-bottom: 1px solid var(--border-subtle); font-size: 13px; color: var(--text-primary); }
     .rb-table tbody tr:hover td { background: color-mix(in oklab, var(--brand-500) 3%, #fff); }
 
-    .rb-preview { max-height: 280px; overflow: auto; border: 1px solid var(--border-default); border-radius: var(--radius-md); margin-top: 12px; }
+    .rb-preview { max-height: 360px; overflow: auto; border: 1px solid var(--border-default); border-radius: var(--radius-md); margin-top: 12px; }
     .rb-preview table { width: 100%; border-collapse: collapse; }
-    .rb-preview thead th { background: var(--gray-50); font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border-default); }
+    .rb-preview thead th { background: var(--gray-50); font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border-default); position: sticky; top: 0; z-index: 2; }
     .rb-preview tbody td { font-size: 12px; border-bottom: 1px solid var(--border-subtle); padding: 7px 10px; }
 
     .rb-note { color: var(--text-tertiary); font-size: 12px; margin-top: 8px; line-height: 1.6; }
@@ -185,6 +192,26 @@
         </div>
       </div>
 
+      <!-- 병실 기준정보 요약 -->
+      <div class="rb-grid" id="rbSummaryGrid" style="margin-bottom:20px;">
+        <div class="rb-card" style="margin:0;padding:18px 22px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text-tertiary);">병동 수</div>
+          <div id="rbSummaryWards" style="font-size:28px;font-weight:700;color:var(--text-primary);">0</div>
+        </div>
+        <div class="rb-card" style="margin:0;padding:18px 22px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text-tertiary);">병실 수</div>
+          <div id="rbSummaryRooms" style="font-size:28px;font-weight:700;color:var(--text-primary);">0</div>
+        </div>
+        <div class="rb-card" style="margin:0;padding:18px 22px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text-tertiary);">허가병상 합계</div>
+          <div id="rbSummaryLicensed" style="font-size:28px;font-weight:700;color:var(--text-primary);">0</div>
+        </div>
+        <div class="rb-card" style="margin:0;padding:18px 22px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text-tertiary);">가용병상 합계</div>
+          <div id="rbSummaryAvailable" style="font-size:28px;font-weight:700;color:var(--brand-600);">0</div>
+        </div>
+      </div>
+
       <!-- EMR 데이터 가져오기 -->
       <div class="rb-card">
         <h2 class="rb-card-title">EMR 데이터 가져오기</h2>
@@ -209,8 +236,8 @@
           <div class="rb-field">
             <label>&nbsp;</label>
             <div class="rb-actions" style="margin-top:0;">
-              <button type="button" id="previewImportBtn" class="rb-btn rb-btn-light">미리보기</button>
-              <button type="button" id="saveImportBtn" class="rb-btn rb-btn-primary">가져오기 저장</button>
+              <button type="button" id="previewImportBtn" class="rb-btn rb-btn-primary">미리보기</button>
+              <button type="button" id="saveImportBtn" class="rb-btn rb-btn-primary" disabled title="먼저 미리보기로 데이터를 확인하세요.">가져오기 저장</button>
             </div>
           </div>
         </div>
@@ -223,7 +250,7 @@
           <table>
             <thead>
               <tr>
-                <th>병동</th><th>병실</th><th>환자번호</th><th>환자명</th>
+                <th>병동</th><th>병실</th><th>병상</th><th>환자번호</th><th>환자명</th>
                 <th>성별</th><th>나이</th><th>입원일자</th><th>의사</th><th>유형(보험)</th>
                 <th>상병코드</th><th>상병명</th><th>보호자전화</th><th>메모</th>
               </tr>
@@ -265,7 +292,7 @@
         <hr class="rb-divider" />
         <div class="rb-inline" style="justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:12px;">
           <div>
-            <p class="rb-card-title" style="font-size:13px;margin:0;">개별 병실 추가 · 수정</p>
+            <p class="rb-card-title" style="font-size:13px;margin:0;">병실 추가 · 수정</p>
             <p class="rb-note" style="margin-top:4px;">행의 <b>수정</b> 버튼으로 해당 행에서 바로 편집하고, <b>병실 추가</b>로 새 행을 입력합니다. 저장·삭제는 새로고침 없이 즉시 반영됩니다.</p>
           </div>
           <div style="display:flex;gap:8px;flex:none;">
@@ -396,6 +423,47 @@ document.addEventListener('turbo:load', () => {
   const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') || '';
   const headers = { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' };
   if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+
+  // ─── 공용 모달 (alert/confirm 대체) ─────────────────────────────
+  const rbModal = ({ title = '알림', message = '', confirmText = '확인', cancelText = null, danger = false }) =>
+    new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'rb-modal-overlay';
+      overlay.style.display = 'flex';
+      const box = document.createElement('div');
+      box.className = 'rb-modal';
+      const h = document.createElement('h3'); h.className = 'rb-modal-title'; h.textContent = title;
+      const p = document.createElement('p'); p.className = 'rb-modal-body'; p.textContent = message;
+      const actions = document.createElement('div');
+      actions.className = 'rb-actions'; actions.style.justifyContent = 'flex-end'; actions.style.marginTop = '0';
+      let settled = false; // 더블클릭/중복 입력에도 단 한 번만 처리·제거
+      const close = (val) => {
+        if (settled) return;
+        settled = true;
+        overlay.remove();
+        document.removeEventListener('keydown', onKey);
+        resolve(val);
+      };
+      if (cancelText) {
+        const c = document.createElement('button');
+        c.type = 'button'; c.className = 'rb-btn rb-btn-light'; c.textContent = cancelText;
+        c.addEventListener('click', () => close(false));
+        actions.appendChild(c);
+      }
+      const ok = document.createElement('button');
+      ok.type = 'button'; ok.className = 'rb-btn ' + (danger ? 'rb-btn-danger' : 'rb-btn-primary'); ok.textContent = confirmText;
+      ok.addEventListener('click', () => close(true));
+      actions.appendChild(ok);
+      box.append(h, p, actions); overlay.appendChild(box);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) close(!cancelText); });
+      const onKey = (e) => { if (e.key === 'Escape') close(!cancelText); else if (e.key === 'Enter') close(true); };
+      document.addEventListener('keydown', onKey);
+      document.body.appendChild(overlay);
+      setTimeout(() => ok.focus(), 0);
+    });
+  const rbAlert   = (message, title = '알림') => rbModal({ title, message });
+  const rbConfirm = (message, title = '확인', opts = {}) =>
+    rbModal({ title, message, cancelText: '취소', confirmText: opts.confirmText || '확인', danger: opts.danger });
 
   // ─── 날짜·시간 기본값 ───────────────────────────────────────────
   const setNow = () => {
@@ -565,6 +633,7 @@ document.addEventListener('turbo:load', () => {
       adding = false;
       editingId = null;
       render();
+      renderRoomSummary();
       showRcMessage(`저장되었습니다: ${item.wardName} ${item.roomName}`, false);
     } catch (e) {
       showRcMessage('저장 중 오류가 발생했습니다.', true);
@@ -573,7 +642,7 @@ document.addEventListener('turbo:load', () => {
   };
 
   const deleteRow = async (id) => {
-    if (!confirm('삭제하시겠습니까?')) return;
+    if (!(await rbConfirm('삭제하시겠습니까?', '병실 삭제', { confirmText: '삭제', danger: true }))) return;
     try {
       const res  = await fetch(ctx + '/room-board/manage/room/delete', {
         method: 'POST', headers, body: new URLSearchParams({ id }).toString(),
@@ -584,6 +653,7 @@ document.addEventListener('turbo:load', () => {
       if (idx >= 0) rcRows.splice(idx, 1);
       if (editingId === id) editingId = null;
       render();
+      renderRoomSummary();
       showRcMessage('삭제되었습니다.', false);
     } catch (e) {
       showRcMessage('삭제 중 오류가 발생했습니다.', true);
@@ -614,6 +684,28 @@ document.addEventListener('turbo:load', () => {
 
   render();
 
+  // ─── 병실 기준정보 요약 (유효 병실 기준, 병실당 최신 1건) ──────────
+  const renderRoomSummary = () => {
+    const wards = new Set();
+    const rooms = new Set();
+    let licensed = 0, available = 0;
+    rcRows.forEach((r) => {
+      if (String(r.useYn ?? 'Y').toUpperCase() === 'N') return;
+      const key = `${r.wardName}${r.roomName}`;
+      if (rooms.has(key)) return; // 같은 병실은 최신 1건만(정렬상 선두)
+      rooms.add(key);
+      if (r.wardName) wards.add(r.wardName);
+      licensed += Number(r.licensedBeds) || 0;
+      available += Number(r.availableBeds ?? r.licensedBeds) || 0;
+    });
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set('rbSummaryWards', wards.size);
+    set('rbSummaryRooms', rooms.size);
+    set('rbSummaryLicensed', licensed);
+    set('rbSummaryAvailable', available);
+  };
+  renderRoomSummary();
+
   // ─── EMR 가져오기 ────────────────────────────────────────────────
   const buildPayload = () => new URLSearchParams({
     sourceType:   document.getElementById('sourceType')?.value   || 'EXCEL_DETAIL',
@@ -625,6 +717,24 @@ document.addEventListener('turbo:load', () => {
   const previewWrap = document.getElementById('previewWrap');
   const previewBody = document.getElementById('previewBody');
   const importMsg   = document.getElementById('importMessage');
+  const saveImportBtn = document.getElementById('saveImportBtn');
+  const previewImportBtn = document.getElementById('previewImportBtn');
+
+  // 미리보기 강제 + 버튼 색상 전환:
+  //  ready=false → 미리보기 강조(primary), 저장 비활성(죽은 색)
+  //  ready=true  → 미리보기 약화(light), 저장 활성(primary)
+  const applyImportState = (ready) => {
+    if (previewImportBtn) {
+      previewImportBtn.classList.toggle('rb-btn-primary', !ready);
+      previewImportBtn.classList.toggle('rb-btn-light', ready);
+    }
+    if (saveImportBtn) saveImportBtn.disabled = !ready;
+  };
+  const invalidateImportPreview = () => {
+    applyImportState(false);
+    if (previewWrap) previewWrap.style.display = 'none';
+  };
+  applyImportState(false);
 
   const renderPreview = (data) => {
     previewBody.innerHTML = '';
@@ -632,11 +742,12 @@ document.addEventListener('turbo:load', () => {
     if (!rows.length) {
       previewWrap.style.display = 'none';
       importMsg.textContent = data.message || '미리보기 데이터가 없습니다.';
+      applyImportState(false);
       return;
     }
     rows.forEach(r => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${r.wardName||''}</td><td>${r.roomName||''}</td><td>${r.patientNo||''}</td>
+      tr.innerHTML = `<td>${r.wardName||''}</td><td>${r.roomName||''}</td><td>${r.bedNo!=null?r.bedNo:'—'}</td><td>${r.patientNo||''}</td>
         <td>${r.patientName||''}</td><td>${r.gender||''}</td><td>${r.age||''}</td>
         <td>${r.admissionDate||''}</td><td>${r.doctorName||''}</td><td>${r.patientType||''}</td>
         <td>${r.diseaseCode||''}</td><td>${r.diseaseName||''}</td><td>${r.phoneGuardian||''}</td><td>${r.memo||''}</td>`;
@@ -644,26 +755,51 @@ document.addEventListener('turbo:load', () => {
     });
     previewWrap.style.display = '';
     importMsg.textContent = `${data.message || '미리보기 완료'} / 인식 ${data.parsedCount || 0}건`;
+    applyImportState(true);
   };
 
   document.getElementById('previewImportBtn')?.addEventListener('click', async () => {
     const raw = document.getElementById('rawText')?.value?.trim();
-    if (!raw) { alert('붙여넣기 데이터를 입력해 주세요.'); return; }
+    if (!raw) { await rbAlert('붙여넣기 데이터를 입력해 주세요.'); return; }
     const res  = await fetch(ctx + '/room-board/manage/import/preview', { method: 'POST', headers, body: buildPayload().toString() });
     const data = await res.json();
-    if (!res.ok) { alert(data.message || '미리보기에 실패했습니다.'); return; }
+    if (!res.ok) { await rbAlert(data.message || '미리보기에 실패했습니다.', '미리보기 실패'); return; }
     renderPreview(data);
   });
 
+  // 입력이 바뀌면 미리보기 무효화 → 다시 미리보기해야 저장 가능
+  ['rawText', 'sourceType', 'snapshotDate', 'snapshotTime'].forEach((id) => {
+    const el = document.getElementById(id);
+    el?.addEventListener('input', invalidateImportPreview);
+    el?.addEventListener('change', invalidateImportPreview);
+  });
+
   document.getElementById('saveImportBtn')?.addEventListener('click', async () => {
+    if (saveImportBtn?.disabled) return;
     const raw = document.getElementById('rawText')?.value?.trim();
-    if (!raw) { alert('붙여넣기 데이터를 입력해 주세요.'); return; }
-    if (!confirm('현재 붙여넣기 데이터를 저장하시겠습니까?')) return;
-    const res  = await fetch(ctx + '/room-board/manage/import/save', { method: 'POST', headers, body: buildPayload().toString() });
-    const data = await res.json();
-    if (!res.ok) { alert(data.message || '가져오기에 실패했습니다.'); return; }
-    alert(`가져오기 완료: ${data.parsedCount || 0}건`);
-    location.reload();
+    if (!raw) { await rbAlert('붙여넣기 데이터를 입력해 주세요.'); return; }
+    // 동기적으로 즉시 잠가 확인 모달/fetch 진행 중 재클릭(중복 저장)을 원천 차단.
+    const prevText = saveImportBtn.textContent;
+    saveImportBtn.disabled = true;
+    if (!(await rbConfirm('현재 붙여넣기 데이터를 저장하시겠습니까?', '가져오기 저장', { confirmText: '저장' }))) {
+      saveImportBtn.disabled = false; // 취소 시 복구(미리보기 유효 상태 유지)
+      return;
+    }
+    saveImportBtn.textContent = '저장 중…';
+    try {
+      const res  = await fetch(ctx + '/room-board/manage/import/save', { method: 'POST', headers, body: buildPayload().toString() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        await rbAlert(data.message || '가져오기에 실패했습니다.', '가져오기 실패');
+        saveImportBtn.disabled = false; saveImportBtn.textContent = prevText;
+        return;
+      }
+      await rbAlert(`가져오기 완료: ${data.parsedCount || 0}건`, '가져오기 완료');
+      location.reload();
+    } catch (e) {
+      await rbAlert('가져오기 중 오류가 발생했습니다.', '오류');
+      saveImportBtn.disabled = false; saveImportBtn.textContent = prevText;
+    }
   });
 
   // ─── 병실 기준정보 일괄 붙여넣기 ────────────────────────────────
@@ -693,29 +829,46 @@ document.addEventListener('turbo:load', () => {
   };
 
   document.getElementById('previewRoomConfigPasteBtn')?.addEventListener('click', async () => {
-    if (!document.getElementById('roomConfigRawText')?.value?.trim()) { alert('병실 기준정보 붙여넣기 데이터를 입력해 주세요.'); return; }
+    if (!document.getElementById('roomConfigRawText')?.value?.trim()) { await rbAlert('병실 기준정보 붙여넣기 데이터를 입력해 주세요.'); return; }
     const res  = await fetch(ctx + '/room-board/manage/room-config/preview', { method: 'POST', headers, body: buildRcPayload().toString() });
     const data = await res.json();
-    if (!res.ok) { alert(data.message || '병실 기준정보 미리보기에 실패했습니다.'); return; }
+    if (!res.ok) { await rbAlert(data.message || '병실 기준정보 미리보기에 실패했습니다.', '미리보기 실패'); return; }
     renderRcPreview(data);
   });
 
-  document.getElementById('saveRoomConfigPasteBtn')?.addEventListener('click', async () => {
-    if (!document.getElementById('roomConfigRawText')?.value?.trim()) { alert('병실 기준정보 붙여넣기 데이터를 입력해 주세요.'); return; }
-    if (!confirm('현재 병실 기준정보 붙여넣기 데이터를 저장하시겠습니까?')) return;
-    const res  = await fetch(ctx + '/room-board/manage/room-config/save', { method: 'POST', headers, body: buildRcPayload().toString() });
-    const data = await res.json();
-    if (!res.ok) { alert(data.message || '병실 기준정보 일괄 저장에 실패했습니다.'); return; }
-    alert(`병실 기준정보 저장 완료: ${data.parsedCount || 0}건`);
-    location.reload();
+  document.getElementById('saveRoomConfigPasteBtn')?.addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget;
+    if (btn.disabled) return;
+    if (!document.getElementById('roomConfigRawText')?.value?.trim()) { await rbAlert('병실 기준정보 붙여넣기 데이터를 입력해 주세요.'); return; }
+    const prevText = btn.textContent;
+    btn.disabled = true; // 동기 잠금 → 중복 저장 차단
+    if (!(await rbConfirm('현재 병실 기준정보 붙여넣기 데이터를 저장하시겠습니까?', '일괄 저장', { confirmText: '저장' }))) {
+      btn.disabled = false;
+      return;
+    }
+    btn.textContent = '저장 중…';
+    try {
+      const res  = await fetch(ctx + '/room-board/manage/room-config/save', { method: 'POST', headers, body: buildRcPayload().toString() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        await rbAlert(data.message || '병실 기준정보 일괄 저장에 실패했습니다.', '저장 실패');
+        btn.disabled = false; btn.textContent = prevText;
+        return;
+      }
+      await rbAlert(`병실 기준정보 저장 완료: ${data.parsedCount || 0}건`, '저장 완료');
+      location.reload();
+    } catch (e) {
+      await rbAlert('병실 기준정보 저장 중 오류가 발생했습니다.', '오류');
+      btn.disabled = false; btn.textContent = prevText;
+    }
   });
 
   // ─── 초기화 · 삭제 (되돌릴 수 없는 위험 작업) ────────────────────
   const postReset = async (url, params, okMsg) => {
     const res  = await fetch(ctx + url, { method: 'POST', headers, body: new URLSearchParams(params || {}).toString() });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) { alert(data.message || '처리에 실패했습니다.'); return false; }
-    alert(okMsg(data));
+    if (!res.ok) { await rbAlert(data.message || '처리에 실패했습니다.', '처리 실패'); return false; }
+    await rbAlert(okMsg(data), '완료');
     location.reload();
     return true;
   };
@@ -765,10 +918,10 @@ document.addEventListener('turbo:load', () => {
   });
 
   // 업로드 이력 개별 삭제 (스냅샷 + 재원환자, 퇴원예고 보존)
-  document.getElementById('snapshotHistoryTbody')?.addEventListener('click', (ev) => {
+  document.getElementById('snapshotHistoryTbody')?.addEventListener('click', async (ev) => {
     const btn = ev.target.closest('[data-act="snapshot-delete"]');
     if (!btn) return;
-    if (!confirm('이 업로드 이력을 삭제하면 해당 스냅샷의 재원환자 현황도 함께 삭제됩니다. 계속하시겠습니까?')) return;
+    if (!(await rbConfirm('이 업로드 이력을 삭제하면 해당 스냅샷의 재원환자 현황도 함께 삭제됩니다. 계속하시겠습니까?', '업로드 이력 삭제', { confirmText: '삭제', danger: true }))) return;
     postReset('/room-board/manage/snapshot/delete', { id: btn.dataset.id },
               (d) => `삭제되었습니다 (재원환자 ${d.patients || 0}명).`);
   });

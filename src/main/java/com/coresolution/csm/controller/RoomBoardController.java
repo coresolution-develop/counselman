@@ -7,7 +7,11 @@ import java.util.Map;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -50,6 +54,14 @@ public class RoomBoardController {
     @Value("${mediplat.platform.base-url:http://localhost:8082}")
     private String mediplatPlatformBaseUrl;
 
+    // 홈 화면(PWA) 콜드 진입/쿠키 만료 시 self-heal 대상: 포털이 세션으로 새 토큰을 발급하고 룸보드로 복귀시킨다.
+    @Value("${roomboard.viewer.launch-url:${mediplat.platform.base-url:http://localhost:8082}/launch/ROOM_BOARD}")
+    private String roomBoardLaunchUrl;
+
+    // 임원 휴대폰 홈 화면용 장기 뷰어 패스(서명 쿠키). 매 진입 시 갱신되어 30일간 탭만으로 열린다.
+    private static final String VIEWER_COOKIE = "rb_viewer";
+    private static final long VIEWER_PASS_TTL_SECONDS = 30L * 24 * 60 * 60;
+
     private final RoomBoardService roomBoardService;
     private final ModuleFeatureService moduleFeatureService;
     private final CsmAuthService cs;
@@ -57,8 +69,10 @@ public class RoomBoardController {
     private final SmsService ss;
     private final ObjectMapper objectMapper;
 
+    // 주의: @PreAuthorize 를 쓰지 않는다. 포털(MediPlat) 홈 화면/SSO 진입은 로그인 세션 없이
+    // 서명된 mp* 토큰만 들고 오는데, @PreAuthorize 는 메서드 본문(토큰 검증) 전에 익명으로 판단해
+    // 로그인으로 튕긴다. 대신 아래에서 직접 인가한다: 토큰 뷰어는 토큰이 곧 인가, 세션 사용자는 권한 검사.
     @GetMapping({ "room-board", "/room-board" })
-    @PreAuthorize("hasAuthority('ROOM_BOARD:READ') or hasRole('INST_ADMIN') or hasRole('PLATFORM_ADMIN')")
     public String roomBoard(
             @RequestParam(value = "snapshotDate", required = false) String snapshotDate,
             @RequestParam(value = "snapshotId", required = false) Long snapshotId,
@@ -71,17 +85,32 @@ public class RoomBoardController {
             @RequestParam(value = "mpExpires", required = false) Long mpExpires,
             @RequestParam(value = "mpSignature", required = false) String mpSignature,
             Model model,
-            HttpSession session) {
+            HttpSession session,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        // 인가 우선순위: ① 포털 SSO 토큰(mp*) → ② 30일 뷰어 쿠키(홈 화면 재방문) → ③ CSM 로그인 세션
         RoomBoardViewerAccess viewerAccess = resolveViewerAccess(mpInst, mpUser, mpExpires, mpSignature);
+        if (viewerAccess == null) {
+            viewerAccess = resolveViewerFromCookie(request);
+        }
         String inst;
         Userdata userinfo;
         if (viewerAccess != null) {
             inst = viewerAccess.inst();
             userinfo = viewerAccess.userinfo();
+            // 토큰/쿠키 진입 모두에서 30일 뷰어 쿠키를 갱신 → 임원은 매일 탭만으로 즉시 열림
+            issueViewerCookie(request, response, inst, viewerAccess.userId());
         } else {
             inst = ensureInst(session);
             if (inst == null) {
-                return "redirect:/login";
+                // 토큰·쿠키·세션 모두 없음(홈 화면 콜드 진입/만료) → 포털 런치로 보내 인증+토큰 재발급(self-heal)
+                return "redirect:" + roomBoardLaunchUrl;
+            }
+            // 세션 진입(토큰 없음)은 기존 @PreAuthorize 와 동일한 권한을 코드로 강제한다.
+            if (!canReadRoomBoard()) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "병실현황판 접근 권한이 없습니다.");
             }
             userinfo = ensureUserInfo(session, inst);
         }
@@ -551,6 +580,18 @@ public class RoomBoardController {
         return reloaded;
     }
 
+    /** 세션 사용자가 병실현황판을 볼 권한이 있는지 (기존 @PreAuthorize 와 동일 규칙). */
+    private boolean canReadRoomBoard() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getAuthorities() == null) {
+            return false;
+        }
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> "ROOM_BOARD:READ".equals(a.getAuthority())
+                        || "ROLE_INST_ADMIN".equals(a.getAuthority())
+                        || "ROLE_PLATFORM_ADMIN".equals(a.getAuthority()));
+    }
+
     private boolean canManageRoomBoard(Userdata userinfo) {
         if (userinfo == null) {
             return false;
@@ -594,8 +635,12 @@ public class RoomBoardController {
         } catch (IllegalArgumentException e) {
             throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN, e.getMessage(), e);
         }
+        return buildViewerAccess(mpInst, mpUser.trim());
+    }
 
-        String inst = cs.resolveInst(mpInst);
+    /** 토큰/쿠키 검증 통과 후 공통: 기관 해석 + 가용/연동 검사 + 뷰어 사용자 구성. */
+    private RoomBoardViewerAccess buildViewerAccess(String rawInst, String viewerUserId) {
+        String inst = cs.resolveInst(rawInst);
         if (!StringUtils.hasText(inst)) {
             throw new org.springframework.web.server.ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -611,12 +656,73 @@ public class RoomBoardController {
                     HttpStatus.FORBIDDEN,
                     "현재 기관은 병실현황판-입원상담 연동이 비활성화되었습니다.");
         }
-        String viewerUserId = mpUser.trim();
         Userdata userinfo = cs.loadUserInfo(inst, viewerUserId);
         if (!cs.isUserAvailable(userinfo)) {
             userinfo = buildVirtualViewerUser(inst, viewerUserId);
         }
-        return new RoomBoardViewerAccess(inst, userinfo);
+        return new RoomBoardViewerAccess(inst, viewerUserId, userinfo);
+    }
+
+    /**
+     * 30일 서명 뷰어 쿠키로 재진입을 인가한다(홈 화면 PWA의 평상시 동작 — 같은 오리진, 포털 왕복 없음).
+     * 쿠키 값: base64("inst|userId|expires|signature"), 서명/검증은 SSO 토큰과 동일한 HMAC 사용.
+     */
+    private RoomBoardViewerAccess resolveViewerFromCookie(HttpServletRequest request) {
+        if (request == null || request.getCookies() == null) {
+            return null;
+        }
+        String raw = null;
+        for (jakarta.servlet.http.Cookie c : request.getCookies()) {
+            if (VIEWER_COOKIE.equals(c.getName())) {
+                raw = c.getValue();
+                break;
+            }
+        }
+        if (!StringUtils.hasText(raw)) {
+            return null;
+        }
+        try {
+            String decoded = new String(Base64.getUrlDecoder().decode(raw), StandardCharsets.UTF_8);
+            String[] parts = decoded.split("\\|", 4);
+            if (parts.length != 4) {
+                return null;
+            }
+            String inst = parts[0];
+            String userId = parts[1];
+            long expires = Long.parseLong(parts[2]);
+            String signature = parts[3];
+            mediplatSsoService.validateRoomBoardViewer(inst, userId, expires, signature);
+            return buildViewerAccess(inst, userId);
+        } catch (org.springframework.web.server.ResponseStatusException e) {
+            throw e; // 기관 비활성/연동 비활성 등은 그대로 표면화
+        } catch (Exception e) {
+            return null; // 만료/위변조 쿠키는 무시 → 콜드 진입(self-heal)으로 처리
+        }
+    }
+
+    /** 뷰어 쿠키를 발급/갱신한다(서명된 inst|userId, 30일). HttpOnly·SameSite=Lax, HTTPS면 Secure. */
+    private void issueViewerCookie(HttpServletRequest request, HttpServletResponse response, String inst, String userId) {
+        if (response == null || !StringUtils.hasText(inst) || !StringUtils.hasText(userId)) {
+            return;
+        }
+        try {
+            long expires = java.time.Instant.now().getEpochSecond() + VIEWER_PASS_TTL_SECONDS;
+            String signature = mediplatSsoService.signRoomBoardViewer(inst, userId, expires);
+            String value = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                    (inst + "|" + userId + "|" + expires + "|" + signature).getBytes(StandardCharsets.UTF_8));
+            String path = request != null && StringUtils.hasText(request.getContextPath())
+                    ? request.getContextPath() : "/";
+            ResponseCookie cookie = ResponseCookie.from(VIEWER_COOKIE, value)
+                    .httpOnly(true)
+                    .secure(request != null && request.isSecure())
+                    .sameSite("Lax")
+                    .path(path)
+                    .maxAge(VIEWER_PASS_TTL_SECONDS)
+                    .build();
+            response.addHeader("Set-Cookie", cookie.toString());
+        } catch (Exception e) {
+            log.warn("[room-board] viewer cookie issue fail inst={}, err={}", inst, e.toString());
+        }
     }
 
     private Userdata buildVirtualViewerUser(String inst, String userId) {
@@ -690,6 +796,7 @@ public class RoomBoardController {
 
     private record RoomBoardViewerAccess(
             String inst,
+            String userId,
             Userdata userinfo) {
     }
 }

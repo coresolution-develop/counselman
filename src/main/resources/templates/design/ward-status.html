@@ -4,6 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MediPlat · 병실현황판</title>
+  <!-- PWA: 홈 화면 설치(임원 휴대폰) -->
+  <link rel="manifest" th:href="@{/manifest.json}" />
+  <meta name="theme-color" content="#10b981" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="병실현황판" />
+  <link rel="apple-touch-icon" th:href="@{/assets/pwa/icon-180.png}" />
+  <link rel="icon" type="image/png" sizes="32x32" th:href="@{/assets/pwa/favicon-32.png}" />
   <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
   <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
   <link rel="stylesheet" th:href="@{/assets/css/layout.css}" />
@@ -50,9 +59,27 @@
       vertical-align: middle;
     }
 
-    /* ===== Stat cards ===== */
-    .ws-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0; }
-    @media (max-width: 900px) { .ws-stats { grid-template-columns: repeat(2, 1fr); } }
+    /* ===== Stat cards (한 줄, 폭 부족 시 가로 스크롤, 스크롤 시 상단 고정) ===== */
+    .ws-stats {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(132px, 1fr);
+      gap: 12px; margin: 16px 0;
+      overflow-x: auto;
+      /* top 은 .main 의 padding-top(24px) 만큼 음수로 당겨, 카드가 스크롤뷰 최상단에
+         빈틈 없이 고정되도록 한다. (양수 top:0 이면 메인 패딩 띠로 내용이 비쳐 보임) */
+      position: sticky; top: -24px; z-index: 30;
+      background: var(--bg-main, #f5f7fa);
+      padding: 10px 0;
+      box-shadow: 0 8px 14px -12px rgba(0,0,0,.45);
+    }
+    /* 가동률(허가/가용) 한 줄 좌우 분할 */
+    .ws-occ { display: flex; align-items: center; gap: 14px; }
+    .ws-occ__item { display: flex; align-items: baseline; gap: 3px; }
+    .ws-occ__cap { font-size: 11px; font-weight: 600; color: var(--text-tertiary); }
+    .ws-occ__val { font-size: 24px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+    .ws-occ__pct { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+    .ws-occ__sep { width: 1px; align-self: stretch; background: var(--border-default); margin: 3px 0; }
     .ws-stat {
       background: #fff;
       border: 1px solid var(--border-default);
@@ -305,6 +332,21 @@
       font-weight: 800;
     }
 
+    /* ===== 환자 hover 툴팁 ===== */
+    .ws-tip {
+      position: fixed; z-index: 1000;
+      min-width: 200px; max-width: 280px;
+      background: #1f2937; color: #fff;
+      border-radius: 10px; padding: 10px 12px;
+      box-shadow: 0 12px 28px rgba(0,0,0,.28);
+      pointer-events: none;
+      font-size: 12px; line-height: 1.5;
+    }
+    .ws-tip__name { font-size: 12.5px; font-weight: 700; margin-bottom: 6px; }
+    .ws-tip__row { display: flex; gap: 8px; }
+    .ws-tip__k { flex: none; width: 64px; color: #9ca3af; font-weight: 600; }
+    .ws-tip__v { flex: 1; min-width: 0; word-break: break-all; }
+
     /* ===== Popup mode: skip chrome, fill full window ===== */
     html.ws-popup #slot-sidebar,
     html.ws-popup #slot-header { display: none !important; }
@@ -362,8 +404,14 @@
         justify-content: center;
       }
       .ws-stats {
+        grid-auto-flow: row;
+        grid-auto-columns: auto;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
+        overflow-x: visible;
+        position: static;
+        box-shadow: none;
+        padding: 0;
       }
       .ws-filters {
         align-items: flex-start;
@@ -570,6 +618,11 @@
         <div class="ws-stat__value" x-text="totals.licensed"></div>
         <div class="ws-stat__sub">병동 전체 합계</div>
       </div>
+      <div class="ws-stat">
+        <div class="ws-stat__label">가용병상수</div>
+        <div class="ws-stat__value" x-text="totals.availableCap"></div>
+        <div class="ws-stat__sub">운영 가능 병상</div>
+      </div>
       <div class="ws-stat is-highlight">
         <div class="ws-stat__label">재원 환자 수</div>
         <div class="ws-stat__value" x-text="totals.occupied"></div>
@@ -582,8 +635,18 @@
       </div>
       <div class="ws-stat">
         <div class="ws-stat__label">가동률</div>
-        <div class="ws-stat__value"><span x-text="totals.occupancy"></span>%</div>
-        <div class="ws-stat__sub">재원 / 허가</div>
+        <div class="ws-stat__value ws-occ">
+          <div class="ws-occ__item">
+            <span class="ws-occ__cap">허가</span>
+            <span class="ws-occ__val" x-text="totals.occupancy"></span><span class="ws-occ__pct">%</span>
+          </div>
+          <div class="ws-occ__sep"></div>
+          <div class="ws-occ__item">
+            <span class="ws-occ__cap">가용</span>
+            <span class="ws-occ__val" x-text="totals.occupancyByAvailable"></span><span class="ws-occ__pct">%</span>
+          </div>
+        </div>
+        <div class="ws-stat__sub">재원÷허가 · 재원÷가용</div>
       </div>
       <div class="ws-stat is-highlight">
         <div class="ws-stat__label">퇴원예고</div>
@@ -683,7 +746,9 @@
                              :class="{ 'is-filled': room.cards[i-1] && room.cards[i-1].kind === 'patient',
                                        'is-reserved': room.cards[i-1] && room.cards[i-1].kind === 'reservation',
                                        'has-discharge': room.dischargeLabels[i-1] }"
-                             :title="bedTooltip(room.cards[i-1])">
+                             @mouseenter="showTip(room.cards[i-1], $event)"
+                             @mousemove="moveTip($event)"
+                             @mouseleave="hideTip()">
                           <span class="ws-bed-slot__num" x-text="i"></span>
                           <template x-if="room.cards[i-1] && room.cards[i-1].kind === 'patient'">
                             <span class="ws-bed-card">
@@ -727,6 +792,14 @@
         </div>
       </section>
     </template>
+
+    <!-- 환자 hover 툴팁: 상병코드 · 상병명 · 보호자전화번호 -->
+    <div class="ws-tip" x-show="tip.show" x-cloak :style="`left:${tip.x}px; top:${tip.y}px`">
+      <div class="ws-tip__name" x-text="tip.title"></div>
+      <div class="ws-tip__row"><span class="ws-tip__k">상병코드</span><span class="ws-tip__v" x-text="tip.code || '—'"></span></div>
+      <div class="ws-tip__row"><span class="ws-tip__k">상병명</span><span class="ws-tip__v" x-text="tip.name || '—'"></span></div>
+      <div class="ws-tip__row"><span class="ws-tip__k">보호자전화</span><span class="ws-tip__v" x-text="tip.phone || '—'"></span></div>
+    </div>
   </div><!-- .ws-wrap -->
   </main>
 </div><!-- .app -->
@@ -780,6 +853,7 @@ function wardStatus() {
       available:w.availableBeds || 0,
       occupancy:Math.round(w.occupancyRate || 0),
       rooms,
+      availableCap: rooms.reduce((s, r) => s + (r.availableBeds || 0), 0),
       discharge: rooms.reduce((s, r) => s + (r.discharge || 0), 0),
       afternoon: rooms.reduce((s, r) => s + (r.afternoon || 0), 0),
     };
@@ -809,6 +883,7 @@ function wardStatus() {
       { key: 'walk',    label: '보행',   on: false },
     ],
     onlyAvailable: false,
+    tip: { show: false, x: 0, y: 0, title: '', code: '', name: '', phone: '' },
 
     _pageshowHandler: null,
 
@@ -832,11 +907,21 @@ function wardStatus() {
     get totals() {
       const ws = Array.isArray(this.wards) ? this.wards : [];
       const L = ws.reduce((s, w) => s + (w?.licensed  || 0), 0);
+      const C = ws.reduce((s, w) => s + (w?.availableCap || 0), 0);
       const O = ws.reduce((s, w) => s + (w?.occupied  || 0), 0);
       const A = ws.reduce((s, w) => s + (w?.available || 0), 0);
       const D = ws.reduce((s, w) => s + (w?.discharge || 0), 0);
       const P = ws.reduce((s, w) => s + (w?.afternoon || 0), 0);
-      return { licensed: L, occupied: O, available: A, occupancy: L > 0 ? Math.round((O / L) * 100) : 0, discharge: D, afternoon: P };
+      return {
+        licensed: L,
+        availableCap: C,
+        occupied: O,
+        available: A,
+        occupancy: L > 0 ? Math.round((O / L) * 100) : 0,
+        occupancyByAvailable: C > 0 ? Math.round((O / C) * 100) : 0,
+        discharge: D,
+        afternoon: P,
+      };
     },
 
     get filteredWards() {
@@ -869,17 +954,34 @@ function wardStatus() {
       return availability ? label + ' · ' + availability : label;
     },
 
-    bedTooltip(card) {
-      if (!card || card.kind !== 'patient') return '';
-      const lines = [];
-      const disease = [card.diseaseCode, card.diseaseName].filter(Boolean).join(' ');
-      if (disease) lines.push('상병 ' + disease);
-      if (card.guardianPhone) lines.push('보호자 ' + card.guardianPhone);
-      return lines.join('\n');
+    showTip(card, ev) {
+      if (!card || card.kind !== 'patient') { this.hideTip(); return; }
+      this.tip.title = card.name || '';
+      this.tip.code  = card.diseaseCode || '';
+      this.tip.name  = card.diseaseName || '';
+      this.tip.phone = card.guardianPhone || '';
+      this.tip.show  = true;
+      this.moveTip(ev);
+    },
+
+    moveTip(ev) {
+      if (!this.tip.show) return;
+      const pad = 14, w = 240, h = 120;
+      let x = ev.clientX + pad;
+      let y = ev.clientY + pad;
+      if (x + w > window.innerWidth)  x = ev.clientX - w - pad;
+      if (y + h > window.innerHeight) y = ev.clientY - h - pad;
+      this.tip.x = Math.max(8, x);
+      this.tip.y = Math.max(8, y);
+    },
+
+    hideTip() {
+      this.tip.show = false;
     },
 
     snapshotLabel(s) {
-      return ((s.snapshotDate || '') + ' ' + (s.snapshotTime || '')).trim() + (s.sourceType ? ' · ' + s.sourceType : '');
+      // 날짜·시간만 노출 (원본유형 등 부가정보 제외)
+      return ((s.snapshotDate || '') + ' ' + (s.snapshotTime || '')).trim();
     },
 
     goToSnapshot(id) {
@@ -928,6 +1030,14 @@ function wardStatus() {
       MPChrome.mount({ parent: '상담 업무', current: '병실현황판' });
     }
   }, { once: true });
+</script>
+<script>
+  // PWA 서비스워커 등록 ('sw.js' 는 현재 경로 기준 → /csm/sw.js, scope /csm/)
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
 </script>
 <script data-turbo-eval="false" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js"></script>
 <script data-turbo-eval="false" defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>

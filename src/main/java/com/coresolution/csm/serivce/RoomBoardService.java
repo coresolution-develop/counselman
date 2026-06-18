@@ -9,9 +9,12 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -175,6 +178,7 @@ public class RoomBoardService {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """.formatted(safe));
         ensureRoomMasterColumns(safe);
+        ensurePatientColumns(safe);
     }
 
     /**
@@ -185,6 +189,11 @@ public class RoomBoardService {
         String table = "room_board_room_master_" + safe;
         addColumnIfMissing(table, "available_beds", "available_beds int default null AFTER licensed_beds");
         addColumnIfMissing(table, "room_gender", "room_gender varchar(10) default null AFTER available_beds");
+    }
+
+    private void ensurePatientColumns(String safe) {
+        String table = "room_board_patient_" + safe;
+        addColumnIfMissing(table, "bed_no", "bed_no int default null AFTER room_name");
     }
 
     private void addColumnIfMissing(String tableName, String columnName, String columnDefinition) {
@@ -215,9 +224,14 @@ public class RoomBoardService {
                        DATE_FORMAT(updated_at,'%%Y-%%m-%%d %%H:%%i:%%s') AS updated_at,
                        updated_by
                   FROM csm.room_board_room_master_%s
-                 ORDER BY start_date DESC, ward_name ASC, room_name ASC, rbm_id DESC
+                 ORDER BY start_date DESC, rbm_id DESC
                 """.formatted(safe);
-        return jdbcTemplate.query(sql, (rs, rowNum) -> mapRoomConfig(rs));
+        List<RoomBoardRoomConfig> items = jdbcTemplate.query(sql, (rs, rowNum) -> mapRoomConfig(rs));
+        // 관리화면 표는 병동 → 호실 순(자연수 정렬)으로 노출한다. 동일 병실은 최근 개시일 우선.
+        items.sort(Comparator.comparing(RoomBoardRoomConfig::getWardName, this::compareWardName)
+                .thenComparing(RoomBoardRoomConfig::getRoomName, this::compareRoomName)
+                .thenComparing(RoomBoardRoomConfig::getStartDate, Comparator.nullsLast(Comparator.reverseOrder())));
+        return items;
     }
 
     public RoomBoardRoomConfig getRoomConfig(String inst, long id) {
@@ -693,7 +707,16 @@ public class RoomBoardService {
         result.setParsedCount(parsed.size());
         result.setRows(parsed);
         result.setSkippedCount(Math.max(0, rows.size() - parsed.size()));
-        result.setMessage(parsed.isEmpty() ? "인식된 환자 데이터가 없습니다." : "미리보기 생성 완료");
+        long bedMissing = parsed.stream().filter(row -> row.getBedNo() == null).count();
+        String message;
+        if (parsed.isEmpty()) {
+            message = "인식된 환자 데이터가 없습니다.";
+        } else if (bedMissing > 0) {
+            message = "미리보기 생성 완료 · 병상번호 미인식 " + bedMissing + "건은 빈 병상에 순차 배치됩니다.";
+        } else {
+            message = "미리보기 생성 완료";
+        }
+        result.setMessage(message);
         return result;
     }
 
@@ -728,15 +751,16 @@ public class RoomBoardService {
 
         String insertSql = """
                 INSERT INTO csm.room_board_patient_%s
-                (rbs_id, ward_name, room_name, patient_no, patient_name, gender, age, admission_date,
+                (rbs_id, ward_name, room_name, bed_no, patient_no, patient_name, gender, age, admission_date,
                  doctor_name, patient_type, disease_name, disease_code, phone_patient, phone_guardian, memo, raw_row)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """.formatted(safe);
         for (RoomBoardImportRow row : preview.getRows()) {
             jdbcTemplate.update(insertSql,
                     snapshotId,
                     safeText(row.getWardName(), 50),
                     normalizeRoomName(row.getRoomName()),
+                    row.getBedNo(),
                     safeText(row.getPatientNo(), 100),
                     safeText(row.getPatientName(), 100),
                     normalizeGender(row.getGender()),
@@ -825,17 +849,21 @@ public class RoomBoardService {
             room.setStatusOxygen("Y".equalsIgnoreCase(config.getStatusOxygen()));
             room.setStatusSuction("Y".equalsIgnoreCase(config.getStatusSuction()));
             room.setNote(safeText(config.getNote(), 500));
+            // 슬롯코드 뒷자리(병상번호)에 맞춰 환자를 고정 위치 배열로 배치한다.
+            // 병상번호가 없거나 충돌/초과인 환자는 남는 빈 병상에 순차 배치된다.
+            int slotSize = Math.max(licensedBeds, 8);
+            List<Map<String, Object>> positionedPatients = positionPatientsByBed(roomPatients, slotSize);
             room.setGenderSummary(buildGenderSummary(roomPatients));
             room.setReservationNames(String.join(", ", reservationNames));
-            room.setPatientSlots(buildPatientSlots(roomPatients, reservationNames, Math.max(licensedBeds, 8)));
-            room.setPatientCards(buildPatientCards(roomPatients, reservationNames, Math.max(licensedBeds, 8), baseDate));
+            room.setPatientSlots(buildPatientSlots(positionedPatients, reservationNames));
+            room.setPatientCards(buildPatientCards(positionedPatients, reservationNames, baseDate));
             room.setDischargeNoticeCount(roomDischargeNotices.size());
             room.setAfternoonAvailableCount((int) afternoonAvailableCount);
             room.setDischargePatientNames(roomDischargeNotices.stream()
                     .map(row -> safeText(row.get("patient_name"), 100) + " " + dischargeTimeLabel(Objects.toString(row.get("discharge_time"), "")))
                     .collect(Collectors.joining(", ")));
-            room.setDischargeSlotLabels(buildDischargeSlotLabels(roomPatients, reservationNames, roomDischargeNotices, Math.max(licensedBeds, 8)));
-            room.setDischargeSlotAvailability(buildDischargeSlotAvailability(roomPatients, reservationNames, roomDischargeNotices, Math.max(licensedBeds, 8)));
+            room.setDischargeSlotLabels(buildDischargeSlotLabels(positionedPatients, roomDischargeNotices));
+            room.setDischargeSlotAvailability(buildDischargeSlotAvailability(positionedPatients, roomDischargeNotices));
 
             RoomBoardWardView ward = wardMap.computeIfAbsent(wardName, key -> {
                 RoomBoardWardView item = new RoomBoardWardView();
@@ -939,11 +967,11 @@ public class RoomBoardService {
     private List<Map<String, Object>> loadSnapshotPatients(String inst, Long snapshotId) {
         String safe = sanitizeInst(inst);
         String sql = """
-                SELECT rbp_id, patient_no, room_name, ward_name, patient_name, gender, age,
+                SELECT rbp_id, patient_no, room_name, bed_no, ward_name, patient_name, gender, age,
                        admission_date, patient_type, disease_code, disease_name, phone_guardian
                   FROM csm.room_board_patient_%s
                  WHERE rbs_id = ?
-                 ORDER BY room_name ASC, patient_name ASC
+                 ORDER BY room_name ASC, (bed_no IS NULL), bed_no ASC, patient_name ASC
                 """.formatted(safe);
         return jdbcTemplate.queryForList(sql, snapshotId);
     }
@@ -1093,72 +1121,116 @@ public class RoomBoardService {
         return out;
     }
 
-    private List<String> buildPatientSlots(List<Map<String, Object>> roomPatients, List<String> reservationNames, int size) {
-        List<String> slots = roomPatients.stream()
-                .map(row -> safeText(row.get("patient_name"), 100))
-                .filter(name -> !name.isBlank())
-                .collect(Collectors.toCollection(ArrayList::new));
-        if (reservationNames != null && !reservationNames.isEmpty()) {
-            for (String reservationName : reservationNames) {
-                String name = safeText(reservationName, 100);
-                if (name.isBlank()) {
-                    continue;
-                }
-                slots.add(name + " (예약)");
+    /**
+     * 환자를 병상번호(bed_no) 위치에 고정 배치한 배열을 만든다. 병상번호가 없거나
+     * 범위를 벗어나거나 중복인 환자는 남는 빈 병상에 순서대로 채운다. 빈 병상은 null.
+     */
+    private List<Map<String, Object>> positionPatientsByBed(List<Map<String, Object>> roomPatients, int size) {
+        List<Map<String, Object>> slots = new ArrayList<>(Collections.nCopies(size, null));
+        List<Map<String, Object>> overflow = new ArrayList<>();
+        for (Map<String, Object> patient : roomPatients) {
+            if (patient == null || safeText(patient.get("patient_name"), 100).isBlank()) {
+                continue;
+            }
+            Integer bed = toInt(patient.get("bed_no"));
+            if (bed != null && bed >= 1 && bed <= size && slots.get(bed - 1) == null) {
+                slots.set(bed - 1, patient);
+            } else {
+                overflow.add(patient);
             }
         }
-        while (slots.size() < size) {
-            slots.add("-");
+        int cursor = 0;
+        for (Map<String, Object> patient : overflow) {
+            while (cursor < size && slots.get(cursor) != null) {
+                cursor++;
+            }
+            if (cursor >= size) {
+                break;
+            }
+            slots.set(cursor, patient);
+        }
+        return slots;
+    }
+
+    private Integer toInt(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            return Integer.parseInt(String.valueOf(value).trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private List<String> buildPatientSlots(List<Map<String, Object>> positionedPatients, List<String> reservationNames) {
+        Deque<String> reservations = reservationQueue(reservationNames);
+        List<String> slots = new ArrayList<>(positionedPatients.size());
+        for (Map<String, Object> patient : positionedPatients) {
+            if (patient != null) {
+                slots.add(safeText(patient.get("patient_name"), 100));
+            } else if (!reservations.isEmpty()) {
+                slots.add(reservations.poll() + " (예약)");
+            } else {
+                slots.add("-");
+            }
         }
         return slots;
     }
 
     /**
-     * Per-bed patient cards for the board view, in the same order as
-     * {@link #buildPatientSlots} (patients, then reservations, then empty) so the
-     * index aligns with the discharge slot lists.
+     * Per-bed patient cards for the board view. The index aligns with
+     * {@link #positionPatientsByBed} so 병상번호 위치가 그대로 유지되고, 빈 병상은
+     * 예약(있으면) → 빈칸 순으로 채워 discharge slot 배열과 인덱스가 일치한다.
      */
     private List<Map<String, Object>> buildPatientCards(
-            List<Map<String, Object>> roomPatients, List<String> reservationNames, int size, LocalDate baseDate) {
-        List<Map<String, Object>> cards = new ArrayList<>();
-        for (Map<String, Object> patient : roomPatients) {
-            String name = safeText(patient.get("patient_name"), 100);
-            if (name.isBlank()) {
-                continue;
+            List<Map<String, Object>> positionedPatients, List<String> reservationNames, LocalDate baseDate) {
+        Deque<String> reservations = reservationQueue(reservationNames);
+        List<Map<String, Object>> cards = new ArrayList<>(positionedPatients.size());
+        for (Map<String, Object> patient : positionedPatients) {
+            if (patient != null) {
+                Map<String, Object> card = new LinkedHashMap<>();
+                card.put("kind", "patient");
+                card.put("name", safeText(patient.get("patient_name"), 100));
+                card.put("chartNo", safeText(patient.get("patient_no"), 100));
+                card.put("type", safeText(patient.get("patient_type"), 50));
+                card.put("age", safeText(patient.get("age"), 20));
+                card.put("gender", genderLabel(safeText(patient.get("gender"), 10)));
+                String admissionDate = safeText(patient.get("admission_date"), 20);
+                card.put("admissionDate", admissionDate);
+                card.put("days", admissionDays(admissionDate, baseDate));
+                card.put("diseaseCode", safeText(patient.get("disease_code"), 100));
+                card.put("diseaseName", safeText(patient.get("disease_name"), 200));
+                card.put("guardianPhone", safeText(patient.get("phone_guardian"), 50));
+                cards.add(card);
+            } else if (!reservations.isEmpty()) {
+                Map<String, Object> card = new LinkedHashMap<>();
+                card.put("kind", "reservation");
+                card.put("name", reservations.poll());
+                cards.add(card);
+            } else {
+                Map<String, Object> empty = new LinkedHashMap<>();
+                empty.put("kind", "empty");
+                cards.add(empty);
             }
-            Map<String, Object> card = new LinkedHashMap<>();
-            card.put("kind", "patient");
-            card.put("name", name);
-            card.put("chartNo", safeText(patient.get("patient_no"), 100));
-            card.put("type", safeText(patient.get("patient_type"), 50));
-            card.put("age", safeText(patient.get("age"), 20));
-            card.put("gender", genderLabel(safeText(patient.get("gender"), 10)));
-            String admissionDate = safeText(patient.get("admission_date"), 20);
-            card.put("admissionDate", admissionDate);
-            card.put("days", admissionDays(admissionDate, baseDate));
-            card.put("diseaseCode", safeText(patient.get("disease_code"), 100));
-            card.put("diseaseName", safeText(patient.get("disease_name"), 200));
-            card.put("guardianPhone", safeText(patient.get("phone_guardian"), 50));
-            cards.add(card);
         }
+        return cards;
+    }
+
+    private Deque<String> reservationQueue(List<String> reservationNames) {
+        Deque<String> queue = new ArrayDeque<>();
         if (reservationNames != null) {
             for (String reservationName : reservationNames) {
                 String name = safeText(reservationName, 100);
-                if (name.isBlank()) {
-                    continue;
+                if (!name.isBlank()) {
+                    queue.add(name);
                 }
-                Map<String, Object> card = new LinkedHashMap<>();
-                card.put("kind", "reservation");
-                card.put("name", name);
-                cards.add(card);
             }
         }
-        while (cards.size() < size) {
-            Map<String, Object> empty = new LinkedHashMap<>();
-            empty.put("kind", "empty");
-            cards.add(empty);
-        }
-        return cards;
+        return queue;
     }
 
     /** 입원일수: 입원일부터 기준일까지의 경과 일수(입원일=1일차). 유효하지 않으면 null. */
@@ -1183,49 +1255,29 @@ public class RoomBoardService {
     }
 
     private List<String> buildDischargeSlotLabels(
-            List<Map<String, Object>> roomPatients,
-            List<String> reservationNames,
-            List<Map<String, Object>> dischargeNotices,
-            int size) {
+            List<Map<String, Object>> positionedPatients,
+            List<Map<String, Object>> dischargeNotices) {
         Map<String, Map<String, Object>> byPatientKey = indexDischargeNotices(dischargeNotices);
-        List<String> labels = new ArrayList<>();
-        for (Map<String, Object> patient : roomPatients) {
-            Map<String, Object> notice = byPatientKey.get(dischargePatientKey(patient));
+        List<String> labels = new ArrayList<>(positionedPatients.size());
+        for (Map<String, Object> patient : positionedPatients) {
+            Map<String, Object> notice = patient == null ? null : byPatientKey.get(dischargePatientKey(patient));
             labels.add(notice == null ? "" : dischargeTimeLabel(Objects.toString(notice.get("discharge_time"), "")) + "퇴원");
         }
-        appendEmptyLabels(labels, reservationNames, size);
         return labels;
     }
 
     private List<String> buildDischargeSlotAvailability(
-            List<Map<String, Object>> roomPatients,
-            List<String> reservationNames,
-            List<Map<String, Object>> dischargeNotices,
-            int size) {
+            List<Map<String, Object>> positionedPatients,
+            List<Map<String, Object>> dischargeNotices) {
         Map<String, Map<String, Object>> byPatientKey = indexDischargeNotices(dischargeNotices);
-        List<String> labels = new ArrayList<>();
-        for (Map<String, Object> patient : roomPatients) {
-            Map<String, Object> notice = byPatientKey.get(dischargePatientKey(patient));
+        List<String> labels = new ArrayList<>(positionedPatients.size());
+        for (Map<String, Object> patient : positionedPatients) {
+            Map<String, Object> notice = patient == null ? null : byPatientKey.get(dischargePatientKey(patient));
             labels.add(notice == null ? "" : dischargeAvailabilityLabel(
                     Objects.toString(notice.get("status"), ""),
                     Objects.toString(notice.get("discharge_time"), "")));
         }
-        appendEmptyLabels(labels, reservationNames, size);
         return labels;
-    }
-
-    private void appendEmptyLabels(List<String> labels, List<String> reservationNames, int size) {
-        if (reservationNames != null) {
-            for (int i = 0; i < reservationNames.size(); i++) {
-                labels.add("");
-            }
-        }
-        while (labels.size() < size) {
-            labels.add("");
-        }
-        if (labels.size() > size) {
-            labels.subList(size, labels.size()).clear();
-        }
     }
 
     private Map<String, Map<String, Object>> indexDischargeNotices(List<Map<String, Object>> dischargeNotices) {
@@ -1424,6 +1476,7 @@ public class RoomBoardService {
             }
             RoomBoardImportRow item = new RoomBoardImportRow();
             item.setRoomName(roomName);
+            item.setBedNo(extractBedNo(getCell(row, 0)));
             item.setWardName(safeText(wardByRoom.get(roomName), 50));
             item.setPatientNo(getCell(row, 1));
             item.setPatientName(patientName);
@@ -1444,7 +1497,8 @@ public class RoomBoardService {
         for (int i = startIdx; i < rows.size(); i++) {
             String[] row = rows.get(i);
             String wardName = safeText(getCell(row, 0), 50);
-            String roomName = normalizeRoomName(firstNonBlank(getCell(row, 1), getCell(row, 3)));
+            String rawRoomCell = firstNonBlank(getCell(row, 1), getCell(row, 3));
+            String roomName = normalizeRoomName(rawRoomCell);
             String patientName = safeText(getCell(row, 6), 100);
             if (roomName.isBlank() || patientName.isBlank()) {
                 continue;
@@ -1452,6 +1506,7 @@ public class RoomBoardService {
             RoomBoardImportRow item = new RoomBoardImportRow();
             item.setWardName(wardName);
             item.setRoomName(roomName);
+            item.setBedNo(extractBedNo(rawRoomCell));
             item.setPatientNo(getCell(row, 7));
             item.setPatientName(patientName);
             item.setDoctorName(getCell(row, 5));
@@ -1482,6 +1537,7 @@ public class RoomBoardService {
             RoomBoardImportRow item = new RoomBoardImportRow();
             item.setWardName(parsedSlot.wardName());
             item.setRoomName(parsedSlot.roomName());
+            item.setBedNo(parsedSlot.bedNo());
             item.setDoctorName(getCell(row, 2));
             item.setPatientName(patientName);
             item.setPatientNo(getCell(row, 4));
@@ -1524,6 +1580,7 @@ public class RoomBoardService {
             RoomBoardImportRow item = new RoomBoardImportRow();
             item.setWardName(slot.wardName());
             item.setRoomName(slot.roomName());
+            item.setBedNo(slot.bedNo());
             item.setDoctorName(getCell(row, base + 3));
             item.setPatientName(patientName);
             item.setPatientNo(getCell(row, base + 5));
@@ -1659,7 +1716,41 @@ public class RoomBoardService {
         if (roomNumber <= 0) {
             return null;
         }
-        return new ParsedSlot(wardName, roomNumber + "호");
+        // 슬롯코드 뒷자리(예: "3병동-0319-04"의 "04")가 병상번호.
+        Integer bedNo = null;
+        if (parts.length >= 3) {
+            String rawBed = safeText(parts[2], 20).replaceAll("[^0-9]", "");
+            int parsedBed = parseInt(rawBed, -1);
+            if (parsedBed > 0) {
+                bedNo = parsedBed;
+            }
+        }
+        return new ParsedSlot(wardName, roomNumber + "호", bedNo);
+    }
+
+    /**
+     * 슬롯코드가 아닌 원본(엑셀·클릭소프트)의 병실 셀에서 병상번호를 추출한다.
+     * 뒷자리 숫자가 병상번호 규칙을 따른다: "319-04" / "0319-4" 형태는 대시 뒤를,
+     * "31904"처럼 붙어 있으면 마지막 2자리를 병상번호로 본다. 식별 불가 시 null.
+     */
+    private Integer extractBedNo(String roomCell) {
+        String value = safeText(roomCell, 50);
+        if (value.isBlank()) {
+            return null;
+        }
+        int dash = value.lastIndexOf('-');
+        if (dash >= 0 && dash < value.length() - 1) {
+            int bed = parseInt(value.substring(dash + 1).replaceAll("[^0-9]", ""), -1);
+            return bed > 0 ? bed : null;
+        }
+        // 구분자가 없을 때는 RRRR+BB(방4자리+병상2자리=최소 5자리) 조합만 병상으로 본다.
+        // "319"/"0319"처럼 짧은 순수 호실번호는 오인식하지 않도록 제외.
+        String digits = value.replaceAll("[^0-9]", "");
+        if (digits.length() >= 5) {
+            int bed = parseInt(digits.substring(digits.length() - 2), -1);
+            return bed > 0 ? bed : null;
+        }
+        return null;
     }
 
     private boolean looksLikeRoomSlotCode(String value) {
@@ -1963,7 +2054,8 @@ public class RoomBoardService {
 
     private record ParsedSlot(
             String wardName,
-            String roomName) {
+            String roomName,
+            Integer bedNo) {
     }
 
     // ═══════════════════════════════════════════════════════════════════
