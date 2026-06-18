@@ -32,8 +32,8 @@ set -euo pipefail
 PROD_HOST="${PROD_HOST:-}"
 PROD_USER="${PROD_USER:-root}"
 TOMCAT_WEBAPPS="${TOMCAT_WEBAPPS:-/usr/local/tomcat10/webapps}"
-MEDIPLAT_APP_DIR="${MEDIPLAT_APP_DIR:-/opt/mediplat/app}"
-MEDIPLAT_SERVICE="${MEDIPLAT_SERVICE:-mediplat}"
+MEDIPLAT_APP_DIR="${MEDIPLAT_APP_DIR:-/opt/csm-next/app}"
+MEDIPLAT_SERVICE="${MEDIPLAT_SERVICE:-mediplat-next}"
 
 DRY_RUN=0
 SKIP_PREFLIGHT=0
