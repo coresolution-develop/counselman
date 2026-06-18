@@ -42,6 +42,8 @@ function AppIcon({ k, size = 22, color = '#fff' }) {
       return <svg {...p}><rect x="2" y="8" width="13" height="9" rx="1.5"/><path d="M15 11h4l2 3v3h-6"/><circle cx="7" cy="18.5" r="1.8"/><circle cx="17" cy="18.5" r="1.8"/><path d="M7 11.5h3M8.5 10v3"/></svg>;
     case 'message':
       return <svg {...p}><path d="M21 11.5a8 8 0 0 1-11.5 7.2L4 20l1.3-4A8 8 0 1 1 21 11.5z"/><path d="M8 10h8M8 13.5h5"/></svg>;
+    case 'form':
+      return <svg {...p}><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>;
     default:
       return <svg {...p}><rect x="4" y="4" width="16" height="16" rx="3"/></svg>;
   }
