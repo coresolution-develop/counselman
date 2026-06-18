@@ -21,6 +21,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -79,6 +81,7 @@ class RoomBoardControllerTest {
 
         when(moduleFeatureService.isEnabled("FALH", ModuleFeatureService.FEATURE_ROOM_BOARD)).thenReturn(true);
         stubCommonData("FALH");
+        authorizeAs("ROOM_BOARD:READ"); // 세션 진입은 메서드 내 권한검사를 통과해야 함
 
         String view = controller.roomBoard(
                 null,
@@ -92,7 +95,9 @@ class RoomBoardControllerTest {
                 null,
                 null,
                 model,
-                session);
+                session,
+                new MockHttpServletRequest(),
+                new MockHttpServletResponse());
 
         assertEquals("design/ward-status", view);
         assertEquals(Boolean.FALSE, model.getAttribute("popupMode"));
@@ -119,7 +124,9 @@ class RoomBoardControllerTest {
                 1893456000L,
                 "sig",
                 model,
-                new MockHttpSession()));
+                new MockHttpSession(),
+                new MockHttpServletRequest(),
+                new MockHttpServletResponse()));
 
         assertEquals(403, exception.getStatusCode().value());
         assertEquals("현재 기관은 병실현황판-입원상담 연동이 비활성화되었습니다.", exception.getReason());
@@ -150,7 +157,9 @@ class RoomBoardControllerTest {
                 1893456000L,
                 "sig",
                 model,
-                new MockHttpSession());
+                new MockHttpSession(),
+                new MockHttpServletRequest(),
+                new MockHttpServletResponse());
 
         assertEquals("design/ward-status", view);
         assertEquals(Boolean.TRUE, model.getAttribute("popupMode"));
@@ -166,8 +175,10 @@ class RoomBoardControllerTest {
 
         when(moduleFeatureService.isEnabled("FALH", ModuleFeatureService.FEATURE_ROOM_BOARD)).thenReturn(true);
         stubCommonData("FALH");
+        authorizeAs("ROOM_BOARD:READ"); // 세션 진입은 메서드 내 권한검사를 통과해야 함
 
-        controller.roomBoard(null, 42L, 0, null, null, null, null, null, null, null, model, session);
+        controller.roomBoard(null, 42L, 0, null, null, null, null, null, null, null, model, session,
+                new MockHttpServletRequest(), new MockHttpServletResponse());
 
         verify(roomBoardService).getBoard("FALH", null, 42L);
     }
