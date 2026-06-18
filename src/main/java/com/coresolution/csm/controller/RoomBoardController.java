@@ -290,6 +290,114 @@ public class RoomBoardController {
     }
 
     @PostMapping({
+            "room-board/manage/snapshot/delete", "/room-board/manage/snapshot/delete",
+            "admin/room-board/snapshot/delete", "/admin/room-board/snapshot/delete"
+    })
+    public ResponseEntity<?> deleteSnapshot(@RequestParam("id") long id, HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "로그인이 필요합니다."));
+        }
+        if (!isRoomBoardEnabled(inst)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "병실현황판 기능이 비활성화되었습니다."));
+        }
+        Userdata userinfo = ensureUserInfo(session, inst);
+        if (!canManageRoomBoard(userinfo)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "권한이 없습니다."));
+        }
+        try {
+            return ResponseEntity.ok(roomBoardService.deleteSnapshot(
+                    inst, id, userinfo == null ? "" : userinfo.getUs_col_02()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            log.warn("[room-board] snapshot delete fail inst={}, id={}, err={}", inst, id, e.toString());
+            return ResponseEntity.badRequest().body(Map.of("message", "업로드 이력 삭제에 실패했습니다."));
+        }
+    }
+
+    @PostMapping({
+            "room-board/manage/snapshot/reset", "/room-board/manage/snapshot/reset",
+            "admin/room-board/snapshot/reset", "/admin/room-board/snapshot/reset"
+    })
+    public ResponseEntity<?> resetSnapshots(HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "로그인이 필요합니다."));
+        }
+        if (!isRoomBoardEnabled(inst)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "병실현황판 기능이 비활성화되었습니다."));
+        }
+        Userdata userinfo = ensureUserInfo(session, inst);
+        if (!canManageRoomBoard(userinfo)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "권한이 없습니다."));
+        }
+        try {
+            return ResponseEntity.ok(roomBoardService.resetAllSnapshots(
+                    inst, userinfo == null ? "" : userinfo.getUs_col_02()));
+        } catch (Exception e) {
+            log.warn("[room-board] snapshot reset fail inst={}, err={}", inst, e.toString());
+            return ResponseEntity.badRequest().body(Map.of("message", "재원환자 현황 초기화에 실패했습니다."));
+        }
+    }
+
+    @PostMapping({
+            "room-board/manage/room-config/reset", "/room-board/manage/room-config/reset",
+            "admin/room-board/room-config/reset", "/admin/room-board/room-config/reset"
+    })
+    public ResponseEntity<?> resetRoomConfigs(
+            @RequestParam(value = "startDate", required = false) String startDate,
+            HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "로그인이 필요합니다."));
+        }
+        if (!isRoomBoardEnabled(inst)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "병실현황판 기능이 비활성화되었습니다."));
+        }
+        Userdata userinfo = ensureUserInfo(session, inst);
+        if (!canManageRoomBoard(userinfo)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "권한이 없습니다."));
+        }
+        try {
+            String actor = userinfo == null ? "" : userinfo.getUs_col_02();
+            int deleted = StringUtils.hasText(startDate)
+                    ? roomBoardService.resetRoomConfigsByStartDate(inst, startDate, actor)
+                    : roomBoardService.resetAllRoomConfigs(inst, actor);
+            return ResponseEntity.ok(Map.of("deleted", deleted));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            log.warn("[room-board] room config reset fail inst={}, err={}", inst, e.toString());
+            return ResponseEntity.badRequest().body(Map.of("message", "병실 기준정보 초기화에 실패했습니다."));
+        }
+    }
+
+    @PostMapping({
+            "room-board/manage/history/delete", "/room-board/manage/history/delete",
+            "admin/room-board/history/delete", "/admin/room-board/history/delete"
+    })
+    public ResponseEntity<?> deleteRoomConfigHistory(HttpSession session) {
+        String inst = ensureInst(session);
+        if (inst == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "로그인이 필요합니다."));
+        }
+        if (!isRoomBoardEnabled(inst)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "병실현황판 기능이 비활성화되었습니다."));
+        }
+        Userdata userinfo = ensureUserInfo(session, inst);
+        if (!canManageRoomBoard(userinfo)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "권한이 없습니다."));
+        }
+        try {
+            return ResponseEntity.ok(Map.of("deleted", roomBoardService.deleteRoomConfigHistory(inst)));
+        } catch (Exception e) {
+            log.warn("[room-board] room config history delete fail inst={}, err={}", inst, e.toString());
+            return ResponseEntity.badRequest().body(Map.of("message", "변경 이력 삭제에 실패했습니다."));
+        }
+    }
+
+    @PostMapping({
             "room-board/manage/room-config/preview", "/room-board/manage/room-config/preview",
             "admin/room-board/room-config/preview", "/admin/room-board/room-config/preview"
     })

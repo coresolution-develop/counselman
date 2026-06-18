@@ -108,6 +108,12 @@
     .rb-hist-CREATE { background: #e9f7ef; color: #0b6b33; }
     .rb-hist-UPDATE { background: #eaf2fb; color: #1f5fa6; }
     .rb-hist-DELETE { background: #fdecea; color: #b42318; }
+
+    /* 위험 작업 확인 모달 (타이핑 재확인) */
+    .rb-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.48); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+    .rb-modal { background: #fff; border-radius: var(--radius-lg); padding: 24px; width: 100%; max-width: 440px; box-shadow: 0 20px 48px rgba(0,0,0,.24); }
+    .rb-modal-title { font-size: 16px; font-weight: 700; color: var(--text-primary); margin: 0 0 12px; }
+    .rb-modal-body { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin: 0 0 16px; white-space: pre-line; }
   </style>
 </head>
 <body>
@@ -262,10 +268,13 @@
             <p class="rb-card-title" style="font-size:13px;margin:0;">개별 병실 추가 · 수정</p>
             <p class="rb-note" style="margin-top:4px;">행의 <b>수정</b> 버튼으로 해당 행에서 바로 편집하고, <b>병실 추가</b>로 새 행을 입력합니다. 저장·삭제는 새로고침 없이 즉시 반영됩니다.</p>
           </div>
-          <button type="button" id="addRoomConfigBtn" class="rb-btn rb-btn-primary" style="flex:none;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-            병실 추가
-          </button>
+          <div style="display:flex;gap:8px;flex:none;">
+            <button type="button" id="resetRoomConfigsBtn" class="rb-btn rb-btn-danger">기준정보 초기화</button>
+            <button type="button" id="addRoomConfigBtn" class="rb-btn rb-btn-primary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              병실 추가
+            </button>
+          </div>
         </div>
 
         <div class="rb-table-wrap">
@@ -285,18 +294,22 @@
 
       <!-- 업로드 이력 -->
       <div class="rb-card">
-        <h2 class="rb-card-title">업로드 이력</h2>
+        <div class="rb-inline" style="justify-content:space-between;margin-bottom:16px;gap:12px;">
+          <h2 class="rb-card-title" style="margin:0;">업로드 이력 · 재원환자 현황</h2>
+          <button type="button" id="resetSnapshotsBtn" class="rb-btn rb-btn-danger" style="flex:none;">현황 전체 초기화</button>
+        </div>
         <div class="rb-table-wrap" style="margin-top:0;">
           <table class="rb-table">
             <thead>
               <tr>
                 <th>기준일</th><th>기준시간</th><th>원본유형</th>
                 <th>업로드 사용자</th><th>업로드시각</th><th>상태</th><th>메시지</th>
+                <th style="text-align:right;">처리</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="snapshotHistoryTbody">
               <tr th:if="${#lists.isEmpty(snapshotHistory)}">
-                <td colspan="7" style="text-align:center;color:var(--text-tertiary);padding:24px;">업로드 이력이 없습니다.</td>
+                <td colspan="8" style="text-align:center;color:var(--text-tertiary);padding:24px;">업로드 이력이 없습니다.</td>
               </tr>
               <tr th:each="snap : ${snapshotHistory}">
                 <td th:text="${snap.snapshotDate}"></td>
@@ -306,15 +319,23 @@
                 <td th:text="${snap.uploadedAt}"></td>
                 <td th:text="${snap.parseStatus}"></td>
                 <td th:text="${snap.parseMessage}"></td>
+                <td style="text-align:right;">
+                  <button type="button" class="rb-btn rb-btn-danger rb-btn-xs"
+                          data-act="snapshot-delete" th:attr="data-id=${snap.id}">삭제</button>
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
+        <p class="rb-note">개별 [삭제]는 해당 업로드의 재원환자 현황도 함께 지웁니다. 퇴원예고는 보존됩니다.</p>
       </div>
 
       <!-- 병실 기준정보 변경 이력 -->
       <div class="rb-card">
-        <h2 class="rb-card-title">병실 기준정보 변경 이력</h2>
+        <div class="rb-inline" style="justify-content:space-between;margin-bottom:16px;gap:12px;">
+          <h2 class="rb-card-title" style="margin:0;">병실 기준정보 변경 이력</h2>
+          <button type="button" id="deleteConfigHistoryBtn" class="rb-btn rb-btn-danger" style="flex:none;">변경 이력 삭제</button>
+        </div>
         <div class="rb-table-wrap" style="margin-top:0;">
           <table class="rb-table">
             <thead>
@@ -342,6 +363,26 @@
           </table>
         </div>
         <p class="rb-note">병실 기준정보의 생성·수정·삭제 내역을 최근 50건까지 표시합니다.</p>
+      </div>
+
+      <!-- 위험 작업 확인 모달 (타이핑 재확인) -->
+      <div id="rbConfirmModal" class="rb-modal-overlay" style="display:none;">
+        <div class="rb-modal">
+          <h3 class="rb-modal-title" id="rbConfirmTitle">초기화 확인</h3>
+          <p class="rb-modal-body" id="rbConfirmBody"></p>
+          <div id="rbConfirmStartDateWrap" class="rb-field" style="display:none;margin-bottom:14px;">
+            <label for="rbConfirmStartDate">삭제 범위</label>
+            <select id="rbConfirmStartDate" class="rb-iedit"></select>
+          </div>
+          <div class="rb-field" style="margin-bottom:16px;">
+            <label for="rbConfirmInput">계속하려면 <b>초기화</b> 를 입력하세요</label>
+            <input id="rbConfirmInput" class="rb-iedit" autocomplete="off" placeholder="초기화" />
+          </div>
+          <div class="rb-actions" style="justify-content:flex-end;margin-top:0;">
+            <button type="button" id="rbConfirmCancel" class="rb-btn rb-btn-light">취소</button>
+            <button type="button" id="rbConfirmOk" class="rb-btn rb-btn-danger" disabled>실행</button>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -667,6 +708,105 @@ document.addEventListener('turbo:load', () => {
     if (!res.ok) { alert(data.message || '병실 기준정보 일괄 저장에 실패했습니다.'); return; }
     alert(`병실 기준정보 저장 완료: ${data.parsedCount || 0}건`);
     location.reload();
+  });
+
+  // ─── 초기화 · 삭제 (되돌릴 수 없는 위험 작업) ────────────────────
+  const postReset = async (url, params, okMsg) => {
+    const res  = await fetch(ctx + url, { method: 'POST', headers, body: new URLSearchParams(params || {}).toString() });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { alert(data.message || '처리에 실패했습니다.'); return false; }
+    alert(okMsg(data));
+    location.reload();
+    return true;
+  };
+
+  const cModal    = document.getElementById('rbConfirmModal');
+  const cTitle    = document.getElementById('rbConfirmTitle');
+  const cBody     = document.getElementById('rbConfirmBody');
+  const cInput    = document.getElementById('rbConfirmInput');
+  const cOk       = document.getElementById('rbConfirmOk');
+  const cCancel   = document.getElementById('rbConfirmCancel');
+  const cDateWrap = document.getElementById('rbConfirmStartDateWrap');
+  const cDateSel  = document.getElementById('rbConfirmStartDate');
+  let   cAction   = null;
+
+  const closeConfirm = () => {
+    if (cModal) cModal.style.display = 'none';
+    cInput.value = '';
+    cOk.disabled = true;
+    cAction = null;
+  };
+  const openConfirm = ({ title, body, withDate, onConfirm }) => {
+    cTitle.textContent = title;
+    cBody.textContent  = body;
+    cInput.value = '';
+    cOk.disabled = true;
+    if (withDate) {
+      const dates = [...new Set(rcRows.map((r) => r.startDate).filter(Boolean))].sort();
+      cDateSel.innerHTML = '<option value="">전체 (모든 병실 기준정보 삭제)</option>'
+        + dates.map((d) => `<option value="${esc(d)}">${esc(d)} 개시 배치만 삭제</option>`).join('');
+      cDateWrap.style.display = '';
+    } else {
+      cDateWrap.style.display = 'none';
+    }
+    cAction = onConfirm;
+    cModal.style.display = 'flex';
+    setTimeout(() => cInput.focus(), 0);
+  };
+  cInput?.addEventListener('input', () => { cOk.disabled = cInput.value.trim() !== '초기화'; });
+  cCancel?.addEventListener('click', closeConfirm);
+  cModal?.addEventListener('click', (ev) => { if (ev.target === cModal) closeConfirm(); });
+  cOk?.addEventListener('click', async () => {
+    if (cInput.value.trim() !== '초기화' || !cAction) return;
+    const run = cAction;
+    cOk.disabled = true;
+    const ok = await run();
+    if (!ok) closeConfirm();
+  });
+
+  // 업로드 이력 개별 삭제 (스냅샷 + 재원환자, 퇴원예고 보존)
+  document.getElementById('snapshotHistoryTbody')?.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('[data-act="snapshot-delete"]');
+    if (!btn) return;
+    if (!confirm('이 업로드 이력을 삭제하면 해당 스냅샷의 재원환자 현황도 함께 삭제됩니다. 계속하시겠습니까?')) return;
+    postReset('/room-board/manage/snapshot/delete', { id: btn.dataset.id },
+              (d) => `삭제되었습니다 (재원환자 ${d.patients || 0}명).`);
+  });
+
+  // 현황 전체 초기화
+  document.getElementById('resetSnapshotsBtn')?.addEventListener('click', () => {
+    openConfirm({
+      title: '재원환자 현황 전체 초기화',
+      body: '업로드된 모든 스냅샷과 재원환자 현황이 삭제됩니다. 퇴원예고는 보존됩니다.\n이 작업은 되돌릴 수 없습니다.',
+      withDate: false,
+      onConfirm: () => postReset('/room-board/manage/snapshot/reset', {},
+                   (d) => `현황이 초기화되었습니다 (스냅샷 ${d.snapshots || 0}건, 재원환자 ${d.patients || 0}명).`),
+    });
+  });
+
+  // 병실 기준정보 초기화 (전체 또는 개시일자 배치)
+  document.getElementById('resetRoomConfigsBtn')?.addEventListener('click', () => {
+    openConfirm({
+      title: '병실 기준정보 초기화',
+      body: '선택한 범위의 병실 기준정보가 삭제됩니다.\n이 작업은 되돌릴 수 없습니다.',
+      withDate: true,
+      onConfirm: () => {
+        const sd = cDateSel.value;
+        return postReset('/room-board/manage/room-config/reset', sd ? { startDate: sd } : {},
+                   (d) => `병실 기준정보가 초기화되었습니다 (${d.deleted || 0}건).`);
+      },
+    });
+  });
+
+  // 변경 이력 전체 삭제
+  document.getElementById('deleteConfigHistoryBtn')?.addEventListener('click', () => {
+    openConfirm({
+      title: '병실 기준정보 변경 이력 삭제',
+      body: '병실 기준정보의 모든 변경 이력이 삭제됩니다.\n이 작업은 되돌릴 수 없습니다.',
+      withDate: false,
+      onConfirm: () => postReset('/room-board/manage/history/delete', {},
+                   (d) => `변경 이력이 삭제되었습니다 (${d.deleted || 0}건).`),
+    });
   });
 });
 </script>

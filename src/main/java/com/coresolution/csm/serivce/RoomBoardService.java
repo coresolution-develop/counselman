@@ -294,6 +294,107 @@ public class RoomBoardService {
         }
     }
 
+    /**
+     * Deletes a single uploaded snapshot and its patient rows. Discharge notices
+     * are intentionally preserved (they carry their own patient columns and live
+     * on the discharge-notice screen independently of the source snapshot).
+     */
+    @Transactional
+    public Map<String, Integer> deleteSnapshot(String inst, long snapshotId, String username) {
+        ensureTables(inst);
+        String safe = sanitizeInst(inst);
+        if (snapshotId <= 0) {
+            throw new IllegalArgumentException("삭제할 업로드 이력을 확인해 주세요.");
+        }
+        int patients = jdbcTemplate.update(
+                "DELETE FROM csm.room_board_patient_" + safe + " WHERE rbs_id = ?", snapshotId);
+        int snapshots = jdbcTemplate.update(
+                "DELETE FROM csm.room_board_snapshot_" + safe + " WHERE rbs_id = ?", snapshotId);
+        log.info("[room-board] snapshot delete inst={}, id={}, patients={}, snapshots={}, by={}",
+                safe, snapshotId, patients, snapshots, safeText(username, 100));
+        return Map.of("patients", patients, "snapshots", snapshots);
+    }
+
+    /**
+     * Clears all uploaded snapshots and patient rows for the institution.
+     * Discharge notices are preserved (see {@link #deleteSnapshot}).
+     */
+    @Transactional
+    public Map<String, Integer> resetAllSnapshots(String inst, String username) {
+        ensureTables(inst);
+        String safe = sanitizeInst(inst);
+        int patients = jdbcTemplate.update("DELETE FROM csm.room_board_patient_" + safe);
+        int snapshots = jdbcTemplate.update("DELETE FROM csm.room_board_snapshot_" + safe);
+        log.info("[room-board] snapshot reset-all inst={}, patients={}, snapshots={}, by={}",
+                safe, patients, snapshots, safeText(username, 100));
+        return Map.of("patients", patients, "snapshots", snapshots);
+    }
+
+    /**
+     * Deletes every room-config row sharing the given start date (one pasted
+     * batch) and records a DELETE history row per deleted config.
+     */
+    @Transactional
+    public int resetRoomConfigsByStartDate(String inst, String startDate, String username) {
+        ensureTables(inst);
+        String safe = sanitizeInst(inst);
+        LocalDate target = parseDate(startDate, null);
+        if (target == null) {
+            throw new IllegalArgumentException("개시일자를 확인해 주세요.");
+        }
+        String selectSql = "SELECT rbm_id, ward_name, room_name, DATE_FORMAT(start_date,'%Y-%m-%d') AS start_date, "
+                + "DATE_FORMAT(end_date,'%Y-%m-%d') AS end_date, licensed_beds, available_beds, room_gender, care_type, "
+                + "status_walk, status_diaper, status_oxygen, status_suction, nursing_cost, note, use_yn, "
+                + "DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at, created_by, "
+                + "DATE_FORMAT(updated_at,'%Y-%m-%d %H:%i:%s') AS updated_at, updated_by "
+                + "FROM csm.room_board_room_master_" + safe + " WHERE start_date = ?";
+        List<RoomBoardRoomConfig> targets = jdbcTemplate.query(selectSql, (rs, rowNum) -> mapRoomConfig(rs), target);
+        if (targets.isEmpty()) {
+            return 0;
+        }
+        int deleted = jdbcTemplate.update(
+                "DELETE FROM csm.room_board_room_master_" + safe + " WHERE start_date = ?", target);
+        for (RoomBoardRoomConfig config : targets) {
+            logRoomConfigChange(safe, "DELETE", config, username);
+        }
+        log.info("[room-board] room config reset by start_date={} inst={}, deleted={}, by={}",
+                target, safe, deleted, safeText(username, 100));
+        return deleted;
+    }
+
+    /**
+     * Deletes all room-config rows for the institution, recording a DELETE
+     * history row per deleted config.
+     */
+    @Transactional
+    public int resetAllRoomConfigs(String inst, String username) {
+        ensureTables(inst);
+        String safe = sanitizeInst(inst);
+        List<RoomBoardRoomConfig> targets = getRoomConfigs(safe);
+        if (targets.isEmpty()) {
+            return 0;
+        }
+        int deleted = jdbcTemplate.update("DELETE FROM csm.room_board_room_master_" + safe);
+        for (RoomBoardRoomConfig config : targets) {
+            logRoomConfigChange(safe, "DELETE", config, username);
+        }
+        log.info("[room-board] room config reset-all inst={}, deleted={}, by={}",
+                safe, deleted, safeText(username, 100));
+        return deleted;
+    }
+
+    /**
+     * Clears the room-config change history table for the institution.
+     */
+    @Transactional
+    public int deleteRoomConfigHistory(String inst) {
+        ensureTables(inst);
+        String safe = sanitizeInst(inst);
+        int deleted = jdbcTemplate.update("DELETE FROM csm.room_board_room_master_history_" + safe);
+        log.info("[room-board] room config history cleared inst={}, deleted={}", safe, deleted);
+        return deleted;
+    }
+
     public List<RoomBoardRoomConfigHistory> getRoomConfigHistory(String inst, int limit) {
         ensureTables(inst);
         String safe = sanitizeInst(inst);
