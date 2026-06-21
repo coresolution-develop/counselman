@@ -60,6 +60,15 @@
         <button type="submit" class="acc-btn acc-btn--brand">변경하기</button>
       </form>
     </section>
+
+    <section class="acc-panel" style="margin-top: 18px;">
+      <h2 class="acc-panel__title">기기 관리</h2>
+      <p class="acc-meta">"이 기기 기억하기"로 로그인한 다른 기기를 모두 로그아웃합니다. 분실·공용 단말에 로그인이 남아 있을 때 사용하세요. 현재 기기는 로그인 상태가 유지됩니다.</p>
+      <form th:action="@{/hub/me/account/logout-all}" method="post"
+            onsubmit="return confirm('다른 모든 기기에서 로그아웃할까요? 현재 기기는 유지됩니다.');">
+        <button type="submit" class="acc-btn">다른 모든 기기에서 로그아웃</button>
+      </form>
+    </section>
   </main>
 </body>
 </html>

@@ -28,6 +28,9 @@
     .auth-alt a { color: var(--lh-brand-dark); font-weight: 600; text-decoration: none; }
     .auth-err { margin: 0 0 16px; padding: 10px 12px; border-radius: 8px; background: #fef2f2;
       color: var(--lh-danger); font-size: 13px; }
+    .auth-remember { display: flex; align-items: center; gap: 8px; margin: 2px 0 4px; font-size: 14px; }
+    .auth-remember input { width: 16px; height: 16px; }
+    .auth-remember-note { margin: 0 0 16px; color: var(--lh-muted); font-size: 12px; line-height: 1.5; }
   </style>
 </head>
 <body>
@@ -47,6 +50,11 @@
           <label for="password">비밀번호</label>
           <input type="password" id="password" name="password" autocomplete="current-password" required />
         </div>
+        <label class="auth-remember">
+          <input type="checkbox" name="remember" value="on" />
+          <span>이 기기 기억하기</span>
+        </label>
+        <p class="auth-remember-note">공용 단말(POS·키오스크)에서는 사용하지 마세요. 개인 기기에서만 권장합니다.</p>
         <button type="submit" class="auth-btn">로그인</button>
       </form>
 

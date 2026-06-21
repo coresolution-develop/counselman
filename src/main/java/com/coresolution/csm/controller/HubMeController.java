@@ -12,9 +12,13 @@ import com.coresolution.csm.serivce.HubCustomLinkService;
 import com.coresolution.csm.serivce.HubFavoriteService;
 import com.coresolution.csm.serivce.HubHistoryService;
 import com.coresolution.csm.serivce.HubMemberService;
+import com.coresolution.csm.serivce.HubRememberService;
 import com.coresolution.csm.vo.HubMemberSession;
+import com.coresolution.csm.web.HubRememberCookies;
 import com.coresolution.csm.web.HubSessions;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 /**
@@ -30,16 +34,19 @@ public class HubMeController {
     private final HubCustomLinkService hubCustomLinkService;
     private final HubHistoryService hubHistoryService;
     private final HubMemberService hubMemberService;
+    private final HubRememberService hubRememberService;
 
     public HubMeController(
             HubFavoriteService hubFavoriteService,
             HubCustomLinkService hubCustomLinkService,
             HubHistoryService hubHistoryService,
-            HubMemberService hubMemberService) {
+            HubMemberService hubMemberService,
+            HubRememberService hubRememberService) {
         this.hubFavoriteService = hubFavoriteService;
         this.hubCustomLinkService = hubCustomLinkService;
         this.hubHistoryService = hubHistoryService;
         this.hubMemberService = hubMemberService;
+        this.hubRememberService = hubRememberService;
     }
 
     @GetMapping("/hub/me")
@@ -131,6 +138,7 @@ public class HubMeController {
             @RequestParam("currentPassword") String currentPassword,
             @RequestParam("newPassword") String newPassword,
             HttpSession session,
+            HttpServletRequest request,
             RedirectAttributes redirectAttributes) {
         HubMemberSession member = HubSessions.current(session);
         if (member == null) {
@@ -138,10 +146,29 @@ public class HubMeController {
         }
         try {
             hubMemberService.changePassword(member.getId(), currentPassword, newPassword);
-            redirectAttributes.addFlashAttribute("accountMessage", "비밀번호가 변경되었습니다.");
+            // 비번 변경 시 현재 기기를 제외한 다른 기기의 기억 토큰을 모두 폐기한다.
+            hubRememberService.deleteOthersForMember(member.getId(), HubRememberCookies.read(request));
+            redirectAttributes.addFlashAttribute("accountMessage", "비밀번호가 변경되었습니다. 다른 기기는 다시 로그인해야 합니다.");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("accountError", e.getMessage());
         }
+        return "redirect:/hub/me/account";
+    }
+
+    @PostMapping("/hub/me/account/logout-all")
+    public String logoutAllDevices(
+            HttpSession session,
+            HttpServletRequest request,
+            HttpServletResponse response,
+            RedirectAttributes redirectAttributes) {
+        HubMemberSession member = HubSessions.current(session);
+        if (member == null) {
+            return "redirect:/hub/login";
+        }
+        // 이 회원의 모든 기억 토큰 폐기(현재 기기 포함) + 현재 쿠키 만료. 단, 현재 세션은 유지.
+        hubRememberService.deleteAllForMember(member.getId());
+        HubRememberCookies.clear(request, response, hubRememberService.isCookieSecure());
+        redirectAttributes.addFlashAttribute("accountMessage", "모든 기기에서 로그아웃했습니다.");
         return "redirect:/hub/me/account";
     }
 }

@@ -19,8 +19,15 @@ class HubMvcConfigTest {
     }
 
     @Test
+    void rememberPaths_coverPublicLinksAndHub() {
+        // 자동 재로그인은 공개 /links 진입 시에도 동작해야 한다(컨텍스트 경로 양쪽).
+        assertThat(HubMvcConfig.HUB_REMEMBER_PATHS)
+                .contains("/links", "/csm/links", "/hub/**", "/csm/hub/**");
+    }
+
+    @Test
     void addInterceptors_registersWithoutError() {
-        HubMvcConfig config = new HubMvcConfig();
+        HubMvcConfig config = new HubMvcConfig(null, null);
         assertThatCode(() -> config.addInterceptors(new InterceptorRegistry()))
                 .doesNotThrowAnyException();
     }

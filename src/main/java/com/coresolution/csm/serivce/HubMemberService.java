@@ -176,6 +176,19 @@ public class HubMemberService {
         return rows.isEmpty() ? null : rows.get(0);
     }
 
+    /** 자동 재로그인 등에서 세션 복원용 — 활성(status=ACTIVE) 회원만 반환, 아니면 null. */
+    public HubMember findActiveById(long id) {
+        ensureTables();
+        if (id <= 0) {
+            return null;
+        }
+        HubMember member = findById(id);
+        if (member == null || !"ACTIVE".equalsIgnoreCase(member.getStatus())) {
+            return null;
+        }
+        return member;
+    }
+
     private HubMember findById(long id) {
         List<HubMember> rows = jdbcTemplate.query("""
                 SELECT id, email, password, name, role, status,
@@ -289,6 +302,23 @@ public class HubMemberService {
                     url_snapshot   VARCHAR(500) NOT NULL,
                     accessed_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     KEY idx_hist_member_time (member_id, accessed_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """);
+
+        // "이 기기 기억하기" 영속 로그인 토큰. selector로 행을 찾고 validator의 해시(token_hash)를
+        // 상수시간 비교한다. validator 평문은 절대 저장하지 않는다. 인증 근거가 메모리 세션이 아니라
+        // 이 테이블 + 브라우저 쿠키이므로 서버 재시작/배포 후에도 세션을 복원할 수 있다.
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS csm.hub_member_token (
+                    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    member_id    BIGINT       NOT NULL,
+                    selector     VARCHAR(24)  NOT NULL UNIQUE,
+                    token_hash   VARCHAR(100) NOT NULL,
+                    expires_at   DATETIME     NOT NULL,
+                    created_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+                    last_used_at DATETIME     NULL,
+                    user_agent   VARCHAR(255) NULL,
+                    KEY idx_token_member (member_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """);
     }

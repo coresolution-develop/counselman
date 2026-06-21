@@ -17,6 +17,7 @@ import com.coresolution.csm.serivce.HubCustomLinkService;
 import com.coresolution.csm.serivce.HubFavoriteService;
 import com.coresolution.csm.serivce.HubHistoryService;
 import com.coresolution.csm.serivce.HubMemberService;
+import com.coresolution.csm.serivce.HubRememberService;
 import com.coresolution.csm.vo.CompanyLink;
 import com.coresolution.csm.vo.HubHistoryView;
 import com.coresolution.csm.vo.HubMemberSession;
@@ -37,6 +38,7 @@ class HubFlowIntegrationTest {
     private static HubFavoriteService favoriteService;
     private static HubCustomLinkService customLinkService;
     private static HubHistoryService historyService;
+    private static HubRememberService rememberService;
 
     @BeforeAll
     static void connect() {
@@ -65,6 +67,9 @@ class HubFlowIntegrationTest {
         favoriteService = new HubFavoriteService(jdbcTemplate, memberService);
         customLinkService = new HubCustomLinkService(jdbcTemplate, memberService);
         historyService = new HubHistoryService(jdbcTemplate, memberService);
+        rememberService = new HubRememberService(jdbcTemplate, memberService);
+        ReflectionTestUtils.setField(rememberService, "rememberDays", 30);
+        ReflectionTestUtils.setField(rememberService, "cookieSecure", true);
     }
 
     @Test
@@ -152,6 +157,56 @@ class HubFlowIntegrationTest {
         // 정리
         cleanup(memberId, linkId);
         System.out.println("[9] 전체 플로우 통과 ✅");
+    }
+
+    @Test
+    void rememberMeFlow_restoresSessionFromCookieOnly_andRotates() {
+        memberService.ensureTables();
+        String email = "rm_" + System.nanoTime() + "@coresolution.kr";
+        long memberId = memberService.signup(email, "pw1", "기억테스트", "core").getId();
+        System.out.println("[R1] 회원 생성 memberId=" + memberId);
+
+        // 1) "기억하기" 토큰 발급 (로그인 시 발급되는 쿠키 값)
+        String a0 = rememberService.issue(memberId, "JUnit-UA");
+        assertThat(a0).contains(":");
+        System.out.println("[R2] 영속 토큰 발급 (쿠키 selector:validator)");
+
+        // 2) 세션이 전혀 없는 상태에서 쿠키만으로 재로그인 → memberId 복원 + 토큰 회전
+        HubRememberService.Result r1 = rememberService.validateAndRotate(a0, "JUnit-UA");
+        assertThat(r1.valid()).isTrue();
+        assertThat(r1.memberId()).isEqualTo(memberId);
+        String a1 = r1.newCookieValue();
+        assertThat(a1).isNotEqualTo(a0);
+        System.out.println("[R3] 세션 없이 쿠키만으로 재로그인 OK (memberId 복원 + 토큰 회전)");
+
+        // 3) 회전된 새 쿠키로 계속 사용 가능 (정상 슬라이딩 체인)
+        HubRememberService.Result r2 = rememberService.validateAndRotate(a1, "JUnit-UA");
+        assertThat(r2.valid()).isTrue();
+        assertThat(r2.newCookieValue()).isNotEqualTo(a1);
+        System.out.println("[R4] 회전 체인 지속 OK");
+
+        // 4) 로그아웃: 현재 기기 토큰 삭제 → 이후 검증 무효
+        rememberService.deleteByCookie(r2.newCookieValue());
+        assertThat(rememberService.validateAndRotate(r2.newCookieValue(), "JUnit-UA").valid()).isFalse();
+        System.out.println("[R5] 로그아웃(토큰 삭제) 후 재로그인 불가 OK");
+
+        // 5) 도난 감지: 옛 쿠키(이미 회전됨)를 다시 제시하면 validator 불일치 → 토큰 체인 전체 폐기.
+        //    그 후 회전됐던 새 쿠키도 무효가 되어 강제 재로그인을 유도한다.
+        String b0 = rememberService.issue(memberId, "UA");
+        String b1 = rememberService.validateAndRotate(b0, "UA").newCookieValue();
+        assertThat(rememberService.validateAndRotate(b0, "UA").valid()).isFalse();   // 옛(도난) 쿠키 재사용
+        assertThat(rememberService.validateAndRotate(b1, "UA").valid()).isFalse();   // 체인 폐기됨
+        System.out.println("[R6] 도난 감지 OK (옛 쿠키 재사용 시 토큰 체인 폐기)");
+
+        // 6) 비활성 회원은 복원 거부
+        String c0 = rememberService.issue(memberId, "UA");
+        jdbcTemplate.update("UPDATE csm.hub_member SET status = 'DISABLED' WHERE id = ?", memberId);
+        assertThat(rememberService.validateAndRotate(c0, "UA").valid()).isFalse();
+        System.out.println("[R7] 비활성(DISABLED) 회원 복원 거부 OK");
+
+        jdbcTemplate.update("DELETE FROM csm.hub_member_token WHERE member_id = ?", memberId);
+        jdbcTemplate.update("DELETE FROM csm.hub_member WHERE id = ?", memberId);
+        System.out.println("[R8] remember-me 플로우 통과 ✅ (인증 근거가 DB 토큰+쿠키 → 재시작에도 유지)");
     }
 
     private void cleanup(long memberId, long linkId) {
