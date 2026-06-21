@@ -16,9 +16,9 @@
 <meta property="og:image" content="/resources/icon/ev/core_icon_big.png">	<!-- 공유시 노출 이미지 (최적 사이즈 : 800 x 400) -->
 <meta property="og:description" content="병원상담관리시스템">	<!-- 공유시 보여질 사이트 간략 소개 -->
 
-<link rel="shortcut icon" href="/resources/favicon/favicon.ico">
-<link rel="apple-touch-icon" sizes="180x180" href="/resources/favicon/favicon.ico">
-<link rel="icon" sizes="192x192" href="/resources/favicon/favicon.ico">
+<link rel="shortcut icon" href="/resources/icon/new/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/resources/icon/new/app-icon-180.png">
+<link rel="icon" sizes="192x192" href="/resources/icon/new/app-icon-512.png">
 <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
 <script src="/resources/js/csm/core/admin/newuser.js"></script>
 <link rel="stylesheet" href="/resources/css/reset.css">
