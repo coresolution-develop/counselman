@@ -5,505 +5,84 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="_csrf" th:content="${_csrf.token}" />
   <meta name="_csrf_header" th:content="${_csrf.headerName}" />
-  <title>서비스 링크</title>
-  <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
-  <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
-  <style>
-    :root {
-      --lh-bg: #f6f7f9;
-      --lh-card: #fff;
-      --lh-border: #e5e7eb;
-      --lh-text: #111827;
-      --lh-muted: #6b7280;
-      --lh-brand: #0b8f6f;
-      --lh-brand-dark: #067257;
-      --lh-danger: #dc2626;
-      --lh-link-columns: 2;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      background: var(--lh-bg);
-      color: var(--lh-text);
-      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", sans-serif;
-    }
-    .lh-shell {
-      width: min(1440px, calc(100% - 48px));
-      margin: 0 auto;
-      padding: 32px 0 48px;
-    }
-    .lh-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: end;
-      gap: 16px;
-      margin-bottom: 18px;
-    }
-    .lh-title { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 0; }
-    .lh-subtitle { margin: 8px 0 0; color: var(--lh-muted); font-size: 14px; }
-    .lh-userbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .lh-userbar__name { font-size: 14px; font-weight: 600; color: var(--lh-text); }
-    .lh-userbtn { display: inline-flex; align-items: center; height: 34px; padding: 0 14px;
-      border: 1px solid var(--lh-border); border-radius: 8px; background: #fff; color: var(--lh-text);
-      font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; line-height: 1; }
-    .lh-userbtn:hover { border-color: var(--lh-brand); color: var(--lh-brand-dark); }
-    .lh-userbtn--brand { background: var(--lh-brand); border-color: var(--lh-brand); color: #fff; }
-    .lh-userbtn--brand:hover { background: var(--lh-brand-dark); border-color: var(--lh-brand-dark); color: #fff; }
-    .lh-link-wrap { position: relative; }
-    .lh-link-wrap:has(.lh-fav) .lh-link__top { padding-right: 36px; }
-    .lh-fav { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; padding: 0;
-      display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--lh-border);
-      border-radius: 8px; background: #fff; color: #cbd5e1; font-size: 16px; line-height: 1; cursor: pointer; z-index: 2; }
-    .lh-fav:hover { border-color: var(--lh-brand); color: var(--lh-brand); }
-    .lh-fav--on { color: #f59e0b; border-color: #f59e0b; }
-    .lh-fav[disabled] { opacity: .55; cursor: default; }
-    .lh-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-      gap: 18px;
-      align-items: start;
-    }
-    .lh-panel {
-      background: var(--lh-card);
-      border: 1px solid var(--lh-border);
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    .lh-panel__head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--lh-border);
-      font-size: 14px;
-      font-weight: 800;
-    }
-    .lh-view-options {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-left: auto;
-    }
-    .lh-view-options__label {
-      color: var(--lh-muted);
-      font-size: 12px;
-      font-weight: 700;
-    }
-    .lh-view-options__select {
-      width: 86px;
-      height: 30px;
-      border: 1px solid var(--lh-border);
-      border-radius: 7px;
-      background: #fff;
-      color: var(--lh-text);
-      font: inherit;
-      font-size: 12px;
-      font-weight: 700;
-    }
-    .lh-list {
-      display: grid;
-      grid-template-columns: repeat(var(--lh-link-columns), minmax(0, 1fr));
-      gap: 12px;
-      padding: 16px;
-    }
-    .lh-groups {
-      display: grid;
-      gap: 18px;
-      padding: 16px;
-    }
-    .lh-category {
-      display: grid;
-      gap: 10px;
-    }
-    .lh-category + .lh-category {
-      padding-top: 18px;
-      border-top: 1px solid var(--lh-border);
-    }
-    .lh-category__head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-    }
-    .lh-category__title {
-      margin: 0;
-      font-size: 16px;
-      font-weight: 800;
-      letter-spacing: 0;
-    }
-    .lh-category__count {
-      flex: 0 0 auto;
-      color: var(--lh-muted);
-      font-size: 12px;
-      font-weight: 700;
-    }
-    .lh-category .lh-list {
-      padding: 0;
-    }
-    .lh-link {
-      display: grid;
-      gap: 8px;
-      min-height: 132px;
-      padding: 16px;
-      border: 1px solid var(--lh-border);
-      border-radius: 8px;
-      color: inherit;
-      text-decoration: none;
-      background: #fff;
-      transition: border-color .14s, box-shadow .14s, transform .14s;
-    }
-    .lh-link:hover {
-      border-color: color-mix(in oklab, var(--lh-brand) 45%, var(--lh-border));
-      box-shadow: 0 8px 24px rgba(15, 23, 42, .08);
-      transform: translateY(-1px);
-    }
-    .lh-link__top { display: flex; justify-content: space-between; gap: 10px; align-items: start; }
-    .lh-link__title { font-size: 16px; font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; }
-    .lh-link__category {
-      flex: 0 0 auto;
-      max-width: 96px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      padding: 3px 7px;
-      border-radius: 999px;
-      background: #ecfdf5;
-      color: var(--lh-brand-dark);
-      font-size: 11px;
-      font-weight: 700;
-    }
-    .lh-link__desc {
-      min-height: 36px;
-      color: var(--lh-muted);
-      font-size: 13px;
-      line-height: 1.45;
-      overflow-wrap: anywhere;
-    }
-    .lh-link__url {
-      color: var(--lh-brand-dark);
-      font-size: 12px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .lh-empty {
-      padding: 48px 16px;
-      text-align: center;
-      color: var(--lh-muted);
-      font-size: 14px;
-    }
-    .lh-form {
-      display: grid;
-      gap: 12px;
-      padding: 16px;
-    }
-    .lh-field { display: grid; gap: 6px; }
-    .lh-label { font-size: 12px; font-weight: 700; color: #374151; }
-    .lh-input, .lh-textarea {
-      width: 100%;
-      border: 1px solid var(--lh-border);
-      border-radius: 7px;
-      background: #fff;
-      color: var(--lh-text);
-      font: inherit;
-      font-size: 13px;
-    }
-    .lh-input { height: 36px; padding: 0 10px; }
-    .lh-textarea { min-height: 74px; resize: vertical; padding: 9px 10px; }
-    .lh-input:focus, .lh-textarea:focus {
-      outline: none;
-      border-color: var(--lh-brand);
-      box-shadow: 0 0 0 3px color-mix(in oklab, var(--lh-brand) 16%, transparent);
-    }
-    .lh-actions { display: flex; gap: 8px; justify-content: end; align-items: center; }
-    .lh-btn {
-      height: 36px;
-      padding: 0 13px;
-      border: 1px solid transparent;
-      border-radius: 7px;
-      font-size: 13px;
-      font-weight: 800;
-      cursor: pointer;
-    }
-    .lh-btn--primary { background: var(--lh-brand); color: #fff; }
-    .lh-btn--primary:hover { background: var(--lh-brand-dark); }
-    .lh-btn--danger { background: #fff; color: var(--lh-danger); border-color: #fecaca; }
-    .lh-btn--danger:hover { background: #fef2f2; }
-    .lh-section-title {
-      font-size: 12px;
-      font-weight: 800;
-      color: var(--lh-muted);
-      text-transform: uppercase;
-      letter-spacing: .04em;
-      padding: 14px 16px 8px;
-      border-top: 1px solid var(--lh-border);
-    }
-    .lh-cat-list {
-      display: grid;
-      gap: 6px;
-      padding: 0 16px 14px;
-    }
-    .lh-cat-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 64px;
-      gap: 8px;
-      align-items: center;
-    }
-    .lh-cat-name {
-      font-size: 13px;
-      font-weight: 600;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .lh-cat-order {
-      height: 32px;
-      padding: 0 8px;
-      border: 1px solid var(--lh-border);
-      border-radius: 6px;
-      font: inherit;
-      font-size: 13px;
-      text-align: center;
-      width: 100%;
-    }
-    .lh-cat-order:focus {
-      outline: none;
-      border-color: var(--lh-brand);
-    }
-    .lh-manage-list {
-      display: grid;
-      gap: 8px;
-      padding: 0 16px 16px;
-    }
-    .lh-manage-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 8px;
-      align-items: start;
-      padding: 10px;
-      border: 1px solid var(--lh-border);
-      border-radius: 7px;
-      background: #fafafa;
-    }
-    .lh-manage-edit {
-      min-width: 0;
-    }
-    .lh-manage-edit summary {
-      cursor: pointer;
-      list-style: none;
-    }
-    .lh-manage-edit summary::-webkit-details-marker { display: none; }
-    .lh-manage-title {
-      font-size: 13px;
-      font-weight: 700;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .lh-edit-form {
-      display: grid;
-      gap: 8px;
-      margin-top: 10px;
-    }
-    .lh-edit-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-    }
-    .lh-edit-grid .lh-field--wide {
-      grid-column: 1 / -1;
-    }
-    .lh-alert {
-      margin-bottom: 12px;
-      padding: 10px 12px;
-      border-radius: 7px;
-      font-size: 13px;
-      font-weight: 700;
-    }
-    .lh-alert--ok { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
-    .lh-alert--err { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
-    .lh-btn--ghost { background: #fff; color: var(--lh-muted); border-color: var(--lh-border); }
-    .lh-btn--ghost:hover { background: #f9fafb; }
-    .lh-delete-wrap { display: flex; flex-direction: column; gap: 6px; }
-    .lh-delete-confirm { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-    .lh-delete-confirm[hidden] { display: none; }
-    .lh-actions--panel { padding: 0 16px 14px; }
-    .lh-manage-edit > summary:focus-visible {
-      outline: 2px solid var(--lh-brand);
-      outline-offset: 2px;
-      border-radius: 4px;
-    }
-    .lh-manage-search { padding: 10px 16px 4px; }
-    .lh-manage-groups { display: grid; gap: 8px; padding: 8px 16px 16px; }
-    .lh-manage-group { border: 1px solid var(--lh-border); border-radius: 7px; overflow: hidden; }
-    .lh-manage-group__head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 9px 12px;
-      background: #f9fafb;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 700;
-      list-style: none;
-      user-select: none;
-    }
-    .lh-manage-group__head::-webkit-details-marker { display: none; }
-    .lh-manage-group__head:focus-visible {
-      outline: 2px solid var(--lh-brand);
-      outline-offset: -2px;
-    }
-    .lh-manage-group .lh-manage-list { padding: 8px; }
-    @media (max-width: 900px) {
-      .lh-head { align-items: start; flex-direction: column; }
-      .lh-grid { grid-template-columns: 1fr; }
-      .lh-shell { width: min(100% - 24px, 720px); padding-top: 20px; }
-      .lh-grid > aside, .lh-panel--list { display: none; }
-    }
-    @media (max-width: 640px) {
-      :root { --lh-link-columns: 1; }
-      .lh-list { grid-template-columns: 1fr; }
-      .lh-panel__head { align-items: start; flex-direction: column; }
-      .lh-view-options { margin-left: 0; }
-    }
-  </style>
+  <title>링크 허브</title>
+  <link rel="stylesheet" th:href="@{/assets/css/hub.css}" />
 </head>
-<body>
-  <main class="lh-shell">
-    <header class="lh-head">
-      <div>
-        <h1 class="lh-title">서비스 링크</h1>
-        <p class="lh-subtitle">회사에서 운영하는 사이트를 한 곳에서 바로 열 수 있습니다.</p>
-      </div>
-      <div class="lh-userbar">
-        <a class="lh-userbtn" th:href="@{/admin/company-links}">링크 관리</a>
-        <a th:if="${hubMember == null}" class="lh-userbtn lh-userbtn--brand" th:href="@{/hub/login}">로그인</a>
-        <th:block th:if="${hubMember != null}">
-          <span class="lh-userbar__name" th:text="|${hubMember.name}님|">홍길동님</span>
-          <a class="lh-userbtn lh-userbtn--brand" th:href="@{/hub/me}">내 페이지</a>
-          <form th:action="@{/hub/logout}" method="post" style="display:inline">
-            <button type="submit" class="lh-userbtn">로그아웃</button>
-          </form>
-        </th:block>
-      </div>
-    </header>
+<body class="hub-body">
+  <div class="hub-layout">
+    <div th:replace="~{hub/fragments/shell :: sidebar('hub', ${hubMember})}"></div>
 
-    <section class="lh-grid">
-      <div class="lh-panel">
-        <div class="lh-panel__head">
-          <span>바로가기</span>
-          <label class="lh-view-options">
-            <span class="lh-view-options__label">한 줄 표시</span>
-            <select class="lh-view-options__select" id="linkColumnSelect" aria-label="한 줄에 표시할 링크 개수">
-              <option value="1">1개</option>
-              <option value="2">2개</option>
-              <option value="3">3개</option>
-              <option value="4">4개</option>
-            </select>
-          </label>
+    <main class="hub-content">
+      <div class="hub-container">
+        <header class="hub-pagehead">
+          <h1 class="hub-pagehead__title">서비스 링크</h1>
+          <p class="hub-pagehead__sub">회사에서 운영하는 사이트를 한 곳에서 바로 열 수 있습니다.</p>
+        </header>
+
+        <div class="hub-toolbar">
+          <a class="hub-btn hub-btn--sm" th:href="@{/admin/company-links}">링크 관리</a>
         </div>
-        <div class="lh-empty" th:if="${links == null or #lists.isEmpty(links)}">등록된 링크가 없습니다.</div>
-        <div class="lh-groups" th:if="${linkGroups != null and !linkGroups.isEmpty()}">
-          <section class="lh-category" th:each="entry : ${linkGroups}">
-            <div class="lh-category__head">
-              <h2 class="lh-category__title" th:text="${entry.key}">분류</h2>
-              <span class="lh-category__count" th:text="|${#lists.size(entry.value)}개|">0개</span>
-            </div>
-            <div class="lh-list">
-              <div class="lh-link-wrap" th:each="link : ${entry.value}">
-                <a class="lh-link" target="_blank" rel="noopener noreferrer"
-                   th:href="${hubMember != null} ? @{/hub/go/link/{id}(id=${link.id})} : ${link.url}"
-                   th:aria-label="|${link.title} 열기|">
-                  <span class="lh-link__top">
-                    <span class="lh-link__title" th:text="${link.title}">서비스명</span>
-                    <span class="lh-link__category" th:if="${link.category != null and !#strings.isEmpty(link.category)}" th:text="${link.category}">분류</span>
-                  </span>
-                  <span class="lh-link__desc" th:text="${link.description}">설명</span>
-                  <span class="lh-link__url" th:text="${link.url}" aria-hidden="true">https://example.com</span>
-                </a>
-                <button th:if="${hubMember != null}" type="button" class="lh-fav"
-                        th:classappend="${favoriteLinkIds.contains(link.id)} ? ' lh-fav--on' : ''"
-                        th:data-link-id="${link.id}"
-                        th:data-toggle-url="@{/hub/me/favorites/toggle}"
-                        th:data-login-url="@{/hub/login}"
-                        th:aria-pressed="${favoriteLinkIds.contains(link.id)}"
-                        aria-label="즐겨찾기 토글" title="즐겨찾기에 추가/해제">★</button>
+
+        <!--/* 내 즐겨찾기: 로그인 + 1개 이상일 때만 렌더 */-->
+        <section class="hub-section" th:if="${hubMember != null and favorites != null and !#lists.isEmpty(favorites)}">
+          <div class="hub-section__head">
+            <h2 class="hub-section__title">내 즐겨찾기
+              <span class="hub-section__count" th:text="|${#lists.size(favorites)}개|">0개</span>
+            </h2>
+          </div>
+          <div class="hub-grid">
+            <div class="hub-card" data-fav-card th:each="link : ${favorites}">
+              <a class="hub-card__link" target="_blank" rel="noopener noreferrer"
+                 th:href="@{/hub/go/link/{id}(id=${link.id})}" th:aria-label="|${link.title} 열기|"></a>
+              <div class="hub-card__body">
+                <div class="hub-card__top">
+                  <span class="hub-card__title" th:text="${link.title}">서비스명</span>
+                </div>
+                <span class="hub-card__url" th:text="${link.url}">https://example.com</span>
               </div>
+              <button type="button" class="lh-fav lh-fav--on" aria-pressed="true" title="즐겨찾기 해제"
+                      th:data-link-id="${link.id}"
+                      th:data-toggle-url="@{/hub/me/favorites/toggle}"
+                      th:data-login-url="@{/hub/login}"
+                      data-remove-on-unfav>★</button>
             </div>
-          </section>
+          </div>
+        </section>
+
+        <div class="hub-empty" th:if="${links == null or #lists.isEmpty(links)}">
+          <div class="hub-empty__text">등록된 링크가 없습니다.</div>
         </div>
+
+        <section class="hub-cat" th:if="${linkGroups != null and !linkGroups.isEmpty()}" th:each="entry : ${linkGroups}">
+          <div class="hub-cat__head">
+            <h2 class="hub-cat__title" th:text="${entry.key}">분류</h2>
+            <span class="hub-cat__count" th:text="|${#lists.size(entry.value)}개|">0개</span>
+          </div>
+          <div class="hub-grid">
+            <div class="hub-card" th:each="link : ${entry.value}">
+              <a class="hub-card__link" target="_blank" rel="noopener noreferrer"
+                 th:href="${hubMember != null} ? @{/hub/go/link/{id}(id=${link.id})} : ${link.url}"
+                 th:aria-label="|${link.title} 열기|"></a>
+              <div class="hub-card__body">
+                <div class="hub-card__top">
+                  <span class="hub-card__title" th:text="${link.title}">서비스명</span>
+                </div>
+                <span class="hub-card__desc" th:if="${link.description != null and !#strings.isEmpty(link.description)}" th:text="${link.description}">설명</span>
+                <span class="hub-card__url" th:text="${link.url}">https://example.com</span>
+              </div>
+              <button th:if="${hubMember != null}" type="button" class="lh-fav"
+                      th:classappend="${favoriteLinkIds.contains(link.id)} ? ' lh-fav--on' : ''"
+                      th:data-link-id="${link.id}"
+                      th:data-toggle-url="@{/hub/me/favorites/toggle}"
+                      th:data-login-url="@{/hub/login}"
+                      th:aria-pressed="${favoriteLinkIds.contains(link.id)}"
+                      aria-label="즐겨찾기 토글" title="즐겨찾기에 추가/해제">★</button>
+            </div>
+          </div>
+        </section>
       </div>
-    </section>
-  </main>
-  <script>
-    (() => {
-      const storageKey = "companyLinks.columns";
-      const select = document.getElementById("linkColumnSelect");
-      const root = document.documentElement;
-      const allowedColumns = new Set(["1", "2", "3", "4"]);
-
-      const applyColumns = (value) => {
-        const columns = allowedColumns.has(value) ? value : "2";
-        root.style.setProperty("--lh-link-columns", columns);
-        if (select) {
-          select.value = columns;
-        }
-      };
-
-      try {
-        applyColumns(localStorage.getItem(storageKey) || "2");
-      } catch (error) {
-        applyColumns("2");
-      }
-
-      if (select) {
-        select.addEventListener("change", () => {
-          applyColumns(select.value);
-          try {
-            localStorage.setItem(storageKey, select.value);
-          } catch (error) {
-            // localStorage may be unavailable in restricted browser modes.
-          }
-        });
-      }
-    })();
-
-
-    // ★ 즐겨찾기 토글 (로그인 회원만 버튼 노출). 리로드 없이 별 상태만 갱신.
-    (() => {
-      const csrfToken = document.querySelector('meta[name="_csrf"]')?.content || '';
-      document.querySelectorAll('.lh-fav').forEach(btn => {
-        btn.addEventListener('click', async (event) => {
-          event.preventDefault();
-          if (btn.disabled) return;
-          const linkId = btn.dataset.linkId;
-          const url = btn.dataset.toggleUrl;
-          if (!linkId || !url) return;
-          btn.disabled = true;
-          try {
-            const params = new URLSearchParams({ linkId, _csrf: csrfToken });
-            const res = await fetch(url, {
-              method: 'POST',
-              headers: { 'X-Requested-With': 'XMLHttpRequest' },
-              body: params
-            });
-            if (res.status === 401) { window.location.href = btn.dataset.loginUrl || '/links'; return; }
-            const data = await res.json().catch(() => ({}));
-            if (res.ok && typeof data.favorited === 'boolean') {
-              btn.classList.toggle('lh-fav--on', data.favorited);
-              btn.setAttribute('aria-pressed', String(data.favorited));
-            } else {
-              alert(data.error || '즐겨찾기 처리에 실패했습니다.');
-            }
-          } catch (err) {
-            alert('오류: ' + err.message);
-          } finally {
-            btn.disabled = false;
-          }
-        });
-      });
-    })();
-  </script>
+    </main>
+  </div>
+  <script th:src="@{/js/hub.js}"></script>
 </body>
 </html>

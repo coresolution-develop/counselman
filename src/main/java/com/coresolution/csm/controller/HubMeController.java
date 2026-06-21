@@ -9,8 +9,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.coresolution.csm.serivce.HubCustomLinkService;
-import com.coresolution.csm.serivce.HubFavoriteService;
-import com.coresolution.csm.serivce.HubHistoryService;
 import com.coresolution.csm.serivce.HubMemberService;
 import com.coresolution.csm.serivce.HubRememberService;
 import com.coresolution.csm.vo.HubMemberSession;
@@ -22,7 +20,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 /**
- * 개인 페이지: 내 즐겨찾기 / 커스텀 링크 / 최근 사용. 커스텀 링크 CRUD 포함.
+ * 개인 페이지: 커스텀 링크 전용(목록 + 추가/수정/삭제) + 계정 설정.
+ * 즐겨찾기는 허브 상단으로 이동했고, 최근 사용 화면은 제거됨(클릭 추적/기록은 별도로 유지).
  *
  * <p>인터셉터가 /hub/me/** 를 1차로 막지만, 각 메서드 진입부에서도 세션을 직접 가드하고
  * member_id를 세션에서만 취한다(가드레일 ①-a). 서비스 쿼리는 member_id로 강제 필터된다(①-b).
@@ -30,21 +29,15 @@ import jakarta.servlet.http.HttpSession;
 @Controller
 public class HubMeController {
 
-    private final HubFavoriteService hubFavoriteService;
     private final HubCustomLinkService hubCustomLinkService;
-    private final HubHistoryService hubHistoryService;
     private final HubMemberService hubMemberService;
     private final HubRememberService hubRememberService;
 
     public HubMeController(
-            HubFavoriteService hubFavoriteService,
             HubCustomLinkService hubCustomLinkService,
-            HubHistoryService hubHistoryService,
             HubMemberService hubMemberService,
             HubRememberService hubRememberService) {
-        this.hubFavoriteService = hubFavoriteService;
         this.hubCustomLinkService = hubCustomLinkService;
-        this.hubHistoryService = hubHistoryService;
         this.hubMemberService = hubMemberService;
         this.hubRememberService = hubRememberService;
     }
@@ -55,10 +48,10 @@ public class HubMeController {
         if (member == null) {
             return "redirect:/hub/login";
         }
+        // 내 페이지는 커스텀 링크 전용. 즐겨찾기는 허브 상단으로, 최근 사용 화면은 제거됨.
+        // (클릭 추적/이력 기록은 HubGoController·HubHistoryService.record에서 그대로 유지)
         model.addAttribute("hubMember", member);
-        model.addAttribute("favorites", hubFavoriteService.listFavorites(member.getId()));
         model.addAttribute("customLinks", hubCustomLinkService.listOwn(member.getId()));
-        model.addAttribute("recent", hubHistoryService.listRecent(member.getId()));
         return "hub/me";
     }
 

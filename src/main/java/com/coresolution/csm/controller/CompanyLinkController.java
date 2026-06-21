@@ -42,19 +42,23 @@ public class CompanyLinkController {
         // 로그인 상태면 개인 페이지 진입을, 아니면 로그인 버튼을 상단바에 노출(공개 허브는 항상 접근 가능).
         HubMemberSession hubMember = HubSessions.current(session);
         model.addAttribute("hubMember", hubMember);
-        // 로그인 시에만 ★ 채움 표시용 즐겨찾기 link_id 집합을 내려준다.
+        // 로그인 시에만 ★ 채움 표시용 즐겨찾기 link_id 집합 + 상단 "내 즐겨찾기" 섹션용 목록을 내려준다.
         model.addAttribute("favoriteLinkIds", hubMember == null
                 ? java.util.Set.of()
                 : new java.util.HashSet<>(hubFavoriteService.listFavoriteLinkIds(hubMember.getId())));
+        model.addAttribute("favorites", hubMember == null
+                ? java.util.List.of()
+                : hubFavoriteService.listFavorites(hubMember.getId()));
         return "design/company-links";
     }
 
     @GetMapping("/admin/company-links")
-    public String manage(Model model) {
+    public String manage(Model model, HttpSession session) {
         List<CompanyLink> links = companyLinkService.listActiveLinks();
         model.addAttribute("links", links);
         model.addAttribute("linkGroups", groupByCategory(links));
         model.addAttribute("categories", companyLinkService.listCategories());
+        model.addAttribute("hubMember", HubSessions.current(session)); // 사이드바 프로필 표시용
         return "design/company-links-admin";
     }
 

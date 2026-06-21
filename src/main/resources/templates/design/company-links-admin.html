@@ -6,217 +6,168 @@
   <meta name="_csrf" th:content="${_csrf.token}" />
   <meta name="_csrf_header" th:content="${_csrf.headerName}" />
   <title>서비스 링크 관리</title>
-  <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
-  <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/hub.css}" />
   <style>
-    :root {
-      --lh-bg: #f6f7f9; --lh-card: #fff; --lh-border: #e5e7eb; --lh-text: #111827;
-      --lh-muted: #6b7280; --lh-brand: #0b8f6f; --lh-brand-dark: #067257; --lh-danger: #dc2626;
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--lh-bg); color: var(--lh-text);
-      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", sans-serif; }
-    .lh-shell { width: min(1200px, calc(100% - 48px)); margin: 0 auto; padding: 32px 0 48px; }
-    .lh-head { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 18px; }
-    .lh-title { margin: 0; font-size: 28px; font-weight: 800; }
-    .lh-subtitle { margin: 8px 0 0; color: var(--lh-muted); font-size: 14px; }
-    .lh-userbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .lh-userbtn { display: inline-flex; align-items: center; height: 34px; padding: 0 14px;
-      border: 1px solid var(--lh-border); border-radius: 8px; background: #fff; color: var(--lh-text);
-      font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; line-height: 1; }
-    .lh-userbtn:hover { border-color: var(--lh-brand); color: var(--lh-brand-dark); }
-    .lh-grid { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 18px; align-items: start; }
-    .lh-panel { background: var(--lh-card); border: 1px solid var(--lh-border); border-radius: 8px; overflow: hidden; }
-    .lh-panel__head { display: flex; justify-content: space-between; align-items: center; gap: 12px;
-      padding: 14px 16px; border-bottom: 1px solid var(--lh-border); font-size: 14px; font-weight: 800; }
-    .lh-empty { padding: 48px 16px; text-align: center; color: var(--lh-muted); font-size: 14px; }
+    .adm-grid { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 18px; align-items: start; }
+    .adm-panel { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px;
+      box-shadow: var(--card-shadow); overflow: hidden; }
+    .adm-panel__head { padding: 14px 16px; border-bottom: 1px solid var(--card-border);
+      font-size: 14px; font-weight: 800; color: var(--text-strong); }
     .lh-form { display: grid; gap: 12px; padding: 16px; }
     .lh-field { display: grid; gap: 6px; }
-    .lh-label { font-size: 12px; font-weight: 700; color: #374151; }
-    .lh-input, .lh-textarea { width: 100%; border: 1px solid var(--lh-border); border-radius: 7px;
-      background: #fff; color: var(--lh-text); font: inherit; font-size: 13px; }
-    .lh-input { height: 36px; padding: 0 10px; }
-    .lh-textarea { min-height: 74px; resize: vertical; padding: 9px 10px; }
-    .lh-input:focus, .lh-textarea:focus { outline: none; border-color: var(--lh-brand);
-      box-shadow: 0 0 0 3px color-mix(in oklab, var(--lh-brand) 16%, transparent); }
+    .lh-label { font-size: 12px; font-weight: 700; color: var(--text-body); }
+    .lh-input, .lh-textarea { width: 100%; border: 1px solid var(--card-border); border-radius: 9px;
+      background: #fff; color: var(--text-body); font: inherit; font-size: 13px; }
+    .lh-input { height: 38px; padding: 0 11px; }
+    .lh-textarea { min-height: 74px; resize: vertical; padding: 9px 11px; }
+    .lh-input:focus, .lh-textarea:focus { outline: none; border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(36, 120, 192, 0.14); }
     .lh-actions { display: flex; gap: 8px; justify-content: end; align-items: center; }
     .lh-actions--panel { padding: 0 16px 14px; }
-    .lh-btn { height: 36px; padding: 0 13px; border: 1px solid transparent; border-radius: 7px;
+    .lh-btn { height: 38px; padding: 0 14px; border: 1px solid transparent; border-radius: 9px;
       font-size: 13px; font-weight: 800; cursor: pointer; }
-    .lh-btn--primary { background: var(--lh-brand); color: #fff; }
-    .lh-btn--primary:hover { background: var(--lh-brand-dark); }
-    .lh-btn--danger { background: #fff; color: var(--lh-danger); border-color: #fecaca; }
-    .lh-btn--danger:hover { background: #fef2f2; }
-    .lh-btn--ghost { background: #fff; color: var(--lh-muted); border-color: var(--lh-border); }
-    .lh-btn--ghost:hover { background: #f9fafb; }
-    .lh-section-title { font-size: 12px; font-weight: 800; color: var(--lh-muted); text-transform: uppercase;
-      letter-spacing: .04em; padding: 14px 16px 8px; border-top: 1px solid var(--lh-border); }
+    .lh-btn--primary { background: var(--accent); color: #fff; }
+    .lh-btn--primary:hover { background: var(--accent-hover); }
+    .lh-btn--danger { background: #fff; color: #c0392b; border-color: #f1c7c2; }
+    .lh-btn--danger:hover { background: #fdecec; }
+    .lh-btn--ghost { background: #fff; color: var(--text-muted); border-color: var(--card-border); }
+    .lh-btn--ghost:hover { background: #f7fafe; }
+    .lh-section-title { font-size: 12px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: .04em; padding: 14px 16px 8px; border-top: 1px solid var(--card-border); }
     .lh-cat-list { display: grid; gap: 6px; padding: 0 16px 14px; }
     .lh-cat-row { display: grid; grid-template-columns: minmax(0, 1fr) 64px; gap: 8px; align-items: center; }
     .lh-cat-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .lh-cat-order { height: 32px; padding: 0 8px; border: 1px solid var(--lh-border); border-radius: 6px;
+    .lh-cat-order { height: 32px; padding: 0 8px; border: 1px solid var(--card-border); border-radius: 7px;
       font: inherit; font-size: 13px; text-align: center; width: 100%; }
-    .lh-cat-order:focus { outline: none; border-color: var(--lh-brand); }
-    .lh-category__count { flex: 0 0 auto; color: var(--lh-muted); font-size: 12px; font-weight: 700; }
-    .lh-alert { margin-bottom: 12px; padding: 10px 12px; border-radius: 7px; font-size: 13px; font-weight: 700; }
-    .lh-alert--ok { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
-    .lh-alert--err { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
-    .lh-manage-search { padding: 10px 16px 4px; }
-    .lh-manage-groups { display: grid; gap: 8px; padding: 8px 16px 16px; }
-    .lh-manage-group { border: 1px solid var(--lh-border); border-radius: 7px; overflow: hidden; }
-    .lh-manage-group__head { display: flex; justify-content: space-between; align-items: center;
-      padding: 9px 12px; background: #f9fafb; cursor: pointer; font-size: 13px; font-weight: 700;
+    .lh-cat-order:focus { outline: none; border-color: var(--accent); }
+    .lh-category__count { color: var(--text-muted); font-size: 12px; font-weight: 700; }
+    .lh-manage-search { padding: 12px 16px 4px; }
+    .lh-manage-groups { display: grid; gap: 8px; padding: 10px 16px 16px; }
+    .lh-manage-group { border: 1px solid var(--card-border); border-radius: 9px; overflow: hidden; }
+    .lh-manage-group__head { display: flex; justify-content: space-between; align-items: center; padding: 10px 13px;
+      background: #f4f8fd; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--text-strong);
       list-style: none; user-select: none; }
     .lh-manage-group__head::-webkit-details-marker { display: none; }
     .lh-manage-list { display: grid; gap: 8px; padding: 0 12px 12px; }
     .lh-manage-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: start;
-      padding: 10px; border: 1px solid var(--lh-border); border-radius: 7px; background: #fafafa; }
+      padding: 11px; border: 1px solid var(--card-border); border-radius: 9px; background: #fbfcfe; }
     .lh-manage-edit { min-width: 0; }
     .lh-manage-edit summary { cursor: pointer; list-style: none; }
     .lh-manage-edit summary::-webkit-details-marker { display: none; }
-    .lh-manage-title { font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lh-manage-title { font-size: 13px; font-weight: 700; color: var(--text-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lh-edit-form { display: grid; gap: 8px; margin-top: 10px; }
     .lh-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .lh-edit-grid .lh-field--wide { grid-column: 1 / -1; }
     .lh-delete-wrap { display: flex; flex-direction: column; gap: 6px; }
     .lh-delete-confirm { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
     .lh-delete-confirm[hidden] { display: none; }
-    @media (max-width: 860px) {
-      .lh-grid { grid-template-columns: 1fr; }
-      .lh-head { flex-direction: column; align-items: start; }
-    }
+    .lh-empty { padding: 40px 16px; text-align: center; color: var(--text-muted); font-size: 14px; }
+    @media (max-width: 860px) { .adm-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
-<body>
-  <main class="lh-shell">
-    <header class="lh-head">
-      <div>
-        <h1 class="lh-title">서비스 링크 관리</h1>
-        <p class="lh-subtitle">공용 링크를 추가·수정·삭제하고 분류 순서를 조정합니다.</p>
-      </div>
-      <div class="lh-userbar">
-        <a class="lh-userbtn" th:href="@{/links}">← 링크 목록</a>
-      </div>
-    </header>
+<body class="hub-body">
+  <div class="hub-layout">
+    <div th:replace="~{hub/fragments/shell :: sidebar('admin', ${hubMember})}"></div>
 
-    <div th:if="${linkMessage}" class="lh-alert lh-alert--ok" th:text="${linkMessage}"></div>
-    <div th:if="${linkError}" class="lh-alert lh-alert--err" th:text="${linkError}"></div>
+    <main class="hub-content">
+      <div class="hub-container">
+        <header class="hub-pagehead">
+          <h1 class="hub-pagehead__title">서비스 링크 관리</h1>
+          <p class="hub-pagehead__sub">공용 링크를 추가·수정·삭제하고 분류 순서를 조정합니다.</p>
+        </header>
 
-    <section class="lh-grid">
-      <aside class="lh-panel">
-        <div class="lh-panel__head">링크 추가</div>
-        <form class="lh-form" th:action="@{/admin/company-links}" method="post">
-          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-          <label class="lh-field">
-            <span class="lh-label">이름</span>
-            <input class="lh-input" type="text" name="title" maxlength="100" required placeholder="예: 상담 CRM" />
-          </label>
-          <label class="lh-field">
-            <span class="lh-label">URL</span>
-            <input class="lh-input" type="url" name="url" maxlength="500" required placeholder="https://example.com" />
-          </label>
-          <label class="lh-field">
-            <span class="lh-label">분류</span>
-            <input class="lh-input" type="text" name="category" maxlength="80" placeholder="예: 운영" />
-          </label>
-          <label class="lh-field">
-            <span class="lh-label">정렬 순서</span>
-            <input class="lh-input" type="number" name="sortOrder" min="0" max="9999" value="0" />
-          </label>
-          <label class="lh-field">
-            <span class="lh-label">설명</span>
-            <textarea class="lh-textarea" name="description" maxlength="500" placeholder="간단한 설명"></textarea>
-          </label>
-          <div class="lh-actions">
-            <button class="lh-btn lh-btn--primary" type="submit">추가</button>
-          </div>
-        </form>
+        <div th:if="${linkMessage}" class="hub-alert hub-alert--ok" th:text="${linkMessage}"></div>
+        <div th:if="${linkError}" class="hub-alert hub-alert--err" th:text="${linkError}"></div>
 
-        <!-- 분류 순서 관리 -->
-        <div th:if="${categories != null and !categories.isEmpty()}">
-          <div class="lh-section-title">분류 순서</div>
-          <div class="lh-cat-list" id="catOrderList">
-            <div class="lh-cat-row" th:each="cat : ${categories}">
-              <span class="lh-cat-name" th:text="${cat.category_name} ?: '(미분류)'">분류명</span>
-              <input class="lh-cat-order" type="number" min="0" max="9999"
-                     th:value="${cat.sort_order}"
-                     th:data-cat="${cat.category_name}" />
-            </div>
-          </div>
-          <div class="lh-actions lh-actions--panel">
-            <span id="catOrderMsg" style="font-size:12px;color:var(--lh-brand);display:none;">저장됐습니다.</span>
-            <button class="lh-btn lh-btn--primary" type="button"
-                    th:data-url="@{/admin/company-links/category-order}"
-                    onclick="saveCategoryOrder(this)">순서 저장</button>
-          </div>
-        </div>
-      </aside>
+        <section class="adm-grid">
+          <aside class="adm-panel">
+            <div class="adm-panel__head">링크 추가</div>
+            <form class="lh-form" th:action="@{/admin/company-links}" method="post">
+              <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+              <label class="lh-field"><span class="lh-label">이름</span>
+                <input class="lh-input" type="text" name="title" maxlength="100" required placeholder="예: 상담 CRM" /></label>
+              <label class="lh-field"><span class="lh-label">URL</span>
+                <input class="lh-input" type="url" name="url" maxlength="500" required placeholder="https://example.com" /></label>
+              <label class="lh-field"><span class="lh-label">분류</span>
+                <input class="lh-input" type="text" name="category" maxlength="80" placeholder="예: 운영" /></label>
+              <label class="lh-field"><span class="lh-label">정렬 순서</span>
+                <input class="lh-input" type="number" name="sortOrder" min="0" max="9999" value="0" /></label>
+              <label class="lh-field"><span class="lh-label">설명</span>
+                <textarea class="lh-textarea" name="description" maxlength="500" placeholder="간단한 설명"></textarea></label>
+              <div class="lh-actions"><button class="lh-btn lh-btn--primary" type="submit">추가</button></div>
+            </form>
 
-      <div class="lh-panel lh-panel--list">
-        <div class="lh-panel__head">관리 목록</div>
-        <div class="lh-manage-search" th:if="${links != null and !#lists.isEmpty(links)}">
-          <input class="lh-input" type="search" id="manageSearch" placeholder="이름 또는 분류 검색" autocomplete="off" aria-label="링크 검색" />
-        </div>
-        <div class="lh-empty" th:if="${links == null or #lists.isEmpty(links)}">등록된 링크가 없습니다.</div>
-
-        <div class="lh-manage-groups" th:if="${linkGroups != null and !linkGroups.isEmpty()}">
-          <details class="lh-manage-group" th:each="entry : ${linkGroups}" open>
-            <summary class="lh-manage-group__head">
-              <span th:text="${entry.key}">분류</span>
-              <span class="lh-category__count" th:text="|${#lists.size(entry.value)}개|">0개</span>
-            </summary>
-            <div class="lh-manage-list">
-              <div class="lh-manage-row" th:each="link : ${entry.value}">
-                <details class="lh-manage-edit">
-                  <summary>
-                    <div class="lh-manage-title" th:text="${link.title}">서비스명</div>
-                  </summary>
-                  <form class="lh-edit-form" th:action="@{/admin/company-links/{id}(id=${link.id})}" method="post">
-                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                    <div class="lh-edit-grid">
-                      <label class="lh-field">
-                        <span class="lh-label">이름</span>
-                        <input class="lh-input" type="text" name="title" maxlength="100" required th:value="${link.title}" />
-                      </label>
-                      <label class="lh-field">
-                        <span class="lh-label">분류</span>
-                        <input class="lh-input" type="text" name="category" maxlength="80" th:value="${link.category}" />
-                      </label>
-                      <label class="lh-field lh-field--wide">
-                        <span class="lh-label">URL</span>
-                        <input class="lh-input" type="url" name="url" maxlength="500" required th:value="${link.url}" />
-                      </label>
-                      <label class="lh-field">
-                        <span class="lh-label">정렬 순서</span>
-                        <input class="lh-input" type="number" name="sortOrder" min="0" max="9999" th:value="${link.sortOrder}" />
-                      </label>
-                      <label class="lh-field lh-field--wide">
-                        <span class="lh-label">설명</span>
-                        <textarea class="lh-textarea" name="description" maxlength="500" th:text="${link.description}"></textarea>
-                      </label>
-                    </div>
-                    <div class="lh-actions">
-                      <button class="lh-btn lh-btn--primary" type="submit">수정</button>
-                    </div>
-                  </form>
-                </details>
-                <div class="lh-delete-wrap">
-                  <button class="lh-btn lh-btn--danger" type="button"
-                          onclick="this.hidden=true;this.nextElementSibling.hidden=false">삭제</button>
-                  <form class="lh-delete-confirm" th:action="@{/admin/company-links/{id}/delete(id=${link.id})}" method="post" hidden>
-                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                    <button class="lh-btn lh-btn--danger" type="submit">확인</button>
-                    <button class="lh-btn lh-btn--ghost" type="button"
-                            onclick="this.closest('.lh-delete-confirm').hidden=true;this.closest('.lh-delete-confirm').previousElementSibling.hidden=false">취소</button>
-                  </form>
+            <div th:if="${categories != null and !categories.isEmpty()}">
+              <div class="lh-section-title">분류 순서</div>
+              <div class="lh-cat-list" id="catOrderList">
+                <div class="lh-cat-row" th:each="cat : ${categories}">
+                  <span class="lh-cat-name" th:text="${cat.category_name} ?: '(미분류)'">분류명</span>
+                  <input class="lh-cat-order" type="number" min="0" max="9999"
+                         th:value="${cat.sort_order}" th:data-cat="${cat.category_name}" />
                 </div>
               </div>
+              <div class="lh-actions lh-actions--panel">
+                <span id="catOrderMsg" style="font-size:12px;color:var(--accent);display:none;">저장됐습니다.</span>
+                <button class="lh-btn lh-btn--primary" type="button"
+                        th:data-url="@{/admin/company-links/category-order}"
+                        onclick="saveCategoryOrder(this)">순서 저장</button>
+              </div>
             </div>
-          </details>
-        </div>
+          </aside>
+
+          <div class="adm-panel">
+            <div class="adm-panel__head">관리 목록</div>
+            <div class="lh-manage-search" th:if="${links != null and !#lists.isEmpty(links)}">
+              <input class="lh-input" type="search" id="manageSearch" placeholder="이름 또는 분류 검색" autocomplete="off" aria-label="링크 검색" />
+            </div>
+            <div class="lh-empty" th:if="${links == null or #lists.isEmpty(links)}">등록된 링크가 없습니다.</div>
+
+            <div class="lh-manage-groups" th:if="${linkGroups != null and !linkGroups.isEmpty()}">
+              <details class="lh-manage-group" th:each="entry : ${linkGroups}" open>
+                <summary class="lh-manage-group__head">
+                  <span th:text="${entry.key}">분류</span>
+                  <span class="lh-category__count" th:text="|${#lists.size(entry.value)}개|">0개</span>
+                </summary>
+                <div class="lh-manage-list">
+                  <div class="lh-manage-row" th:each="link : ${entry.value}">
+                    <details class="lh-manage-edit">
+                      <summary><div class="lh-manage-title" th:text="${link.title}">서비스명</div></summary>
+                      <form class="lh-edit-form" th:action="@{/admin/company-links/{id}(id=${link.id})}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                        <div class="lh-edit-grid">
+                          <label class="lh-field"><span class="lh-label">이름</span>
+                            <input class="lh-input" type="text" name="title" maxlength="100" required th:value="${link.title}" /></label>
+                          <label class="lh-field"><span class="lh-label">분류</span>
+                            <input class="lh-input" type="text" name="category" maxlength="80" th:value="${link.category}" /></label>
+                          <label class="lh-field lh-field--wide"><span class="lh-label">URL</span>
+                            <input class="lh-input" type="url" name="url" maxlength="500" required th:value="${link.url}" /></label>
+                          <label class="lh-field"><span class="lh-label">정렬 순서</span>
+                            <input class="lh-input" type="number" name="sortOrder" min="0" max="9999" th:value="${link.sortOrder}" /></label>
+                          <label class="lh-field lh-field--wide"><span class="lh-label">설명</span>
+                            <textarea class="lh-textarea" name="description" maxlength="500" th:text="${link.description}"></textarea></label>
+                        </div>
+                        <div class="lh-actions"><button class="lh-btn lh-btn--primary" type="submit">수정</button></div>
+                      </form>
+                    </details>
+                    <div class="lh-delete-wrap">
+                      <button class="lh-btn lh-btn--danger" type="button"
+                              onclick="this.hidden=true;this.nextElementSibling.hidden=false">삭제</button>
+                      <form class="lh-delete-confirm" th:action="@{/admin/company-links/{id}/delete(id=${link.id})}" method="post" hidden>
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                        <button class="lh-btn lh-btn--danger" type="submit">확인</button>
+                        <button class="lh-btn lh-btn--ghost" type="button"
+                                onclick="this.closest('.lh-delete-confirm').hidden=true;this.closest('.lh-delete-confirm').previousElementSibling.hidden=false">취소</button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </div>
+        </section>
       </div>
-    </section>
-  </main>
+    </main>
+  </div>
   <script>
     (() => {
       const input = document.getElementById('manageSearch');
