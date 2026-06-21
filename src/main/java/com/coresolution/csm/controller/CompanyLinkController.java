@@ -17,8 +17,11 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.coresolution.csm.serivce.CompanyLinkService;
+import com.coresolution.csm.serivce.HubFavoriteService;
 import com.coresolution.csm.vo.CompanyLink;
+import com.coresolution.csm.vo.HubMemberSession;
 import com.coresolution.csm.vo.Userdata;
+import com.coresolution.csm.web.HubSessions;
 
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -28,14 +31,22 @@ import lombok.RequiredArgsConstructor;
 public class CompanyLinkController {
 
     private final CompanyLinkService companyLinkService;
+    private final HubFavoriteService hubFavoriteService;
 
     @GetMapping("/links")
-    public String links(Model model) {
+    public String links(Model model, HttpSession session) {
         List<CompanyLink> links = companyLinkService.listActiveLinks();
         model.addAttribute("links", links);
         model.addAttribute("linkGroups", groupByCategory(links));
         model.addAttribute("categories", companyLinkService.listCategories());
         model.addAttribute("canManageLinks", true);
+        // 로그인 상태면 개인 페이지 진입을, 아니면 로그인 버튼을 상단바에 노출(공개 허브는 항상 접근 가능).
+        HubMemberSession hubMember = HubSessions.current(session);
+        model.addAttribute("hubMember", hubMember);
+        // 로그인 시에만 ★ 채움 표시용 즐겨찾기 link_id 집합을 내려준다.
+        model.addAttribute("favoriteLinkIds", hubMember == null
+                ? java.util.Set.of()
+                : new java.util.HashSet<>(hubFavoriteService.listFavoriteLinkIds(hubMember.getId())));
         return "design/company-links";
     }
 

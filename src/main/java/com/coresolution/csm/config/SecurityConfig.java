@@ -46,6 +46,9 @@ public class SecurityConfig {
                         "/admin/company-links", "/admin/company-links/**",
                         "/csm/admin/company-links", "/csm/admin/company-links/**",
                         "/api/company-links", "/csm/api/company-links",
+                        // 허브 개인화: Security 레이어는 전부 permitAll로 두고,
+                        // /hub/me/** 인가는 HubAuthInterceptor + 컨트롤러 가드 + member_id 쿼리로 차단(독립 hub_member 신원).
+                        "/hub/**", "/csm/hub/**",
                         "/mediplat/sso/entry", "/csm/mediplat/sso/entry",
                         "/room-board", "/csm/room-board",
                         "/room-board/return", "/csm/room-board/return",

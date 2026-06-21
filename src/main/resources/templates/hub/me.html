@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="_csrf" th:content="${_csrf.token}" />
+  <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+  <title>내 페이지 · 서비스 링크</title>
+  <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
+  <style>
+    :root { --lh-bg: #f6f7f9; --lh-card: #fff; --lh-border: #e5e7eb; --lh-text: #111827;
+      --lh-muted: #6b7280; --lh-brand: #0b8f6f; --lh-brand-dark: #067257; --lh-danger: #dc2626; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--lh-bg); color: var(--lh-text);
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", sans-serif; }
+    .me-shell { width: min(1100px, calc(100% - 48px)); margin: 0 auto; padding: 32px 0 48px; }
+    .me-head { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+    .me-title { margin: 0; font-size: 26px; font-weight: 800; }
+    .me-subtitle { margin: 6px 0 0; color: var(--lh-muted); font-size: 14px; }
+    .me-userbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .me-btn { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border: 1px solid var(--lh-border);
+      border-radius: 8px; background: #fff; color: var(--lh-text); font-size: 13px; font-weight: 600; cursor: pointer;
+      text-decoration: none; line-height: 1; }
+    .me-btn:hover { border-color: var(--lh-brand); color: var(--lh-brand-dark); }
+    .me-btn--brand { background: var(--lh-brand); border-color: var(--lh-brand); color: #fff; }
+    .me-btn--brand:hover { background: var(--lh-brand-dark); border-color: var(--lh-brand-dark); color: #fff; }
+    .me-alert { margin-bottom: 16px; padding: 10px 14px; border-radius: 8px; font-size: 14px; }
+    .me-alert--ok { background: #ecfdf5; color: var(--lh-brand-dark); }
+    .me-alert--err { background: #fef2f2; color: var(--lh-danger); }
+    .me-panel { background: var(--lh-card); border: 1px solid var(--lh-border); border-radius: 10px; padding: 18px 18px 20px; margin-bottom: 18px; }
+    .me-panel__title { margin: 0 0 14px; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .me-panel__count { color: var(--lh-muted); font-size: 13px; font-weight: 500; }
+    .me-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+    .me-card { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid var(--lh-border);
+      border-radius: 8px; text-decoration: none; color: var(--lh-text); background: #fff; }
+    .me-card:hover { border-color: var(--lh-brand); }
+    .me-card__title { font-size: 14px; font-weight: 700; }
+    .me-card__meta { font-size: 12px; color: var(--lh-muted); word-break: break-all; }
+    .me-empty { color: var(--lh-muted); font-size: 14px; padding: 6px 0; }
+    .me-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid #f1f5f9; }
+    .me-row:first-of-type { border-top: 0; }
+    .me-row__main { flex: 1; min-width: 0; }
+    .me-row__title { font-size: 14px; font-weight: 600; }
+    .me-row__url { font-size: 12px; color: var(--lh-muted); word-break: break-all; }
+    .me-row__actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .me-form { display: grid; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--lh-border); }
+    .me-form__row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .me-field label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+    .me-field input { width: 100%; height: 38px; padding: 0 10px; border: 1px solid var(--lh-border); border-radius: 8px; font-size: 14px; }
+    .me-field input:focus { outline: 2px solid var(--lh-brand); border-color: var(--lh-brand); }
+    .me-edit { margin-top: 8px; }
+    .me-edit__inner { display: grid; gap: 8px; padding: 10px 0 4px; }
+    .me-link-danger { color: var(--lh-danger); }
+    @media (max-width: 600px) { .me-form__row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="me-shell">
+    <header class="me-head">
+      <div>
+        <h1 class="me-title">내 페이지</h1>
+        <p class="me-subtitle" th:text="|${hubMember.name}님, 즐겨찾기와 개인 링크를 관리하세요.|">홍길동님</p>
+      </div>
+      <div class="me-userbar">
+        <a class="me-btn" th:href="@{/links}">허브로</a>
+        <a class="me-btn" th:href="@{/hub/me/account}">계정 설정</a>
+        <form th:action="@{/hub/logout}" method="post" style="display:inline">
+          <button type="submit" class="me-btn">로그아웃</button>
+        </form>
+      </div>
+    </header>
+
+    <div th:if="${customMessage}" class="me-alert me-alert--ok" th:text="${customMessage}"></div>
+    <div th:if="${customError}" class="me-alert me-alert--err" th:text="${customError}"></div>
+
+    <!-- 즐겨찾기 -->
+    <section class="me-panel">
+      <h2 class="me-panel__title">★ 내 즐겨찾기
+        <span class="me-panel__count" th:text="|${#lists.size(favorites)}개|">0개</span>
+      </h2>
+      <div class="me-empty" th:if="${favorites == null or #lists.isEmpty(favorites)}">
+        아직 즐겨찾기가 없습니다. <a th:href="@{/links}">허브</a>에서 ★를 눌러 추가하세요.
+      </div>
+      <div class="me-grid" th:if="${favorites != null and !#lists.isEmpty(favorites)}">
+        <a class="me-card" th:each="link : ${favorites}" target="_blank" rel="noopener noreferrer"
+           th:href="@{/hub/go/link/{id}(id=${link.id})}">
+          <span class="me-card__title" th:text="${link.title}">서비스명</span>
+          <span class="me-card__meta" th:text="${link.category}">분류</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- 커스텀 링크 -->
+    <section class="me-panel">
+      <h2 class="me-panel__title">내 커스텀 링크
+        <span class="me-panel__count" th:text="|${#lists.size(customLinks)}개|">0개</span>
+      </h2>
+      <div class="me-empty" th:if="${customLinks == null or #lists.isEmpty(customLinks)}">아직 추가한 링크가 없습니다.</div>
+      <div th:each="link : ${customLinks}" class="me-row">
+        <div class="me-row__main">
+          <div class="me-row__title" th:text="${link.title}">제목</div>
+          <div class="me-row__url">
+            <a target="_blank" rel="noopener noreferrer" th:href="@{/hub/go/custom/{id}(id=${link.id})}" th:text="${link.url}">https://...</a>
+            <span th:if="${link.memo != null and !#strings.isEmpty(link.memo)}" th:text="| · ${link.memo}|"></span>
+          </div>
+        </div>
+        <div class="me-row__actions">
+          <button type="button" class="me-btn"
+                  th:onclick="|document.getElementById('edit-' + ${link.id}).hidden = !document.getElementById('edit-' + ${link.id}).hidden|">수정</button>
+          <form th:action="@{/hub/me/custom-links/{id}/delete(id=${link.id})}" method="post"
+                onsubmit="return confirm('이 링크를 삭제할까요?');">
+            <button type="submit" class="me-btn me-link-danger">삭제</button>
+          </form>
+        </div>
+      </div>
+      <div class="me-edit" th:each="link : ${customLinks}" th:id="'edit-' + ${link.id}" hidden>
+        <form class="me-edit__inner" th:action="@{/hub/me/custom-links/{id}(id=${link.id})}" method="post">
+          <div class="me-form__row">
+            <div class="me-field"><label>이름</label><input type="text" name="title" th:value="${link.title}" required /></div>
+            <div class="me-field"><label>URL</label><input type="url" name="url" th:value="${link.url}" required /></div>
+          </div>
+          <div class="me-field"><label>메모</label><input type="text" name="memo" th:value="${link.memo}" /></div>
+          <div><button type="submit" class="me-btn me-btn--brand">저장</button></div>
+        </form>
+      </div>
+
+      <form class="me-form" th:action="@{/hub/me/custom-links}" method="post">
+        <div class="me-form__row">
+          <div class="me-field"><label for="newTitle">이름</label><input type="text" id="newTitle" name="title" required /></div>
+          <div class="me-field"><label for="newUrl">URL (http/https)</label><input type="url" id="newUrl" name="url" placeholder="https://" required /></div>
+        </div>
+        <div class="me-field"><label for="newMemo">메모 (선택)</label><input type="text" id="newMemo" name="memo" /></div>
+        <div><button type="submit" class="me-btn me-btn--brand">+ 커스텀 링크 추가</button></div>
+      </form>
+    </section>
+
+    <!-- 최근 사용 -->
+    <section class="me-panel">
+      <h2 class="me-panel__title">최근 사용
+        <span class="me-panel__count" th:text="|${#lists.size(recent)}개|">0개</span>
+      </h2>
+      <div class="me-empty" th:if="${recent == null or #lists.isEmpty(recent)}">최근 사용한 링크가 없습니다.</div>
+      <div th:each="item : ${recent}" class="me-row">
+        <div class="me-row__main">
+          <div class="me-row__title" th:text="${item.title}">제목</div>
+          <div class="me-row__url">
+            <a target="_blank" rel="noopener noreferrer" th:href="${item.url}" th:text="${item.url}">https://...</a>
+          </div>
+        </div>
+        <div class="me-row__actions" style="color: var(--lh-muted); font-size: 12px;">
+          <span th:text="${item.accessedAt}">2026-06-21 12:00:00</span>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

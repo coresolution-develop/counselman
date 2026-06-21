@@ -41,6 +41,22 @@
     }
     .lh-title { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 0; }
     .lh-subtitle { margin: 8px 0 0; color: var(--lh-muted); font-size: 14px; }
+    .lh-userbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .lh-userbar__name { font-size: 14px; font-weight: 600; color: var(--lh-text); }
+    .lh-userbtn { display: inline-flex; align-items: center; height: 34px; padding: 0 14px;
+      border: 1px solid var(--lh-border); border-radius: 8px; background: #fff; color: var(--lh-text);
+      font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; line-height: 1; }
+    .lh-userbtn:hover { border-color: var(--lh-brand); color: var(--lh-brand-dark); }
+    .lh-userbtn--brand { background: var(--lh-brand); border-color: var(--lh-brand); color: #fff; }
+    .lh-userbtn--brand:hover { background: var(--lh-brand-dark); border-color: var(--lh-brand-dark); color: #fff; }
+    .lh-link-wrap { position: relative; }
+    .lh-link-wrap:has(.lh-fav) .lh-link__top { padding-right: 36px; }
+    .lh-fav { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; padding: 0;
+      display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--lh-border);
+      border-radius: 8px; background: #fff; color: #cbd5e1; font-size: 16px; line-height: 1; cursor: pointer; z-index: 2; }
+    .lh-fav:hover { border-color: var(--lh-brand); color: var(--lh-brand); }
+    .lh-fav--on { color: #f59e0b; border-color: #f59e0b; }
+    .lh-fav[disabled] { opacity: .55; cursor: default; }
     .lh-grid {
       display: grid;
       grid-template-columns: minmax(0, 1fr) 280px 320px;
@@ -360,6 +376,16 @@
         <h1 class="lh-title">서비스 링크</h1>
         <p class="lh-subtitle">회사에서 운영하는 사이트를 한 곳에서 바로 열 수 있습니다.</p>
       </div>
+      <div class="lh-userbar">
+        <a th:if="${hubMember == null}" class="lh-userbtn lh-userbtn--brand" th:href="@{/hub/login}">로그인</a>
+        <th:block th:if="${hubMember != null}">
+          <span class="lh-userbar__name" th:text="|${hubMember.name}님|">홍길동님</span>
+          <a class="lh-userbtn lh-userbtn--brand" th:href="@{/hub/me}">내 페이지</a>
+          <form th:action="@{/hub/logout}" method="post" style="display:inline">
+            <button type="submit" class="lh-userbtn">로그아웃</button>
+          </form>
+        </th:block>
+      </div>
     </header>
 
     <div th:if="${linkMessage}" class="lh-alert lh-alert--ok" th:text="${linkMessage}"></div>
@@ -387,15 +413,25 @@
               <span class="lh-category__count" th:text="|${#lists.size(entry.value)}개|">0개</span>
             </div>
             <div class="lh-list">
-              <a class="lh-link" th:each="link : ${entry.value}" th:href="${link.url}" target="_blank" rel="noopener noreferrer"
-                 th:aria-label="|${link.title} 열기|">
-                <span class="lh-link__top">
-                  <span class="lh-link__title" th:text="${link.title}">서비스명</span>
-                  <span class="lh-link__category" th:if="${link.category != null and !#strings.isEmpty(link.category)}" th:text="${link.category}">분류</span>
-                </span>
-                <span class="lh-link__desc" th:text="${link.description}">설명</span>
-                <span class="lh-link__url" th:text="${link.url}" aria-hidden="true">https://example.com</span>
-              </a>
+              <div class="lh-link-wrap" th:each="link : ${entry.value}">
+                <a class="lh-link" target="_blank" rel="noopener noreferrer"
+                   th:href="${hubMember != null} ? @{/hub/go/link/{id}(id=${link.id})} : ${link.url}"
+                   th:aria-label="|${link.title} 열기|">
+                  <span class="lh-link__top">
+                    <span class="lh-link__title" th:text="${link.title}">서비스명</span>
+                    <span class="lh-link__category" th:if="${link.category != null and !#strings.isEmpty(link.category)}" th:text="${link.category}">분류</span>
+                  </span>
+                  <span class="lh-link__desc" th:text="${link.description}">설명</span>
+                  <span class="lh-link__url" th:text="${link.url}" aria-hidden="true">https://example.com</span>
+                </a>
+                <button th:if="${hubMember != null}" type="button" class="lh-fav"
+                        th:classappend="${favoriteLinkIds.contains(link.id)} ? ' lh-fav--on' : ''"
+                        th:data-link-id="${link.id}"
+                        th:data-toggle-url="@{/hub/me/favorites/toggle}"
+                        th:data-login-url="@{/hub/login}"
+                        th:aria-pressed="${favoriteLinkIds.contains(link.id)}"
+                        aria-label="즐겨찾기 토글" title="즐겨찾기에 추가/해제">★</button>
+              </div>
             </div>
           </section>
         </div>
@@ -590,6 +626,41 @@
         alert('저장 중 오류: ' + e.message);
       }
     }
+
+    // ★ 즐겨찾기 토글 (로그인 회원만 버튼 노출). 리로드 없이 별 상태만 갱신.
+    (() => {
+      const csrfToken = document.querySelector('meta[name="_csrf"]')?.content || '';
+      document.querySelectorAll('.lh-fav').forEach(btn => {
+        btn.addEventListener('click', async (event) => {
+          event.preventDefault();
+          if (btn.disabled) return;
+          const linkId = btn.dataset.linkId;
+          const url = btn.dataset.toggleUrl;
+          if (!linkId || !url) return;
+          btn.disabled = true;
+          try {
+            const params = new URLSearchParams({ linkId, _csrf: csrfToken });
+            const res = await fetch(url, {
+              method: 'POST',
+              headers: { 'X-Requested-With': 'XMLHttpRequest' },
+              body: params
+            });
+            if (res.status === 401) { window.location.href = btn.dataset.loginUrl || '/links'; return; }
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && typeof data.favorited === 'boolean') {
+              btn.classList.toggle('lh-fav--on', data.favorited);
+              btn.setAttribute('aria-pressed', String(data.favorited));
+            } else {
+              alert(data.error || '즐겨찾기 처리에 실패했습니다.');
+            }
+          } catch (err) {
+            alert('오류: ' + err.message);
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      });
+    })();
   </script>
 </body>
 </html>
