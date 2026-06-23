@@ -6,9 +6,11 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CSM_PORT="${CSM_PORT:-8081}"
 MEDIPLAT_PORT="${MEDIPLAT_PORT:-8082}"
 CANCER_TREATMENT_PORT="${CANCER_TREATMENT_PORT:-8083}"
+LINKS_PORT="${LINKS_PORT:-8085}"
 CSM_PID=""
 MEDIPLAT_PID=""
 CANCER_TREATMENT_PID=""
+LINKS_PID=""
 
 load_local_env() {
   local env_file="${ROOT_DIR}/.env.local"
@@ -57,6 +59,9 @@ init_local_defaults() {
   # 빈 로컬 DB에서 csm 기동 실패를 유발하는 bootstrap 기본값 OFF
   export PLATFORM_ADMIN_BOOTSTRAP_ENABLED="${PLATFORM_ADMIN_BOOTSTRAP_ENABLED:-false}"
   export PLATFORM_ADMIN_SYNC_PASSWORD_ON_STARTUP="${PLATFORM_ADMIN_SYNC_PASSWORD_ON_STARTUP:-false}"
+
+  # 로컬은 http라 Secure 쿠키가 안 실린다 → hub "이 기기 기억" 기능 로컬 테스트용 비활성
+  export HUB_REMEMBER_COOKIE_SECURE="${HUB_REMEMBER_COOKIE_SECURE:-false}"
 
   # OPENAI_API_KEY가 있으면 로컬 MediPlat 뉴스레터 AI 추천을 자동 활성화
   if [[ -n "${OPENAI_API_KEY:-}" ]]; then
@@ -116,6 +121,9 @@ cleanup() {
   if [[ -n "${CANCER_TREATMENT_PID}" ]] && kill -0 "${CANCER_TREATMENT_PID}" >/dev/null 2>&1; then
     kill "${CANCER_TREATMENT_PID}" >/dev/null 2>&1 || true
   fi
+  if [[ -n "${LINKS_PID}" ]] && kill -0 "${LINKS_PID}" >/dev/null 2>&1; then
+    kill "${LINKS_PID}" >/dev/null 2>&1 || true
+  fi
 
   wait >/dev/null 2>&1 || true
   exit "${exit_code}"
@@ -151,6 +159,16 @@ start_cancer_treatment() {
   CANCER_TREATMENT_PID=$!
 }
 
+start_links() {
+  (
+    cd "${ROOT_DIR}/links"
+    exec ../gradlew bootRun --console=plain
+  ) \
+    > >(sed -u 's/^/[links] /') \
+    2> >(sed -u 's/^/[links] /' >&2) &
+  LINKS_PID=$!
+}
+
 monitor_processes() {
   while true; do
     if ! kill -0 "${CSM_PID}" >/dev/null 2>&1; then
@@ -168,6 +186,11 @@ monitor_processes() {
       return $?
     fi
 
+    if ! kill -0 "${LINKS_PID}" >/dev/null 2>&1; then
+      wait "${LINKS_PID}"
+      return $?
+    fi
+
     sleep 1
   done
 }
@@ -180,11 +203,13 @@ init_local_defaults
 kill_port "${CSM_PORT}" "csm"
 kill_port "${MEDIPLAT_PORT}" "mediplat"
 kill_port "${CANCER_TREATMENT_PORT}" "cancer-treatment"
+kill_port "${LINKS_PORT}" "links"
 
 echo "Starting local services..."
 echo "- CounselMan       : http://localhost:${CSM_PORT}/csm/login"
 echo "- MediPlat         : http://localhost:${MEDIPLAT_PORT}/login"
 echo "- Cancer Treatment : http://localhost:${CANCER_TREATMENT_PORT}/login-required"
+echo "- Links (hub)      : http://localhost:${LINKS_PORT}/links"
 echo "- JAVA_HOME        : ${JAVA_HOME}"
 echo "- SPRING_PROFILE   : ${SPRING_PROFILES_ACTIVE}"
 echo "- DB_URL           : ${SPRING_DATASOURCE_URL}"
@@ -192,4 +217,5 @@ echo "- DB_URL           : ${SPRING_DATASOURCE_URL}"
 start_csm
 start_mediplat
 start_cancer_treatment
+start_links
 monitor_processes

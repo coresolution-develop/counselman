@@ -150,10 +150,24 @@ tasks.register('smsProdJar', GradleBuild) {
 	tasks = ['prodJar']
 }
 
-tasks.register('packageDevDeploy') {
-	dependsOn 'devWar', 'mediplatDevJar', 'cancerTreatmentDevJar', 'smsDevJar'
+tasks.register('linksDevJar', GradleBuild) {
 	group = 'build'
-	description = 'Build CSM DEV WAR, MediPlat DEV JAR, Cancer Treatment DEV JAR, and SMS DEV JAR, then collect them in one folder'
+	description = 'Build Links (hub) JAR for DEV deployment'
+	dir = file('links')
+	tasks = ['devJar']
+}
+
+tasks.register('linksProdJar', GradleBuild) {
+	group = 'build'
+	description = 'Build Links (hub) JAR for PROD deployment'
+	dir = file('links')
+	tasks = ['prodJar']
+}
+
+tasks.register('packageDevDeploy') {
+	dependsOn 'devWar', 'mediplatDevJar', 'cancerTreatmentDevJar', 'smsDevJar', 'linksDevJar'
+	group = 'build'
+	description = 'Build CSM DEV WAR, MediPlat DEV JAR, Cancer Treatment DEV JAR, SMS DEV JAR, and Links DEV JAR, then collect them in one folder'
 
 	doLast {
 		def deployDir = file("$buildDir/deploy/dev")
@@ -165,6 +179,7 @@ tasks.register('packageDevDeploy') {
 			from "${projectDir}/mediplat/build/libs/mediplat-dev.jar"
 			from "${projectDir}/cancer-treatment/build/libs/cancer-treatment-dev.jar"
 			from "${projectDir}/sms/build/libs/sms-dev.jar"
+			from "${projectDir}/links/build/libs/links-dev.jar"
 			into deployDir
 		}
 
@@ -173,13 +188,14 @@ tasks.register('packageDevDeploy') {
 		println "- ${deployDir}/mediplat-dev.jar"
 		println "- ${deployDir}/cancer-treatment-dev.jar"
 		println "- ${deployDir}/sms-dev.jar"
+		println "- ${deployDir}/links-dev.jar"
 	}
 }
 
 tasks.register('packageProdDeploy') {
-	dependsOn 'prodWar', 'mediplatProdJar', 'smsProdJar'
+	dependsOn 'prodWar', 'mediplatProdJar', 'smsProdJar', 'linksProdJar'
 	group = 'build'
-	description = 'Build CSM PROD WAR, MediPlat PROD JAR, and SMS PROD JAR, then collect them in one folder'
+	description = 'Build CSM PROD WAR, MediPlat PROD JAR, SMS PROD JAR, and Links PROD JAR, then collect them in one folder'
 
 	doLast {
 		def deployDir = file("$buildDir/deploy/prod")
@@ -190,6 +206,7 @@ tasks.register('packageProdDeploy') {
 			from "$buildDir/libs/csm-prod.war"
 			from "${projectDir}/mediplat/build/libs/mediplat-prod.jar"
 			from "${projectDir}/sms/build/libs/sms-prod.jar"
+			from "${projectDir}/links/build/libs/links-prod.jar"
 			into deployDir
 		}
 
@@ -197,5 +214,6 @@ tasks.register('packageProdDeploy') {
 		println "- ${deployDir}/csm-prod.war"
 		println "- ${deployDir}/mediplat-prod.jar"
 		println "- ${deployDir}/sms-prod.jar"
+		println "- ${deployDir}/links-prod.jar"
 	}
 }
