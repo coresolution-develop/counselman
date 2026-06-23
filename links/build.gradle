@@ -1,0 +1,72 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.4.10'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.coresolution'
+version = '0.0.1-SNAPSHOT'
+description = 'Company link hub — separately deployable from CounselMan (csm)'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    // spring-security: provides BCryptPasswordEncoder + keeps CSRF enabled so the
+    // hub templates' ${_csrf} tokens render. Hub auth itself is custom
+    // (HubAuthInterceptor + session), all routes are permitAll.
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    runtimeOnly 'com.mysql:mysql-connector-j'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    // In-memory DataSource so the context loads in tests without a live MySQL.
+    testRuntimeOnly 'com.h2database:h2'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+tasks.register('devJar') {
+    dependsOn 'bootJar'
+    group = 'build'
+    description = 'Build JAR for DEV deployment'
+
+    doLast {
+        def src = tasks.named('bootJar').get().archiveFile.get().asFile
+        copy {
+            from src
+            into "$buildDir/libs"
+            rename { 'links-dev.jar' }
+        }
+        println "DEV JAR created: ${buildDir}/libs/links-dev.jar"
+    }
+}
+
+tasks.register('prodJar') {
+    dependsOn 'bootJar'
+    group = 'build'
+    description = 'Build JAR for PROD deployment'
+
+    doLast {
+        def src = tasks.named('bootJar').get().archiveFile.get().asFile
+        copy {
+            from src
+            into "$buildDir/libs"
+            rename { 'links-prod.jar' }
+        }
+        println "PROD JAR created: ${buildDir}/libs/links-prod.jar"
+    }
+}

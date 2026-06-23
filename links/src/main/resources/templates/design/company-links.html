@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="_csrf" th:content="${_csrf.token}" />
+  <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+  <title>링크 허브</title>
+  <link rel="stylesheet" th:href="@{/assets/css/hub.css}" />
+</head>
+<body class="hub-body">
+  <div class="hub-layout">
+    <div th:replace="~{hub/fragments/shell :: sidebar('hub', ${hubMember})}"></div>
+
+    <main class="hub-content">
+      <div class="hub-container">
+        <header class="hub-pagehead">
+          <h1 class="hub-pagehead__title">서비스 링크</h1>
+          <p class="hub-pagehead__sub">회사에서 운영하는 사이트를 한 곳에서 바로 열 수 있습니다.</p>
+        </header>
+
+        <div class="hub-toolbar">
+          <a class="hub-btn hub-btn--sm" th:href="@{/admin/company-links}">링크 관리</a>
+        </div>
+
+        <!--/* 내 즐겨찾기: 로그인 + 1개 이상일 때만 렌더 */-->
+        <section class="hub-section" th:if="${hubMember != null and favorites != null and !#lists.isEmpty(favorites)}">
+          <div class="hub-section__head">
+            <h2 class="hub-section__title">내 즐겨찾기
+              <span class="hub-section__count" th:text="|${#lists.size(favorites)}개|">0개</span>
+            </h2>
+          </div>
+          <div class="hub-grid">
+            <div class="hub-card" data-fav-card th:each="link : ${favorites}">
+              <a class="hub-card__link" target="_blank" rel="noopener noreferrer"
+                 th:href="@{/hub/go/link/{id}(id=${link.id})}" th:aria-label="|${link.title} 열기|"></a>
+              <div class="hub-card__body">
+                <div class="hub-card__top">
+                  <span class="hub-card__title" th:text="${link.title}">서비스명</span>
+                </div>
+                <span class="hub-card__url" th:text="${link.url}">https://example.com</span>
+              </div>
+              <button type="button" class="lh-fav lh-fav--on" aria-pressed="true" title="즐겨찾기 해제"
+                      th:data-link-id="${link.id}"
+                      th:data-toggle-url="@{/hub/me/favorites/toggle}"
+                      th:data-login-url="@{/hub/login}"
+                      data-remove-on-unfav>★</button>
+            </div>
+          </div>
+        </section>
+
+        <div class="hub-empty" th:if="${links == null or #lists.isEmpty(links)}">
+          <div class="hub-empty__text">등록된 링크가 없습니다.</div>
+        </div>
+
+        <section class="hub-cat" th:if="${linkGroups != null and !linkGroups.isEmpty()}" th:each="entry : ${linkGroups}">
+          <div class="hub-cat__head">
+            <h2 class="hub-cat__title" th:text="${entry.key}">분류</h2>
+            <span class="hub-cat__count" th:text="|${#lists.size(entry.value)}개|">0개</span>
+          </div>
+          <div class="hub-grid">
+            <div class="hub-card" th:each="link : ${entry.value}">
+              <a class="hub-card__link" target="_blank" rel="noopener noreferrer"
+                 th:href="${hubMember != null} ? @{/hub/go/link/{id}(id=${link.id})} : ${link.url}"
+                 th:aria-label="|${link.title} 열기|"></a>
+              <div class="hub-card__body">
+                <div class="hub-card__top">
+                  <span class="hub-card__title" th:text="${link.title}">서비스명</span>
+                </div>
+                <span class="hub-card__desc" th:if="${link.description != null and !#strings.isEmpty(link.description)}" th:text="${link.description}">설명</span>
+                <span class="hub-card__url" th:text="${link.url}">https://example.com</span>
+              </div>
+              <button th:if="${hubMember != null}" type="button" class="lh-fav"
+                      th:classappend="${favoriteLinkIds.contains(link.id)} ? ' lh-fav--on' : ''"
+                      th:data-link-id="${link.id}"
+                      th:data-toggle-url="@{/hub/me/favorites/toggle}"
+                      th:data-login-url="@{/hub/login}"
+                      th:aria-pressed="${favoriteLinkIds.contains(link.id)}"
+                      aria-label="즐겨찾기 토글" title="즐겨찾기에 추가/해제">★</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script th:src="@{/js/hub.js}"></script>
+</body>
+</html>

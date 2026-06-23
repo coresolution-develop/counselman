@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="_csrf" th:content="${_csrf.token}" />
+  <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+  <title>계정 설정 · 링크 허브</title>
+  <link rel="stylesheet" th:href="@{/assets/css/hub.css}" />
+  <style>
+    .acc-panel { max-width: 520px; background: #fff; border: 1px solid var(--card-border);
+      border-radius: 14px; box-shadow: var(--card-shadow); padding: 20px; margin-bottom: 18px; }
+    .acc-panel__title { margin: 0 0 6px; font-size: 16px; font-weight: 800; color: var(--text-strong); }
+    .acc-panel__desc { margin: 0 0 16px; color: var(--text-muted); font-size: 13px; line-height: 1.5; }
+    .acc-field { margin-bottom: 14px; }
+    .acc-field label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: var(--text-body); }
+  </style>
+</head>
+<body class="hub-body">
+  <div class="hub-layout">
+    <div th:replace="~{hub/fragments/shell :: sidebar('account', ${hubMember})}"></div>
+
+    <main class="hub-content">
+      <div class="hub-container">
+        <header class="hub-pagehead">
+          <h1 class="hub-pagehead__title">계정 설정</h1>
+          <p class="hub-pagehead__sub" th:text="${hubMember.email}">user@coresolution.kr</p>
+        </header>
+
+        <div th:if="${accountMessage}" class="hub-alert hub-alert--ok" th:text="${accountMessage}"></div>
+        <div th:if="${accountError}" class="hub-alert hub-alert--err" th:text="${accountError}"></div>
+
+        <section class="acc-panel">
+          <h2 class="acc-panel__title">비밀번호 변경</h2>
+          <form th:action="@{/hub/me/account/password}" method="post">
+            <div class="acc-field">
+              <label for="currentPassword">현재 비밀번호</label>
+              <input class="hub-input" type="password" id="currentPassword" name="currentPassword" autocomplete="current-password" required />
+            </div>
+            <div class="acc-field">
+              <label for="newPassword">새 비밀번호</label>
+              <input class="hub-input" type="password" id="newPassword" name="newPassword" autocomplete="new-password" required />
+            </div>
+            <button type="submit" class="hub-btn hub-btn--primary">변경하기</button>
+          </form>
+        </section>
+
+        <section class="acc-panel">
+          <h2 class="acc-panel__title">기기 관리</h2>
+          <p class="acc-panel__desc">‘이 기기 기억하기’로 로그인한 다른 기기를 모두 로그아웃합니다. 분실·공용 단말에 로그인이 남아 있을 때 사용하세요. 현재 기기는 로그인 상태가 유지됩니다.</p>
+          <form th:action="@{/hub/me/account/logout-all}" method="post"
+                onsubmit="return confirm('다른 모든 기기에서 로그아웃할까요? 현재 기기는 유지됩니다.');">
+            <button type="submit" class="hub-btn">다른 모든 기기에서 로그아웃</button>
+          </form>
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
