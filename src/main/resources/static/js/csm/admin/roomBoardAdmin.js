@@ -126,7 +126,16 @@ document.addEventListener('DOMContentLoaded', () => {
       roomConfigPreviewBody.appendChild(tr);
     });
     roomConfigPreviewWrap.style.display = '';
-    roomConfigPasteMessage.textContent = `${data.message || '미리보기 완료'} / 인식 ${data.parsedCount || 0}건`;
+    const conflicts = Array.isArray(data.conflicts) ? data.conflicts : [];
+    if (conflicts.length) {
+      const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+      roomConfigPasteMessage.innerHTML =
+        `<span style="color:#c0392b;font-weight:600;">⚠️ 저장 불가 · 겹치는 기준정보 ${conflicts.length}건</span><br>`
+        + conflicts.map((c) => `· ${esc(c)}`).join('<br>')
+        + `<br><span style="color:#c0392b;">이전 기준정보를 먼저 마감(종료일 지정)한 뒤 저장하세요.</span>`;
+    } else {
+      roomConfigPasteMessage.textContent = `${data.message || '미리보기 완료'} / 인식 ${data.parsedCount || 0}건`;
+    }
   };
 
   document.getElementById('previewImportBtn')?.addEventListener('click', async () => {
