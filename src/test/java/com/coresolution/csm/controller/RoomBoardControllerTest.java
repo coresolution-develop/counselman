@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -27,6 +28,7 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.ui.Model;
 import org.springframework.web.server.ResponseStatusException;
@@ -164,6 +166,44 @@ class RoomBoardControllerTest {
         assertEquals("design/ward-status", view);
         assertEquals(Boolean.TRUE, model.getAttribute("popupMode"));
         verify(mediplatSsoService).validateRoomBoardViewer("FALH", "viewer1", 1893456000L, "sig");
+    }
+
+    @Test
+    void roomBoard_expiredToken_fallsThroughToLaunchSelfHeal() {
+        Model model = new ExtendedModelMap();
+        ReflectionTestUtils.setField(controller, "roomBoardLaunchUrl", "http://portal/launch/ROOM_BOARD");
+
+        // 서명은 유효하나 만료된 토큰 → TokenExpiredException
+        doThrow(new MediplatSsoService.TokenExpiredException("병실현황판 접근 토큰이 만료되었습니다."))
+                .when(mediplatSsoService).validateRoomBoardViewer("FALH", "viewer1", 1700000000L, "sig");
+
+        // 쿠키·세션 모두 없음 → 포털 런치로 self-heal redirect
+        String view = controller.roomBoard(
+                null, null, 1, null, null, null,
+                "FALH", "viewer1", 1700000000L, "sig",
+                model, new MockHttpSession(),
+                new MockHttpServletRequest(), new MockHttpServletResponse());
+
+        assertEquals("redirect:http://portal/launch/ROOM_BOARD", view);
+        verify(csmAuthService, never()).resolveInst(any());
+    }
+
+    @Test
+    void roomBoard_forgedToken_throwsForbidden() {
+        Model model = new ExtendedModelMap();
+
+        // 서명 위조 → 일반 IllegalArgumentException(만료 아님) → 하드 403 유지
+        doThrow(new IllegalArgumentException("병실현황판 접근 토큰이 올바르지 않습니다."))
+                .when(mediplatSsoService).validateRoomBoardViewer("FALH", "viewer1", 1893456000L, "sig");
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> controller.roomBoard(
+                null, null, 1, null, null, null,
+                "FALH", "viewer1", 1893456000L, "sig",
+                model, new MockHttpSession(),
+                new MockHttpServletRequest(), new MockHttpServletResponse()));
+
+        assertEquals(403, exception.getStatusCode().value());
+        assertEquals("병실현황판 접근 토큰이 올바르지 않습니다.", exception.getReason());
     }
 
     @Test

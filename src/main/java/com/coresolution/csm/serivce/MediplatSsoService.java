@@ -96,16 +96,18 @@ public class MediplatSsoService {
         if (!StringUtils.hasText(inst) || !StringUtils.hasText(userId) || !StringUtils.hasText(signature)) {
             throw new IllegalArgumentException("병실현황판 접근 토큰 파라미터가 누락되었습니다.");
         }
-        long now = Instant.now().getEpochSecond();
-        if (expires < now - allowedClockSkewSeconds) {
-            throw new IllegalArgumentException("병실현황판 접근 토큰이 만료되었습니다.");
-        }
-
+        // 서명을 먼저 검증한다: 위조(서명 불일치)는 즉시 거부 대상이고, 서명이 유효한데 만료된
+        // 경우만 별도 예외로 구분해 호출부가 self-heal(포털 재발급 유도)로 흘려보낼 수 있게 한다.
         String expectedSignature = signRoomBoardViewer(inst.trim(), userId.trim(), expires);
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.UTF_8),
                 signature.trim().getBytes(StandardCharsets.UTF_8))) {
             throw new IllegalArgumentException("병실현황판 접근 토큰이 올바르지 않습니다.");
+        }
+
+        long now = Instant.now().getEpochSecond();
+        if (expires < now - allowedClockSkewSeconds) {
+            throw new TokenExpiredException("병실현황판 접근 토큰이 만료되었습니다.");
         }
     }
 
@@ -161,5 +163,16 @@ public class MediplatSsoService {
             sb.append(String.format("%02x", b));
         }
         return sb.toString();
+    }
+
+    /**
+     * 서명은 유효하나 만료된 병실현황판 토큰을 나타낸다. 위조(서명 불일치)와 구분해, 호출부가
+     * 만료를 "토큰 없음"처럼 취급하고 self-heal(쿠키 폴백 → 포털 재발급)로 처리하도록 한다.
+     * IllegalArgumentException 을 상속하므로 기존 호출부의 포괄 처리와도 호환된다.
+     */
+    public static class TokenExpiredException extends IllegalArgumentException {
+        public TokenExpiredException(String message) {
+            super(message);
+        }
     }
 }
