@@ -1,0 +1,29 @@
+[Unit]
+Description=Link hub service (company link hub — separately deployable from CounselMan/csm)
+Documentation=file:///opt/deploy/scripts/systemd/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Run as root so the nightly-deploy script (also root) can replace the jar and
+# `systemctl restart links` cleanly. Adjust if you run a dedicated service user.
+User=root
+WorkingDirectory=/opt/links/app
+# DB credentials / port / hub options live here (optional). Typically:
+#   SPRING_DATASOURCE_URL=jdbc:mysql://<prod-host>:3306/csm?...
+#   SPRING_DATASOURCE_USERNAME=...
+#   SPRING_DATASOURCE_PASSWORD=...
+#   LINKS_PORT=8085
+#   HUB_SIGNUP_CODE=...            # signup invite code
+#   HUB_REMEMBER_COOKIE_SECURE=true  # requires HTTPS at the edge
+EnvironmentFile=-/etc/default/links
+ExecStart=/usr/lib/jvm/java-17/bin/java -jar /opt/links/app/links.jar
+# Graceful: Spring Boot exits 143 on SIGTERM.
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=10
+SyslogIdentifier=links
+
+[Install]
+WantedBy=multi-user.target

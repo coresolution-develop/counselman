@@ -500,7 +500,15 @@ public class RoomBoardService {
         result.setRows(parsed);
         result.setParsedCount(parsed.size());
         result.setSkippedCount(Math.max(0, rows.size() - parsed.size()));
-        result.setMessage(parsed.isEmpty() ? "인식된 병실 기준정보가 없습니다." : "병실 기준정보 미리보기 생성 완료");
+
+        List<String> conflicts = detectRoomConfigConflicts(loadRoomConfigPeriods(sanitizeInst(inst)), parsed);
+        result.setConflicts(conflicts);
+        if (!conflicts.isEmpty()) {
+            result.setMessage("저장 불가 · 겹치는 기준정보 " + conflicts.size()
+                    + "건: 이전 기준정보를 먼저 마감(종료일 지정)한 뒤 저장하세요.");
+        } else {
+            result.setMessage(parsed.isEmpty() ? "인식된 병실 기준정보가 없습니다." : "병실 기준정보 미리보기 생성 완료");
+        }
         return result;
     }
 
@@ -511,6 +519,12 @@ public class RoomBoardService {
         RoomBoardRoomConfigPasteResult preview = previewRoomConfigPaste(safe, rawText);
         if (preview.getParsedCount() <= 0) {
             throw new IllegalArgumentException("저장할 병실 기준정보가 없습니다.");
+        }
+        // 이미 활성이거나 기간이 겹치는 병실이 있으면 저장을 차단한다(중복 활성 기준정보 → 현황판 병실 미표시 예방).
+        if (!preview.getConflicts().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "겹치는 기준정보가 있어 저장할 수 없습니다 · " + String.join(" / ", preview.getConflicts())
+                            + " — 이전 기준정보를 먼저 마감(종료일 지정)한 뒤 다시 저장하세요.");
         }
         for (RoomBoardRoomConfig item : preview.getRows()) {
             upsertRoomConfigByPeriod(safe, item, username);
@@ -1893,6 +1907,72 @@ public class RoomBoardService {
             return;
         }
         updateRoomConfig(safe, ids.get(0), prepared, username);
+    }
+
+    /** 기존 병실 기준정보의 (병동·병실·기간)을 조회한다. 겹침 검사용. */
+    private List<RoomConfigPeriod> loadRoomConfigPeriods(String safe) {
+        String sql = """
+                SELECT ward_name, room_name,
+                       DATE_FORMAT(start_date,'%%Y-%%m-%%d') AS start_date,
+                       DATE_FORMAT(end_date,'%%Y-%%m-%%d') AS end_date
+                  FROM csm.room_board_room_master_%s
+                """.formatted(safe);
+        return jdbcTemplate.query(sql, (rs, n) -> new RoomConfigPeriod(
+                rs.getString("ward_name"),
+                normalizeRoomName(rs.getString("room_name")),
+                parseDate(rs.getString("start_date"), null),
+                parseDate(rs.getString("end_date"), null)));
+    }
+
+    /**
+     * 붙여넣기로 들어온 기준정보가 (a) 기존 활성/이력 기간과 겹치거나 (b) 붙여넣기 내부에서
+     * 같은 병실끼리 겹치는지 검사한다. 동일 기간(병동·병실·개시·종료 일치)은 갱신이므로 제외한다.
+     * 겹침을 허용하면 한 병실이 활성 행 2개로 잡혀 현황판에서 해당 병동 병실 목록이 통째로 깨진다.
+     */
+    List<String> detectRoomConfigConflicts(List<RoomConfigPeriod> existing, List<RoomBoardRoomConfig> parsed) {
+        List<String> conflicts = new ArrayList<>();
+        List<RoomConfigPeriod> batch = new ArrayList<>();
+        for (RoomBoardRoomConfig row : parsed) {
+            String ward = safeText(row.getWardName(), 50);
+            String room = normalizeRoomName(row.getRoomName());
+            LocalDate ns = parseDate(row.getStartDate(), null);
+            LocalDate ne = parseDate(row.getEndDate(), null);
+            if (ward.isBlank() || room.isBlank() || ns == null || ne == null) {
+                continue;
+            }
+            for (RoomConfigPeriod e : existing) {
+                if (e.start() == null || e.end() == null || !sameRoom(e, ward, room)) {
+                    continue;
+                }
+                if (e.start().isEqual(ns) && e.end().isEqual(ne)) {
+                    continue; // 동일 기간 = 갱신
+                }
+                if (periodsOverlap(ns, ne, e.start(), e.end())) {
+                    conflicts.add(room + ": 기존 기준정보(" + e.start() + "~" + e.end() + ")와 기간이 겹칩니다");
+                }
+            }
+            for (RoomConfigPeriod b : batch) {
+                if (sameRoom(b, ward, room) && periodsOverlap(ns, ne, b.start(), b.end())) {
+                    conflicts.add(room + ": 붙여넣기 내 동일 병실 기간이 겹칩니다(" + b.start() + "~" + b.end() + ")");
+                }
+            }
+            batch.add(new RoomConfigPeriod(ward, room, ns, ne));
+        }
+        return conflicts.stream().distinct().collect(Collectors.toList());
+    }
+
+    private boolean sameRoom(RoomConfigPeriod p, String ward, String room) {
+        return p.wardName() != null && p.roomName() != null
+                && p.wardName().equalsIgnoreCase(ward) && p.roomName().equalsIgnoreCase(room);
+    }
+
+    /** 두 폐구간 [s1,e1], [s2,e2] 가 겹치는지(경계 포함). */
+    private boolean periodsOverlap(LocalDate s1, LocalDate e1, LocalDate s2, LocalDate e2) {
+        return !s1.isAfter(e2) && !s2.isAfter(e1);
+    }
+
+    /** 병실 기준정보의 식별·기간 묶음(겹침 검사 전용). */
+    record RoomConfigPeriod(String wardName, String roomName, LocalDate start, LocalDate end) {
     }
 
     private PreparedRoomConfig prepareRoomConfig(RoomBoardRoomConfig config) {

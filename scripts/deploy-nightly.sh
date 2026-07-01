@@ -8,6 +8,7 @@
 #   /opt/deploy/staging/csm.war              (optional)
 #   /opt/deploy/staging/mediplat.jar         (optional)
 #   /opt/deploy/staging/cancer-treatment.jar (optional)
+#   /opt/deploy/staging/links.jar            (optional)
 #   /opt/deploy/staging/deploy.ok            (required trigger)
 #
 # Behavior:
@@ -31,6 +32,8 @@
 #   MEDIPLAT_SERVICE=mediplat
 #   CANCER_APP_DIR=/opt/cancer-treatment/app            (cancer-treatment.jar target)
 #   CANCER_SERVICE=cancer-treatment
+#   LINKS_APP_DIR=/opt/links/app                        (links.jar target)
+#   LINKS_SERVICE=links
 #   BACKUP_KEEP=5                                       (per-app rotation)
 #
 # Exit codes:
@@ -52,6 +55,8 @@ MEDIPLAT_APP_DIR="${MEDIPLAT_APP_DIR:-/opt/mediplat/app}"
 MEDIPLAT_SERVICE="${MEDIPLAT_SERVICE:-mediplat}"
 CANCER_APP_DIR="${CANCER_APP_DIR:-/opt/cancer-treatment/app}"
 CANCER_SERVICE="${CANCER_SERVICE:-cancer-treatment}"
+LINKS_APP_DIR="${LINKS_APP_DIR:-/opt/links/app}"
+LINKS_SERVICE="${LINKS_SERVICE:-links}"
 BACKUP_KEEP="${BACKUP_KEEP:-5}"
 
 LOCK_FILE="${STAGING_DIR}/.nightly-deploy.lock"
@@ -87,6 +92,7 @@ APPS=(
   "csm.war|${TOMCAT_WEBAPPS}/csm.war|${CSM_SERVICE}"
   "mediplat.jar|${MEDIPLAT_APP_DIR}/mediplat.jar|${MEDIPLAT_SERVICE}"
   "cancer-treatment.jar|${CANCER_APP_DIR}/cancer-treatment.jar|${CANCER_SERVICE}"
+  "links.jar|${LINKS_APP_DIR}/links.jar|${LINKS_SERVICE}"
 )
 
 deployed_any=0

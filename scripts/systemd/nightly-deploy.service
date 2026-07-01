@@ -21,7 +21,7 @@ ProtectSystem=full
 ProtectHome=true
 NoNewPrivileges=true
 PrivateTmp=true
-ReadWritePaths=/opt/deploy /opt/mediplat/app /opt/cancer-treatment/app /usr/local/tomcat10/webapps
+ReadWritePaths=/opt/deploy /opt/mediplat/app /opt/cancer-treatment/app /opt/links/app /usr/local/tomcat10/webapps
 
 # Standard streams already go to journald; tag them for easy filtering.
 SyslogIdentifier=nightly-deploy

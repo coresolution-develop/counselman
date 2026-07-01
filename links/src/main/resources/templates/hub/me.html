@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="_csrf" th:content="${_csrf.token}" />
+  <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+  <title>내 페이지 · 링크 허브</title>
+  <link rel="stylesheet" th:href="@{/assets/css/hub.css}" />
+</head>
+<body class="hub-body">
+  <div class="hub-layout">
+    <div th:replace="~{hub/fragments/shell :: sidebar('me', ${hubMember})}"></div>
+
+    <main class="hub-content">
+      <div class="hub-container">
+        <header class="hub-pagehead">
+          <h1 class="hub-pagehead__title" th:text="|안녕하세요, ${hubMember.name}님|">안녕하세요</h1>
+          <p class="hub-pagehead__sub">자주 쓰는 개인 링크를 추가·관리하세요.</p>
+          <div class="hub-stats">
+            <span class="hub-stat">커스텀 링크 <b th:text="${#lists.size(customLinks)}">0</b></span>
+          </div>
+        </header>
+
+        <div th:if="${customMessage}" class="hub-alert hub-alert--ok" th:text="${customMessage}"></div>
+        <div th:if="${customError}" class="hub-alert hub-alert--err" th:text="${customError}"></div>
+
+        <div class="hub-search">
+          <svg class="hub-search__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+          <input id="hubSearch" type="search" placeholder="커스텀 링크 이름 검색" autocomplete="off" aria-label="링크 검색" />
+        </div>
+
+        <section class="hub-section">
+          <div class="hub-section__head">
+            <h2 class="hub-section__title">내 커스텀 링크
+              <span class="hub-section__count" th:text="|${#lists.size(customLinks)}개|">0개</span>
+            </h2>
+            <button type="button" id="customAddToggle" class="hub-btn hub-btn--primary hub-btn--sm">+ 커스텀 링크 추가</button>
+          </div>
+
+          <form id="customAddForm" class="hub-form" th:action="@{/hub/me/custom-links}" method="post" hidden>
+            <div class="hub-form__row">
+              <div class="hub-field"><label for="newTitle">이름</label>
+                <input class="hub-input" type="text" id="newTitle" name="title" required /></div>
+              <div class="hub-field"><label for="newUrl">URL (http/https)</label>
+                <input class="hub-input" type="url" id="newUrl" name="url" placeholder="https://" required /></div>
+            </div>
+            <div class="hub-field"><label for="newMemo">메모 (선택)</label>
+              <input class="hub-input" type="text" id="newMemo" name="memo" /></div>
+            <div><button type="submit" class="hub-btn hub-btn--primary">추가</button></div>
+          </form>
+
+          <div class="hub-empty" th:if="${customLinks == null or #lists.isEmpty(customLinks)}">
+            <svg class="hub-empty__icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
+            <div class="hub-empty__text">아직 추가한 링크가 없어요. [+ 커스텀 링크 추가]로 시작하세요.</div>
+          </div>
+
+          <div class="hub-list" th:if="${customLinks != null and !#lists.isEmpty(customLinks)}">
+            <th:block th:each="link : ${customLinks}">
+              <div class="hub-list__row" th:attr="data-search-name=${link.title}">
+                <div class="hub-list__main">
+                  <div class="hub-list__title" th:text="${link.title}">제목</div>
+                  <div class="hub-list__url">
+                    <a target="_blank" rel="noopener noreferrer" th:href="@{/hub/go/custom/{id}(id=${link.id})}" th:text="${link.url}">https://...</a>
+                    <span th:if="${link.memo != null and !#strings.isEmpty(link.memo)}" th:text="| · ${link.memo}|"></span>
+                  </div>
+                </div>
+                <div class="hub-list__actions">
+                  <button type="button" class="hub-btn hub-btn--sm" th:data-edit-toggle="${link.id}">수정</button>
+                  <form class="hub-inline-form" th:action="@{/hub/me/custom-links/{id}/delete(id=${link.id})}" method="post"
+                        onsubmit="return confirm('이 링크를 삭제할까요?');">
+                    <button type="submit" class="hub-btn hub-btn--sm hub-btn--danger">삭제</button>
+                  </form>
+                </div>
+              </div>
+              <div class="hub-edit" th:id="'edit-' + ${link.id}" hidden>
+                <form class="hub-form" style="margin:0;" th:action="@{/hub/me/custom-links/{id}(id=${link.id})}" method="post">
+                  <div class="hub-form__row">
+                    <div class="hub-field"><label>이름</label>
+                      <input class="hub-input" type="text" name="title" required th:value="${link.title}" /></div>
+                    <div class="hub-field"><label>URL</label>
+                      <input class="hub-input" type="url" name="url" required th:value="${link.url}" /></div>
+                  </div>
+                  <div class="hub-field"><label>메모</label>
+                    <input class="hub-input" type="text" name="memo" th:value="${link.memo}" /></div>
+                  <div><button type="submit" class="hub-btn hub-btn--primary">저장</button></div>
+                </form>
+              </div>
+            </th:block>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script th:src="@{/js/hub.js}"></script>
+</body>
+</html>

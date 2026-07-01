@@ -94,6 +94,31 @@ public class CompanyLinkService {
         });
     }
 
+    /** 활성(use_yn='Y') 공용 링크 단건 조회 — /hub/go/link/{id} 해석용. 없으면 null. */
+    public CompanyLink findActiveById(long id) {
+        ensureTable();
+        if (id <= 0) {
+            return null;
+        }
+        List<CompanyLink> rows = jdbcTemplate.query("""
+                SELECT cl.id, cl.title, cl.url, cl.description, cl.category, cl.sort_order, cl.use_yn
+                  FROM csm.company_link cl
+                 WHERE cl.id = ? AND cl.use_yn = 'Y'
+                 LIMIT 1
+                """, (rs, rowNum) -> {
+            CompanyLink link = new CompanyLink();
+            link.setId(rs.getLong("id"));
+            link.setTitle(rs.getString("title"));
+            link.setUrl(rs.getString("url"));
+            link.setDescription(rs.getString("description"));
+            link.setCategory(rs.getString("category"));
+            link.setSortOrder(rs.getInt("sort_order"));
+            link.setUseYn(rs.getString("use_yn"));
+            return link;
+        }, id);
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
     @Transactional
     public long createLink(String title, String url, String description, String category, Integer sortOrder, String actor) {
         ensureTable();

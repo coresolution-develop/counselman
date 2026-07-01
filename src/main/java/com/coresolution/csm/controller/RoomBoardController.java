@@ -632,6 +632,11 @@ public class RoomBoardController {
         }
         try {
             mediplatSsoService.validateRoomBoardViewer(mpInst, mpUser, mpExpires, mpSignature);
+        } catch (MediplatSsoService.TokenExpiredException e) {
+            // 서명은 유효하나 만료된 링크: 하드 403 대신 "토큰 없음"처럼 null 을 돌려보내
+            // 쿠키 → 세션 → 포털 런치(self-heal) 폴백을 타게 한다 → 사용자는 새 토큰으로 자동 복귀.
+            log.info("[room-board] viewer token expired, falling through to self-heal inst={}", mpInst);
+            return null;
         } catch (IllegalArgumentException e) {
             throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN, e.getMessage(), e);
         }

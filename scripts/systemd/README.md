@@ -1,6 +1,6 @@
 # Nightly Auto-Deploy
 
-작업자가 낮 동안 staging 디렉터리에 빌드 산출물을 올려두고 명시 마커를 만들면, **02:30 KST**에 systemd 타이머가 깨어나 csm / mediplat / cancer-treatment 중 staging에 올라온 것만 자동으로 라이브에 반영합니다.
+작업자가 낮 동안 staging 디렉터리에 빌드 산출물을 올려두고 명시 마커를 만들면, **02:30 KST**에 systemd 타이머가 깨어나 csm / mediplat / cancer-treatment / links 중 staging에 올라온 것만 자동으로 라이브에 반영합니다.
 
 기존 `nightly-maintenance.timer`(03:00)보다 30분 먼저 실행되도록 배치되어 있어, 새 산출물이 자리잡은 뒤 maintenance가 reload를 수행합니다.
 
@@ -14,6 +14,7 @@
 │   ├── csm.war                             # (선택) 이 파일이 있으면 csm 배포
 │   ├── mediplat.jar                        # (선택) 있으면 mediplat 배포
 │   ├── cancer-treatment.jar                # (선택) 있으면 cancer-treatment 배포
+│   ├── links.jar                           # (선택) 있으면 links(hub) 배포
 │   └── deploy.ok                           # ★ 트리거 마커 (없으면 02:30에 아무것도 안 함)
 └── archive/
     └── 2026-05-19_023000/                  # 처리된 배포의 스냅샷 (롤백 시 참고)
@@ -26,8 +27,27 @@
 - csm: `/usr/local/tomcat10/webapps/csm.war` (Tomcat hot-deploy, 재시작 없음)
 - mediplat: `/opt/mediplat/app/mediplat.jar` (systemd: `mediplat`)
 - cancer-treatment: `/opt/cancer-treatment/app/cancer-treatment.jar` (systemd: `cancer-treatment`)
+- links(hub): `/opt/links/app/links.jar` (systemd: `links`, port 8085)
 
 ## 1회 설치 (서버에서)
+
+> **links 최초 설치** (한 번만): `links`(link hub)는 별도 systemd 유닛이 필요합니다.
+> ```bash
+> sudo mkdir -p /opt/links/app
+> sudo cp scripts/systemd/links.service /etc/systemd/system/
+> # DB 접속정보/허브 옵션 주입 (운영 DB는 csm과 동일 DB 권장 — hub_member 공유)
+> sudo tee /etc/default/links >/dev/null <<'EOF'
+> SPRING_DATASOURCE_URL=jdbc:mysql://<prod-db-host>:3306/csm?serverTimezone=Asia/Seoul&useSSL=false&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+> SPRING_DATASOURCE_USERNAME=<user>
+> SPRING_DATASOURCE_PASSWORD=<pass>
+> LINKS_PORT=8085
+> HUB_SIGNUP_CODE=<가입코드>
+> HUB_REMEMBER_COOKIE_SECURE=true
+> EOF
+> sudo systemctl daemon-reload
+> sudo systemctl enable --now links
+> # 리버스 프록시(httpd/nginx)에서 /links, /hub/**, /admin/company-links, /api/company-links → 127.0.0.1:8085 라우팅 추가
+> ```
 
 ```bash
 # 1) 디렉터리 + 스크립트 배치
@@ -66,6 +86,7 @@ scp build/deploy/prod/csm-prod.war           PROD:/opt/deploy/staging/csm.war
 scp mediplat/build/libs/mediplat-prod.jar    PROD:/opt/deploy/staging/mediplat.jar
 scp cancer-treatment/build/libs/cancer-treatment-prod.jar \
     PROD:/opt/deploy/staging/cancer-treatment.jar
+scp links/build/libs/links-prod.jar          PROD:/opt/deploy/staging/links.jar
 
 # 3) ★ 마커 생성 — 이 명령이 떨어진 다음날 02:30 KST에 배포됨
 ssh PROD 'touch /opt/deploy/staging/deploy.ok'

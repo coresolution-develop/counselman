@@ -41,6 +41,7 @@ jobs:
           path: |
             build/deploy/dev/csm-dev.war
             build/deploy/dev/mediplat-dev.jar
+            build/deploy/dev/links-dev.jar
           retention-days: 1
 
   deploy:
@@ -54,7 +55,9 @@ jobs:
           path: artifact
       - name: Deploy on dev server (local)
         run: |
+          mkdir -p /opt/links/app
           cp artifact/csm-dev.war /usr/local/tomcat10/webapps/csm.war
           cp artifact/mediplat-dev.jar /opt/mediplat/app/mediplat.jar
-          sudo systemctl restart mediplat
-          echo "DEV deployed: csm.war (Tomcat auto-reload) + mediplat restarted"
+          cp artifact/links-dev.jar /opt/links/app/links.jar
+          sudo systemctl restart mediplat links
+          echo "DEV deployed: csm.war (Tomcat auto-reload) + mediplat + links restarted"

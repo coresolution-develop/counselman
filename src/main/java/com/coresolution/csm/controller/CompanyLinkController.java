@@ -17,8 +17,11 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.coresolution.csm.serivce.CompanyLinkService;
+import com.coresolution.csm.serivce.HubFavoriteService;
 import com.coresolution.csm.vo.CompanyLink;
+import com.coresolution.csm.vo.HubMemberSession;
 import com.coresolution.csm.vo.Userdata;
+import com.coresolution.csm.web.HubSessions;
 
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -28,15 +31,35 @@ import lombok.RequiredArgsConstructor;
 public class CompanyLinkController {
 
     private final CompanyLinkService companyLinkService;
+    private final HubFavoriteService hubFavoriteService;
 
     @GetMapping("/links")
-    public String links(Model model) {
+    public String links(Model model, HttpSession session) {
         List<CompanyLink> links = companyLinkService.listActiveLinks();
         model.addAttribute("links", links);
         model.addAttribute("linkGroups", groupByCategory(links));
         model.addAttribute("categories", companyLinkService.listCategories());
-        model.addAttribute("canManageLinks", true);
+        // 로그인 상태면 개인 페이지 진입을, 아니면 로그인 버튼을 상단바에 노출(공개 허브는 항상 접근 가능).
+        HubMemberSession hubMember = HubSessions.current(session);
+        model.addAttribute("hubMember", hubMember);
+        // 로그인 시에만 ★ 채움 표시용 즐겨찾기 link_id 집합 + 상단 "내 즐겨찾기" 섹션용 목록을 내려준다.
+        model.addAttribute("favoriteLinkIds", hubMember == null
+                ? java.util.Set.of()
+                : new java.util.HashSet<>(hubFavoriteService.listFavoriteLinkIds(hubMember.getId())));
+        model.addAttribute("favorites", hubMember == null
+                ? java.util.List.of()
+                : hubFavoriteService.listFavorites(hubMember.getId()));
         return "design/company-links";
+    }
+
+    @GetMapping("/admin/company-links")
+    public String manage(Model model, HttpSession session) {
+        List<CompanyLink> links = companyLinkService.listActiveLinks();
+        model.addAttribute("links", links);
+        model.addAttribute("linkGroups", groupByCategory(links));
+        model.addAttribute("categories", companyLinkService.listCategories());
+        model.addAttribute("hubMember", HubSessions.current(session)); // 사이드바 프로필 표시용
+        return "design/company-links-admin";
     }
 
     @PostMapping("/admin/company-links/category-order")
@@ -73,7 +96,7 @@ public class CompanyLinkController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("linkError", e.getMessage());
         }
-        return "redirect:/links";
+        return "redirect:/admin/company-links";
     }
 
     @PostMapping("/admin/company-links/{id}")
@@ -94,7 +117,7 @@ public class CompanyLinkController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("linkError", e.getMessage());
         }
-        return "redirect:/links";
+        return "redirect:/admin/company-links";
     }
 
     @PostMapping("/admin/company-links/{id}/delete")
@@ -106,7 +129,7 @@ public class CompanyLinkController {
         redirectAttributes.addFlashAttribute(
                 deleted ? "linkMessage" : "linkError",
                 deleted ? "링크가 삭제되었습니다." : "삭제할 링크를 찾을 수 없습니다.");
-        return "redirect:/links";
+        return "redirect:/admin/company-links";
     }
 
     @GetMapping("/api/company-links")
