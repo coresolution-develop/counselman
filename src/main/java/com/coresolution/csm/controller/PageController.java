@@ -8667,12 +8667,21 @@ public class PageController {
         mv.addObject("pledgeExists", pledgeExists);
         mv.addObject("statusOptions", cs.getCounselStatusOptions(inst));
         mv.addObject("pathTypeOptions", cs.getCounselPathTypeOptions(inst));
-        String logSettingsJson = counselListService.getLogSettings(inst);
-        String dynamicCatJson;
-        if (logSettingsJson != null && !logSettingsJson.isBlank() && !logSettingsJson.equals("[]")) {
-            dynamicCatJson = toLogSettingsDynamicJson(logSettingsJson);
-        } else {
-            dynamicCatJson = toDynamicCategoryJson(categoryData, fieldTypeMapping);
+        // Render dynamic fields from the category tables (SSOT). Their fieldKeys are
+        // "field_<cat>_<sub>", which is exactly what save (parseDynamicEntries) and load
+        // (buildValueMap) speak — so values round-trip on reload.
+        //
+        // The legacy __LOG_SETTINGS__ store is orphaned: saveLogSettings has had no caller
+        // since the category-table refactor, yet stale rows linger for institutions
+        // configured before it. Rendering from that store emits "ls_*" fieldKeys that
+        // neither save nor load can match, so 상태 dynamic fields (배뇨/배변, 기저귀사용유무 등)
+        // silently reset after 저장. Only fall back to it when the category tables are empty.
+        String dynamicCatJson = toDynamicCategoryJson(categoryData, fieldTypeMapping);
+        if (dynamicCatJson == null || dynamicCatJson.isBlank() || dynamicCatJson.equals("[]")) {
+            String logSettingsJson = counselListService.getLogSettings(inst);
+            if (logSettingsJson != null && !logSettingsJson.isBlank() && !logSettingsJson.equals("[]")) {
+                dynamicCatJson = toLogSettingsDynamicJson(logSettingsJson);
+            }
         }
         mv.addObject("dynamicCategoryJson", dynamicCatJson);
         mv.addObject("dynamicValueJson", toJsonOrEmptyObject(valueMap));
@@ -9142,8 +9151,9 @@ public class PageController {
         }
     }
 
+    // package-private for PageControllerDynamicFieldKeyTest (round-trip fieldKey contract).
     @SuppressWarnings("unchecked")
-    private String toLogSettingsDynamicJson(String logSettingsJson) {
+    String toLogSettingsDynamicJson(String logSettingsJson) {
         try {
             List<Map<String, Object>> source = objectMapper.readValue(logSettingsJson, List.class);
             List<Map<String, Object>> rows = new ArrayList<>();
