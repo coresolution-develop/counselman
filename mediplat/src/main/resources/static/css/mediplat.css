@@ -1439,3 +1439,36 @@ body.modal-open {
         grid-template-columns: 1fr;
     }
 }
+
+/* 좁고 짧은 폰(예: Galaxy S22, 360px)에서 로그인 화면 세로 넘침 방지.
+   브랜드 영역이 화면 절반을 먹어 '로그인' 버튼이 아래로 잘리던 문제를 압축으로 해결한다.
+   .login-* / .brand-* 클래스는 로그인 화면 전용이라 다른 화면에 영향 없음. */
+@media (max-width: 480px) {
+    .login-body {
+        padding: 16px;
+        align-items: flex-start;
+    }
+
+    .brand-block {
+        padding: 26px 22px;
+    }
+
+    .brand-logo {
+        width: min(180px, 100%);
+        margin-bottom: 14px;
+    }
+
+    .brand-block h1 {
+        margin: 6px 0 10px;
+        font-size: 30px;
+    }
+
+    .subtitle {
+        font-size: 13px;
+        line-height: 1.55;
+    }
+
+    .login-form {
+        padding: 24px 22px;
+    }
+}
