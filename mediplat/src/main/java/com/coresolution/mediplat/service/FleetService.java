@@ -2,7 +2,9 @@ package com.coresolution.mediplat.service;
 
 import java.security.SecureRandom;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
@@ -496,6 +498,51 @@ public class FleetService {
                 """, odometerEnd, normalizedInstCode, trip.getVehicleId());
 
         return findTrip(normalizedInstCode, tripId);
+    }
+
+    /**
+     * 관리자 운행 조회. 필터(차량·목적·기간)는 모두 선택이며, null이면 무시한다.
+     * inst_code로 스코프되므로 관리자는 자기 기관(core 관리자는 core 전체)의 운행만 본다.
+     */
+    public List<FleetTripLog> listTrips(
+            String instCode,
+            Long vehicleId,
+            String purposeCode,
+            LocalDate fromDate,
+            LocalDate toDate) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        if (!StringUtils.hasText(normalizedInstCode)) {
+            return List.of();
+        }
+        StringBuilder sql = new StringBuilder(TRIP_SELECT).append(" WHERE inst_code = ?");
+        List<Object> params = new ArrayList<>();
+        params.add(normalizedInstCode);
+        if (vehicleId != null) {
+            sql.append(" AND vehicle_id = ?");
+            params.add(vehicleId);
+        }
+        if (isValidPurpose(purposeCode)) {
+            sql.append(" AND purpose_code = ?");
+            params.add(purposeCode.trim().toUpperCase(Locale.ROOT));
+        }
+        if (fromDate != null) {
+            sql.append(" AND depart_at >= ?");
+            params.add(Timestamp.valueOf(fromDate.atStartOfDay()));
+        }
+        if (toDate != null) {
+            sql.append(" AND depart_at < ?");
+            params.add(Timestamp.valueOf(toDate.plusDays(1).atStartOfDay()));
+        }
+        sql.append(" ORDER BY depart_at DESC, id DESC LIMIT 500");
+        return jdbcTemplate.query(sql.toString(), (rs, rowNum) -> mapTrip(rs), params.toArray());
+    }
+
+    private boolean isValidPurpose(String purposeCode) {
+        if (!StringUtils.hasText(purposeCode)) {
+            return false;
+        }
+        String upper = purposeCode.trim().toUpperCase(Locale.ROOT);
+        return PURPOSE_BUSINESS.equals(upper) || PURPOSE_COMMUTE.equals(upper) || PURPOSE_GENERAL.equals(upper);
     }
 
     // ---------------------------------------------------------------------

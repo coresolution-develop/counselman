@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>운행 기록 · 관리자</title>
+    <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
+    <link rel="stylesheet" th:href="@{/css/mediplat.css}">
+    <link rel="stylesheet" th:href="@{/css/fleet-admin.css}">
+</head>
+<body>
+<header class="topbar">
+    <div>
+        <p class="eyebrow">MediPlat</p>
+        <h1>운행 기록</h1>
+    </div>
+    <div class="topbar-actions">
+        <div class="user-meta">
+            <strong th:text="${user.displayName}">관리자</strong>
+            <span th:text="${user.instCode + ' · ' + user.roleCode}">core · ADMIN</span>
+        </div>
+        <a class="ghost-btn" th:href="@{/fleet/admin}">차량 · 운전자</a>
+        <a class="ghost-btn" th:href="@{/portal}">서비스 선택</a>
+        <a class="ghost-btn" th:href="@{/logout}">로그아웃</a>
+    </div>
+</header>
+
+<main class="fleet-admin-shell fleet-admin">
+    <section class="fleet-admin-card">
+        <h2>운행 기록</h2>
+        <form method="get" th:action="@{/fleet/admin/trips}" class="fleet-filter">
+            <select name="vehicleId">
+                <option value="">전체 차량</option>
+                <option th:each="v : ${vehicles}" th:value="${v.id}"
+                        th:text="${v.plateNo}"
+                        th:selected="${filterVehicleId != null and filterVehicleId == v.id}">12가3456</option>
+            </select>
+            <select name="purpose">
+                <option value="" th:selected="${filterPurpose == null or filterPurpose == ''}">전체 목적</option>
+                <option value="BUSINESS" th:selected="${filterPurpose == 'BUSINESS'}">업무</option>
+                <option value="COMMUTE" th:selected="${filterPurpose == 'COMMUTE'}">출퇴근</option>
+                <option value="GENERAL" th:selected="${filterPurpose == 'GENERAL'}">일반</option>
+            </select>
+            <input type="date" name="from" th:value="${filterFrom}">
+            <input type="date" name="to" th:value="${filterTo}">
+            <button type="submit" class="fleet-btn">조회</button>
+        </form>
+
+        <table>
+            <thead>
+            <tr>
+                <th>출발 일시</th><th>차량</th><th>운전자</th><th>목적</th>
+                <th>시작→종료(km)</th><th>거리</th><th>사진</th><th>상태</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="t : ${trips}" th:classappend="${t.overLimitYn == 'Y'} ? ' fleet-row-warn'"
+                th:with="veh=${vehiclesById.get(t.vehicleId)},drv=${driversById.get(t.driverId)}">
+                <td th:text="${t.departAt != null} ? ${#temporals.format(t.departAt, 'yyyy-MM-dd HH:mm')} : '-'">2026-07-10 10:00</td>
+                <td th:text="${veh != null} ? ${veh.plateNo} : ('#' + ${t.vehicleId})">12가3456</td>
+                <td th:text="${drv != null} ? ${drv.name} : ${t.driverUsername}">홍길동</td>
+                <td th:switch="${t.purposeCode}">
+                    <span th:case="'BUSINESS'">업무</span>
+                    <span th:case="'COMMUTE'">출퇴근</span>
+                    <span th:case="'GENERAL'">일반</span>
+                    <span th:case="*" th:text="${t.purposeCode}">-</span>
+                </td>
+                <td>
+                    <span th:text="${#numbers.formatInteger(t.odometerStart, 0, 'COMMA')}">45,010</span>
+                    →
+                    <span th:text="${t.odometerEnd != null} ? ${#numbers.formatInteger(t.odometerEnd, 0, 'COMMA')} : '-'">45,080</span>
+                </td>
+                <td>
+                    <span th:if="${t.distance != null}" th:text="${#numbers.formatInteger(t.distance, 0, 'COMMA')} + ' km'">70 km</span>
+                    <span th:if="${t.distance == null}" class="fleet-muted">-</span>
+                    <span th:if="${t.overLimitYn == 'Y'}" class="fleet-warn-tag">상한초과</span>
+                </td>
+                <td>
+                    <a th:if="${t.startPhotoPath != null}" th:href="@{'/fleet/admin/trips/' + ${t.id} + '/photo?pos=start'}" target="_blank">
+                        <img class="fleet-thumb" th:src="@{'/fleet/admin/trips/' + ${t.id} + '/photo?pos=start'}" alt="출발">
+                    </a>
+                    <a th:if="${t.endPhotoPath != null}" th:href="@{'/fleet/admin/trips/' + ${t.id} + '/photo?pos=end'}" target="_blank">
+                        <img class="fleet-thumb" th:src="@{'/fleet/admin/trips/' + ${t.id} + '/photo?pos=end'}" alt="도착">
+                    </a>
+                </td>
+                <td>
+                    <span class="fleet-status" th:classappend="${t.statusCode == 'ONGOING'} ? ' running'"
+                          th:text="${t.statusCode == 'ONGOING'} ? '운행중' : '완료'">완료</span>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(trips)}">
+                <td colspan="8" class="fleet-muted">조회된 운행 기록이 없습니다.</td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+</main>
+</body>
+</html>

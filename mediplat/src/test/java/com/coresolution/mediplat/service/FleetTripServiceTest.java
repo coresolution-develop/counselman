@@ -112,6 +112,17 @@ class FleetTripServiceTest {
         assertTrue(done.isOverLimit(), "70km > 상한 50km 이면 경고 플래그");
     }
 
+    @Test
+    void listTrips_filtersByVehiclePurposeAndInstitution() {
+        Fixture f = newFixture(1500);
+        f.service.depart("core", f.vehicleId, f.driverId, "hong", "BUSINESS", null, 45010, "OCR", PHOTO_START);
+
+        assertEquals(1, f.service.listTrips("core", null, null, null, null).size());
+        assertEquals(1, f.service.listTrips("core", f.vehicleId, "BUSINESS", null, null).size());
+        assertEquals(0, f.service.listTrips("core", f.vehicleId, "COMMUTE", null, null).size());
+        assertEquals(0, f.service.listTrips("FALH", null, null, null, null).size(), "다른 기관 스코프는 비어야 한다");
+    }
+
     private Fixture newFixture(int maxTripKm) {
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
         dataSource.setDriverClassName("org.h2.Driver");

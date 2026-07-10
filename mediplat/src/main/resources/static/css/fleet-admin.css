@@ -1,0 +1,133 @@
+/* 차량운행관리 관리자 콘솔 전용 스타일(데스크톱). mediplat.css 위에 얹는다. */
+
+.fleet-admin-shell {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 20px 16px 48px;
+}
+
+.fleet-admin-card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 22px;
+    box-shadow: 0 1px 3px rgba(26, 35, 50, 0.08);
+    margin-bottom: 20px;
+}
+
+.fleet-admin-card h2 {
+    margin: 0 0 4px;
+    font-size: 18px;
+}
+
+.fleet-admin-card .desc {
+    margin: 0 0 16px;
+    color: #55606e;
+    font-size: 14px;
+}
+
+.fleet-admin table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.fleet-admin th,
+.fleet-admin td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #eef1f4;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.fleet-admin th {
+    color: #55606e;
+    font-weight: 600;
+    background: #f7f9fb;
+}
+
+.fleet-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    align-items: end;
+    margin-top: 8px;
+}
+
+.fleet-form-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #3a4552;
+}
+
+.fleet-form-grid input,
+.fleet-filter input,
+.fleet-filter select {
+    height: 44px;
+    padding: 0 12px;
+    font-size: 15px;
+    border: 1px solid #d5dbe2;
+    border-radius: 9px;
+    box-sizing: border-box;
+}
+
+.fleet-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.fleet-btn {
+    height: 44px;
+    padding: 0 18px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    background: #2f6df6;
+    border: none;
+    border-radius: 9px;
+    cursor: pointer;
+}
+
+.fleet-btn.ghost {
+    background: #eef2f7;
+    color: #2f6df6;
+}
+
+.fleet-thumb {
+    height: 44px;
+    border-radius: 6px;
+    border: 1px solid #e3e8ee;
+    cursor: zoom-in;
+}
+
+.fleet-status {
+    font-size: 12px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: #eef1f4;
+    color: #3a4552;
+}
+
+.fleet-status.running {
+    background: #e7f0ff;
+    color: #2f6df6;
+}
+
+.fleet-row-warn {
+    background: #fff5ec;
+}
+
+.fleet-warn-tag {
+    color: #b4520a;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.fleet-muted {
+    color: #8a94a1;
+}
