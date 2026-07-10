@@ -18,7 +18,7 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
 function BrandMark({ size = 36 }) {
   return (
     <img
-      src="/img/core_logo_hospital_w.png"
+      src="/img/coresolution_logo_w.png"
       alt="CoreSolution"
       style={{ height: size, width: 'auto', display: 'block' }}
     />
