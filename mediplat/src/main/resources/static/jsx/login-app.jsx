@@ -405,7 +405,10 @@ const css = `
 }
 .card--split {
   display: grid;
-  grid-template-columns: 1.05fr 1fr;
+  /* minmax(0,…): grid 트랙 기본 min-width가 auto(=min-content)라, 좁은 화면에서
+     hero 제목 같은 긴 요소가 트랙을 넓혀 카드가 화면 밖으로 넘치는 문제(특히 iOS Safari)를
+     방지한다. 트랙이 자기 몫보다 작게 줄 수 있게 허용한다. */
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
   max-width: 980px;
   min-height: 520px;
 }
@@ -431,6 +434,7 @@ const css = `
   flex-direction: column;
   overflow: hidden;
   isolation: isolate;
+  min-width: 0;
 }
 .card__hero-inner { position: relative; z-index: 2; display: flex; flex-direction: column; height: 100%; gap: 36px; }
 .card__hero-mid { display: flex; flex-direction: column; gap: 14px; flex: 1; justify-content: center; }
@@ -457,6 +461,8 @@ const css = `
   letter-spacing: -0.04em;
   font-weight: 800;
   margin: 4px 0 0;
+  /* 최후 안전장치: 어떤 폰트/폭에서도 제목이 트랙을 넘기지 않도록 필요 시 줄바꿈 허용 */
+  overflow-wrap: anywhere;
 }
 .card__body {
   font-size: 13.5px;
@@ -466,7 +472,7 @@ const css = `
 }
 
 /* ----- Form panel (split) ----- */
-.card__form { padding: 44px 44px 36px; display: flex; flex-direction: column; justify-content: center; gap: 22px; }
+.card__form { padding: 44px 44px 36px; display: flex; flex-direction: column; justify-content: center; gap: 22px; min-width: 0; }
 .card__form-head { display: flex; flex-direction: column; gap: 4px; }
 .card__form-title { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
 .card__form-sub { font-size: 13px; color: var(--ink-500); }
