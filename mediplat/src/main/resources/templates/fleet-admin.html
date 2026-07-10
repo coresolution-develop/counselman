@@ -9,7 +9,7 @@
     <link rel="stylesheet" th:href="@{/css/fleet-admin.css}">
 </head>
 <body>
-<header class="topbar">
+<header class="topbar fleet-topbar">
     <div>
         <p class="eyebrow">MediPlat</p>
         <h1>차량운행관리</h1>
@@ -40,19 +40,19 @@
             </thead>
             <tbody>
             <tr th:each="v : ${vehicles}">
-                <td th:text="${v.plateNo}">12가3456</td>
-                <td th:text="${#strings.isEmpty(v.name)} ? '—' : ${v.name}">스타렉스 1호</td>
-                <td th:text="${#strings.isEmpty(v.department)} ? '—' : ${v.department}">총무</td>
-                <td>
+                <td data-label="번호판" th:text="${v.plateNo}">12가3456</td>
+                <td data-label="별칭" th:text="${#strings.isEmpty(v.name)} ? '—' : ${v.name}">스타렉스 1호</td>
+                <td data-label="부서" th:text="${#strings.isEmpty(v.department)} ? '—' : ${v.department}">총무</td>
+                <td data-label="상태">
                     <span class="fleet-status" th:classappend="${v.statusCode == 'RUNNING'} ? ' running'"
                           th:text="${v.statusCode == 'RUNNING'} ? '운행중' : '대기'">대기</span>
                 </td>
-                <td th:text="${#numbers.formatInteger(v.currentOdometer, 0, 'COMMA')}">45,000</td>
-                <td>
+                <td data-label="누적(km)" th:text="${#numbers.formatInteger(v.currentOdometer, 0, 'COMMA')}">45,000</td>
+                <td data-label="QR">
                     <span class="fleet-status">발급됨</span>
                     <button type="button" class="fleet-btn ghost fleet-copy" th:attr="data-token=${v.qrToken}">복사</button>
                 </td>
-                <td style="white-space:nowrap;">
+                <td data-label="관리">
                     <a class="fleet-btn ghost" target="_blank"
                        th:href="@{'/fleet/admin/vehicles/' + ${v.id} + '/qr-print'}">QR 인쇄</a>
                     <form method="post" th:action="@{'/fleet/admin/vehicles/' + ${v.id} + '/qr'}" style="display:inline;"
@@ -87,11 +87,11 @@
             </thead>
             <tbody>
             <tr th:each="d : ${drivers}">
-                <td th:text="${d.name}">홍길동</td>
-                <td th:text="${#strings.isEmpty(d.department)} ? '—' : ${d.department}">총무</td>
-                <td th:text="${#strings.isEmpty(d.employeeNumber)} ? '—' : ${d.employeeNumber}">E1001</td>
-                <td class="fleet-muted" th:text="${#strings.isEmpty(d.username)} ? '—' : ${d.username}">hong</td>
-                <td><span class="fleet-status" th:text="${d.useYn == 'Y'} ? '사용' : '중지'">사용</span></td>
+                <td data-label="이름" th:text="${d.name}">홍길동</td>
+                <td data-label="부서" th:text="${#strings.isEmpty(d.department)} ? '—' : ${d.department}">총무</td>
+                <td data-label="사번" th:text="${#strings.isEmpty(d.employeeNumber)} ? '—' : ${d.employeeNumber}">E1001</td>
+                <td data-label="계정" class="fleet-muted" th:text="${#strings.isEmpty(d.username)} ? '—' : ${d.username}">hong</td>
+                <td data-label="상태"><span class="fleet-status" th:text="${d.useYn == 'Y'} ? '사용' : '중지'">사용</span></td>
             </tr>
             <tr th:if="${#lists.isEmpty(drivers)}">
                 <td colspan="5" class="fleet-muted">등록된 운전자가 없습니다.</td>

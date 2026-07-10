@@ -194,13 +194,106 @@
     color: #8a94a1;
 }
 
-/* 모바일: 넓은 테이블이 화면을 밀지 않도록 카드 안에서 가로 스크롤 */
+/* 모바일: 넓은 표를 세로 카드 목록으로 전환(라벨 왼쪽 · 값 오른쪽).
+   각 td의 data-label 속성을 라벨로 사용한다. 데스크톱(>720px)은 표 그대로. */
 @media (max-width: 720px) {
-    .fleet-admin-card {
-        overflow-x: auto;
+    .fleet-admin table,
+    .fleet-admin tbody,
+    .fleet-admin tr,
+    .fleet-admin td {
+        display: block;
+        width: auto;
     }
 
-    .fleet-admin table {
-        min-width: 640px;
+    .fleet-admin thead {
+        display: none;
+    }
+
+    /* 한 행 = 카드 한 장 */
+    .fleet-admin tbody tr {
+        border: 1px solid #e3e8ee;
+        border-radius: 12px;
+        padding: 8px 14px;
+        margin-bottom: 12px;
+        background: #fff;
+    }
+
+    .fleet-admin tbody tr.fleet-row-warn {
+        background: #fff5ec;
+        border-color: #f3d5b5;
+    }
+
+    .fleet-admin td {
+        position: relative;
+        padding: 7px 0 7px 42%;
+        border: none;
+        border-bottom: 1px solid #f2f4f7;
+        text-align: right;
+        min-height: 34px;
+    }
+
+    .fleet-admin td:last-child {
+        border-bottom: none;
+    }
+
+    .fleet-admin td[data-label]::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 0;
+        top: 7px;
+        width: 38%;
+        text-align: left;
+        font-weight: 600;
+        color: #55606e;
+        white-space: nowrap;
+    }
+
+    /* 빈 상태 안내행(colspan)은 라벨 없이 가운데 정렬 */
+    .fleet-admin td:not([data-label]) {
+        padding-left: 0;
+        text-align: center;
+    }
+}
+
+/* 모바일: 상단 헤더가 본문 영역을 과하게 먹지 않도록 압축(fleet 화면 한정).
+   공용 mediplat.css의 .topbar(fixed, 132px+)를 fleet 화면에서만 static + 컴팩트로 덮는다. */
+@media (max-width: 720px) {
+    .topbar.fleet-topbar {
+        position: static;
+        min-height: 0;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 10px;
+        padding: 10px 14px;
+    }
+
+    .topbar.fleet-topbar .eyebrow {
+        display: none;
+    }
+
+    .topbar.fleet-topbar h1 {
+        margin: 0;
+        font-size: 18px;
+    }
+
+    .topbar.fleet-topbar .user-meta {
+        display: none;
+    }
+
+    .topbar.fleet-topbar .topbar-actions {
+        width: 100%;
+        gap: 6px;
+    }
+
+    .topbar.fleet-topbar .ghost-btn {
+        padding: 7px 10px;
+        font-size: 13px;
+        border-radius: 10px;
+    }
+
+    /* 헤더가 흐름에 들어오므로 본문 상단 여백을 정상 값으로 되돌린다 */
+    .topbar.fleet-topbar + .fleet-admin-shell {
+        padding-top: 16px;
     }
 }
