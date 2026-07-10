@@ -7,12 +7,15 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import com.coresolution.mediplat.model.FleetDriver;
+import com.coresolution.mediplat.model.FleetTripLog;
 import com.coresolution.mediplat.model.FleetVehicle;
 
 import jakarta.annotation.PostConstruct;
@@ -49,9 +52,22 @@ public class FleetService {
     private static final String USE_Y = "Y";
     private static final HexFormat HEX = HexFormat.of();
 
+    private static final String TRIP_SELECT = """
+            SELECT id, inst_code, vehicle_id, driver_id, driver_username,
+                   purpose_code, purpose_memo, depart_at, arrive_at,
+                   odometer_start, odometer_end, distance,
+                   odometer_start_src, odometer_end_src,
+                   start_photo_path, end_photo_path, status_code, over_limit_yn, created_at
+            FROM mp_fleet_trip_log
+            """;
+
     private final JdbcTemplate jdbcTemplate;
     private final SecureRandom secureRandom = new SecureRandom();
     private DatabaseDialect databaseDialect = DatabaseDialect.H2;
+
+    /** 1회 주행 상한(km). 초과 시 차단하지 않고 경고 플래그만 세운다. */
+    @Value("${fleet.trip.max-km:1500}")
+    private int maxTripKm;
 
     public FleetService(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
@@ -307,6 +323,182 @@ public class FleetService {
     }
 
     // ---------------------------------------------------------------------
+    // 운행 기록 (출발/도착)
+    // ---------------------------------------------------------------------
+
+    public FleetTripLog findTrip(String instCode, Long tripId) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        if (!StringUtils.hasText(normalizedInstCode) || tripId == null) {
+            return null;
+        }
+        List<FleetTripLog> result = jdbcTemplate.query(TRIP_SELECT + """
+                WHERE inst_code = ?
+                  AND id = ?
+                LIMIT 1
+                """, (rs, rowNum) -> mapTrip(rs), normalizedInstCode, tripId);
+        return result.isEmpty() ? null : result.get(0);
+    }
+
+    /** 차량의 진행 중(ONGOING) 운행. 없으면 null. by-token 상태 분기·중복 출발 방지에 쓴다. */
+    public FleetTripLog findOngoingTripByVehicle(String instCode, Long vehicleId) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        if (!StringUtils.hasText(normalizedInstCode) || vehicleId == null) {
+            return null;
+        }
+        List<FleetTripLog> result = jdbcTemplate.query(TRIP_SELECT + """
+                WHERE inst_code = ?
+                  AND vehicle_id = ?
+                  AND status_code = 'ONGOING'
+                ORDER BY id DESC
+                LIMIT 1
+                """, (rs, rowNum) -> mapTrip(rs), normalizedInstCode, vehicleId);
+        return result.isEmpty() ? null : result.get(0);
+    }
+
+    /**
+     * 출발 기록. 사진은 <b>이 메서드 밖(트랜잭션 밖)에서 먼저 저장</b>하고 경로만 넘긴다(되짚음 ①).
+     * 차량 점유는 {@code status='IDLE'} 조건부 UPDATE로 원자화하며, 0행이면 이미 사용 중으로 명확히 실패한다.
+     */
+    @Transactional
+    public FleetTripLog depart(
+            String instCode,
+            Long vehicleId,
+            Long driverId,
+            String driverUsername,
+            String purposeCode,
+            String purposeMemo,
+            Integer odometerStart,
+            String odometerStartSrc,
+            String startPhotoPath) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        if (!StringUtils.hasText(normalizedInstCode) || vehicleId == null || driverId == null) {
+            throw new IllegalArgumentException("운행 정보를 확인해 주세요.");
+        }
+        if (!StringUtils.hasText(startPhotoPath)) {
+            throw new IllegalArgumentException("출발 계기판 사진은 필수입니다.");
+        }
+        if (odometerStart == null || odometerStart < 0) {
+            throw new IllegalArgumentException("출발 계기판 값을 확인해 주세요.");
+        }
+        String normalizedPurpose = normalizePurpose(purposeCode);
+        String normalizedSrc = normalizeOdometerSrc(odometerStartSrc);
+
+        FleetVehicle vehicle = findVehicle(normalizedInstCode, vehicleId);
+        if (vehicle == null || !vehicle.isEnabled()) {
+            throw new IllegalArgumentException("운행 가능한 차량을 찾을 수 없습니다.");
+        }
+        FleetDriver driver = findDriverById(driverId);
+        if (driver == null || !driver.isEnabled()) {
+            throw new IllegalArgumentException("등록된 운전자를 찾을 수 없습니다.");
+        }
+        // 서버 재검증: 계기판 단조 증가 (OCR 프리필 불신, 되짚음 ②)
+        if (odometerStart < vehicle.getCurrentOdometer()) {
+            throw new IllegalArgumentException("출발 계기판 값이 기존 기록보다 작습니다.");
+        }
+
+        // 원자적 점유: IDLE일 때만 RUNNING으로. 0행이면 이미 사용 중(동시성).
+        int claimed = jdbcTemplate.update("""
+                UPDATE mp_fleet_vehicle
+                   SET status_code = 'RUNNING',
+                       current_odometer = ?,
+                       updated_at = CURRENT_TIMESTAMP
+                 WHERE inst_code = ?
+                   AND id = ?
+                   AND status_code = 'IDLE'
+                """, odometerStart, normalizedInstCode, vehicleId);
+        if (claimed == 0) {
+            throw new IllegalStateException("차량이 이미 사용 중입니다.");
+        }
+
+        jdbcTemplate.update("""
+                INSERT INTO mp_fleet_trip_log (
+                    inst_code, vehicle_id, driver_id, driver_username,
+                    purpose_code, purpose_memo, depart_at,
+                    odometer_start, odometer_start_src, start_photo_path,
+                    status_code, over_limit_yn, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, 'ONGOING', 'N', CURRENT_TIMESTAMP)
+                """,
+                normalizedInstCode, vehicleId, driverId, trimToNull(driverUsername),
+                normalizedPurpose, trimToNull(purposeMemo),
+                odometerStart, normalizedSrc, startPhotoPath);
+
+        return findOngoingTripByVehicle(normalizedInstCode, vehicleId);
+    }
+
+    /**
+     * 도착 기록. 종료 계기판 사진은 트랜잭션 밖에서 먼저 저장하고 경로만 넘긴다(되짚음 ①).
+     * 종료는 {@code status='ONGOING'} 조건부 UPDATE로 원자화하고, 차량을 IDLE로 반납한다.
+     */
+    @Transactional
+    public FleetTripLog arrive(
+            String instCode,
+            Long tripId,
+            Long driverId,
+            Integer odometerEnd,
+            String odometerEndSrc,
+            String endPhotoPath) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        if (!StringUtils.hasText(normalizedInstCode) || tripId == null || driverId == null) {
+            throw new IllegalArgumentException("운행 정보를 확인해 주세요.");
+        }
+        if (!StringUtils.hasText(endPhotoPath)) {
+            throw new IllegalArgumentException("도착 계기판 사진은 필수입니다.");
+        }
+        if (odometerEnd == null || odometerEnd < 0) {
+            throw new IllegalArgumentException("도착 계기판 값을 확인해 주세요.");
+        }
+        String normalizedSrc = normalizeOdometerSrc(odometerEndSrc);
+
+        FleetTripLog trip = findTrip(normalizedInstCode, tripId);
+        if (trip == null) {
+            throw new IllegalArgumentException("운행 기록을 찾을 수 없습니다.");
+        }
+        if (!trip.isOngoing()) {
+            throw new IllegalStateException("이미 종료된 운행입니다.");
+        }
+        if (!driverId.equals(trip.getDriverId())) {
+            throw new IllegalStateException("본인이 시작한 운행만 종료할 수 있습니다.");
+        }
+        // 서버 재검증: 종료 > 시작 (OCR 프리필 불신, 되짚음 ②)
+        if (odometerEnd <= trip.getOdometerStart()) {
+            throw new IllegalArgumentException("도착 계기판은 출발 계기판보다 커야 합니다.");
+        }
+        int distance = odometerEnd - trip.getOdometerStart();
+        String overLimitYn = distance > maxTripKm ? "Y" : "N";
+
+        int completed = jdbcTemplate.update("""
+                UPDATE mp_fleet_trip_log
+                   SET arrive_at = CURRENT_TIMESTAMP,
+                       odometer_end = ?,
+                       distance = ?,
+                       odometer_end_src = ?,
+                       end_photo_path = ?,
+                       status_code = 'COMPLETED',
+                       over_limit_yn = ?
+                 WHERE inst_code = ?
+                   AND id = ?
+                   AND status_code = 'ONGOING'
+                """,
+                odometerEnd, distance, normalizedSrc, endPhotoPath, overLimitYn,
+                normalizedInstCode, tripId);
+        if (completed == 0) {
+            throw new IllegalStateException("운행 종료 처리에 실패했습니다.");
+        }
+
+        // 차량 반납: RUNNING → IDLE, 최신 계기판 갱신
+        jdbcTemplate.update("""
+                UPDATE mp_fleet_vehicle
+                   SET status_code = 'IDLE',
+                       current_odometer = ?,
+                       updated_at = CURRENT_TIMESTAMP
+                 WHERE inst_code = ?
+                   AND id = ?
+                """, odometerEnd, normalizedInstCode, trip.getVehicleId());
+
+        return findTrip(normalizedInstCode, tripId);
+    }
+
+    // ---------------------------------------------------------------------
     // RowMappers
     // ---------------------------------------------------------------------
 
@@ -339,6 +531,31 @@ public class FleetService {
                 rs.getString("use_yn"),
                 toLocalDateTime(rs.getTimestamp("created_at")),
                 toLocalDateTime(rs.getTimestamp("updated_at")));
+    }
+
+    private FleetTripLog mapTrip(java.sql.ResultSet rs) throws java.sql.SQLException {
+        Integer odometerEnd = rs.getObject("odometer_end") == null ? null : rs.getInt("odometer_end");
+        Integer distance = rs.getObject("distance") == null ? null : rs.getInt("distance");
+        return new FleetTripLog(
+                rs.getLong("id"),
+                rs.getString("inst_code"),
+                rs.getLong("vehicle_id"),
+                rs.getLong("driver_id"),
+                rs.getString("driver_username"),
+                rs.getString("purpose_code"),
+                rs.getString("purpose_memo"),
+                toLocalDateTime(rs.getTimestamp("depart_at")),
+                toLocalDateTime(rs.getTimestamp("arrive_at")),
+                rs.getInt("odometer_start"),
+                odometerEnd,
+                distance,
+                rs.getString("odometer_start_src"),
+                rs.getString("odometer_end_src"),
+                rs.getString("start_photo_path"),
+                rs.getString("end_photo_path"),
+                rs.getString("status_code"),
+                rs.getString("over_limit_yn"),
+                toLocalDateTime(rs.getTimestamp("created_at")));
     }
 
     // ---------------------------------------------------------------------
@@ -569,6 +786,23 @@ public class FleetService {
             return null;
         }
         return username.trim();
+    }
+
+    private String normalizePurpose(String purposeCode) {
+        if (PURPOSE_BUSINESS.equalsIgnoreCase(purposeCode)) {
+            return PURPOSE_BUSINESS;
+        }
+        if (PURPOSE_COMMUTE.equalsIgnoreCase(purposeCode)) {
+            return PURPOSE_COMMUTE;
+        }
+        if (PURPOSE_GENERAL.equalsIgnoreCase(purposeCode)) {
+            return PURPOSE_GENERAL;
+        }
+        throw new IllegalArgumentException("운행 목적을 선택해 주세요.");
+    }
+
+    private String normalizeOdometerSrc(String src) {
+        return ODOMETER_SRC_OCR.equalsIgnoreCase(src) ? ODOMETER_SRC_OCR : ODOMETER_SRC_MANUAL;
     }
 
     private String trimToNull(String value) {
