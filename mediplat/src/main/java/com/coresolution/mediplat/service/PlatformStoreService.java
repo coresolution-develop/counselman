@@ -49,6 +49,7 @@ public class PlatformStoreService {
     private static final String SERVICE_CODE_SEMINAR_ROOM = "SEMINAR_ROOM";
     private static final String SERVICE_CODE_CANCER_TREATMENT = "CANCER_TREATMENT";
     private static final String SERVICE_CODE_SMS = "SMS";
+    private static final String SERVICE_CODE_FLEET = "FLEET";
     private static final String INTEGRATION_CODE_ROOMBOARD_CSM_LINK = "ROOMBOARD_CSM_LINK";
     private static final String DEFAULT_SERVICE_CODE = SERVICE_CODE_COUNSELMAN;
     private static final String VIEWER_ACCOUNT_INST_CODE = "core";
@@ -1352,10 +1353,23 @@ public class PlatformStoreService {
                 "문자(SMS/LMS/MMS) 발송 · 내역 · 비용 관리 서비스",
                 USE_Y,
                 5));
+        bootstrapService(SERVICE_CODE_FLEET, () -> saveService(
+                SERVICE_CODE_FLEET,
+                "차량운행관리",
+                bootstrapCounselmanBaseUrl,
+                localBaseUrl,
+                devBaseUrl,
+                prodBaseUrl,
+                "/mediplat/sso/entry",
+                "/fleet/admin",
+                "/fleet/admin",
+                "사내 차량 운행기록 · 배차 관리 서비스",
+                USE_Y,
+                6));
         saveInstitutionServiceAccess(
                 bootstrapAdminInstCode,
                 List.of(DEFAULT_SERVICE_CODE, SERVICE_CODE_ROOM_BOARD, SERVICE_CODE_SEMINAR_ROOM, SERVICE_CODE_CANCER_TREATMENT,
-                        SERVICE_CODE_SMS));
+                        SERVICE_CODE_SMS, SERVICE_CODE_FLEET));
 
         seedPlatformAdminServiceRoles();
     }

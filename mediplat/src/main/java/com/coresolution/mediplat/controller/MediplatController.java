@@ -53,6 +53,7 @@ public class MediplatController {
     public static final String SESSION_LOGIN_AUDIT_ID = "mediplatLoginAuditId";
     private static final String SERVICE_CODE_ROOM_BOARD = "ROOM_BOARD";
     private static final String SERVICE_CODE_SEMINAR_ROOM = "SEMINAR_ROOM";
+    private static final String SERVICE_CODE_FLEET = "FLEET";
     /** Service codes treated as plain external links: launched without SSO signing. */
     private static final java.util.Set<String> EXTERNAL_LINK_SERVICE_CODES = java.util.Set.of("FORMFLOW");
 
@@ -219,6 +220,19 @@ public class MediplatController {
                 return "redirect:/portal";
             }
             return "redirect:/seminar-room";
+        }
+        if (SERVICE_CODE_FLEET.equals(normalizedServiceCode)) {
+            PlatformService fleetServiceEntry = storeService.findService(SERVICE_CODE_FLEET);
+            if (fleetServiceEntry == null || !fleetServiceEntry.isEnabled()) {
+                return "redirect:/portal";
+            }
+            List<String> enabledCodes = user.isPlatformAdmin()
+                    ? List.of(SERVICE_CODE_FLEET)
+                    : storeService.listEnabledServiceCodesForUser(user);
+            if (!user.isPlatformAdmin() && !enabledCodes.contains(SERVICE_CODE_FLEET)) {
+                return "redirect:/portal";
+            }
+            return "redirect:/fleet/admin";
         }
         if (SERVICE_CODE_ROOM_BOARD.equals(normalizedServiceCode)) {
             if (user.isPlatformAdmin()) {

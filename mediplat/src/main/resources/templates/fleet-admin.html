@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>차량운행관리 · 관리자</title>
+    <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
+    <link rel="stylesheet" th:href="@{/css/mediplat.css}">
+    <link rel="stylesheet" th:href="@{/css/fleet-admin.css}">
+</head>
+<body>
+<header class="topbar">
+    <div>
+        <p class="eyebrow">MediPlat</p>
+        <h1>차량운행관리</h1>
+    </div>
+    <div class="topbar-actions">
+        <div class="user-meta">
+            <strong th:text="${user.displayName}">관리자</strong>
+            <span th:text="${user.instCode + ' · ' + user.roleCode}">core · ADMIN</span>
+        </div>
+        <a class="ghost-btn" th:href="@{/fleet/admin/trips}">운행 기록</a>
+        <a class="ghost-btn" th:href="@{/portal}">서비스 선택</a>
+        <a class="ghost-btn" th:href="@{/logout}">로그아웃</a>
+    </div>
+</header>
+
+<main class="fleet-admin-shell fleet-admin">
+    <div class="message success" th:if="${message != null}" th:text="${message}">완료</div>
+    <div class="message error" th:if="${error != null}" th:text="${error}">오류</div>
+
+    <section class="fleet-admin-card">
+        <h2>차량</h2>
+        <p class="desc">차량을 등록하면 QR 토큰이 자동 발급됩니다. QR 인쇄는 다음 단계에서 제공됩니다.</p>
+        <table>
+            <thead>
+            <tr>
+                <th>번호판</th><th>별칭</th><th>부서</th><th>상태</th><th>누적(km)</th><th>QR 토큰</th><th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="v : ${vehicles}">
+                <td th:text="${v.plateNo}">12가3456</td>
+                <td th:text="${v.name}">스타렉스 1호</td>
+                <td th:text="${v.department}">총무</td>
+                <td>
+                    <span class="fleet-status" th:classappend="${v.statusCode == 'RUNNING'} ? ' running'"
+                          th:text="${v.statusCode}">IDLE</span>
+                </td>
+                <td th:text="${#numbers.formatInteger(v.currentOdometer, 0, 'COMMA')}">45,000</td>
+                <td class="fleet-muted" th:text="${v.qrToken}">token</td>
+                <td style="white-space:nowrap;">
+                    <a class="fleet-btn ghost" target="_blank"
+                       th:href="@{'/fleet/admin/vehicles/' + ${v.id} + '/qr-print'}">QR 인쇄</a>
+                    <form method="post" th:action="@{'/fleet/admin/vehicles/' + ${v.id} + '/qr'}" style="display:inline;">
+                        <button type="submit" class="fleet-btn ghost">QR 재발급</button>
+                    </form>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(vehicles)}">
+                <td colspan="7" class="fleet-muted">등록된 차량이 없습니다.</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <form method="post" th:action="@{/fleet/admin/vehicles}" class="fleet-form-grid">
+            <label>번호판*<input type="text" name="plateNo" required maxlength="20"></label>
+            <label>별칭<input type="text" name="name" maxlength="120"></label>
+            <label>모델<input type="text" name="modelName" maxlength="120"></label>
+            <label>부서<input type="text" name="department" maxlength="120"></label>
+            <label>초기 계기판(km)<input type="number" name="initialOdometer" min="0" value="0"></label>
+            <button type="submit" class="fleet-btn">차량 등록</button>
+        </form>
+    </section>
+
+    <section class="fleet-admin-card">
+        <h2>운전자 로스터</h2>
+        <p class="desc">운전자를 등록해야 기기 최초 등록 화면에서 본인을 선택할 수 있습니다. 계정(username)은 선택입니다.</p>
+        <table>
+            <thead>
+            <tr><th>이름</th><th>부서</th><th>사번</th><th>계정(username)</th><th>상태</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="d : ${drivers}">
+                <td th:text="${d.name}">홍길동</td>
+                <td th:text="${d.department}">총무</td>
+                <td th:text="${d.employeeNumber}">E1001</td>
+                <td class="fleet-muted" th:text="${d.username}">hong</td>
+                <td><span class="fleet-status" th:text="${d.useYn == 'Y'} ? '사용' : '중지'">사용</span></td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(drivers)}">
+                <td colspan="5" class="fleet-muted">등록된 운전자가 없습니다.</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <form method="post" th:action="@{/fleet/admin/drivers}" class="fleet-form-grid">
+            <label>이름*<input type="text" name="name" required maxlength="100"></label>
+            <label>부서<input type="text" name="department" maxlength="120"></label>
+            <label>사번<input type="text" name="employeeNumber" maxlength="50"></label>
+            <label>계정(username)<input type="text" name="username" maxlength="100"></label>
+            <label>연락처<input type="text" name="phone" maxlength="30"></label>
+            <button type="submit" class="fleet-btn">운전자 등록</button>
+        </form>
+    </section>
+</main>
+</body>
+</html>
