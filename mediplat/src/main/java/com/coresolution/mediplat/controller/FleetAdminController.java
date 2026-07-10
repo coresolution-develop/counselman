@@ -123,6 +123,21 @@ public class FleetAdminController {
         return "redirect:/fleet/admin";
     }
 
+    /** QR 인쇄 뷰. 차량별 QR을 self-host 라이브러리로 렌더 후 인쇄한다. */
+    @GetMapping("/fleet/admin/vehicles/{vehicleId}/qr-print")
+    public String qrPrint(@PathVariable Long vehicleId, HttpSession session, Model model) {
+        PlatformSessionUser user = requireAdmin(session);
+        if (user == null) {
+            return redirectForGuest(session);
+        }
+        FleetVehicle vehicle = fleetService.findVehicle(user.getInstCode(), vehicleId);
+        if (vehicle == null) {
+            return "redirect:/fleet/admin";
+        }
+        model.addAttribute("vehicle", vehicle);
+        return "fleet-qr-print";
+    }
+
     // ── 운행 기록 ────────────────────────────────────────────────────────
     @GetMapping("/fleet/admin/trips")
     public String trips(

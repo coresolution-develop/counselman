@@ -49,8 +49,10 @@
                 </td>
                 <td th:text="${#numbers.formatInteger(v.currentOdometer, 0, 'COMMA')}">45,000</td>
                 <td class="fleet-muted" th:text="${v.qrToken}">token</td>
-                <td>
-                    <form method="post" th:action="@{'/fleet/admin/vehicles/' + ${v.id} + '/qr'}">
+                <td style="white-space:nowrap;">
+                    <a class="fleet-btn ghost" target="_blank"
+                       th:href="@{'/fleet/admin/vehicles/' + ${v.id} + '/qr-print'}">QR 인쇄</a>
+                    <form method="post" th:action="@{'/fleet/admin/vehicles/' + ${v.id} + '/qr'}" style="display:inline;">
                         <button type="submit" class="fleet-btn ghost">QR 재발급</button>
                     </form>
                 </td>
