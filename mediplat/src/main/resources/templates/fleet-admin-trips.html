@@ -95,5 +95,17 @@
         </table>
     </section>
 </main>
+<script>
+    // 사진 파일이 유실/이동되어 404가 나면 깨진 이미지 대신 '없음' 표시로 대체한다.
+    document.querySelectorAll('img.fleet-thumb').forEach(function (img) {
+        img.addEventListener('error', function () {
+            var span = document.createElement('span');
+            span.className = 'fleet-thumb-missing';
+            span.textContent = '없음';
+            span.title = '사진 파일을 찾을 수 없습니다';
+            img.replaceWith(span);
+        });
+    });
+</script>
 </body>
 </html>

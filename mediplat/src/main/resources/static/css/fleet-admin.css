@@ -110,14 +110,64 @@
     color: #2f6df6;
 }
 
+/* 목록과 등록 폼 사이 구분 소제목 */
+.fleet-subhead {
+    margin: 24px 0 8px;
+    padding-top: 16px;
+    border-top: 1px solid #eef1f4;
+    font-size: 14px;
+    font-weight: 700;
+    color: #3a4552;
+}
+
+/* QR 토큰 셀의 복사 버튼(기본 버튼보다 작게) */
+.fleet-btn.fleet-copy {
+    height: 30px;
+    padding: 0 12px;
+    font-size: 13px;
+    margin-left: 6px;
+}
+
 .fleet-thumb {
-    height: 44px;
+    height: 46px;
     border-radius: 6px;
     border: 1px solid #e3e8ee;
     cursor: zoom-in;
+    transform-origin: left center;
+    transition: transform 0.15s ease;
+}
+
+/* hover 시 확대해 계기판 숫자 확인을 돕는다 */
+.fleet-thumb:hover {
+    transform: scale(2.6);
+    position: relative;
+    z-index: 5;
+    box-shadow: 0 6px 20px rgba(26, 35, 50, 0.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fleet-thumb {
+        transition: none;
+    }
+}
+
+/* 사진 파일 유실(404) 시 깨진 아이콘 대신 표시 */
+.fleet-thumb-missing {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 46px;
+    width: 46px;
+    border-radius: 6px;
+    border: 1px dashed #d5dbe2;
+    background: #f7f9fb;
+    color: #8a94a1;
+    font-size: 12px;
 }
 
 .fleet-status {
+    display: inline-block;
+    white-space: nowrap;
     font-size: 12px;
     padding: 2px 10px;
     border-radius: 999px;
@@ -142,4 +192,15 @@
 
 .fleet-muted {
     color: #8a94a1;
+}
+
+/* 모바일: 넓은 테이블이 화면을 밀지 않도록 카드 안에서 가로 스크롤 */
+@media (max-width: 720px) {
+    .fleet-admin-card {
+        overflow-x: auto;
+    }
+
+    .fleet-admin table {
+        min-width: 640px;
+    }
 }

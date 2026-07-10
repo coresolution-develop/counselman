@@ -41,18 +41,22 @@
             <tbody>
             <tr th:each="v : ${vehicles}">
                 <td th:text="${v.plateNo}">12가3456</td>
-                <td th:text="${v.name}">스타렉스 1호</td>
-                <td th:text="${v.department}">총무</td>
+                <td th:text="${#strings.isEmpty(v.name)} ? '—' : ${v.name}">스타렉스 1호</td>
+                <td th:text="${#strings.isEmpty(v.department)} ? '—' : ${v.department}">총무</td>
                 <td>
                     <span class="fleet-status" th:classappend="${v.statusCode == 'RUNNING'} ? ' running'"
-                          th:text="${v.statusCode}">IDLE</span>
+                          th:text="${v.statusCode == 'RUNNING'} ? '운행중' : '대기'">대기</span>
                 </td>
                 <td th:text="${#numbers.formatInteger(v.currentOdometer, 0, 'COMMA')}">45,000</td>
-                <td class="fleet-muted" th:text="${v.qrToken}">token</td>
+                <td>
+                    <span class="fleet-status">발급됨</span>
+                    <button type="button" class="fleet-btn ghost fleet-copy" th:attr="data-token=${v.qrToken}">복사</button>
+                </td>
                 <td style="white-space:nowrap;">
                     <a class="fleet-btn ghost" target="_blank"
                        th:href="@{'/fleet/admin/vehicles/' + ${v.id} + '/qr-print'}">QR 인쇄</a>
-                    <form method="post" th:action="@{'/fleet/admin/vehicles/' + ${v.id} + '/qr'}" style="display:inline;">
+                    <form method="post" th:action="@{'/fleet/admin/vehicles/' + ${v.id} + '/qr'}" style="display:inline;"
+                          onsubmit="return confirm('기존 QR을 무효화하고 새 QR을 발급합니다. 계속할까요?');">
                         <button type="submit" class="fleet-btn ghost">QR 재발급</button>
                     </form>
                 </td>
@@ -63,6 +67,7 @@
             </tbody>
         </table>
 
+        <h3 class="fleet-subhead">새 차량 등록</h3>
         <form method="post" th:action="@{/fleet/admin/vehicles}" class="fleet-form-grid">
             <label>번호판*<input type="text" name="plateNo" required maxlength="20"></label>
             <label>별칭<input type="text" name="name" maxlength="120"></label>
@@ -83,9 +88,9 @@
             <tbody>
             <tr th:each="d : ${drivers}">
                 <td th:text="${d.name}">홍길동</td>
-                <td th:text="${d.department}">총무</td>
-                <td th:text="${d.employeeNumber}">E1001</td>
-                <td class="fleet-muted" th:text="${d.username}">hong</td>
+                <td th:text="${#strings.isEmpty(d.department)} ? '—' : ${d.department}">총무</td>
+                <td th:text="${#strings.isEmpty(d.employeeNumber)} ? '—' : ${d.employeeNumber}">E1001</td>
+                <td class="fleet-muted" th:text="${#strings.isEmpty(d.username)} ? '—' : ${d.username}">hong</td>
                 <td><span class="fleet-status" th:text="${d.useYn == 'Y'} ? '사용' : '중지'">사용</span></td>
             </tr>
             <tr th:if="${#lists.isEmpty(drivers)}">
@@ -94,6 +99,7 @@
             </tbody>
         </table>
 
+        <h3 class="fleet-subhead">새 운전자 등록</h3>
         <form method="post" th:action="@{/fleet/admin/drivers}" class="fleet-form-grid">
             <label>이름*<input type="text" name="name" required maxlength="100"></label>
             <label>부서<input type="text" name="department" maxlength="120"></label>
@@ -104,5 +110,17 @@
         </form>
     </section>
 </main>
+<script>
+    document.querySelectorAll('.fleet-copy').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var token = btn.getAttribute('data-token') || '';
+            navigator.clipboard.writeText(token).then(function () {
+                var prev = btn.textContent;
+                btn.textContent = '복사됨';
+                setTimeout(function () { btn.textContent = prev; }, 1200);
+            });
+        });
+    });
+</script>
 </body>
 </html>
