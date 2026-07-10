@@ -6,6 +6,18 @@
     padding: 20px 16px 48px;
 }
 
+/* .topbar는 position:fixed(min-height 80px, 모바일 132px)라 본문이 가려진다.
+   mediplat.css의 ".topbar + .page-shell { padding-top:108px }" 관례를 fleet 컨테이너에도 동일 적용. */
+.topbar + .fleet-admin-shell {
+    padding-top: 108px;
+}
+
+@media (max-width: 960px) {
+    .topbar + .fleet-admin-shell {
+        padding-top: 160px;
+    }
+}
+
 .fleet-admin-card {
     background: #fff;
     border-radius: 14px;
