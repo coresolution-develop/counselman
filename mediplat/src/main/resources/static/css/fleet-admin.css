@@ -1,4 +1,15 @@
-/* 차량운행관리 관리자 콘솔 전용 스타일(데스크톱). mediplat.css 위에 얹는다. */
+/* 차량운행관리 관리자 콘솔 전용 스타일. mediplat.css 위에 얹는다.
+   데스크톱 우선이되 모바일 접근(관리자도 폰으로 봄)을 고려: 넓은 표는 가로 스크롤. */
+
+:root {
+    --fleet-ink: #1a2332;
+    --fleet-muted: #5b6672;
+    --fleet-subtle: #8a94a1;
+    --fleet-line: #e6eaef;
+    --fleet-primary: #2f6df6;
+    --fleet-radius: 14px;
+    --fleet-radius-sm: 9px;
+}
 
 .fleet-admin-shell {
     max-width: 1080px;
@@ -16,45 +27,61 @@
     .topbar + .fleet-admin-shell {
         padding-top: 160px;
     }
+    .fleet-admin-shell {
+        padding: 16px 12px 40px;
+    }
 }
 
 .fleet-admin-card {
     background: #fff;
-    border-radius: 14px;
+    border-radius: var(--fleet-radius);
     padding: 22px;
-    box-shadow: 0 1px 3px rgba(26, 35, 50, 0.08);
+    box-shadow: 0 1px 3px rgba(26, 35, 50, 0.08), 0 8px 24px rgba(26, 35, 50, 0.05);
     margin-bottom: 20px;
 }
 
 .fleet-admin-card h2 {
     margin: 0 0 4px;
     font-size: 18px;
+    font-weight: 700;
 }
 
 .fleet-admin-card .desc {
     margin: 0 0 16px;
-    color: #55606e;
+    color: var(--fleet-muted);
     font-size: 14px;
+    line-height: 1.5;
+}
+
+/* 넓은 표는 모바일에서 가로 스크롤(레이아웃 깨짐 방지) */
+.fleet-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--fleet-radius-sm);
 }
 
 .fleet-admin table {
     width: 100%;
+    min-width: 640px;
     border-collapse: collapse;
     font-size: 14px;
 }
 
 .fleet-admin th,
 .fleet-admin td {
-    padding: 10px 12px;
-    border-bottom: 1px solid #eef1f4;
+    padding: 12px;
+    border-bottom: 1px solid var(--fleet-line);
     text-align: left;
     vertical-align: middle;
+    white-space: nowrap;
 }
 
 .fleet-admin th {
-    color: #55606e;
+    color: var(--fleet-muted);
     font-weight: 600;
     background: #f7f9fb;
+    position: sticky;
+    top: 0;
 }
 
 .fleet-form-grid {
@@ -62,7 +89,7 @@
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 12px;
     align-items: end;
-    margin-top: 8px;
+    margin-top: 16px;
 }
 
 .fleet-form-grid label {
@@ -77,12 +104,23 @@
 .fleet-form-grid input,
 .fleet-filter input,
 .fleet-filter select {
-    height: 44px;
+    height: 46px;
     padding: 0 12px;
     font-size: 15px;
+    color: var(--fleet-ink);
     border: 1px solid #d5dbe2;
-    border-radius: 9px;
+    border-radius: var(--fleet-radius-sm);
     box-sizing: border-box;
+    background: #fff;
+}
+
+.fleet-form-grid input:focus-visible,
+.fleet-filter input:focus-visible,
+.fleet-filter select:focus-visible,
+.fleet-btn:focus-visible {
+    outline: 3px solid rgba(47, 109, 246, 0.4);
+    outline-offset: 2px;
+    border-color: var(--fleet-primary);
 }
 
 .fleet-filter {
@@ -94,30 +132,32 @@
 }
 
 .fleet-btn {
-    height: 44px;
+    min-height: 46px;
     padding: 0 18px;
     font-size: 15px;
     font-weight: 600;
     color: #fff;
-    background: #2f6df6;
+    background: var(--fleet-primary);
     border: none;
-    border-radius: 9px;
+    border-radius: var(--fleet-radius-sm);
     cursor: pointer;
+    white-space: nowrap;
 }
 
 .fleet-btn.ghost {
     background: #eef2f7;
-    color: #2f6df6;
+    color: var(--fleet-primary);
 }
 
 .fleet-thumb {
     height: 44px;
     border-radius: 6px;
-    border: 1px solid #e3e8ee;
+    border: 1px solid var(--fleet-line);
     cursor: zoom-in;
 }
 
 .fleet-status {
+    display: inline-block;
     font-size: 12px;
     padding: 2px 10px;
     border-radius: 999px;
@@ -127,11 +167,11 @@
 
 .fleet-status.running {
     background: #e7f0ff;
-    color: #2f6df6;
+    color: var(--fleet-primary);
 }
 
 .fleet-row-warn {
-    background: #fff5ec;
+    background: var(--fleet-warn-bg, #fff5ec);
 }
 
 .fleet-warn-tag {
@@ -141,5 +181,5 @@
 }
 
 .fleet-muted {
-    color: #8a94a1;
+    color: var(--fleet-subtle);
 }

@@ -1,15 +1,36 @@
-/* 차량운행관리 운전자 모바일 화면. mediplat.css 위에 얹는 화면 전용 스타일. */
+/* 차량운행관리 운전자 모바일 화면. mediplat.css 위에 얹는 화면 전용 스타일.
+   설계: 모바일 우선 · 8px 그리드 · 터치 타깃 ≥48px · safe-area 대응 · WCAG AA 포커스 · reduced-motion. */
+
+:root {
+    --fleet-bg: #f4f6f8;
+    --fleet-surface: #ffffff;
+    --fleet-ink: #1a2332;          /* Deep Ocean Navy */
+    --fleet-muted: #5b6672;
+    --fleet-subtle: #8a94a1;
+    --fleet-line: #e6eaef;
+    --fleet-primary: #2f6df6;      /* Azure Blue */
+    --fleet-primary-press: #245bd6;
+    --fleet-on-primary: #ffffff;
+    --fleet-success: #1f8a4c;
+    --fleet-success-bg: #e7f3ec;
+    --fleet-warn: #b4520a;
+    --fleet-warn-bg: #fff5ec;
+    --fleet-radius: 14px;
+    --fleet-radius-sm: 10px;
+    --fleet-shadow: 0 1px 3px rgba(26, 35, 50, 0.08), 0 8px 24px rgba(26, 35, 50, 0.05);
+}
 
 .fleet-body {
     margin: 0;
-    background: #f4f6f8;
-    color: #1a2332;
+    background: var(--fleet-bg);
+    color: var(--fleet-ink);
+    font-family: 'Pretendard Variable', Pretendard, system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
     -webkit-text-size-adjust: 100%;
 }
 
 .fleet-topbar {
-    padding: 20px 20px 12px;
-    background: #1a2332;
+    padding: calc(20px + env(safe-area-inset-top)) 20px 14px;
+    background: var(--fleet-ink);
     color: #fff;
 }
 
@@ -17,31 +38,35 @@
     margin: 0;
     font-size: 12px;
     letter-spacing: 0.08em;
-    opacity: 0.7;
+    opacity: 0.72;
     text-transform: uppercase;
 }
 
 .fleet-topbar h1 {
     margin: 4px 0 0;
     font-size: 20px;
+    font-weight: 700;
 }
 
 .fleet-shell {
     max-width: 520px;
     margin: 0 auto;
-    padding: 16px;
+    padding: 16px 16px calc(28px + env(safe-area-inset-bottom));
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
 }
 
 .fleet-card {
-    background: #fff;
-    border-radius: 14px;
+    background: var(--fleet-surface);
+    border-radius: var(--fleet-radius);
     padding: 20px;
-    box-shadow: 0 1px 3px rgba(26, 35, 50, 0.08);
+    box-shadow: var(--fleet-shadow);
 }
 
 .fleet-card h2 {
     margin: 0 0 12px;
     font-size: 18px;
+    font-weight: 700;
 }
 
 .fleet-vehicle {
@@ -49,35 +74,39 @@
     flex-direction: column;
     gap: 2px;
     padding-bottom: 14px;
-    margin-bottom: 14px;
-    border-bottom: 1px solid #eef1f4;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--fleet-line);
 }
 
 .fleet-vehicle strong {
-    font-size: 20px;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
 }
 
 .fleet-vehicle span {
-    color: #55606e;
+    color: var(--fleet-muted);
 }
 
 .fleet-vehicle em {
     font-style: normal;
-    color: #8a94a1;
+    color: var(--fleet-subtle);
     font-size: 13px;
+    margin-top: 2px;
 }
 
 .fleet-hint {
-    color: #55606e;
+    color: var(--fleet-muted);
     font-size: 14px;
-    margin: 0 0 12px;
+    margin: 0 0 14px;
+    line-height: 1.5;
 }
 
 .fleet-field {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    margin-bottom: 14px;
+    gap: 8px;
+    margin-bottom: 18px;
 }
 
 .fleet-field > span,
@@ -89,61 +118,105 @@
 
 .fleet-field input,
 .fleet-field select {
-    height: 48px;
+    height: 52px;
     padding: 0 14px;
-    font-size: 16px; /* iOS 확대 방지 */
+    font-size: 16px; /* iOS 자동 확대 방지 */
+    color: var(--fleet-ink);
     border: 1px solid #d5dbe2;
-    border-radius: 10px;
+    border-radius: var(--fleet-radius-sm);
     background: #fff;
     box-sizing: border-box;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
 
-.fleet-field input:focus,
-.fleet-field select:focus {
-    outline: 2px solid #2f6df6;
-    outline-offset: 1px;
-    border-color: #2f6df6;
+.fleet-field input:focus-visible,
+.fleet-field select:focus-visible,
+.fleet-seg-item:focus-visible,
+.fleet-driver-item:focus-visible,
+.fleet-primary:focus-visible {
+    outline: 3px solid rgba(47, 109, 246, 0.4);
+    outline-offset: 2px;
+    border-color: var(--fleet-primary);
+}
+
+/* 운행 목적: 세그먼트 버튼(네이티브 select보다 큰 터치 타깃) */
+.fleet-seg {
+    display: flex;
+    gap: 8px;
+}
+
+.fleet-seg-item {
+    flex: 1;
+    min-height: 48px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--fleet-muted);
+    background: #f3f6fa;
+    border: 1px solid #dce3ec;
+    border-radius: var(--fleet-radius-sm);
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.fleet-seg-item.is-active {
+    color: var(--fleet-on-primary);
+    background: var(--fleet-primary);
+    border-color: var(--fleet-primary);
 }
 
 .fleet-capture {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    margin: 8px 0 18px;
+    gap: 12px;
+    margin: 8px 0 20px;
 }
 
 .fleet-capture input[type='file'] {
     font-size: 15px;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
 }
 
 .fleet-preview {
     width: 100%;
-    max-height: 220px;
+    max-height: 240px;
     object-fit: cover;
-    border-radius: 10px;
-    border: 1px solid #e3e8ee;
+    border-radius: var(--fleet-radius-sm);
+    border: 1px solid var(--fleet-line);
 }
 
 .fleet-ocr-status {
     margin: 0;
     font-size: 13px;
-    color: #2f6df6;
+    color: var(--fleet-primary);
+    min-height: 18px;
 }
 
+/* 하단 고정 주 버튼(엄지 도달 영역) */
 .fleet-primary {
+    position: sticky;
+    bottom: calc(12px + env(safe-area-inset-bottom));
     width: 100%;
-    height: 52px;
+    height: 56px;
     font-size: 17px;
     font-weight: 700;
-    color: #fff;
-    background: #2f6df6;
+    color: var(--fleet-on-primary);
+    background: var(--fleet-primary);
     border: none;
-    border-radius: 12px;
+    border-radius: 14px;
     cursor: pointer;
+    box-shadow: 0 8px 20px rgba(47, 109, 246, 0.28);
+    transition: background 0.12s ease;
+}
+
+.fleet-primary:active {
+    background: var(--fleet-primary-press);
 }
 
 .fleet-primary:disabled {
     background: #aeb8c4;
+    box-shadow: none;
     cursor: not-allowed;
 }
 
@@ -159,21 +232,29 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 2px;
-    padding: 14px 16px;
+    min-height: 60px;
+    padding: 12px 16px;
     background: #f7f9fb;
-    border: 1px solid #e3e8ee;
-    border-radius: 10px;
+    border: 1px solid var(--fleet-line);
+    border-radius: var(--fleet-radius-sm);
     font-size: 16px;
     cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.fleet-driver-item:active {
+    background: #eef3fb;
+    border-color: #cdddf7;
 }
 
 .fleet-driver-item strong {
     font-size: 17px;
+    font-weight: 700;
 }
 
 .fleet-driver-item span {
     font-size: 13px;
-    color: #8a94a1;
+    color: var(--fleet-subtle);
 }
 
 .fleet-driver-item:disabled {
@@ -182,47 +263,51 @@
 
 .fleet-empty {
     text-align: center;
-    color: #55606e;
+    color: var(--fleet-muted);
     line-height: 1.6;
-    padding: 20px 0;
+    padding: 28px 8px;
 }
 
 .fleet-warn {
-    color: #b4520a;
+    color: var(--fleet-warn);
+    background: var(--fleet-warn-bg);
+    padding: 10px 12px;
+    border-radius: var(--fleet-radius-sm);
     font-size: 14px;
 }
 
 .fleet-loading {
     text-align: center;
-    color: #8a94a1;
-    padding: 40px 0;
+    color: var(--fleet-subtle);
+    padding: 48px 0;
 }
 
 .fleet-done {
     text-align: center;
+    padding: 12px 0 4px;
 }
 
 .fleet-check {
-    width: 64px;
-    height: 64px;
-    line-height: 64px;
-    margin: 4px auto 12px;
+    width: 72px;
+    height: 72px;
+    line-height: 72px;
+    margin: 4px auto 14px;
     border-radius: 50%;
-    background: #e7f3ec;
-    color: #1f8a4c;
-    font-size: 34px;
+    background: var(--fleet-success-bg);
+    color: var(--fleet-success);
+    font-size: 38px;
 }
 
 .fleet-toast {
     position: fixed;
     left: 50%;
-    bottom: 24px;
+    bottom: calc(24px + env(safe-area-inset-bottom));
     transform: translateX(-50%) translateY(20px);
     max-width: 90%;
     padding: 12px 18px;
-    background: #1a2332;
+    background: var(--fleet-ink);
     color: #fff;
-    border-radius: 10px;
+    border-radius: var(--fleet-radius-sm);
     font-size: 14px;
     opacity: 0;
     transition: opacity 0.2s ease, transform 0.2s ease;
@@ -236,7 +321,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .fleet-toast {
+    .fleet-toast,
+    .fleet-primary,
+    .fleet-seg-item,
+    .fleet-field input,
+    .fleet-driver-item {
         transition: none;
     }
 }

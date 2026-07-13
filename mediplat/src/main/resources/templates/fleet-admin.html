@@ -31,7 +31,8 @@
 
     <section class="fleet-admin-card">
         <h2>차량</h2>
-        <p class="desc">차량을 등록하면 QR 토큰이 자동 발급됩니다. QR 인쇄는 다음 단계에서 제공됩니다.</p>
+        <p class="desc">차량을 등록하면 QR 토큰이 자동 발급됩니다. QR 인쇄 버튼으로 부착용 QR을 출력할 수 있습니다.</p>
+        <div class="fleet-table-scroll">
         <table>
             <thead>
             <tr>
@@ -62,6 +63,7 @@
             </tr>
             </tbody>
         </table>
+        </div>
 
         <form method="post" th:action="@{/fleet/admin/vehicles}" class="fleet-form-grid">
             <label>번호판*<input type="text" name="plateNo" required maxlength="20"></label>
@@ -76,6 +78,7 @@
     <section class="fleet-admin-card">
         <h2>운전자 로스터</h2>
         <p class="desc">운전자를 등록해야 기기 최초 등록 화면에서 본인을 선택할 수 있습니다. 계정(username)은 선택입니다.</p>
+        <div class="fleet-table-scroll">
         <table>
             <thead>
             <tr><th>이름</th><th>부서</th><th>사번</th><th>계정(username)</th><th>상태</th></tr>
@@ -93,6 +96,7 @@
             </tr>
             </tbody>
         </table>
+        </div>
 
         <form method="post" th:action="@{/fleet/admin/drivers}" class="fleet-form-grid">
             <label>이름*<input type="text" name="name" required maxlength="100"></label>

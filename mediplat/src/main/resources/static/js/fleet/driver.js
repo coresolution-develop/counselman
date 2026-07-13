@@ -101,12 +101,12 @@ function renderDepart(vehicle) {
         <section class="fleet-card">
             ${vehicleHeader(vehicle)}
             <h2>출발</h2>
-            <label class="fleet-field">
-                <span>운행 목적</span>
-                <select id="fleet-purpose">
-                    ${PURPOSES.map((p) => `<option value="${p.code}">${p.label}</option>`).join('')}
-                </select>
-            </label>
+            <div class="fleet-field">
+                <span class="fleet-field-label">운행 목적</span>
+                <div class="fleet-seg" id="fleet-purpose" role="group" aria-label="운행 목적">
+                    ${PURPOSES.map((p, i) => `<button type="button" class="fleet-seg-item${i === 0 ? ' is-active' : ''}" data-value="${p.code}" aria-pressed="${i === 0}">${p.label}</button>`).join('')}
+                </div>
+            </div>
             <label class="fleet-field">
                 <span>메모 (선택)</span>
                 <input type="text" id="fleet-memo" maxlength="200" placeholder="예: 고객사 방문">
@@ -115,11 +115,12 @@ function renderDepart(vehicle) {
             <button type="button" id="fleet-submit" class="fleet-primary" disabled>출발 기록</button>
         </section>`;
     const capture = mountCapture(document.getElementById('fleet-capture'), '출발 계기판', document.getElementById('fleet-submit'));
+    wireSegmented(document.getElementById('fleet-purpose'));
     document.getElementById('fleet-submit').addEventListener('click', async () => {
         const state = capture.getState();
         const form = new FormData();
         form.append('vehicleId', vehicle.id);
-        form.append('purpose', document.getElementById('fleet-purpose').value);
+        form.append('purpose', selectedSegment(document.getElementById('fleet-purpose'), 'BUSINESS'));
         form.append('purposeMemo', document.getElementById('fleet-memo').value);
         form.append('odometerStart', String(state.odometer));
         form.append('odometerStartSrc', state.src);
@@ -261,6 +262,28 @@ function renderDone(message, data) {
 
 function renderError(message) {
     app.innerHTML = `<section class="fleet-card"><p class="fleet-empty">${escapeHtml(message)}</p></section>`;
+}
+
+// ── 세그먼트(운행 목적) ─────────────────────────────────────────────────
+function wireSegmented(group) {
+    if (!group) {
+        return;
+    }
+    group.querySelectorAll('.fleet-seg-item').forEach((item) => {
+        item.addEventListener('click', () => {
+            group.querySelectorAll('.fleet-seg-item').forEach((el) => {
+                el.classList.remove('is-active');
+                el.setAttribute('aria-pressed', 'false');
+            });
+            item.classList.add('is-active');
+            item.setAttribute('aria-pressed', 'true');
+        });
+    });
+}
+
+function selectedSegment(group, fallback) {
+    const active = group && group.querySelector('.fleet-seg-item.is-active');
+    return active ? active.dataset.value : fallback;
 }
 
 // ── 유틸 ────────────────────────────────────────────────────────────────
