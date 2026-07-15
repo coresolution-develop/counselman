@@ -748,7 +748,7 @@
       <img class="user-avatar" :src="user.thumbnail || (CTX + '/img/default-avatar.svg')" :alt="user.nickname"
            onerror="this.src=CTX+'/img/default-avatar.svg'">
       <span class="user-nickname" x-text="user.nickname + ' 님'"></span>
-      <a href="/logout" class="btn-logout">로그아웃</a>
+      <a :href="CTX + '/logout?returnTo=chat&t=' + encodeURIComponent(token)" class="btn-logout">로그아웃</a>
     </div>
   </header>
 
