@@ -206,6 +206,160 @@ public class FleetAdminController {
                 .body(new FileSystemResource(file));
     }
 
+    // ── 차량 수정/사용중지/삭제 ────────────────────────────────────────────
+    @PostMapping("/fleet/admin/vehicles/{vehicleId}/update")
+    public String updateVehicle(
+            @PathVariable Long vehicleId,
+            @RequestParam("plateNo") String plateNo,
+            @RequestParam(value = "name", required = false) String name,
+            @RequestParam(value = "modelName", required = false) String modelName,
+            @RequestParam(value = "department", required = false) String department,
+            HttpSession session, RedirectAttributes redirectAttributes) {
+        PlatformSessionUser user = requireAdmin(session);
+        if (user == null) {
+            return redirectForGuest(session);
+        }
+        try {
+            fleetService.updateVehicle(user.getInstCode(), vehicleId, plateNo, name, modelName, department);
+            redirectAttributes.addFlashAttribute("message", "차량 정보를 수정했습니다.");
+        } catch (RuntimeException e) {
+            redirectAttributes.addFlashAttribute("error", messageOf(e, "차량 수정에 실패했습니다."));
+        }
+        return "redirect:/fleet/admin";
+    }
+
+    @PostMapping("/fleet/admin/vehicles/{vehicleId}/active")
+    public String setVehicleActive(
+            @PathVariable Long vehicleId,
+            @RequestParam("active") boolean active,
+            HttpSession session, RedirectAttributes redirectAttributes) {
+        PlatformSessionUser user = requireAdmin(session);
+        if (user == null) {
+            return redirectForGuest(session);
+        }
+        try {
+            fleetService.setVehicleActive(user.getInstCode(), vehicleId, active);
+            redirectAttributes.addFlashAttribute("message", active ? "차량을 사용 재개했습니다." : "차량을 사용 중지했습니다.");
+        } catch (RuntimeException e) {
+            redirectAttributes.addFlashAttribute("error", messageOf(e, "상태 변경에 실패했습니다."));
+        }
+        return "redirect:/fleet/admin";
+    }
+
+    @PostMapping("/fleet/admin/vehicles/{vehicleId}/delete")
+    public String deleteVehicle(
+            @PathVariable Long vehicleId,
+            HttpSession session, RedirectAttributes redirectAttributes) {
+        PlatformSessionUser user = requireAdmin(session);
+        if (user == null) {
+            return redirectForGuest(session);
+        }
+        try {
+            fleetService.deleteVehicle(user.getInstCode(), vehicleId);
+            redirectAttributes.addFlashAttribute("message", "차량을 삭제했습니다.");
+        } catch (RuntimeException e) {
+            redirectAttributes.addFlashAttribute("error", messageOf(e, "차량 삭제에 실패했습니다."));
+        }
+        return "redirect:/fleet/admin";
+    }
+
+    // ── 운전자 수정/사용중지/삭제 ──────────────────────────────────────────
+    @PostMapping("/fleet/admin/drivers/{driverId}/update")
+    public String updateDriver(
+            @PathVariable Long driverId,
+            @RequestParam("name") String name,
+            @RequestParam(value = "username", required = false) String username,
+            @RequestParam(value = "employeeNumber", required = false) String employeeNumber,
+            @RequestParam(value = "department", required = false) String department,
+            @RequestParam(value = "phone", required = false) String phone,
+            HttpSession session, RedirectAttributes redirectAttributes) {
+        PlatformSessionUser user = requireAdmin(session);
+        if (user == null) {
+            return redirectForGuest(session);
+        }
+        try {
+            fleetService.updateDriver(user.getInstCode(), driverId, name, username, employeeNumber, department, phone);
+            redirectAttributes.addFlashAttribute("message", "운전자 정보를 수정했습니다.");
+        } catch (RuntimeException e) {
+            redirectAttributes.addFlashAttribute("error", messageOf(e, "운전자 수정에 실패했습니다."));
+        }
+        return "redirect:/fleet/admin";
+    }
+
+    @PostMapping("/fleet/admin/drivers/{driverId}/active")
+    public String setDriverActive(
+            @PathVariable Long driverId,
+            @RequestParam("active") boolean active,
+            HttpSession session, RedirectAttributes redirectAttributes) {
+        PlatformSessionUser user = requireAdmin(session);
+        if (user == null) {
+            return redirectForGuest(session);
+        }
+        try {
+            fleetService.setDriverActive(user.getInstCode(), driverId, active);
+            redirectAttributes.addFlashAttribute("message", active ? "운전자를 사용 재개했습니다." : "운전자를 사용 중지했습니다.");
+        } catch (RuntimeException e) {
+            redirectAttributes.addFlashAttribute("error", messageOf(e, "상태 변경에 실패했습니다."));
+        }
+        return "redirect:/fleet/admin";
+    }
+
+    @PostMapping("/fleet/admin/drivers/{driverId}/delete")
+    public String deleteDriver(
+            @PathVariable Long driverId,
+            HttpSession session, RedirectAttributes redirectAttributes) {
+        PlatformSessionUser user = requireAdmin(session);
+        if (user == null) {
+            return redirectForGuest(session);
+        }
+        try {
+            fleetService.deleteDriver(user.getInstCode(), driverId);
+            redirectAttributes.addFlashAttribute("message", "운전자를 삭제했습니다.");
+        } catch (RuntimeException e) {
+            redirectAttributes.addFlashAttribute("error", messageOf(e, "운전자 삭제에 실패했습니다."));
+        }
+        return "redirect:/fleet/admin";
+    }
+
+    // ── 운행 정정/삭제 ─────────────────────────────────────────────────────
+    @PostMapping("/fleet/admin/trips/{tripId}/update")
+    public String correctTrip(
+            @PathVariable Long tripId,
+            @RequestParam("odometerStart") Integer odometerStart,
+            @RequestParam(value = "odometerEnd", required = false) Integer odometerEnd,
+            @RequestParam("purpose") String purpose,
+            @RequestParam(value = "purposeMemo", required = false) String purposeMemo,
+            HttpSession session, RedirectAttributes redirectAttributes) {
+        PlatformSessionUser user = requireAdmin(session);
+        if (user == null) {
+            return redirectForGuest(session);
+        }
+        try {
+            fleetService.correctTripOdometer(user.getInstCode(), tripId, odometerStart, odometerEnd, purpose, purposeMemo);
+            redirectAttributes.addFlashAttribute("message", "운행 기록을 정정했습니다.");
+        } catch (RuntimeException e) {
+            redirectAttributes.addFlashAttribute("error", messageOf(e, "운행 정정에 실패했습니다."));
+        }
+        return "redirect:/fleet/admin/trips";
+    }
+
+    @PostMapping("/fleet/admin/trips/{tripId}/delete")
+    public String deleteTrip(
+            @PathVariable Long tripId,
+            HttpSession session, RedirectAttributes redirectAttributes) {
+        PlatformSessionUser user = requireAdmin(session);
+        if (user == null) {
+            return redirectForGuest(session);
+        }
+        try {
+            fleetService.deleteTrip(user.getInstCode(), tripId);
+            redirectAttributes.addFlashAttribute("message", "운행 기록을 삭제했습니다.");
+        } catch (RuntimeException e) {
+            redirectAttributes.addFlashAttribute("error", messageOf(e, "운행 삭제에 실패했습니다."));
+        }
+        return "redirect:/fleet/admin/trips";
+    }
+
     // ── 내부 ──────────────────────────────────────────────────────────────
     private PlatformSessionUser requireAdmin(HttpSession session) {
         Object value = session == null ? null : session.getAttribute(MediplatController.SESSION_USER);

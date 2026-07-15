@@ -208,6 +208,71 @@ public class FleetService {
         return findVehicle(normalizedInstCode, vehicleId);
     }
 
+    /** 차량 정보 수정(번호판·별칭·모델·부서). 상태/계기판은 운행으로만 바뀐다. */
+    public FleetVehicle updateVehicle(
+            String instCode, Long vehicleId, String plateNo, String name, String modelName, String department) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        String normalizedPlateNo = trimToNull(plateNo);
+        if (!StringUtils.hasText(normalizedInstCode) || vehicleId == null || normalizedPlateNo == null) {
+            throw new IllegalArgumentException("기관 코드와 차량 번호판은 필수입니다.");
+        }
+        if (findVehicle(normalizedInstCode, vehicleId) == null) {
+            throw new IllegalArgumentException("수정할 차량을 찾을 수 없습니다.");
+        }
+        Integer dup = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM mp_fleet_vehicle
+                WHERE inst_code = ? AND plate_no = ? AND id <> ?
+                """, Integer.class, normalizedInstCode, normalizedPlateNo, vehicleId);
+        if (dup != null && dup > 0) {
+            throw new IllegalArgumentException("이미 등록된 차량 번호판입니다.");
+        }
+        jdbcTemplate.update("""
+                UPDATE mp_fleet_vehicle
+                SET plate_no = ?, name = ?, model_name = ?, department = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE inst_code = ? AND id = ?
+                """, normalizedPlateNo, trimToNull(name), trimToNull(modelName), trimToNull(department),
+                normalizedInstCode, vehicleId);
+        return findVehicle(normalizedInstCode, vehicleId);
+    }
+
+    /** 차량 사용중지/재개(use_yn). 중지 차량은 운전자 화면에서 운행 불가. */
+    public void setVehicleActive(String instCode, Long vehicleId, boolean active) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        if (!StringUtils.hasText(normalizedInstCode) || vehicleId == null) {
+            throw new IllegalArgumentException("차량 정보를 확인해 주세요.");
+        }
+        if (!active) {
+            FleetVehicle vehicle = findVehicle(normalizedInstCode, vehicleId);
+            if (vehicle != null && vehicle.isRunning()) {
+                throw new IllegalStateException("운행 중인 차량은 중지할 수 없습니다. 운행 종료 후 다시 시도하세요.");
+            }
+        }
+        jdbcTemplate.update("""
+                UPDATE mp_fleet_vehicle SET use_yn = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE inst_code = ? AND id = ?
+                """, active ? "Y" : "N", normalizedInstCode, vehicleId);
+    }
+
+    /** 운행 기록이 없을 때만 하드 삭제. 기록이 있으면 세무 증빙 보존을 위해 거부(대신 사용중지). */
+    public void deleteVehicle(String instCode, Long vehicleId) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        if (!StringUtils.hasText(normalizedInstCode) || vehicleId == null) {
+            throw new IllegalArgumentException("차량 정보를 확인해 주세요.");
+        }
+        if (countTripsForVehicle(normalizedInstCode, vehicleId) > 0) {
+            throw new IllegalStateException("운행 기록이 있어 삭제할 수 없습니다. '사용 중지'를 이용하세요.");
+        }
+        jdbcTemplate.update("DELETE FROM mp_fleet_vehicle WHERE inst_code = ? AND id = ?",
+                normalizedInstCode, vehicleId);
+    }
+
+    private int countTripsForVehicle(String instCode, Long vehicleId) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM mp_fleet_trip_log WHERE inst_code = ? AND vehicle_id = ?",
+                Integer.class, instCode, vehicleId);
+        return count == null ? 0 : count;
+    }
+
     // ---------------------------------------------------------------------
     // 운전자 로스터
     // ---------------------------------------------------------------------
@@ -322,6 +387,70 @@ public class FleetService {
                 username,
                 username);
         return result.isEmpty() ? null : result.get(0);
+    }
+
+    /** 운전자 정보 수정. username 자연키는 중복 검사(자기 자신 제외). */
+    public FleetDriver updateDriver(
+            String instCode, Long driverId, String name, String username,
+            String employeeNumber, String department, String phone) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        String normalizedName = trimToNull(name);
+        String normalizedUsername = normalizeUsername(username);
+        if (!StringUtils.hasText(normalizedInstCode) || driverId == null || normalizedName == null) {
+            throw new IllegalArgumentException("기관 코드와 운전자 이름은 필수입니다.");
+        }
+        if (findDriver(normalizedInstCode, driverId) == null) {
+            throw new IllegalArgumentException("수정할 운전자를 찾을 수 없습니다.");
+        }
+        if (normalizedUsername != null) {
+            Integer dup = jdbcTemplate.queryForObject("""
+                    SELECT COUNT(*) FROM mp_fleet_driver
+                    WHERE inst_code = ? AND LOWER(username) = LOWER(?) AND id <> ?
+                    """, Integer.class, normalizedInstCode, normalizedUsername, driverId);
+            if (dup != null && dup > 0) {
+                throw new IllegalArgumentException("이미 등록된 계정의 운전자입니다.");
+            }
+        }
+        jdbcTemplate.update("""
+                UPDATE mp_fleet_driver
+                SET name = ?, username = ?, employee_number = ?, department = ?, phone = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE inst_code = ? AND id = ?
+                """, normalizedName, normalizedUsername, trimToNull(employeeNumber),
+                trimToNull(department), trimToNull(phone), normalizedInstCode, driverId);
+        return findDriver(normalizedInstCode, driverId);
+    }
+
+    /** 운전자 사용중지/재개(use_yn). 중지 운전자는 기기 등록 화면에서 선택 불가. */
+    public void setDriverActive(String instCode, Long driverId, boolean active) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        if (!StringUtils.hasText(normalizedInstCode) || driverId == null) {
+            throw new IllegalArgumentException("운전자 정보를 확인해 주세요.");
+        }
+        jdbcTemplate.update("""
+                UPDATE mp_fleet_driver SET use_yn = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE inst_code = ? AND id = ?
+                """, active ? "Y" : "N", normalizedInstCode, driverId);
+    }
+
+    /** 운행 기록이 없을 때만 하드 삭제(등록된 기기 토큰도 함께 정리). 기록 있으면 거부(사용중지 이용). */
+    @Transactional
+    public void deleteDriver(String instCode, Long driverId) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        if (!StringUtils.hasText(normalizedInstCode) || driverId == null) {
+            throw new IllegalArgumentException("운전자 정보를 확인해 주세요.");
+        }
+        if (findDriver(normalizedInstCode, driverId) == null) {
+            throw new IllegalArgumentException("삭제할 운전자를 찾을 수 없습니다.");
+        }
+        Integer trips = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM mp_fleet_trip_log WHERE inst_code = ? AND driver_id = ?",
+                Integer.class, normalizedInstCode, driverId);
+        if (trips != null && trips > 0) {
+            throw new IllegalStateException("운행 기록이 있어 삭제할 수 없습니다. '사용 중지'를 이용하세요.");
+        }
+        jdbcTemplate.update("DELETE FROM mp_fleet_device_token WHERE driver_id = ?", driverId);
+        jdbcTemplate.update("DELETE FROM mp_fleet_driver WHERE inst_code = ? AND id = ?",
+                normalizedInstCode, driverId);
     }
 
     // ---------------------------------------------------------------------
@@ -498,6 +627,90 @@ public class FleetService {
                 """, odometerEnd, normalizedInstCode, trip.getVehicleId());
 
         return findTrip(normalizedInstCode, tripId);
+    }
+
+    /**
+     * 운행 계기판 정정. 잘못 입력한 시작/종료 km를 관리자가 고친다. distance·상한을 재계산하고,
+     * 해당 차량의 최신 계기판(current_odometer)을 전체 운행 기준으로 재동기화한다(출발 가드 정합).
+     * 진행 중(ONGOING) 운행은 시작 계기판만 정정한다.
+     */
+    @Transactional
+    public FleetTripLog correctTripOdometer(
+            String instCode, Long tripId, Integer odometerStart, Integer odometerEnd,
+            String purposeCode, String purposeMemo) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        if (!StringUtils.hasText(normalizedInstCode) || tripId == null) {
+            throw new IllegalArgumentException("운행 정보를 확인해 주세요.");
+        }
+        FleetTripLog trip = findTrip(normalizedInstCode, tripId);
+        if (trip == null) {
+            throw new IllegalArgumentException("운행 기록을 찾을 수 없습니다.");
+        }
+        if (odometerStart == null || odometerStart < 0) {
+            throw new IllegalArgumentException("출발 계기판 값을 확인해 주세요.");
+        }
+        String normalizedPurpose = normalizePurpose(purposeCode);
+        if (trip.isCompleted()) {
+            if (odometerEnd == null || odometerEnd <= odometerStart) {
+                throw new IllegalArgumentException("종료 계기판은 출발 계기판보다 커야 합니다.");
+            }
+            int distance = odometerEnd - odometerStart;
+            String overLimitYn = distance > maxTripKm ? "Y" : "N";
+            jdbcTemplate.update("""
+                    UPDATE mp_fleet_trip_log
+                    SET odometer_start = ?, odometer_end = ?, distance = ?, over_limit_yn = ?,
+                        purpose_code = ?, purpose_memo = ?
+                    WHERE inst_code = ? AND id = ?
+                    """, odometerStart, odometerEnd, distance, overLimitYn,
+                    normalizedPurpose, trimToNull(purposeMemo), normalizedInstCode, tripId);
+        } else {
+            jdbcTemplate.update("""
+                    UPDATE mp_fleet_trip_log
+                    SET odometer_start = ?, purpose_code = ?, purpose_memo = ?
+                    WHERE inst_code = ? AND id = ?
+                    """, odometerStart, normalizedPurpose, trimToNull(purposeMemo),
+                    normalizedInstCode, tripId);
+        }
+        resyncVehicleOdometer(normalizedInstCode, trip.getVehicleId());
+        return findTrip(normalizedInstCode, tripId);
+    }
+
+    /** 잘못 만든 운행 기록 삭제. 진행 중이면 차량을 IDLE로 반납하고, 차량 계기판을 재동기화한다. */
+    @Transactional
+    public void deleteTrip(String instCode, Long tripId) {
+        String normalizedInstCode = normalizeInstCode(instCode);
+        if (!StringUtils.hasText(normalizedInstCode) || tripId == null) {
+            throw new IllegalArgumentException("운행 정보를 확인해 주세요.");
+        }
+        FleetTripLog trip = findTrip(normalizedInstCode, tripId);
+        if (trip == null) {
+            throw new IllegalArgumentException("운행 기록을 찾을 수 없습니다.");
+        }
+        jdbcTemplate.update("DELETE FROM mp_fleet_trip_log WHERE inst_code = ? AND id = ?",
+                normalizedInstCode, tripId);
+        if (trip.isOngoing()) {
+            jdbcTemplate.update("""
+                    UPDATE mp_fleet_vehicle SET status_code = 'IDLE', updated_at = CURRENT_TIMESTAMP
+                    WHERE inst_code = ? AND id = ? AND status_code = 'RUNNING'
+                    """, normalizedInstCode, trip.getVehicleId());
+        }
+        resyncVehicleOdometer(normalizedInstCode, trip.getVehicleId());
+    }
+
+    /** 차량 current_odometer를 그 차량 전체 운행의 최대 계기판으로 재동기화. 운행이 없으면 유지(초기값 보존). */
+    private void resyncVehicleOdometer(String instCode, Long vehicleId) {
+        Integer maxOdo = jdbcTemplate.queryForObject("""
+                SELECT MAX(GREATEST(odometer_start, COALESCE(odometer_end, odometer_start)))
+                FROM mp_fleet_trip_log
+                WHERE inst_code = ? AND vehicle_id = ?
+                """, Integer.class, instCode, vehicleId);
+        if (maxOdo == null) {
+            return;
+        }
+        jdbcTemplate.update("""
+                UPDATE mp_fleet_vehicle SET current_odometer = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE inst_code = ? AND id = ?
+                """, maxOdo, instCode, vehicleId);
     }
 
     /**

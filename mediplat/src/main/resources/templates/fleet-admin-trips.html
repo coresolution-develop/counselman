@@ -51,7 +51,7 @@
             <thead>
             <tr>
                 <th>출발 일시</th><th>차량</th><th>운전자</th><th>목적</th>
-                <th>시작→종료(km)</th><th>거리</th><th>사진</th><th>상태</th>
+                <th>시작→종료(km)</th><th>거리</th><th>사진</th><th>상태</th><th></th>
             </tr>
             </thead>
             <tbody>
@@ -88,14 +88,48 @@
                     <span class="fleet-status" th:classappend="${t.statusCode == 'ONGOING'} ? ' running'"
                           th:text="${t.statusCode == 'ONGOING'} ? '운행중' : '완료'">완료</span>
                 </td>
+                <td>
+                    <div class="fleet-actions">
+                        <button type="button" class="fleet-btn ghost sm fleet-edit-trip"
+                                th:data-id="${t.id}" th:data-status="${t.statusCode}"
+                                th:data-start="${t.odometerStart}" th:data-end="${t.odometerEnd}"
+                                th:data-purpose="${t.purposeCode}" th:data-memo="${t.purposeMemo}">정정</button>
+                        <form method="post" th:action="@{'/fleet/admin/trips/' + ${t.id} + '/delete'}" class="fleet-inline"
+                              onsubmit="return confirm('이 운행 기록을 삭제할까요? 되돌릴 수 없습니다.');">
+                            <button type="submit" class="fleet-btn danger sm">삭제</button>
+                        </form>
+                    </div>
+                </td>
             </tr>
             <tr th:if="${#lists.isEmpty(trips)}">
-                <td colspan="8" class="fleet-muted">조회된 운행 기록이 없습니다.</td>
+                <td colspan="9" class="fleet-muted">조회된 운행 기록이 없습니다.</td>
             </tr>
             </tbody>
         </table>
         </div>
     </section>
+
+    <dialog id="dlg-trip" class="fleet-dialog">
+        <form method="post" id="form-trip">
+            <h3>운행 정정</h3>
+            <label>운행 목적
+                <select name="purpose">
+                    <option value="BUSINESS">업무</option>
+                    <option value="COMMUTE">출퇴근</option>
+                    <option value="GENERAL">일반</option>
+                </select>
+            </label>
+            <label>출발 계기판(km)*<input type="number" name="odometerStart" min="0" required></label>
+            <label id="trip-end-wrap">종료 계기판(km)<input type="number" name="odometerEnd" min="0"></label>
+            <label>메모<input type="text" name="purposeMemo" maxlength="200"></label>
+            <p class="fleet-hint" id="trip-note">잘못 입력한 계기판을 정정하면 주행거리와 차량 최신 계기판이 다시 계산됩니다.</p>
+            <div class="fleet-dialog-actions">
+                <button type="button" class="fleet-btn ghost" data-close>취소</button>
+                <button type="submit" class="fleet-btn">저장</button>
+            </div>
+        </form>
+    </dialog>
 </main>
+<script th:src="@{/js/fleet/admin.js}"></script>
 </body>
 </html>

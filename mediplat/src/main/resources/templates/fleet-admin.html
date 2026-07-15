@@ -50,12 +50,25 @@
                 </td>
                 <td th:text="${#numbers.formatInteger(v.currentOdometer, 0, 'COMMA')}">45,000</td>
                 <td class="fleet-muted" th:text="${v.qrToken}">token</td>
-                <td style="white-space:nowrap;">
-                    <a class="fleet-btn ghost" target="_blank"
-                       th:href="@{'/fleet/admin/vehicles/' + ${v.id} + '/qr-print'}">QR 인쇄</a>
-                    <form method="post" th:action="@{'/fleet/admin/vehicles/' + ${v.id} + '/qr'}" style="display:inline;">
-                        <button type="submit" class="fleet-btn ghost">QR 재발급</button>
-                    </form>
+                <td>
+                    <div class="fleet-actions">
+                        <button type="button" class="fleet-btn ghost sm fleet-edit-vehicle"
+                                th:data-id="${v.id}" th:data-plate="${v.plateNo}" th:data-name="${v.name}"
+                                th:data-model="${v.modelName}" th:data-dept="${v.department}">수정</button>
+                        <a class="fleet-btn ghost sm" target="_blank"
+                           th:href="@{'/fleet/admin/vehicles/' + ${v.id} + '/qr-print'}">QR</a>
+                        <form method="post" th:action="@{'/fleet/admin/vehicles/' + ${v.id} + '/qr'}" class="fleet-inline">
+                            <button type="submit" class="fleet-btn ghost sm">QR재발급</button>
+                        </form>
+                        <form method="post" th:action="@{'/fleet/admin/vehicles/' + ${v.id} + '/active'}" class="fleet-inline">
+                            <input type="hidden" name="active" th:value="${v.useYn == 'Y'} ? 'false' : 'true'">
+                            <button type="submit" class="fleet-btn ghost sm" th:text="${v.useYn == 'Y'} ? '사용중지' : '재개'">사용중지</button>
+                        </form>
+                        <form method="post" th:action="@{'/fleet/admin/vehicles/' + ${v.id} + '/delete'}" class="fleet-inline"
+                              onsubmit="return confirm('이 차량을 삭제할까요? 운행 기록이 있으면 삭제되지 않습니다(사용 중지를 이용하세요).');">
+                            <button type="submit" class="fleet-btn danger sm">삭제</button>
+                        </form>
+                    </div>
                 </td>
             </tr>
             <tr th:if="${#lists.isEmpty(vehicles)}">
@@ -81,7 +94,7 @@
         <div class="fleet-table-scroll">
         <table>
             <thead>
-            <tr><th>이름</th><th>부서</th><th>사번</th><th>계정(username)</th><th>상태</th></tr>
+            <tr><th>이름</th><th>부서</th><th>사번</th><th>계정(username)</th><th>상태</th><th></th></tr>
             </thead>
             <tbody>
             <tr th:each="d : ${drivers}">
@@ -90,9 +103,24 @@
                 <td th:text="${d.employeeNumber}">E1001</td>
                 <td class="fleet-muted" th:text="${d.username}">hong</td>
                 <td><span class="fleet-status" th:text="${d.useYn == 'Y'} ? '사용' : '중지'">사용</span></td>
+                <td>
+                    <div class="fleet-actions">
+                        <button type="button" class="fleet-btn ghost sm fleet-edit-driver"
+                                th:data-id="${d.id}" th:data-name="${d.name}" th:data-username="${d.username}"
+                                th:data-emp="${d.employeeNumber}" th:data-dept="${d.department}" th:data-phone="${d.phone}">수정</button>
+                        <form method="post" th:action="@{'/fleet/admin/drivers/' + ${d.id} + '/active'}" class="fleet-inline">
+                            <input type="hidden" name="active" th:value="${d.useYn == 'Y'} ? 'false' : 'true'">
+                            <button type="submit" class="fleet-btn ghost sm" th:text="${d.useYn == 'Y'} ? '사용중지' : '재개'">사용중지</button>
+                        </form>
+                        <form method="post" th:action="@{'/fleet/admin/drivers/' + ${d.id} + '/delete'}" class="fleet-inline"
+                              onsubmit="return confirm('이 운전자를 삭제할까요? 운행 기록이 있으면 삭제되지 않습니다(사용 중지를 이용하세요).');">
+                            <button type="submit" class="fleet-btn danger sm">삭제</button>
+                        </form>
+                    </div>
+                </td>
             </tr>
             <tr th:if="${#lists.isEmpty(drivers)}">
-                <td colspan="5" class="fleet-muted">등록된 운전자가 없습니다.</td>
+                <td colspan="6" class="fleet-muted">등록된 운전자가 없습니다.</td>
             </tr>
             </tbody>
         </table>
@@ -107,6 +135,36 @@
             <button type="submit" class="fleet-btn">운전자 등록</button>
         </form>
     </section>
+
+    <dialog id="dlg-vehicle" class="fleet-dialog">
+        <form method="post" id="form-vehicle">
+            <h3>차량 수정</h3>
+            <label>번호판*<input type="text" name="plateNo" required maxlength="20"></label>
+            <label>별칭<input type="text" name="name" maxlength="120"></label>
+            <label>모델<input type="text" name="modelName" maxlength="120"></label>
+            <label>부서<input type="text" name="department" maxlength="120"></label>
+            <div class="fleet-dialog-actions">
+                <button type="button" class="fleet-btn ghost" data-close>취소</button>
+                <button type="submit" class="fleet-btn">저장</button>
+            </div>
+        </form>
+    </dialog>
+
+    <dialog id="dlg-driver" class="fleet-dialog">
+        <form method="post" id="form-driver">
+            <h3>운전자 수정</h3>
+            <label>이름*<input type="text" name="name" required maxlength="100"></label>
+            <label>부서<input type="text" name="department" maxlength="120"></label>
+            <label>사번<input type="text" name="employeeNumber" maxlength="50"></label>
+            <label>계정(username)<input type="text" name="username" maxlength="100"></label>
+            <label>연락처<input type="text" name="phone" maxlength="30"></label>
+            <div class="fleet-dialog-actions">
+                <button type="button" class="fleet-btn ghost" data-close>취소</button>
+                <button type="submit" class="fleet-btn">저장</button>
+            </div>
+        </form>
+    </dialog>
 </main>
+<script th:src="@{/js/fleet/admin.js}"></script>
 </body>
 </html>

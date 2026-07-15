@@ -208,3 +208,87 @@
 .fleet-muted {
     color: var(--fleet-subtle);
 }
+
+/* 행 액션 버튼 묶음 */
+.fleet-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.fleet-inline {
+    display: inline;
+    margin: 0;
+}
+
+.fleet-btn.sm {
+    min-height: 34px;
+    padding: 0 12px;
+    font-size: 13px;
+}
+
+.fleet-btn.danger {
+    background: #e5484d;
+    color: #fff;
+}
+
+.fleet-btn.danger.sm {
+    background: #fdecec;
+    color: #c4373b;
+}
+
+/* 수정/정정 다이얼로그 */
+.fleet-dialog {
+    width: min(440px, calc(100vw - 32px));
+    border: none;
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 20px 60px rgba(23, 46, 75, 0.28);
+}
+
+.fleet-dialog::backdrop {
+    background: rgba(23, 46, 75, 0.42);
+}
+
+.fleet-dialog h3 {
+    margin: 0 0 16px;
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.fleet-dialog form label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #3a4552;
+}
+
+.fleet-dialog form input,
+.fleet-dialog form select {
+    height: 48px;
+    padding: 0 12px;
+    font-size: 16px; /* iOS 확대 방지 */
+    color: var(--fleet-ink);
+    border: 1px solid #d5dbe2;
+    border-radius: var(--fleet-radius-sm);
+    box-sizing: border-box;
+    background: #fff;
+}
+
+.fleet-dialog form input:focus-visible,
+.fleet-dialog form select:focus-visible {
+    outline: 3px solid rgba(47, 109, 246, 0.4);
+    outline-offset: 2px;
+    border-color: var(--fleet-primary);
+}
+
+.fleet-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 8px;
+}

@@ -123,6 +123,63 @@ class FleetTripServiceTest {
         assertEquals(0, f.service.listTrips("FALH", null, null, null, null).size(), "다른 기관 스코프는 비어야 한다");
     }
 
+    @Test
+    void correctTrip_recomputesDistanceAndResyncsVehicleOdometerDown() {
+        Fixture f = newFixture(1500);
+        FleetTripLog started = f.service.depart("core", f.vehicleId, f.driverId, "hong",
+                "BUSINESS", null, 45010, "OCR", PHOTO_START);
+        // 잘못 입력: 종료 45090 (실제 45050)
+        f.service.arrive("core", started.getId(), f.driverId, 45090, "OCR", PHOTO_END);
+        assertEquals(45090, f.service.findVehicle("core", f.vehicleId).getCurrentOdometer());
+
+        // 정정: 종료를 45050으로 낮춤
+        FleetTripLog corrected = f.service.correctTripOdometer(
+                "core", started.getId(), 45010, 45050, "BUSINESS", "정정");
+
+        assertEquals(40, corrected.getDistance());
+        // 차량 계기판이 45090 → 45050 으로 하향 재동기화(출발 가드 복구)
+        assertEquals(45050, f.service.findVehicle("core", f.vehicleId).getCurrentOdometer());
+    }
+
+    @Test
+    void correctTrip_rejectsEndNotGreaterThanStart() {
+        Fixture f = newFixture(1500);
+        FleetTripLog started = f.service.depart("core", f.vehicleId, f.driverId, "hong",
+                "BUSINESS", null, 45010, "OCR", PHOTO_START);
+        f.service.arrive("core", started.getId(), f.driverId, 45080, "OCR", PHOTO_END);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> f.service.correctTripOdometer("core", started.getId(), 45010, 45010, "BUSINESS", null));
+    }
+
+    @Test
+    void deleteVehicle_rejectedWhenTripsExist() {
+        Fixture f = newFixture(1500);
+        f.service.depart("core", f.vehicleId, f.driverId, "hong", "BUSINESS", null, 45010, "OCR", PHOTO_START);
+
+        assertThrows(IllegalStateException.class, () -> f.service.deleteVehicle("core", f.vehicleId));
+    }
+
+    @Test
+    void deleteDriver_rejectedWhenTripsExist() {
+        Fixture f = newFixture(1500);
+        f.service.depart("core", f.vehicleId, f.driverId, "hong", "BUSINESS", null, 45010, "OCR", PHOTO_START);
+
+        assertThrows(IllegalStateException.class, () -> f.service.deleteDriver("core", f.driverId));
+    }
+
+    @Test
+    void deleteTrip_releasesOngoingVehicle() {
+        Fixture f = newFixture(1500);
+        FleetTripLog started = f.service.depart("core", f.vehicleId, f.driverId, "hong",
+                "BUSINESS", null, 45010, "OCR", PHOTO_START);
+
+        f.service.deleteTrip("core", started.getId());
+
+        assertEquals(FleetService.VEHICLE_STATUS_IDLE, f.service.findVehicle("core", f.vehicleId).getStatusCode());
+        assertTrue(f.service.listTrips("core", null, null, null, null).isEmpty());
+    }
+
     private Fixture newFixture(int maxTripKm) {
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
         dataSource.setDriverClassName("org.h2.Driver");

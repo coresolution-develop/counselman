@@ -1,6 +1,7 @@
 package com.coresolution.mediplat.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -113,6 +114,75 @@ class FleetServiceTest {
 
         assertEquals(1, fleetService.listVehicles("core").size());
         assertEquals(1, fleetService.listVehicles("FALH").size());
+    }
+
+    @Test
+    void updateVehicle_updatesEditableFieldsButNotOdometer() {
+        FleetService s = newInitializedService();
+        FleetVehicle v = s.registerVehicle("core", "12가3456", "1호", null, "총무", 45000);
+
+        s.updateVehicle("core", v.getId(), "99바9999", "1호-수정", "카니발", "영업");
+
+        FleetVehicle u = s.findVehicle("core", v.getId());
+        assertEquals("99바9999", u.getPlateNo());
+        assertEquals("1호-수정", u.getName());
+        assertEquals("영업", u.getDepartment());
+        assertEquals(45000, u.getCurrentOdometer());
+    }
+
+    @Test
+    void updateVehicle_rejectsDuplicatePlate() {
+        FleetService s = newInitializedService();
+        s.registerVehicle("core", "11가1111", null, null, null, 0);
+        FleetVehicle v2 = s.registerVehicle("core", "22나2222", null, null, null, 0);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> s.updateVehicle("core", v2.getId(), "11가1111", null, null, null));
+    }
+
+    @Test
+    void deleteVehicle_hardDeletesWhenNoTrips() {
+        FleetService s = newInitializedService();
+        FleetVehicle v = s.registerVehicle("core", "12가3456", null, null, null, 0);
+
+        s.deleteVehicle("core", v.getId());
+
+        assertTrue(s.listVehicles("core").isEmpty());
+    }
+
+    @Test
+    void setVehicleActive_deactivatesVehicle() {
+        FleetService s = newInitializedService();
+        FleetVehicle v = s.registerVehicle("core", "12가3456", null, null, null, 0);
+
+        s.setVehicleActive("core", v.getId(), false);
+
+        FleetVehicle u = s.findVehicle("core", v.getId());
+        assertFalse(u.isEnabled());
+        assertFalse(u.isAvailable());
+    }
+
+    @Test
+    void updateDriver_updatesFields() {
+        FleetService s = newInitializedService();
+        FleetDriver d = s.registerDriver("core", "홍길동", "hong", "E1", "총무", null);
+
+        s.updateDriver("core", d.getId(), "홍길동2", "hong2", "E2", "영업", "010-0000-0000");
+
+        FleetDriver u = s.findDriver("core", d.getId());
+        assertEquals("홍길동2", u.getName());
+        assertEquals("hong2", u.getUsername());
+        assertEquals("영업", u.getDepartment());
+    }
+
+    @Test
+    void deleteDriver_hardDeletesWhenNoTrips() {
+        FleetService s = newInitializedService();
+        FleetDriver d = s.registerDriver("core", "홍길동", "hong", null, null, null);
+
+        s.deleteDriver("core", d.getId());
+
+        assertTrue(s.listDrivers("core").isEmpty());
     }
 
     private FleetService newInitializedService() {
