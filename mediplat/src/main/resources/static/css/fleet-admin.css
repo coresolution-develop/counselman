@@ -17,18 +17,43 @@
     padding: 20px 16px 48px;
 }
 
-/* .topbar는 position:fixed(min-height 80px, 모바일 132px)라 본문이 가려진다.
-   mediplat.css의 ".topbar + .page-shell { padding-top:108px }" 관례를 fleet 컨테이너에도 동일 적용. */
-.topbar + .fleet-admin-shell {
-    padding-top: 108px;
+/* fleet 관리자 전용 슬림 헤더. mediplat.css의 전역 .topbar(고정·대형)는 그대로 두고,
+   이 페이지에서만 축소한다: 불필요한 사용자 메타/eyebrow를 숨기고, 문서 흐름(static)에 둬
+   고정 헤더용 큰 offset 없이 상단 공간을 회수한다. */
+.topbar.fleet-adm-header {
+    position: static;
+    min-height: 0;
+    padding: 12px 16px;
+    gap: 10px;
+    box-shadow: 0 1px 6px rgba(23, 46, 75, 0.06);
+}
+
+.fleet-adm-header .eyebrow,
+.fleet-adm-header .user-meta {
+    display: none;
+}
+
+.fleet-adm-header h1 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.fleet-adm-header .topbar-actions {
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* 헤더가 static이라 고정 헤더용 큰 offset 불필요 — 일반 여백만. */
+.topbar.fleet-adm-header + .fleet-admin-shell {
+    padding-top: 20px;
 }
 
 @media (max-width: 960px) {
-    .topbar + .fleet-admin-shell {
-        padding-top: 160px;
-    }
     .fleet-admin-shell {
         padding: 16px 12px 40px;
+    }
+    .topbar.fleet-adm-header + .fleet-admin-shell {
+        padding-top: 16px;
     }
 }
 
