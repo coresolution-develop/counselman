@@ -641,10 +641,17 @@ public class PageController {
     }
 
     @GetMapping({ "logout", "/logout" })
-    public String logout(HttpServletRequest request, HttpServletResponse response, HttpSession session) {
+    public String logout(HttpServletRequest request, HttpServletResponse response, HttpSession session,
+            @RequestParam(value = "returnTo", required = false) String returnTo,
+            @RequestParam(value = "t", required = false) String t) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         new SecurityContextLogoutHandler().logout(request, response, auth);
         SecurityContextHolder.clearContext();
+        // Chat is a standalone public page — return to it, not the mediplat platform.
+        if ("chat".equals(returnTo)) {
+            String token = t == null ? "" : t.replaceAll("[^A-Za-z0-9]", "");
+            return token.isEmpty() ? "redirect:/chat" : "redirect:/chat?t=" + token;
+        }
         return "redirect:" + resolveMediplatRedirectUrl();
     }
 
