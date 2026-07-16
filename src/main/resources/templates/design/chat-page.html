@@ -1218,13 +1218,96 @@ function chatApp() {
       this._sendViaStomp(content);
     },
 
+    _normalizeText(s) {
+      return (s || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+    },
+
+    // "가능한가요" -> "가능", "주차장은" -> "주차장", "병원에서" -> "병원".
+    // Question endings are stripped before josa; longest suffix first, and stems are kept
+    // at 2+ chars so short words like "추가" or "문의" are left alone.
+    _stripSuffix(token) {
+      const ENDINGS = ['드리나요', '이에요', '인가요', '한가요', '하나요', '되나요', '있나요', '습니까', '입니까',
+                       '나요', '까요', '세요', '예요', '에요'];
+      const JOSA = ['에서', '에게', '으로', '한테', '까지', '부터', '보다', '처럼', '이나', '라도', '마다', '조차', '밖에',
+                    '은', '는', '이', '가', '을', '를', '의', '에', '로', '와', '과', '도', '만'];
+      for (const group of [ENDINGS, JOSA]) {
+        for (const s of group) {
+          if (token.endsWith(s) && token.length - s.length >= 2) { token = token.slice(0, -s.length); break; }
+        }
+      }
+      return token;
+    },
+
+    // Exact substring scores full weight; otherwise fall back to bigram overlap so
+    // "주차장" still partially matches "주차 관련 문의".
+    _scoreToken(token, text, weight) {
+      if (!text) return 0;
+      if (text.includes(token)) return weight;
+      const grams = [];
+      for (let i = 0; i < token.length - 1; i++) grams.push(token.slice(i, i + 2));
+      if (!grams.length) return 0;
+      const hits = grams.filter(g => text.includes(g)).length;
+      return hits ? weight * 0.6 * (hits / grams.length) : 0;
+    },
+
     searchFaqs(query) {
-      if (!query || !this.faqs.length) return [];
-      const tokens = query.toLowerCase().split(/\s+/).filter(t => t.length > 0);
-      return this.faqs.filter(f => {
-        const text = ((f.question || '') + ' ' + (f.answer || '') + ' ' + (f.category || '')).toLowerCase();
-        return tokens.some(t => text.includes(t));
-      });
+      const STOPWORDS = ['알려주세요', '알려줘', '궁금해요', '궁금합니다', '어떻게', '어디', '언제', '무엇', '뭔가요', '있나요', '되나요', '하나요'];
+      const normalized = this._normalizeText(query);
+      if (!normalized || !this.faqs.length) return [];
+
+      // deduped: a repeated word must not count twice toward idf coverage
+      const tokens = [...new Set(normalized.split(' ')
+        .map(t => this._stripSuffix(t))
+        .filter(t => t.length >= 2 && !STOPWORDS.includes(t)))];
+      if (!tokens.length) return [];
+
+      const docs = this.faqs.map(f => ({
+        faq: f,
+        question: this._normalizeText(f.question),
+        answer: this._normalizeText(f.answer),
+        category: this._normalizeText(f.category),
+      }));
+
+      // idf: "가능" sits in half the FAQs and means little, "보호자" sits in two and means a lot.
+      // Tokens absent from the corpus (typos, leftover verb stems like "나오") are dropped —
+      // keeping them would drag down coverage for the tokens that actually matter.
+      const idf = {};
+      const known = [];
+      for (const t of tokens) {
+        const df = docs.filter(d => (d.question + ' ' + d.answer).includes(t)).length;
+        if (!df) continue;
+        idf[t] = Math.log((docs.length + 1) / (df + 1)) + 0.3;
+        known.push(t);
+      }
+      if (!known.length) return [];
+      const idfTotal = known.reduce((sum, t) => sum + idf[t], 0);
+
+      const scored = [];
+      for (const d of docs) {
+        let score = 0;
+        let idfHit = 0;
+        for (const t of known) {
+          // question is the strongest signal; answer bodies are long and noisy, so weight them low
+          const s = (this._scoreToken(t, d.question, 10)
+                   + this._scoreToken(t, d.answer, 3)
+                   + this._scoreToken(t, d.category, 2)) * idf[t];
+          if (s > 0) idfHit += idf[t];
+          score += s;
+        }
+        // reward covering the meaningful part of the query. Weighted hard: a FAQ that misses
+        // the most distinctive word ("보호자") must lose to one that matches it, even if the
+        // common word ("가능") happens to appear in both its question and its answer.
+        score *= 0.15 + 0.85 * (idfHit / idfTotal);
+        // the query verbatim in the question beats an incidental word-by-word match
+        if (normalized.length >= 4 && d.question.includes(normalized)) score += 15;
+        if (score >= 8) scored.push({ faq: d.faq, score });
+      }
+      if (!scored.length) return [];
+
+      // drop anything far weaker than the best hit, so "입원" no longer returns 25 rows
+      scored.sort((a, b) => b.score - a.score);
+      const cutoff = scored[0].score * 0.4;
+      return scored.filter(r => r.score >= cutoff).map(r => r.faq);
     },
 
     async connectToCounselor() {
