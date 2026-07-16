@@ -67,6 +67,8 @@ public class SecurityConfig {
                         "/manifest.json", "/csm/manifest.json",
                         "/sw.js", "/csm/sw.js",
                         "/chat", "/chat/**", "/csm/chat", "/csm/chat/**",
+                        // FAQ(QnA)만 비로그인 공개 — room/messages 등은 인증 유지
+                        "/api/chat/faqs", "/csm/api/chat/faqs",
                         "/ws/chat/**", "/csm/ws/chat/**"
         };
 

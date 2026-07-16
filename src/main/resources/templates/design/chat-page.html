@@ -735,7 +735,7 @@
   <!-- ── Header ── -->
   <header class="chat-header">
     <div class="chat-header__left">
-      <button class="btn-faq-toggle" x-show="currentView === 'chat'" @click="faqOpen = !faqOpen" :aria-expanded="faqOpen">
+      <button class="btn-faq-toggle" x-show="!user.loggedIn || currentView === 'chat'" @click="faqOpen = !faqOpen" :aria-expanded="faqOpen">
         <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
         </svg>
@@ -753,12 +753,12 @@
   </header>
 
   <!-- 모바일 FAQ 오버레이 배경 -->
-  <div class="faq-overlay-bg" :class="{ open: faqOpen && currentView === 'chat' }" @click="faqOpen = false"></div>
+  <div class="faq-overlay-bg" :class="{ open: faqOpen && (!user.loggedIn || currentView === 'chat') }" @click="faqOpen = false"></div>
 
   <div class="main-content">
 
     <!-- ── FAQ 패널 ── -->
-    <aside class="faq-panel" :class="{ open: faqOpen }" x-show="user.loggedIn && currentView === 'chat'">
+    <aside class="faq-panel" :class="{ open: faqOpen }" x-show="!user.loggedIn || currentView === 'chat'">
       <div class="faq-panel__header">
         <div class="faq-panel__title">자주 묻는 질문</div>
         <div class="cat-tabs">
@@ -797,7 +797,7 @@
             </svg>
           </div>
           <h2>상담 서비스</h2>
-          <p>카카오 로그인 후<br>상담사와 직접 채팅하실 수 있습니다.</p>
+          <p>자주 묻는 질문은 로그인 없이 확인하실 수 있어요.<br>상담사와 직접 채팅하려면 카카오 로그인해 주세요.</p>
           <a class="btn-kakao" :href="kakaoLoginUrl()">
             <svg viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 3C6.477 3 2 6.477 2 10.8c0 2.697 1.613 5.065 4.05 6.47L5.1 21l4.5-2.7c.78.15 1.59.225 2.4.225 5.523 0 10-3.477 10-7.725C22 6.477 17.523 3 12 3z"/>
