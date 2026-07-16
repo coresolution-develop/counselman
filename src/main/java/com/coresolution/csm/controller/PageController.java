@@ -7753,6 +7753,8 @@ public class PageController {
             Map<String, Object> row = new LinkedHashMap<>();
             // 항상 필요한 키
             row.put("cs_idx", safeGet(cd, "cs_idx"));
+            // BC(블랙컨슈머) 행 강조는 항목설정(선택 컬럼)과 무관하게 동작해야 하므로 항상 포함
+            row.put("cs_col_10", safeGet(cd, "cs_col_10"));
 
             Map<String, String> dynamicValueMap = Collections.emptyMap();
             if (!requestedDynamicColumns.isEmpty()) {
