@@ -1,7 +1,8 @@
 name: Deploy PROD
 
 # Push to `prod` → build + test on a GitHub-hosted runner, then a self-hosted
-# runner ON the prod server deploys the artifact locally (no inbound SSH).
+# runner ON the prod server stages the artifact into /opt/csm-next/deploy/staging
+# (no inbound SSH). The csm-next-deploy timer (02:30 KST) applies it at dawn.
 #
 # SETUP: register a self-hosted runner on the prod server with the label `prod`
 #   (Settings → Actions → Runners → New self-hosted runner; add `--labels prod`).
@@ -59,12 +60,13 @@ jobs:
         with:
           name: prod-war
           path: artifact
-      - name: Deploy on prod server (local, with backup)
+      - name: Stage war for scheduled (dawn) deploy
         run: |
-          TS=$(date +%Y%m%d-%H%M%S)
-          WEBAPPS=/opt/csm-next/tomcat/webapps
-          cp -a "$WEBAPPS/csm.war" "$WEBAPPS/csm.war.bak-$TS" 2>/dev/null || true
-          # copy to a temp file then atomically rename, so Tomcat never auto-deploys a half-written war
-          cp artifact/csm-prod.war "$WEBAPPS/csm.war.new"
-          mv -f "$WEBAPPS/csm.war.new" "$WEBAPPS/csm.war"
-          echo "PROD deployed: csm.war (rollback: csm.war.bak-$TS). Tomcat auto-reloads."
+          STAGING=/opt/csm-next/deploy/staging
+          # Do NOT deploy directly. Drop the war into the staging dir + deploy.ok
+          # marker; the csm-next-deploy timer (02:30 KST) applies it and restarts
+          # csm-next. Atomic rename so a timer never sees a half-written war.
+          cp artifact/csm-prod.war "$STAGING/csm.war.new"
+          mv -f "$STAGING/csm.war.new" "$STAGING/csm.war"
+          touch "$STAGING/deploy.ok"
+          echo "Staged csm.war -> $STAGING + deploy.ok. Scheduled deploy timer will apply it at the next window."
