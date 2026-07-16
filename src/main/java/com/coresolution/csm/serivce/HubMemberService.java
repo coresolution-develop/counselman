@@ -291,6 +291,15 @@ public class HubMemberService {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """);
 
+        // 개인 메모장. 회원당 1행이므로 member_id 자체가 PK다(별도 id/UNIQUE 불필요).
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS csm.hub_member_memo (
+                    member_id  BIGINT        NOT NULL PRIMARY KEY,
+                    content    VARCHAR(2000) NOT NULL DEFAULT '',
+                    updated_at TIMESTAMP     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """);
+
         jdbcTemplate.execute("""
                 CREATE TABLE IF NOT EXISTS csm.hub_member_link_history (
                     id             BIGINT AUTO_INCREMENT PRIMARY KEY,
