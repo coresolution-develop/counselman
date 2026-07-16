@@ -17,7 +17,9 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.coresolution.csm.serivce.CompanyLinkService;
+import com.coresolution.csm.serivce.HubCustomLinkService;
 import com.coresolution.csm.serivce.HubFavoriteService;
+import com.coresolution.csm.serivce.HubMemoService;
 import com.coresolution.csm.vo.CompanyLink;
 import com.coresolution.csm.vo.HubMemberSession;
 import com.coresolution.csm.vo.Userdata;
@@ -32,6 +34,8 @@ public class CompanyLinkController {
 
     private final CompanyLinkService companyLinkService;
     private final HubFavoriteService hubFavoriteService;
+    private final HubMemoService hubMemoService;
+    private final HubCustomLinkService hubCustomLinkService;
 
     @GetMapping("/links")
     public String links(Model model, HttpSession session) {
@@ -49,6 +53,14 @@ public class CompanyLinkController {
         model.addAttribute("favorites", hubMember == null
                 ? java.util.List.of()
                 : hubFavoriteService.listFavorites(hubMember.getId()));
+        // 로그인 시에만 개인 메모장을 노출한다(미로그인은 조회 자체를 하지 않는다).
+        model.addAttribute("memo", hubMember == null
+                ? ""
+                : hubMemoService.find(hubMember.getId()));
+        // 개인 커스텀 링크. 예전 /hub/me를 이 페이지가 흡수했다(관리 폼도 여기서 렌더).
+        model.addAttribute("customLinks", hubMember == null
+                ? java.util.List.of()
+                : hubCustomLinkService.listOwn(hubMember.getId()));
         return "design/company-links";
     }
 

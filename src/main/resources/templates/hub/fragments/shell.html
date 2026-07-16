@@ -4,7 +4,7 @@
   <!--
     공통 다크 사이드바. 사용:
       <div th:replace="~{hub/fragments/shell :: sidebar('me', ${hubMember})}"></div>
-    active: 'hub' | 'me' | 'account'  /  member: HubMemberSession 또는 null(공개 허브)
+    active: 'hub' | 'account'  /  member: HubMemberSession 또는 null(공개 허브)
   -->
   <aside th:fragment="sidebar(active, member)" class="hub-sidebar">
     <div class="hub-brand">
@@ -23,11 +23,6 @@
         <svg class="hub-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5" /><path d="M5 10v10h14V10" /></svg>
         <span>허브</span>
-      </a>
-      <a th:href="@{/hub/me}" class="hub-nav__item" th:classappend="${active == 'me'} ? ' hub-nav__item--active'">
-        <svg class="hub-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-        <span>내 페이지</span>
       </a>
       <a th:href="@{/hub/me/account}" class="hub-nav__item" th:classappend="${active == 'account'} ? ' hub-nav__item--active'">
         <svg class="hub-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"

@@ -20,7 +20,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 /**
- * 개인 페이지: 커스텀 링크 전용(목록 + 추가/수정/삭제) + 계정 설정.
+ * 커스텀 링크 쓰기(추가/수정/삭제) + 계정 설정.
+ * 목록 화면은 허브(/links)가 흡수했으므로 여기서는 폼 처리 후 /links로 돌려보낸다.
  * 즐겨찾기는 허브 상단으로 이동했고, 최근 사용 화면은 제거됨(클릭 추적/기록은 별도로 유지).
  *
  * <p>인터셉터가 /hub/me/** 를 1차로 막지만, 각 메서드 진입부에서도 세션을 직접 가드하고
@@ -42,17 +43,13 @@ public class HubMeController {
         this.hubRememberService = hubRememberService;
     }
 
+    /**
+     * 예전 개인 페이지. 커스텀 링크가 허브(/links)로 흡수되어 화면이 사라졌지만,
+     * 기존 북마크·링크가 깨지지 않도록 리다이렉트만 남긴다.
+     */
     @GetMapping("/hub/me")
-    public String me(HttpSession session, Model model) {
-        HubMemberSession member = HubSessions.current(session);
-        if (member == null) {
-            return "redirect:/hub/login";
-        }
-        // 내 페이지는 커스텀 링크 전용. 즐겨찾기는 허브 상단으로, 최근 사용 화면은 제거됨.
-        // (클릭 추적/이력 기록은 HubGoController·HubHistoryService.record에서 그대로 유지)
-        model.addAttribute("hubMember", member);
-        model.addAttribute("customLinks", hubCustomLinkService.listOwn(member.getId()));
-        return "hub/me";
+    public String me() {
+        return "redirect:/links";
     }
 
     @PostMapping("/hub/me/custom-links")
@@ -73,7 +70,7 @@ public class HubMeController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("customError", e.getMessage());
         }
-        return "redirect:/hub/me";
+        return "redirect:/links";
     }
 
     @PostMapping("/hub/me/custom-links/{id}")
@@ -97,7 +94,7 @@ public class HubMeController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("customError", e.getMessage());
         }
-        return "redirect:/hub/me";
+        return "redirect:/links";
     }
 
     @PostMapping("/hub/me/custom-links/{id}/delete")
@@ -113,7 +110,7 @@ public class HubMeController {
         redirectAttributes.addFlashAttribute(
                 deleted ? "customMessage" : "customError",
                 deleted ? "링크가 삭제되었습니다." : "삭제할 링크를 찾을 수 없습니다.");
-        return "redirect:/hub/me";
+        return "redirect:/links";
     }
 
     @GetMapping("/hub/me/account")

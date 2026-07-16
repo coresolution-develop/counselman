@@ -94,6 +94,61 @@ class HubTemplateRenderTest {
     }
 
     @Test
+    void companyLinks_loggedIn_rendersMemoWithSavedContent() {
+        WebContext ctx = baseContext();
+        ctx.setVariable("hubMember", new HubMemberSession(7L, "a@coresolution.kr", "이수민", "USER"));
+        CompanyLink l = link(1L, "HARS", "https://hars-falh.sosyge.net/login", "병원", "병원 통합");
+        ctx.setVariable("links", List.of(l));
+        Map<String, List<CompanyLink>> groups = new LinkedHashMap<>();
+        groups.put("병원", List.of(l));
+        ctx.setVariable("linkGroups", groups);
+        ctx.setVariable("favoriteLinkIds", Set.of());
+        ctx.setVariable("favorites", List.of());
+        ctx.setVariable("memo", "월요일 배포 체크");
+
+        String html = engine.process("design/company-links", ctx);
+
+        assertThat(html).contains("내 메모");
+        assertThat(html).contains("/hub/me/memo");        // 저장 엔드포인트
+        assertThat(html).contains("월요일 배포 체크");       // 저장된 내용 프리필
+        assertThat(html).contains("<details class=\"hub-memo-wrap\" open=\"open\">"); // 내용 있으면 펼친 채 시작
+    }
+
+    /** 메모가 비어 있으면 접힌 채로 시작해 링크 목록을 가리지 않는다. */
+    @Test
+    void companyLinks_emptyMemo_startsCollapsed() {
+        WebContext ctx = baseContext();
+        ctx.setVariable("hubMember", new HubMemberSession(7L, "a@coresolution.kr", "이수민", "USER"));
+        ctx.setVariable("links", List.of());
+        ctx.setVariable("linkGroups", new LinkedHashMap<String, List<CompanyLink>>());
+        ctx.setVariable("favoriteLinkIds", Set.of());
+        ctx.setVariable("favorites", List.of());
+        ctx.setVariable("customLinks", List.of());
+        ctx.setVariable("memo", "");
+
+        String html = engine.process("design/company-links", ctx);
+
+        assertThat(html).contains("내 메모");
+        assertThat(html).doesNotContain("<details class=\"hub-memo-wrap\" open=\"open\">");
+    }
+
+    @Test
+    void companyLinks_memoEscapesHtml_soStoredMarkupIsNotExecuted() {
+        WebContext ctx = baseContext();
+        ctx.setVariable("hubMember", new HubMemberSession(7L, "a@coresolution.kr", "이수민", "USER"));
+        ctx.setVariable("links", List.of());
+        ctx.setVariable("linkGroups", new LinkedHashMap<String, List<CompanyLink>>());
+        ctx.setVariable("favoriteLinkIds", Set.of());
+        ctx.setVariable("favorites", List.of());
+        ctx.setVariable("memo", "<script>alert(1)</script>");
+
+        String html = engine.process("design/company-links", ctx);
+
+        assertThat(html).doesNotContain("<script>alert(1)</script>");
+        assertThat(html).contains("&lt;script&gt;");
+    }
+
+    @Test
     void companyLinks_anonymous_showsLoginAndNoStars() {
         WebContext ctx = baseContext();
         ctx.setVariable("hubMember", null);
@@ -110,13 +165,19 @@ class HubTemplateRenderTest {
         assertThat(html).contains("hub-profile__login");   // 비로그인 → 로그인 버튼
         assertThat(html).doesNotContain("lh-fav");         // 별 미노출
         assertThat(html).doesNotContain("내 즐겨찾기");      // 비로그인은 상단 섹션 미렌더
+        assertThat(html).doesNotContain("내 메모");          // 비로그인은 메모장 미렌더
         assertThat(html).contains("https://hars-falh.sosyge.net/login"); // 비로그인은 직접 URL
     }
 
+    /** 예전 /hub/me(커스텀 링크 전용 화면)를 허브가 흡수했다 — 관리 폼까지 /links에서 렌더된다. */
     @Test
-    void me_isCustomLinksOnly_noFavoritesOrRecent() {
+    void companyLinks_loggedIn_absorbsCustomLinksWithManageForms() {
         WebContext ctx = baseContext();
         ctx.setVariable("hubMember", new HubMemberSession(7L, "a@coresolution.kr", "이수민", "USER"));
+        ctx.setVariable("links", List.of());
+        ctx.setVariable("linkGroups", new LinkedHashMap<String, List<CompanyLink>>());
+        ctx.setVariable("favoriteLinkIds", Set.of());
+        ctx.setVariable("favorites", List.of());
         HubCustomLink c = new HubCustomLink();
         c.setId(5L);
         c.setTitle("내 메모장");
@@ -124,31 +185,73 @@ class HubTemplateRenderTest {
         c.setMemo("업무");
         ctx.setVariable("customLinks", List.of(c));
 
-        String html = engine.process("hub/me", ctx);
+        String html = engine.process("design/company-links", ctx);
 
-        assertThat(html).contains("안녕하세요, 이수민님");
-        assertThat(html).contains("내 커스텀 링크");
+        assertThat(html).contains("내 링크");
         assertThat(html).contains("customAddForm");
-        assertThat(html).contains("/hub/me/custom-links");        // 폼 action 보존
+        assertThat(html).contains("/hub/me/custom-links");         // 추가 폼 action 보존
+        assertThat(html).contains("/hub/me/custom-links/5");       // 수정 폼 action 보존
+        assertThat(html).contains("/hub/me/custom-links/5/delete");// 삭제 폼 action 보존
         assertThat(html).contains("edit-5");                       // 인라인 수정 토글 타겟
-        assertThat(html).contains("/hub/go/custom/5");
-        assertThat(html).contains("/js/hub.js");
-        // 즐겨찾기·최근 사용 섹션은 내 페이지에서 제거됨
-        assertThat(html).doesNotContain("내 즐겨찾기");
-        assertThat(html).doesNotContain("data-fav-card");
-        assertThat(html).doesNotContain("최근 사용");
-        assertThat(html).doesNotContain("hub-recent");
+        assertThat(html).contains("/hub/go/custom/5");             // 커스텀 링크도 추적 경유
+        assertThat(html).contains("hubSearch");                    // 허브 전체 검색
+    }
+
+    /** 메모/설명이 없는 링크의 검색 키에 "null"이 섞이면 'null' 검색에 전부 걸린다. */
+    @Test
+    void companyLinks_searchKey_omitsNullForMissingMemoAndDescription() {
+        WebContext ctx = baseContext();
+        ctx.setVariable("hubMember", new HubMemberSession(7L, "a@coresolution.kr", "이수민", "USER"));
+        CompanyLink l = link(1L, "HARS", "https://hars.example.com", "병원", null); // 설명 없음
+        ctx.setVariable("links", List.of(l));
+        Map<String, List<CompanyLink>> groups = new LinkedHashMap<>();
+        groups.put("병원", List.of(l));
+        ctx.setVariable("linkGroups", groups);
+        ctx.setVariable("favoriteLinkIds", Set.of());
+        ctx.setVariable("favorites", List.of());
+        HubCustomLink c = new HubCustomLink();
+        c.setId(5L);
+        c.setTitle("내 링크");
+        c.setUrl("https://my.example.com");
+        c.setMemo(null); // 메모 없음
+        ctx.setVariable("customLinks", List.of(c));
+
+        String html = engine.process("design/company-links", ctx);
+
+        assertThat(html).doesNotContain("null");
     }
 
     @Test
-    void me_emptyCustom_rendersEmptyState() {
+    void companyLinks_emptyCustom_rendersAddPrompt() {
         WebContext ctx = baseContext();
         ctx.setVariable("hubMember", new HubMemberSession(7L, "a@coresolution.kr", "이수민", "USER"));
+        ctx.setVariable("links", List.of());
+        ctx.setVariable("linkGroups", new LinkedHashMap<String, List<CompanyLink>>());
+        ctx.setVariable("favoriteLinkIds", Set.of());
+        ctx.setVariable("favorites", List.of());
         ctx.setVariable("customLinks", List.of());
 
-        String html = engine.process("hub/me", ctx);
+        String html = engine.process("design/company-links", ctx);
 
-        assertThat(html).contains("아직 추가한 링크가 없어요");
+        assertThat(html).contains("자주 쓰는 개인 링크를 추가해보세요");
+    }
+
+    /** 비로그인은 개인 영역(내 링크 관리 폼·검색 대상)이 전혀 렌더되지 않아야 한다. */
+    @Test
+    void companyLinks_anonymous_hasNoCustomLinkManageForms() {
+        WebContext ctx = baseContext();
+        ctx.setVariable("hubMember", null);
+        ctx.setVariable("links", List.of());
+        ctx.setVariable("linkGroups", new LinkedHashMap<String, List<CompanyLink>>());
+        ctx.setVariable("favoriteLinkIds", Set.of());
+        ctx.setVariable("favorites", List.of());
+        ctx.setVariable("customLinks", List.of());
+
+        String html = engine.process("design/company-links", ctx);
+
+        assertThat(html).doesNotContain("내 링크");
+        assertThat(html).doesNotContain("customAddForm");
+        assertThat(html).doesNotContain("/hub/me/custom-links");
     }
 
     @Test
