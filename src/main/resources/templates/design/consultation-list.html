@@ -314,6 +314,10 @@
     .table thead th.col-frozen-last,
     .table tbody td.col-frozen-last { box-shadow: 2px 0 6px -1px rgba(0,0,0,.10); }
 
+    /* ── BC(블랙컨슈머) 행 강조 ── */
+    .table tbody tr.is-bc td { background: #fce0e4; }
+    .table tbody tr.is-bc td.col-frozen { background: #fce0e4; }
+
     /* ── 핀 버튼 ── */
     .col-settings-item { display: flex; align-items: center; gap: 6px; }
     .col-settings-item__label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -964,7 +968,7 @@
           </thead>
           <tbody>
             <template x-for="r in filtered" :key="r.cs_idx">
-              <tr :class="{ 'is-selected': selectedIds.has(r.cs_idx) }" style="cursor:pointer;"
+              <tr :class="{ 'is-selected': selectedIds.has(r.cs_idx), 'is-bc': r.cs_col_10 === 'Y' || r.cs_col_10 === 'BC' }" style="cursor:pointer;"
                   @dblclick="visit('/counsel/inpatient?cs_idx=' + r.cs_idx)">
                 <td @click.stop>
                   <input type="checkbox" :checked="selectedIds.has(r.cs_idx)"
