@@ -161,6 +161,64 @@
     });
   }
 
+  // ── 링크 세트: 카테고리 "모두 열기" (팝업 차단 시 목록 폴백) ────────────
+  const renderOpenFallback = (group, blocked) => {
+    group.querySelector('.hub-openfallback')?.remove();
+    if (!blocked.length) return;
+    const box = document.createElement('div');
+    box.className = 'hub-openfallback';
+    const msg = document.createElement('p');
+    msg.className = 'hub-openfallback__msg';
+    msg.textContent = `브라우저가 ${blocked.length}개 탭을 막았습니다. 아래를 눌러 열어주세요.`;
+    box.appendChild(msg);
+    const list = document.createElement('div');
+    list.className = 'hub-openfallback__list';
+    blocked.forEach((it) => {
+      const a = document.createElement('a');
+      a.href = it.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.className = 'hub-openfallback__link';
+      a.textContent = it.title || it.url;
+      list.appendChild(a);
+    });
+    box.appendChild(list);
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'hub-btn hub-btn--sm';
+    close.textContent = '닫기';
+    close.addEventListener('click', () => box.remove());
+    box.appendChild(close);
+    group.appendChild(box);
+  };
+
+  document.querySelectorAll('[data-open-all]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const group = btn.closest('.hub-catgroup');
+      if (!group) return;
+      const items = [...group.querySelectorAll('.hub-card')]
+        .map((card) => ({
+          url: card.querySelector('.hub-card__url')?.textContent.trim() || '',
+          title: card.querySelector('.hub-card__title')?.textContent.trim() || '',
+        }))
+        .filter((it) => it.url);
+      if (!items.length) return;
+      if (!confirm(`${items.length}개 링크를 새 탭으로 엽니다. 계속할까요?`)) return;
+      const blocked = [];
+      items.forEach((it) => {
+        // noopener를 features로 주면 반환값이 항상 null이라 차단 감지가 안 된다.
+        // 창을 받은 뒤 opener를 끊어 보안(탭 나빙 방지)과 차단 감지를 모두 챙긴다.
+        const win = window.open(it.url, '_blank');
+        if (win) {
+          try { win.opener = null; } catch (_) { /* 일부 브라우저 무시 */ }
+        } else {
+          blocked.push(it);
+        }
+      });
+      renderOpenFallback(group, blocked);
+    });
+  });
+
   // ── 내 링크 선택 삭제 모드 ────────────────────────────────────────────
   const customSection = document.getElementById('customSection');
   const selectToggle = document.getElementById('customSelectToggle');

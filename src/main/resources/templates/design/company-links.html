@@ -155,6 +155,8 @@
               <div class="hub-catgroup__head">
                 <h3 class="hub-catgroup__title" th:text="${grp.key}">카테고리</h3>
                 <span class="hub-catgroup__count" th:text="|${#lists.size(grp.value)}개|">0개</span>
+                <button type="button" class="hub-btn hub-btn--sm hub-openall" data-open-all
+                        th:if="${#lists.size(grp.value) > 1}">모두 열기</button>
               </div>
               <div class="hub-grid" data-reorder="custom" th:data-reorder-url="@{/hub/me/custom-links/reorder}">
                 <th:block th:each="link : ${grp.value}">
