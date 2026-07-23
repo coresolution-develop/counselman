@@ -26,7 +26,7 @@
         <div class="hub-search">
           <svg class="hub-search__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-          <input id="hubSearch" type="search" placeholder="링크 이름·주소로 검색" autocomplete="off" aria-label="링크 검색" />
+          <input id="hubSearch" type="search" placeholder="링크 이름·주소로 검색  (Ctrl/⌘+K, Enter로 열기)" autocomplete="off" aria-label="링크 검색" />
         </div>
 
         <div class="hub-toolbar">
@@ -41,11 +41,15 @@
               <span class="hub-section__count" th:text="|${#lists.size(favorites)}개|">0개</span>
             </h2>
           </div>
-          <div class="hub-grid">
-            <div class="hub-card" data-fav-card th:each="link : ${favorites}"
-                 th:attr="data-search-name=|${link.title} ${link.url}|">
+          <div class="hub-grid" data-reorder="favorites" th:data-reorder-url="@{/hub/me/favorites/reorder}">
+            <div class="hub-card hub-card--reorder" data-fav-card th:each="link : ${favorites}"
+                 th:attr="data-search-name=|${link.title} ${link.url}|,data-reorder-id=${link.id}">
               <a class="hub-card__link" target="_blank" rel="noopener noreferrer"
                  th:href="@{/hub/go/link/{id}(id=${link.id})}" th:aria-label="|${link.title} 열기|"></a>
+              <span class="hub-card__move">
+                <button type="button" class="hub-move" data-move="up" title="위로 이동" aria-label="위로 이동">▲</button>
+                <button type="button" class="hub-move" data-move="down" title="아래로 이동" aria-label="아래로 이동">▼</button>
+              </span>
               <div class="hub-card__body">
                 <div class="hub-card__top">
                   <span class="hub-card__title" th:text="${link.title}">서비스명</span>
@@ -61,14 +65,51 @@
           </div>
         </section>
 
+        <!--/* 최근 사용: 로그인 + 클릭 이력이 있을 때만. 스냅샷 URL을 새 탭으로 바로 연다 */-->
+        <section class="hub-section" data-search-section
+                 th:if="${hubMember != null and recent != null and !#lists.isEmpty(recent)}">
+          <div class="hub-section__head">
+            <h2 class="hub-section__title">최근 사용
+              <span class="hub-section__count" th:text="|${#lists.size(recent)}개|">0개</span>
+            </h2>
+          </div>
+          <div class="hub-recent">
+            <a class="hub-recent__item" th:each="item : ${recent}"
+               target="_blank" rel="noopener noreferrer" th:href="${item.url}"
+               th:attr="data-search-name=|${item.title} ${item.url}|">
+              <div class="hub-recent__main">
+                <div class="hub-recent__title" th:text="${item.title}">제목</div>
+                <div class="hub-recent__url" th:text="${item.url}">https://example.com</div>
+              </div>
+              <span class="hub-recent__time" th:text="${item.accessedAt}">시간</span>
+            </a>
+          </div>
+        </section>
+
         <!--/* 내 링크: 로그인 시에만. 예전 /hub/me 화면을 흡수한 영역 */-->
         <section class="hub-section" data-search-section th:if="${hubMember != null}">
           <div class="hub-section__head">
             <h2 class="hub-section__title">내 링크
               <span class="hub-section__count" th:text="|${customLinks == null ? 0 : #lists.size(customLinks)}개|">0개</span>
             </h2>
-            <button type="button" id="customAddToggle" class="hub-btn hub-btn--primary hub-btn--sm">+ 링크 추가</button>
+            <div class="hub-head-actions">
+              <button type="button" id="customImportToggle" class="hub-btn hub-btn--sm">가져오기</button>
+              <button type="button" id="customAddToggle" class="hub-btn hub-btn--primary hub-btn--sm">+ 링크 추가</button>
+            </div>
           </div>
+
+          <!--/* 브라우저 북마크 HTML 업로드 → 개인 링크 일괄 등록 */-->
+          <form id="customImportForm" class="hub-form" th:action="@{/hub/me/custom-links/import}"
+                method="post" enctype="multipart/form-data" hidden>
+            <div class="hub-field">
+              <label for="importFile">브라우저 북마크 HTML 파일</label>
+              <input class="hub-input hub-input--file" type="file" id="importFile" name="file"
+                     accept=".html,.htm,text/html" required />
+              <span class="hub-form__hint">크롬·엣지: 북마크 관리자 → 내보내기로 저장한 .html 파일을 올려주세요.
+                이미 등록된 링크는 자동으로 건너뜁니다 (한 번에 최대 300개).</span>
+            </div>
+            <div><button type="submit" class="hub-btn hub-btn--primary">가져오기 실행</button></div>
+          </form>
 
           <form id="customAddForm" class="hub-form" th:action="@{/hub/me/custom-links}" method="post" hidden>
             <div class="hub-form__row">
@@ -86,11 +127,16 @@
             <div class="hub-empty__text">자주 쓰는 개인 링크를 추가해보세요. [+ 링크 추가]로 시작합니다.</div>
           </div>
 
-          <div class="hub-grid" th:if="${customLinks != null and !#lists.isEmpty(customLinks)}">
+          <div class="hub-grid" th:if="${customLinks != null and !#lists.isEmpty(customLinks)}"
+               data-reorder="custom" th:data-reorder-url="@{/hub/me/custom-links/reorder}">
             <th:block th:each="link : ${customLinks}">
-              <div class="hub-card" th:attr="data-search-name=|${link.title} ${link.url} ${link.memo == null ? '' : link.memo}|">
+              <div class="hub-card hub-card--reorder" th:attr="data-search-name=|${link.title} ${link.url} ${link.memo == null ? '' : link.memo}|,data-reorder-id=${link.id}">
                 <a class="hub-card__link" target="_blank" rel="noopener noreferrer"
                    th:href="@{/hub/go/custom/{id}(id=${link.id})}" th:aria-label="|${link.title} 열기|"></a>
+                <span class="hub-card__move">
+                  <button type="button" class="hub-move" data-move="up" title="위로 이동" aria-label="위로 이동">▲</button>
+                  <button type="button" class="hub-move" data-move="down" title="아래로 이동" aria-label="아래로 이동">▼</button>
+                </span>
                 <div class="hub-card__body">
                   <div class="hub-card__top">
                     <span class="hub-card__title" th:text="${link.title}">제목</span>

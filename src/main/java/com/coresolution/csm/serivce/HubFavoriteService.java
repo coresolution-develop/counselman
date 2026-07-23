@@ -73,6 +73,27 @@ public class HubFavoriteService {
         }, memberId);
     }
 
+    /**
+     * 드래그 재정렬. 전달된 link_id 순서대로 sort_order를 0,1,2…로 다시 매긴다.
+     * WHERE에 member_id를 포함해 본인 즐겨찾기만 갱신한다(가드레일 ①-b).
+     */
+    @Transactional
+    public void reorder(long memberId, List<Long> orderedLinkIds) {
+        hubMemberService.ensureTables();
+        if (memberId <= 0 || orderedLinkIds == null || orderedLinkIds.isEmpty()) {
+            return;
+        }
+        int order = 0;
+        for (Long linkId : orderedLinkIds) {
+            if (linkId == null || linkId <= 0) {
+                continue;
+            }
+            jdbcTemplate.update(
+                    "UPDATE csm.hub_member_favorite SET sort_order = ? WHERE member_id = ? AND link_id = ?",
+                    order++, memberId, linkId);
+        }
+    }
+
     /** 공개 허브 렌더 시 ★ 채움 표시용 — 해당 회원의 즐겨찾기 link_id 목록. */
     public List<Long> listFavoriteLinkIds(long memberId) {
         hubMemberService.ensureTables();

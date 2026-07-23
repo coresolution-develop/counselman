@@ -19,6 +19,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.coresolution.csm.serivce.CompanyLinkService;
 import com.coresolution.csm.serivce.HubCustomLinkService;
 import com.coresolution.csm.serivce.HubFavoriteService;
+import com.coresolution.csm.serivce.HubHistoryService;
 import com.coresolution.csm.serivce.HubMemoService;
 import com.coresolution.csm.vo.CompanyLink;
 import com.coresolution.csm.vo.HubMemberSession;
@@ -36,6 +37,7 @@ public class CompanyLinkController {
     private final HubFavoriteService hubFavoriteService;
     private final HubMemoService hubMemoService;
     private final HubCustomLinkService hubCustomLinkService;
+    private final HubHistoryService hubHistoryService;
 
     @GetMapping("/links")
     public String links(Model model, HttpSession session) {
@@ -61,6 +63,10 @@ public class CompanyLinkController {
         model.addAttribute("customLinks", hubMember == null
                 ? java.util.List.of()
                 : hubCustomLinkService.listOwn(hubMember.getId()));
+        // 최근 사용: 클릭 추적(hub_member_link_history)을 상단에 다시 노출한다(로그인 시에만).
+        model.addAttribute("recent", hubMember == null
+                ? java.util.List.of()
+                : hubHistoryService.listRecent(hubMember.getId()));
         return "design/company-links";
     }
 

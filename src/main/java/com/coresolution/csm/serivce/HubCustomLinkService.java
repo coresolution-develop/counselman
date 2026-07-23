@@ -1,6 +1,11 @@
 package com.coresolution.csm.serivce;
 
+import java.net.URI;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -18,6 +23,12 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class HubCustomLinkService {
+
+    private static final int IMPORT_LIMIT = 300;
+    // Netscape 북마크 HTML의 <A HREF="...">제목</A> 추출용.
+    private static final Pattern BOOKMARK_ANCHOR = Pattern.compile(
+            "<a\\s+[^>]*href\\s*=\\s*\"([^\"]*)\"[^>]*>(.*?)</a>",
+            Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
     private final JdbcTemplate jdbcTemplate;
     private final HubMemberService hubMemberService;
@@ -88,6 +99,29 @@ public class HubCustomLinkService {
                 """, safeTitle, safeUrl, safeMemo.isBlank() ? null : safeMemo, safeSort, id, memberId) > 0;
     }
 
+    /**
+     * 드래그 재정렬. 전달된 id 순서대로 sort_order를 0,1,2…로 다시 매긴다.
+     * WHERE에 member_id를 포함해 타인 링크는 건드리지 못한다(가드레일 ①-b).
+     */
+    @Transactional
+    public void reorder(long memberId, List<Long> orderedIds) {
+        hubMemberService.ensureTables();
+        if (memberId <= 0 || orderedIds == null || orderedIds.isEmpty()) {
+            return;
+        }
+        int order = 0;
+        for (Long id : orderedIds) {
+            if (id == null || id <= 0) {
+                continue;
+            }
+            jdbcTemplate.update("""
+                    UPDATE csm.hub_member_custom_link
+                       SET sort_order = ?
+                     WHERE id = ? AND member_id = ? AND use_yn = 'Y'
+                    """, order++, id, memberId);
+        }
+    }
+
     @Transactional
     public boolean delete(long id, long memberId) {
         hubMemberService.ensureTables();
@@ -99,6 +133,70 @@ public class HubCustomLinkService {
                    SET use_yn = 'N'
                  WHERE id = ? AND member_id = ? AND use_yn = 'Y'
                 """, id, memberId) > 0;
+    }
+
+    /**
+     * 브라우저 북마크 HTML(Netscape 포맷)을 파싱해 개인 링크로 일괄 등록한다.
+     * http(s)만 허용, 기존 URL·파일 내 중복은 건너뛰며, 한 번에 최대 {@value #IMPORT_LIMIT}건.
+     * @return [등록 건수, 건너뛴 건수(중복·무효·초과)]
+     */
+    @Transactional
+    public int[] importBookmarks(long memberId, String html) {
+        hubMemberService.ensureTables();
+        if (memberId <= 0 || html == null || html.isBlank()) {
+            return new int[] { 0, 0 };
+        }
+        // 이미 가진 URL(정규화된 저장값) 집합 — 여기에 add하면서 파일 내 중복까지 함께 거른다.
+        Set<String> seen = new HashSet<>(jdbcTemplate.queryForList(
+                "SELECT url FROM csm.hub_member_custom_link WHERE member_id = ? AND use_yn = 'Y'",
+                String.class, memberId));
+        Matcher matcher = BOOKMARK_ANCHOR.matcher(html);
+        int imported = 0;
+        int skipped = 0;
+        while (matcher.find()) {
+            String safeUrl;
+            try {
+                safeUrl = HubUrls.normalizeHttpUrl(matcher.group(1));
+            } catch (IllegalArgumentException e) {
+                skipped++; // javascript:, place:, 상대경로 등
+                continue;
+            }
+            if (!seen.add(safeUrl) || imported >= IMPORT_LIMIT) {
+                skipped++;
+                continue;
+            }
+            String title = unescapeHtml(matcher.group(2));
+            if (title.isBlank()) {
+                title = hostOf(safeUrl);
+            }
+            if (title.length() > 200) {
+                title = title.substring(0, 200);
+            }
+            jdbcTemplate.update("""
+                    INSERT INTO csm.hub_member_custom_link (member_id, title, url, sort_order)
+                    VALUES (?, ?, ?, ?)
+                    """, memberId, title, safeUrl, 0);
+            imported++;
+        }
+        return new int[] { imported, skipped };
+    }
+
+    private String unescapeHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+        // &amp;는 마지막에 풀어 "&amp;lt;" 같은 이중 인코딩이 조기 치환되지 않게 한다.
+        return value.replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"")
+                .replace("&#39;", "'").replace("&#x27;", "'").replace("&amp;", "&").trim();
+    }
+
+    private String hostOf(String url) {
+        try {
+            String host = URI.create(url).getHost();
+            return host == null ? url : host;
+        } catch (Exception e) {
+            return url;
+        }
     }
 
     private HubCustomLink mapRow(java.sql.ResultSet rs) throws java.sql.SQLException {

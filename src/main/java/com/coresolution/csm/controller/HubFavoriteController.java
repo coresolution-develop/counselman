@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.coresolution.csm.serivce.HubFavoriteService;
 import com.coresolution.csm.vo.HubMemberSession;
+import com.coresolution.csm.web.HubIds;
 import com.coresolution.csm.web.HubSessions;
 
 import jakarta.servlet.http.HttpSession;
@@ -44,5 +45,19 @@ public class HubFavoriteController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    /** 드래그 재정렬 저장 (AJAX). ids = 새 순서의 link_id CSV. 응답: {"ok": true}. */
+    @PostMapping("/hub/me/favorites/reorder")
+    public ResponseEntity<Map<String, Object>> reorder(
+            @RequestParam("ids") String ids,
+            HttpSession session) {
+        HubMemberSession member = HubSessions.current(session);
+        if (member == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "로그인이 필요합니다."));
+        }
+        hubFavoriteService.reorder(member.getId(), HubIds.parseCsv(ids));
+        return ResponseEntity.ok(Map.of("ok", true));
     }
 }

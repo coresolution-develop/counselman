@@ -80,4 +80,33 @@ class HubCustomLinkServiceTest {
         assertThat(deleted).isTrue();
         verify(jdbcTemplate).update(contains("member_id = ?"), eq(9L), eq(7L));
     }
+
+    @Test
+    void importBookmarks_insertsNewHttpLinks_skipsDupAndInvalid() {
+        // 이미 가진 URL 하나 — 중복 제거 대상
+        when(jdbcTemplate.queryForList(contains("SELECT url"), eq(String.class), eq(7L)))
+                .thenReturn(java.util.List.of("https://dup.example.com"));
+
+        String html = """
+                <DL><p>
+                  <DT><A HREF="https://new1.example.com">New One</A>
+                  <DT><A HREF="https://dup.example.com">Dup</A>
+                  <DT><A HREF="javascript:alert(1)">Bad</A>
+                  <DT><A HREF="https://new2.example.com">New &amp; Two</A>
+                </DL>
+                """;
+
+        int[] result = service().importBookmarks(7L, html);
+
+        assertThat(result[0]).isEqualTo(2); // new1, new2 등록
+        assertThat(result[1]).isEqualTo(2); // dup, javascript 건너뜀
+        verify(jdbcTemplate).update(contains("INSERT INTO csm.hub_member_custom_link"),
+                eq(7L), eq("New One"), eq("https://new1.example.com"), eq(0));
+        // HTML 엔티티(&amp;)가 &로 풀려 저장된다
+        verify(jdbcTemplate).update(contains("INSERT INTO csm.hub_member_custom_link"),
+                eq(7L), eq("New & Two"), eq("https://new2.example.com"), eq(0));
+        // 기존 URL은 재삽입되지 않는다
+        verify(jdbcTemplate, never()).update(contains("INSERT INTO csm.hub_member_custom_link"),
+                eq(7L), anyString(), eq("https://dup.example.com"), eq(0));
+    }
 }

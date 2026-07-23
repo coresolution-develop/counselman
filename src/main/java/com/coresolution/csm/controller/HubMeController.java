@@ -1,12 +1,20 @@
 package com.coresolution.csm.controller;
 
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import com.coresolution.csm.web.HubIds;
 
 import com.coresolution.csm.serivce.HubCustomLinkService;
 import com.coresolution.csm.serivce.HubMemberService;
@@ -95,6 +103,47 @@ public class HubMeController {
             redirectAttributes.addFlashAttribute("customError", e.getMessage());
         }
         return "redirect:/links";
+    }
+
+    /** 브라우저 북마크 HTML 업로드 → 개인 링크 일괄 등록. 완료 후 /links로 리다이렉트. */
+    @PostMapping("/hub/me/custom-links/import")
+    public String importCustomLinks(
+            @RequestParam("file") MultipartFile file,
+            HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        HubMemberSession member = HubSessions.current(session);
+        if (member == null) {
+            return "redirect:/hub/login";
+        }
+        if (file == null || file.isEmpty()) {
+            redirectAttributes.addFlashAttribute("customError", "가져올 북마크 파일을 선택해주세요.");
+            return "redirect:/links";
+        }
+        try {
+            String html = new String(file.getBytes(), StandardCharsets.UTF_8);
+            int[] result = hubCustomLinkService.importBookmarks(member.getId(), html);
+            String message = result[0] + "개의 링크를 가져왔습니다."
+                    + (result[1] > 0 ? " (" + result[1] + "개는 중복·무효로 건너뜀)" : "");
+            redirectAttributes.addFlashAttribute("customMessage", message);
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("customError", "북마크 파일을 읽지 못했습니다.");
+        }
+        return "redirect:/links";
+    }
+
+    /** 드래그 재정렬 저장 (AJAX). ids = 새 순서의 커스텀 링크 id CSV. 응답: {"ok": true}. */
+    @PostMapping("/hub/me/custom-links/reorder")
+    @ResponseBody
+    public Map<String, Object> reorderCustomLinks(
+            @RequestParam("ids") String ids,
+            HttpSession session) {
+        HubMemberSession member = HubSessions.current(session);
+        if (member == null) {
+            return Map.of("ok", false, "error", "로그인이 필요합니다.");
+        }
+        List<Long> ordered = HubIds.parseCsv(ids);
+        hubCustomLinkService.reorder(member.getId(), ordered);
+        return Map.of("ok", true);
     }
 
     @PostMapping("/hub/me/custom-links/{id}/delete")

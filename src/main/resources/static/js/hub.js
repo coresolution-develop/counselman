@@ -75,6 +75,69 @@
         visible += hits;
       });
       if (noResult) noResult.hidden = !(q !== '' && visible === 0);
+      clearKbd(); // 결과 집합이 바뀌면 키보드 하이라이트 초기화
+    });
+  }
+
+  // ── 키보드 빠른 실행: Cmd/Ctrl+K 포커스, Enter로 열기, ↑↓ 결과 이동 ──────
+  let kbdActive = -1;
+  const clearKbd = () => {
+    document.querySelectorAll('.hub-kbd-active').forEach((el) => el.classList.remove('hub-kbd-active'));
+    kbdActive = -1;
+  };
+  if (search) {
+    // 검색 필터 기준으로 "지금 화면에 보이는" 링크 앵커만 순서대로 모은다.
+    const openable = () => {
+      const out = [];
+      document.querySelectorAll('[data-search-name]').forEach((el) => {
+        if (el.classList.contains('hub-hide') || el.closest('.hub-hide')) return;
+        const a = el.matches('a') ? el : el.querySelector('a.hub-card__link');
+        if (a) out.push({ el, a });
+      });
+      return out;
+    };
+    const highlight = (list, idx) => {
+      clearKbd();
+      if (idx >= 0 && list[idx]) {
+        kbdActive = idx;
+        list[idx].el.classList.add('hub-kbd-active');
+        list[idx].el.scrollIntoView({ block: 'nearest' });
+      }
+    };
+
+    // 전역 단축키: Cmd/Ctrl+K → 검색창으로 점프
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        search.focus();
+        search.select();
+      }
+    });
+
+    search.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        const list = openable();
+        if (!list.length) return;
+        e.preventDefault();
+        const next = e.key === 'ArrowDown'
+          ? (kbdActive < list.length - 1 ? kbdActive + 1 : 0)
+          : (kbdActive > 0 ? kbdActive - 1 : list.length - 1);
+        highlight(list, next);
+      } else if (e.key === 'Enter') {
+        const list = openable();
+        if (!list.length) return;
+        e.preventDefault();
+        const pick = kbdActive >= 0 && list[kbdActive] ? list[kbdActive] : list[0];
+        pick.a.click(); // target=_blank 로 새 탭에서 열림
+      } else if (e.key === 'Escape') {
+        if (search.value) {
+          search.value = '';
+          search.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+          search.blur();
+        }
+        clearKbd();
+      }
     });
   }
 
@@ -85,6 +148,16 @@
     addToggle.addEventListener('click', () => {
       addForm.hidden = !addForm.hidden;
       if (!addForm.hidden) addForm.querySelector('input')?.focus();
+    });
+  }
+
+  // ── 북마크 가져오기 폼 펼치기/접기 ────────────────────────────────────
+  const importToggle = document.getElementById('customImportToggle');
+  const importForm = document.getElementById('customImportForm');
+  if (importToggle && importForm) {
+    importToggle.addEventListener('click', () => {
+      importForm.hidden = !importForm.hidden;
+      if (!importForm.hidden) importForm.querySelector('input')?.focus();
     });
   }
 
@@ -139,4 +212,101 @@
       }
     });
   }
+
+  // ── 파비콘 타일: 카드/최근목록 URL로 {origin}/favicon.ico 시도, 실패 시 첫 글자 유지 ──
+  const originOf = (raw) => { try { return new URL(raw).origin; } catch (_) { return null; } };
+  const buildMedia = (cls, label, origin) => {
+    const media = document.createElement('span');
+    media.className = cls;
+    media.textContent = (label || '?').trim().slice(0, 1).toUpperCase() || '?';
+    const img = new Image();
+    img.alt = '';
+    img.loading = 'lazy';
+    img.referrerPolicy = 'no-referrer';
+    // 로드 성공 시에만 글자 대신 파비콘을 넣는다(404/에러면 글자 타일 유지).
+    img.addEventListener('load', () => { media.textContent = ''; media.appendChild(img); });
+    img.src = origin + '/favicon.ico';
+    return media;
+  };
+  document.querySelectorAll('.hub-card').forEach((card) => {
+    const urlEl = card.querySelector('.hub-card__url');
+    const top = card.querySelector('.hub-card__top');
+    if (!urlEl || !top || top.querySelector('.hub-card__media')) return;
+    const origin = originOf(urlEl.textContent.trim());
+    if (!origin) return;
+    const title = card.querySelector('.hub-card__title')?.textContent;
+    top.insertBefore(buildMedia('hub-card__media', title, origin), top.firstChild);
+  });
+  document.querySelectorAll('.hub-recent__item').forEach((item) => {
+    const urlEl = item.querySelector('.hub-recent__url');
+    if (!urlEl || item.querySelector('.hub-recent__media')) return;
+    const origin = originOf(urlEl.textContent.trim());
+    if (!origin) return;
+    const title = item.querySelector('.hub-recent__title')?.textContent;
+    item.insertBefore(buildMedia('hub-recent__media', title, origin), item.firstChild);
+  });
+
+  // ── 순서 이동 버튼 (즐겨찾기 / 내 링크) ─────────────────────────────────
+  // ▲/▼ 클릭으로 카드를 한 칸씩 옮기고 새 순서를 저장한다. 드래그보다 위치가 예측 가능.
+  document.querySelectorAll('[data-reorder]').forEach((container) => {
+    const reorderUrl = container.dataset.reorderUrl;
+    if (!reorderUrl) return;
+
+    const cards = () => [...container.querySelectorAll('[data-reorder-id]')];
+
+    // 내 링크는 카드 뒤에 수정 패널(#edit-{id})이 붙는다 — 카드 이동 후 패널을 카드 바로 뒤로 재정렬.
+    const normalizePanels = () => {
+      cards().forEach((card) => {
+        const panel = document.getElementById('edit-' + card.dataset.reorderId);
+        if (panel && card.nextElementSibling !== panel) card.after(panel);
+      });
+    };
+
+    // 양 끝 카드의 ▲/▼는 비활성화해 "더 갈 곳 없음"을 알린다.
+    const refreshEnds = () => {
+      const list = cards();
+      list.forEach((card, i) => {
+        const up = card.querySelector('[data-move="up"]');
+        const down = card.querySelector('[data-move="down"]');
+        if (up) up.disabled = i === 0;
+        if (down) down.disabled = i === list.length - 1;
+      });
+    };
+
+    const persist = async () => {
+      const ids = cards().map((c) => c.dataset.reorderId).join(',');
+      try {
+        const params = new URLSearchParams({ ids, _csrf: csrfToken() });
+        const res = await fetch(reorderUrl, {
+          method: 'POST',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          body: params,
+        });
+        if (res.status === 401) window.location.href = '/hub/login';
+      } catch (_) {
+        // 순서는 화면에 이미 반영됨 — 저장 실패는 조용히 넘긴다(다음 조작 때 재시도).
+      }
+    };
+
+    container.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-move]');
+      if (!btn || btn.disabled) return;
+      e.preventDefault();
+      const card = btn.closest('[data-reorder-id]');
+      if (!card) return;
+      const list = cards();
+      const i = list.indexOf(card);
+      if (btn.dataset.move === 'up' && i > 0) list[i - 1].before(card);
+      else if (btn.dataset.move === 'down' && i < list.length - 1) list[i + 1].after(card);
+      else return;
+      normalizePanels();
+      refreshEnds();
+      persist();
+      // 연속 이동이 편하도록 포커스를 유지한다(끝에 닿아 비활성화되면 반대쪽 버튼으로).
+      if (!btn.disabled) btn.focus();
+      else card.querySelector('[data-move]:not([disabled])')?.focus();
+    });
+
+    refreshEnds();
+  });
 })();
