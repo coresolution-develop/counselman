@@ -10,6 +10,7 @@ public class HubCustomLink {
     private String title;
     private String url;
     private String memo;
+    private String category;
     private Integer sortOrder;
     private String createdAt;
 }

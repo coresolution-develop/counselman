@@ -65,6 +65,7 @@ public class HubMeController {
             @RequestParam("title") String title,
             @RequestParam("url") String url,
             @RequestParam(value = "memo", required = false) String memo,
+            @RequestParam(value = "category", required = false) String category,
             @RequestParam(value = "sortOrder", required = false) Integer sortOrder,
             HttpSession session,
             RedirectAttributes redirectAttributes) {
@@ -73,7 +74,7 @@ public class HubMeController {
             return "redirect:/hub/login";
         }
         try {
-            hubCustomLinkService.create(member.getId(), title, url, memo, sortOrder);
+            hubCustomLinkService.create(member.getId(), title, url, memo, category, sortOrder);
             redirectAttributes.addFlashAttribute("customMessage", "링크가 추가되었습니다.");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("customError", e.getMessage());
@@ -87,6 +88,7 @@ public class HubMeController {
             @RequestParam("title") String title,
             @RequestParam("url") String url,
             @RequestParam(value = "memo", required = false) String memo,
+            @RequestParam(value = "category", required = false) String category,
             @RequestParam(value = "sortOrder", required = false) Integer sortOrder,
             HttpSession session,
             RedirectAttributes redirectAttributes) {
@@ -95,7 +97,7 @@ public class HubMeController {
             return "redirect:/hub/login";
         }
         try {
-            boolean updated = hubCustomLinkService.update(id, member.getId(), title, url, memo, sortOrder);
+            boolean updated = hubCustomLinkService.update(id, member.getId(), title, url, memo, category, sortOrder);
             redirectAttributes.addFlashAttribute(
                     updated ? "customMessage" : "customError",
                     updated ? "링크가 수정되었습니다." : "수정할 링크를 찾을 수 없습니다.");
@@ -159,6 +161,23 @@ public class HubMeController {
         redirectAttributes.addFlashAttribute(
                 deleted ? "customMessage" : "customError",
                 deleted ? "링크가 삭제되었습니다." : "삭제할 링크를 찾을 수 없습니다.");
+        return "redirect:/links";
+    }
+
+    /** 선택 삭제. ids = 삭제할 커스텀 링크 id CSV. 완료 후 /links로 리다이렉트. */
+    @PostMapping("/hub/me/custom-links/bulk-delete")
+    public String bulkDeleteCustomLinks(
+            @RequestParam("ids") String ids,
+            HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        HubMemberSession member = HubSessions.current(session);
+        if (member == null) {
+            return "redirect:/hub/login";
+        }
+        int deleted = hubCustomLinkService.deleteMany(member.getId(), HubIds.parseCsv(ids));
+        redirectAttributes.addFlashAttribute(
+                deleted > 0 ? "customMessage" : "customError",
+                deleted > 0 ? deleted + "개의 링크를 삭제했습니다." : "삭제할 링크를 선택해주세요.");
         return "redirect:/links";
     }
 

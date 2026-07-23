@@ -284,12 +284,15 @@ public class HubMemberService {
                     title      VARCHAR(200) NOT NULL,
                     url        VARCHAR(500) NOT NULL,
                     memo       VARCHAR(300) NULL,
+                    category   VARCHAR(100) NULL,
                     sort_order INT          NOT NULL DEFAULT 0,
                     use_yn     CHAR(1)      NOT NULL DEFAULT 'Y',
                     created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
                     KEY idx_custom_member (member_id, use_yn, sort_order)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """);
+        // 이미 만들어진 기존 테이블에는 category 컬럼을 멱등 추가한다(MySQL/MariaDB 공통).
+        addColumnIfMissing("hub_member_custom_link", "category", "VARCHAR(100) NULL AFTER memo");
 
         // 개인 메모장. 회원당 1행이므로 member_id 자체가 PK다(별도 id/UNIQUE 불필요).
         jdbcTemplate.execute("""
@@ -330,5 +333,19 @@ public class HubMemberService {
                     KEY idx_token_member (member_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """);
+    }
+
+    /**
+     * 컬럼이 없을 때만 ADD COLUMN을 실행하는 멱등 마이그레이션.
+     * MySQL 8은 ADD COLUMN IF NOT EXISTS를 지원하지 않으므로 information_schema로 먼저 확인한다.
+     */
+    private void addColumnIfMissing(String table, String column, String definition) {
+        Integer exists = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM information_schema.columns
+                 WHERE table_schema = 'csm' AND table_name = ? AND column_name = ?
+                """, Integer.class, table, column);
+        if (exists == null || exists == 0) {
+            jdbcTemplate.execute("ALTER TABLE csm." + table + " ADD COLUMN " + column + " " + definition);
+        }
     }
 }

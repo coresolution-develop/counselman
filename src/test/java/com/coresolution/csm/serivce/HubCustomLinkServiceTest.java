@@ -34,41 +34,42 @@ class HubCustomLinkServiceTest {
 
     @Test
     void create_rejectsJavascriptUrl_withoutInsert() {
-        assertThatThrownBy(() -> service().create(7L, "위험", "javascript:alert(1)", null, 0))
+        assertThatThrownBy(() -> service().create(7L, "위험", "javascript:alert(1)", null, null, 0))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("http 또는 https");
         verify(jdbcTemplate, never()).update(contains("INSERT INTO csm.hub_member_custom_link"),
-                any(), any(), any(), any(), any());
+                any(), any(), any(), any(), any(), any());
     }
 
     @Test
     void create_rejectsNonHttpScheme() {
-        assertThatThrownBy(() -> service().create(7L, "파일", "file:///etc/passwd", null, 0))
+        assertThatThrownBy(() -> service().create(7L, "파일", "file:///etc/passwd", null, null, 0))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("http 또는 https");
     }
 
     @Test
-    void create_storesWithMemberId() {
+    void create_storesWithMemberIdAndCategory() {
         when(jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long.class)).thenReturn(11L);
 
-        long id = service().create(7L, "  내 링크 ", "https://x.example.com", null, 3);
+        long id = service().create(7L, "  내 링크 ", "https://x.example.com", null, "  업무 ", 3);
 
         assertThat(id).isEqualTo(11L);
+        // 파라미터 순서: member, title, url, memo(null), category(trim), sort
         verify(jdbcTemplate).update(contains("INSERT INTO csm.hub_member_custom_link"),
-                eq(7L), eq("내 링크"), eq("https://x.example.com"), isNull(), eq(3));
+                eq(7L), eq("내 링크"), eq("https://x.example.com"), isNull(), eq("업무"), eq(3));
     }
 
     @Test
     void update_scopesToMemberId() {
-        when(jdbcTemplate.update(anyString(), any(), any(), any(), any(), eq(9L), eq(7L))).thenReturn(1);
+        when(jdbcTemplate.update(anyString(), any(), any(), any(), any(), any(), eq(9L), eq(7L))).thenReturn(1);
 
-        boolean updated = service().update(9L, 7L, "수정", "https://y.example.com", "메모", 0);
+        boolean updated = service().update(9L, 7L, "수정", "https://y.example.com", "메모", null, 0);
 
         assertThat(updated).isTrue();
-        // WHERE 절이 member_id로 제한되어 타인 링크 수정 불가
+        // WHERE 절이 member_id로 제한되어 타인 링크 수정 불가. category는 비어 null로 저장.
         verify(jdbcTemplate).update(contains("member_id = ?"),
-                eq("수정"), eq("https://y.example.com"), eq("메모"), eq(0), eq(9L), eq(7L));
+                eq("수정"), eq("https://y.example.com"), eq("메모"), isNull(), eq(0), eq(9L), eq(7L));
     }
 
     @Test
@@ -100,13 +101,45 @@ class HubCustomLinkServiceTest {
 
         assertThat(result[0]).isEqualTo(2); // new1, new2 등록
         assertThat(result[1]).isEqualTo(2); // dup, javascript 건너뜀
+        // 파라미터 순서: member, title, url, category(폴더 없어 null), sort
         verify(jdbcTemplate).update(contains("INSERT INTO csm.hub_member_custom_link"),
-                eq(7L), eq("New One"), eq("https://new1.example.com"), eq(0));
+                eq(7L), eq("New One"), eq("https://new1.example.com"), isNull(), eq(0));
         // HTML 엔티티(&amp;)가 &로 풀려 저장된다
         verify(jdbcTemplate).update(contains("INSERT INTO csm.hub_member_custom_link"),
-                eq(7L), eq("New & Two"), eq("https://new2.example.com"), eq(0));
+                eq(7L), eq("New & Two"), eq("https://new2.example.com"), isNull(), eq(0));
         // 기존 URL은 재삽입되지 않는다
         verify(jdbcTemplate, never()).update(contains("INSERT INTO csm.hub_member_custom_link"),
-                eq(7L), anyString(), eq("https://dup.example.com"), eq(0));
+                eq(7L), anyString(), eq("https://dup.example.com"), any(), eq(0));
+    }
+
+    @Test
+    void importBookmarks_mapsFolderNameToCategory() {
+        when(jdbcTemplate.queryForList(contains("SELECT url"), eq(String.class), eq(7L)))
+                .thenReturn(java.util.List.of());
+
+        // 중첩 폴더: 루트 링크는 카테고리 없음, Work 폴더 링크는 "Work", Dev 하위는 "Dev"
+        String html = """
+                <DL><p>
+                  <DT><A HREF="https://root.example.com">Root</A>
+                  <DT><H3>Work</H3>
+                  <DL><p>
+                    <DT><A HREF="https://work.example.com">Work Link</A>
+                    <DT><H3>Dev</H3>
+                    <DL><p>
+                      <DT><A HREF="https://dev.example.com">Dev Link</A>
+                    </DL><p>
+                  </DL><p>
+                </DL>
+                """;
+
+        int[] result = service().importBookmarks(7L, html);
+
+        assertThat(result[0]).isEqualTo(3);
+        verify(jdbcTemplate).update(contains("INSERT INTO csm.hub_member_custom_link"),
+                eq(7L), eq("Root"), eq("https://root.example.com"), isNull(), eq(0));
+        verify(jdbcTemplate).update(contains("INSERT INTO csm.hub_member_custom_link"),
+                eq(7L), eq("Work Link"), eq("https://work.example.com"), eq("Work"), eq(0));
+        verify(jdbcTemplate).update(contains("INSERT INTO csm.hub_member_custom_link"),
+                eq(7L), eq("Dev Link"), eq("https://dev.example.com"), eq("Dev"), eq(0));
     }
 }

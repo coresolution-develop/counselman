@@ -22,6 +22,7 @@ import com.coresolution.csm.serivce.HubFavoriteService;
 import com.coresolution.csm.serivce.HubHistoryService;
 import com.coresolution.csm.serivce.HubMemoService;
 import com.coresolution.csm.vo.CompanyLink;
+import com.coresolution.csm.vo.HubCustomLink;
 import com.coresolution.csm.vo.HubMemberSession;
 import com.coresolution.csm.vo.Userdata;
 import com.coresolution.csm.web.HubSessions;
@@ -60,9 +61,12 @@ public class CompanyLinkController {
                 ? ""
                 : hubMemoService.find(hubMember.getId()));
         // 개인 커스텀 링크. 예전 /hub/me를 이 페이지가 흡수했다(관리 폼도 여기서 렌더).
-        model.addAttribute("customLinks", hubMember == null
+        // 카테고리별 그룹으로 내려준다(미분류는 "기타"). 개수 표시용 flat 리스트도 함께 전달.
+        List<HubCustomLink> customLinks = hubMember == null
                 ? java.util.List.of()
-                : hubCustomLinkService.listOwn(hubMember.getId()));
+                : hubCustomLinkService.listOwn(hubMember.getId());
+        model.addAttribute("customLinks", customLinks);
+        model.addAttribute("customLinkGroups", groupCustomByCategory(customLinks));
         // 최근 사용: 클릭 추적(hub_member_link_history)을 상단에 다시 노출한다(로그인 시에만).
         model.addAttribute("recent", hubMember == null
                 ? java.util.List.of()
@@ -154,6 +158,17 @@ public class CompanyLinkController {
     @ResponseBody
     public Map<String, Object> listLinks() {
         return Map.of("links", companyLinkService.listActiveLinks());
+    }
+
+    private Map<String, List<HubCustomLink>> groupCustomByCategory(List<HubCustomLink> links) {
+        Map<String, List<HubCustomLink>> groups = new LinkedHashMap<>();
+        for (HubCustomLink link : links) {
+            String category = link.getCategory() == null || link.getCategory().isBlank()
+                    ? "기타"
+                    : link.getCategory().trim();
+            groups.computeIfAbsent(category, key -> new java.util.ArrayList<>()).add(link);
+        }
+        return groups;
     }
 
     private Map<String, List<CompanyLink>> groupByCategory(List<CompanyLink> links) {

@@ -161,6 +161,60 @@
     });
   }
 
+  // ── 내 링크 선택 삭제 모드 ────────────────────────────────────────────
+  const customSection = document.getElementById('customSection');
+  const selectToggle = document.getElementById('customSelectToggle');
+  if (customSection && selectToggle) {
+    const bulkBar = document.getElementById('customBulkBar');
+    const bulkForm = document.getElementById('customBulkForm');
+    const bulkIds = document.getElementById('customBulkIds');
+    const selCount = customSection.querySelector('[data-sel-count]');
+    const bulkDelete = customSection.querySelector('[data-sel-delete]');
+    const cancelBtn = document.getElementById('customSelectCancel');
+
+    const boxes = () => [...customSection.querySelectorAll('[data-sel-id]')];
+    const selectedIds = () => boxes().filter((b) => b.checked).map((b) => b.dataset.selId);
+
+    const refresh = () => {
+      const n = selectedIds().length;
+      if (selCount) selCount.textContent = n;
+      if (bulkDelete) bulkDelete.disabled = n === 0;
+      boxes().forEach((b) => b.closest('.hub-card')?.classList.toggle('is-selected', b.checked));
+    };
+
+    const setMode = (on) => {
+      customSection.classList.toggle('is-selecting', on);
+      if (bulkBar) bulkBar.hidden = !on;
+      selectToggle.classList.toggle('hub-btn--primary', on);
+      selectToggle.textContent = on ? '선택 종료' : '선택';
+      if (!on) boxes().forEach((b) => { b.checked = false; });
+      refresh();
+    };
+
+    selectToggle.addEventListener('click', () =>
+      setMode(!customSection.classList.contains('is-selecting')));
+    if (cancelBtn) cancelBtn.addEventListener('click', () => setMode(false));
+
+    // 선택 모드에서 카드 아무 곳이나 클릭 → 체크 토글 (체크박스 직접 클릭은 native)
+    customSection.addEventListener('click', (e) => {
+      if (!customSection.classList.contains('is-selecting')) return;
+      const card = e.target.closest('.hub-card');
+      const box = card?.querySelector('[data-sel-id]');
+      if (!box) return;
+      if (!e.target.closest('.hub-card__check')) box.checked = !box.checked;
+      refresh();
+    });
+
+    if (bulkForm && bulkIds) {
+      bulkForm.addEventListener('submit', (e) => {
+        const ids = selectedIds();
+        if (!ids.length) { e.preventDefault(); return; }
+        if (!confirm(ids.length + '개의 링크를 삭제할까요?')) { e.preventDefault(); return; }
+        bulkIds.value = ids.join(',');
+      });
+    }
+  }
+
   // ── 커스텀 링크 인라인 수정 토글 ──────────────────────────────────────
   document.querySelectorAll('[data-edit-toggle]').forEach((btn) => {
     btn.addEventListener('click', () => {

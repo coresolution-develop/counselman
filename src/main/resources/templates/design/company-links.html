@@ -87,15 +87,32 @@
         </section>
 
         <!--/* 내 링크: 로그인 시에만. 예전 /hub/me 화면을 흡수한 영역 */-->
-        <section class="hub-section" data-search-section th:if="${hubMember != null}">
+        <section class="hub-section" id="customSection" data-search-section th:if="${hubMember != null}">
           <div class="hub-section__head">
             <h2 class="hub-section__title">내 링크
               <span class="hub-section__count" th:text="|${customLinks == null ? 0 : #lists.size(customLinks)}개|">0개</span>
             </h2>
             <div class="hub-head-actions">
+              <button type="button" id="customSelectToggle" class="hub-btn hub-btn--sm"
+                      th:if="${customLinks != null and !#lists.isEmpty(customLinks)}">선택</button>
               <button type="button" id="customImportToggle" class="hub-btn hub-btn--sm">가져오기</button>
               <button type="button" id="customAddToggle" class="hub-btn hub-btn--primary hub-btn--sm">+ 링크 추가</button>
             </div>
+          </div>
+
+          <!--/* 카테고리 자동완성 목록 (기존 카테고리들, "기타" 제외) */-->
+          <datalist id="customCategories">
+            <option th:each="entry : ${customLinkGroups}" th:if="${entry.key != '기타'}" th:value="${entry.key}"></option>
+          </datalist>
+
+          <!--/* 선택 삭제 바 — 선택 모드일 때만 노출 */-->
+          <div class="hub-selbar" id="customBulkBar" hidden>
+            <form th:action="@{/hub/me/custom-links/bulk-delete}" method="post" id="customBulkForm" class="hub-selbar__form">
+              <input type="hidden" name="ids" id="customBulkIds" />
+              <span class="hub-selbar__count"><b data-sel-count>0</b>개 선택됨</span>
+              <button type="submit" class="hub-btn hub-btn--sm hub-btn--danger" data-sel-delete disabled>선택 삭제</button>
+              <button type="button" class="hub-btn hub-btn--sm" id="customSelectCancel">취소</button>
+            </form>
           </div>
 
           <!--/* 브라우저 북마크 HTML 업로드 → 개인 링크 일괄 등록 */-->
@@ -118,8 +135,13 @@
               <div class="hub-field"><label for="newUrl">URL (http/https)</label>
                 <input class="hub-input" type="url" id="newUrl" name="url" placeholder="https://" required /></div>
             </div>
-            <div class="hub-field"><label for="newMemo">메모 (선택)</label>
-              <input class="hub-input" type="text" id="newMemo" name="memo" /></div>
+            <div class="hub-form__row">
+              <div class="hub-field"><label for="newCategory">카테고리 (선택)</label>
+                <input class="hub-input" type="text" id="newCategory" name="category" list="customCategories"
+                       placeholder="예) 업무, 개발" /></div>
+              <div class="hub-field"><label for="newMemo">메모 (선택)</label>
+                <input class="hub-input" type="text" id="newMemo" name="memo" /></div>
+            </div>
             <div><button type="submit" class="hub-btn hub-btn--primary">추가</button></div>
           </form>
 
@@ -127,47 +149,63 @@
             <div class="hub-empty__text">자주 쓰는 개인 링크를 추가해보세요. [+ 링크 추가]로 시작합니다.</div>
           </div>
 
-          <div class="hub-grid" th:if="${customLinks != null and !#lists.isEmpty(customLinks)}"
-               data-reorder="custom" th:data-reorder-url="@{/hub/me/custom-links/reorder}">
-            <th:block th:each="link : ${customLinks}">
-              <div class="hub-card hub-card--reorder" th:attr="data-search-name=|${link.title} ${link.url} ${link.memo == null ? '' : link.memo}|,data-reorder-id=${link.id}">
-                <a class="hub-card__link" target="_blank" rel="noopener noreferrer"
-                   th:href="@{/hub/go/custom/{id}(id=${link.id})}" th:aria-label="|${link.title} 열기|"></a>
-                <span class="hub-card__move">
-                  <button type="button" class="hub-move" data-move="up" title="위로 이동" aria-label="위로 이동">▲</button>
-                  <button type="button" class="hub-move" data-move="down" title="아래로 이동" aria-label="아래로 이동">▼</button>
-                </span>
-                <div class="hub-card__body">
-                  <div class="hub-card__top">
-                    <span class="hub-card__title" th:text="${link.title}">제목</span>
-                  </div>
-                  <span class="hub-card__desc" th:if="${link.memo != null and !#strings.isEmpty(link.memo)}"
-                        th:text="${link.memo}">메모</span>
-                  <span class="hub-card__url" th:text="${link.url}">https://example.com</span>
-                </div>
-                <button type="button" class="lh-edit" th:data-edit-toggle="${link.id}"
-                        th:aria-label="|${link.title} 수정|" title="수정">✎</button>
+          <!--/* 카테고리 그룹. 각 그룹이 독립 재정렬 컨테이너(순서 이동은 같은 카테고리 안에서) */-->
+          <div th:if="${customLinkGroups != null and !customLinkGroups.isEmpty()}">
+            <div class="hub-catgroup" th:each="grp : ${customLinkGroups}" data-search-section>
+              <div class="hub-catgroup__head">
+                <h3 class="hub-catgroup__title" th:text="${grp.key}">카테고리</h3>
+                <span class="hub-catgroup__count" th:text="|${#lists.size(grp.value)}개|">0개</span>
               </div>
-              <div class="hub-edit hub-edit--panel" th:id="'edit-' + ${link.id}" hidden>
-                <form class="hub-form" style="margin:0;" th:action="@{/hub/me/custom-links/{id}(id=${link.id})}" method="post">
-                  <div class="hub-form__row">
-                    <div class="hub-field"><label>이름</label>
-                      <input class="hub-input" type="text" name="title" required th:value="${link.title}" /></div>
-                    <div class="hub-field"><label>URL</label>
-                      <input class="hub-input" type="url" name="url" required th:value="${link.url}" /></div>
+              <div class="hub-grid" data-reorder="custom" th:data-reorder-url="@{/hub/me/custom-links/reorder}">
+                <th:block th:each="link : ${grp.value}">
+                  <div class="hub-card hub-card--reorder"
+                       th:attr="data-search-name=|${link.title} ${link.url} ${link.memo == null ? '' : link.memo} ${link.category == null ? '' : link.category}|,data-reorder-id=${link.id}">
+                    <a class="hub-card__link" target="_blank" rel="noopener noreferrer"
+                       th:href="@{/hub/go/custom/{id}(id=${link.id})}" th:aria-label="|${link.title} 열기|"></a>
+                    <label class="hub-card__check">
+                      <input type="checkbox" th:data-sel-id="${link.id}" aria-label="선택" />
+                    </label>
+                    <span class="hub-card__move">
+                      <button type="button" class="hub-move" data-move="up" title="위로 이동" aria-label="위로 이동">▲</button>
+                      <button type="button" class="hub-move" data-move="down" title="아래로 이동" aria-label="아래로 이동">▼</button>
+                    </span>
+                    <div class="hub-card__body">
+                      <div class="hub-card__top">
+                        <span class="hub-card__title" th:text="${link.title}">제목</span>
+                      </div>
+                      <span class="hub-card__desc" th:if="${link.memo != null and !#strings.isEmpty(link.memo)}"
+                            th:text="${link.memo}">메모</span>
+                      <span class="hub-card__url" th:text="${link.url}">https://example.com</span>
+                    </div>
+                    <button type="button" class="lh-edit" th:data-edit-toggle="${link.id}"
+                            th:aria-label="|${link.title} 수정|" title="수정">✎</button>
                   </div>
-                  <div class="hub-field"><label>메모</label>
-                    <input class="hub-input" type="text" name="memo" th:value="${link.memo}" /></div>
-                  <div class="hub-edit__actions">
-                    <button type="submit" class="hub-btn hub-btn--primary hub-btn--sm">저장</button>
+                  <div class="hub-edit hub-edit--panel" th:id="'edit-' + ${link.id}" hidden>
+                    <form class="hub-form" style="margin:0;" th:action="@{/hub/me/custom-links/{id}(id=${link.id})}" method="post">
+                      <div class="hub-form__row">
+                        <div class="hub-field"><label>이름</label>
+                          <input class="hub-input" type="text" name="title" required th:value="${link.title}" /></div>
+                        <div class="hub-field"><label>URL</label>
+                          <input class="hub-input" type="url" name="url" required th:value="${link.url}" /></div>
+                      </div>
+                      <div class="hub-form__row">
+                        <div class="hub-field"><label>카테고리</label>
+                          <input class="hub-input" type="text" name="category" list="customCategories" th:value="${link.category}" /></div>
+                        <div class="hub-field"><label>메모</label>
+                          <input class="hub-input" type="text" name="memo" th:value="${link.memo}" /></div>
+                      </div>
+                      <div class="hub-edit__actions">
+                        <button type="submit" class="hub-btn hub-btn--primary hub-btn--sm">저장</button>
+                      </div>
+                    </form>
+                    <form class="hub-inline-form" th:action="@{/hub/me/custom-links/{id}/delete(id=${link.id})}" method="post"
+                          onsubmit="return confirm('이 링크를 삭제할까요?');">
+                      <button type="submit" class="hub-btn hub-btn--sm hub-btn--danger">삭제</button>
+                    </form>
                   </div>
-                </form>
-                <form class="hub-inline-form" th:action="@{/hub/me/custom-links/{id}/delete(id=${link.id})}" method="post"
-                      onsubmit="return confirm('이 링크를 삭제할까요?');">
-                  <button type="submit" class="hub-btn hub-btn--sm hub-btn--danger">삭제</button>
-                </form>
+                </th:block>
               </div>
-            </th:block>
+            </div>
           </div>
         </section>
 
