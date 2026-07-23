@@ -21,6 +21,7 @@ import com.coresolution.csm.serivce.HubCustomLinkService;
 import com.coresolution.csm.serivce.HubFavoriteService;
 import com.coresolution.csm.serivce.HubHistoryService;
 import com.coresolution.csm.serivce.HubMemoService;
+import com.coresolution.csm.serivce.HubNoticeService;
 import com.coresolution.csm.vo.CompanyLink;
 import com.coresolution.csm.vo.HubCustomLink;
 import com.coresolution.csm.vo.HubMemberSession;
@@ -39,6 +40,7 @@ public class CompanyLinkController {
     private final HubMemoService hubMemoService;
     private final HubCustomLinkService hubCustomLinkService;
     private final HubHistoryService hubHistoryService;
+    private final HubNoticeService hubNoticeService;
 
     @GetMapping("/links")
     public String links(Model model, HttpSession session) {
@@ -71,6 +73,10 @@ public class CompanyLinkController {
         model.addAttribute("recent", hubMember == null
                 ? java.util.List.of()
                 : hubHistoryService.listRecent(hubMember.getId()));
+        // 인기 링크: 전 직원 클릭 집계 TOP(최근 30일). 개인정보 없는 집계라 미로그인도 노출.
+        model.addAttribute("popular", hubHistoryService.listPopularPublic(6, 30));
+        // 관리자 공지 배너(활성일 때만 non-null).
+        model.addAttribute("notice", hubNoticeService.findActive());
         return "design/company-links";
     }
 
@@ -81,7 +87,19 @@ public class CompanyLinkController {
         model.addAttribute("linkGroups", groupByCategory(links));
         model.addAttribute("categories", companyLinkService.listCategories());
         model.addAttribute("hubMember", HubSessions.current(session)); // 사이드바 프로필 표시용
+        model.addAttribute("notice", hubNoticeService.find()); // 공지 배너 관리 폼 현재값
         return "design/company-links-admin";
+    }
+
+    @PostMapping("/admin/company-links/notice")
+    public String saveNotice(
+            @RequestParam(value = "message", required = false, defaultValue = "") String message,
+            @RequestParam(value = "level", required = false, defaultValue = "info") String level,
+            @RequestParam(value = "active", required = false) String active,
+            RedirectAttributes redirectAttributes) {
+        hubNoticeService.save(message, level, active != null);
+        redirectAttributes.addFlashAttribute("linkMessage", "공지 배너가 저장되었습니다.");
+        return "redirect:/admin/company-links";
     }
 
     @PostMapping("/admin/company-links/category-order")

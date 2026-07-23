@@ -184,6 +184,9 @@ class HubTemplateRenderTest {
         c.setUrl("https://memo.example.com");
         c.setMemo("업무");
         ctx.setVariable("customLinks", List.of(c));
+        Map<String, List<HubCustomLink>> customGroups = new LinkedHashMap<>();
+        customGroups.put("기타", List.of(c));
+        ctx.setVariable("customLinkGroups", customGroups);
 
         String html = engine.process("design/company-links", ctx);
 
@@ -215,6 +218,9 @@ class HubTemplateRenderTest {
         c.setUrl("https://my.example.com");
         c.setMemo(null); // 메모 없음
         ctx.setVariable("customLinks", List.of(c));
+        Map<String, List<HubCustomLink>> customGroups = new LinkedHashMap<>();
+        customGroups.put("기타", List.of(c));
+        ctx.setVariable("customLinkGroups", customGroups);
 
         String html = engine.process("design/company-links", ctx);
 

@@ -333,6 +333,17 @@ public class HubMemberService {
                     KEY idx_token_member (member_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """);
+
+        // 관리자 공지 배너. 단일 행(id=1)만 사용해 upsert한다.
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS csm.hub_notice (
+                    id         INT          NOT NULL PRIMARY KEY,
+                    message    VARCHAR(500) NOT NULL DEFAULT '',
+                    level      VARCHAR(20)  NOT NULL DEFAULT 'info',
+                    active_yn  CHAR(1)      NOT NULL DEFAULT 'N',
+                    updated_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """);
     }
 
     /**

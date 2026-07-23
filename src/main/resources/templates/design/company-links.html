@@ -6,7 +6,21 @@
   <meta name="_csrf" th:content="${_csrf.token}" />
   <meta name="_csrf_header" th:content="${_csrf.headerName}" />
   <title>링크 허브</title>
+  <!--/* PWA: 홈 화면에 앱처럼 설치 (회사 공용 아이콘 재사용) */-->
+  <link rel="manifest" th:href="@{/hub-manifest.json}" />
+  <meta name="theme-color" content="#2478C0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="링크 허브" />
+  <link rel="apple-touch-icon" th:href="@{/icon/new/app-icon-180.png}" />
   <link rel="stylesheet" th:href="@{/assets/css/hub.css}" />
+  <script th:inline="javascript">
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register([[@{/sw.js}]], { scope: [[@{/}]] }).catch(function () {});
+      });
+    }
+  </script>
 </head>
 <body class="hub-body">
   <div class="hub-layout">
@@ -14,6 +28,15 @@
 
     <main class="hub-content">
       <div class="hub-container">
+        <!--/* 관리자 공지 배너: 활성일 때만. 닫기는 updated_at 기준이라 새 공지는 다시 뜬다 */-->
+        <div class="hub-notice" th:if="${notice != null}"
+             th:classappend="${notice.level == 'warn'} ? ' hub-notice--warn' : ''"
+             th:attr="data-notice-key=${notice.updatedAt}">
+          <span class="hub-notice__icon" aria-hidden="true">📢</span>
+          <span class="hub-notice__msg" th:text="${notice.message}">공지 내용</span>
+          <button type="button" class="hub-notice__close" data-notice-dismiss aria-label="공지 닫기">×</button>
+        </div>
+
         <header class="hub-pagehead">
           <h1 class="hub-pagehead__title">서비스 링크</h1>
           <p class="hub-pagehead__sub">회사에서 운영하는 사이트를 한 곳에서 바로 열 수 있습니다.</p>
@@ -231,6 +254,30 @@
               </div>
             </div>
           </details>
+        </section>
+
+        <!--/* 인기 링크: 전 직원 클릭 집계 TOP(최근 30일). 데이터 있을 때만 */-->
+        <section class="hub-section" data-search-section
+                 th:if="${popular != null and !#lists.isEmpty(popular)}">
+          <div class="hub-section__head">
+            <h2 class="hub-section__title">🔥 인기 링크
+              <span class="hub-section__count">최근 30일 많이 찾는 링크</span>
+            </h2>
+          </div>
+          <div class="hub-grid">
+            <div class="hub-card" th:each="link : ${popular}"
+                 th:attr="data-search-name=|${link.title} ${link.url}|">
+              <a class="hub-card__link" target="_blank" rel="noopener noreferrer"
+                 th:href="${hubMember != null} ? @{/hub/go/link/{id}(id=${link.id})} : ${link.url}"
+                 th:aria-label="|${link.title} 열기|"></a>
+              <div class="hub-card__body">
+                <div class="hub-card__top">
+                  <span class="hub-card__title" th:text="${link.title}">서비스명</span>
+                </div>
+                <span class="hub-card__url" th:text="${link.url}">https://example.com</span>
+              </div>
+            </div>
+          </div>
         </section>
 
         <div class="hub-empty" th:if="${links == null or #lists.isEmpty(links)}">

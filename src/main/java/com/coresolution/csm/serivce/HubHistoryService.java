@@ -70,6 +70,35 @@ public class HubHistoryService {
         }, memberId);
     }
 
+    /**
+     * 전 직원 클릭을 집계한 인기 공용 링크 TOP N (최근 {@code days}일).
+     * 개인 정보 없이 링크별 집계만 하며, 현재 활성(use_yn='Y')인 공용 링크만 반환한다.
+     * cl.id는 company_link의 PK이므로 GROUP BY cl.id로 나머지 컬럼이 함수 종속된다.
+     */
+    public List<com.coresolution.csm.vo.CompanyLink> listPopularPublic(int limit, int days) {
+        hubMemberService.ensureTables();
+        int safeLimit = Math.max(1, Math.min(limit, 24));
+        int safeDays = Math.max(1, Math.min(days, 365));
+        return jdbcTemplate.query("""
+                SELECT cl.id, cl.title, cl.url, cl.description, cl.category, COUNT(*) AS hits
+                  FROM csm.hub_member_link_history h
+                  JOIN csm.company_link cl ON cl.id = h.link_id AND cl.use_yn = 'Y'
+                 WHERE h.link_type = 'PUBLIC' AND h.link_id IS NOT NULL
+                   AND h.accessed_at >= (NOW() - INTERVAL ? DAY)
+                 GROUP BY cl.id
+                 ORDER BY hits DESC, cl.title ASC
+                 LIMIT ?
+                """, (rs, rowNum) -> {
+            com.coresolution.csm.vo.CompanyLink link = new com.coresolution.csm.vo.CompanyLink();
+            link.setId(rs.getLong("id"));
+            link.setTitle(rs.getString("title"));
+            link.setUrl(rs.getString("url"));
+            link.setDescription(rs.getString("description"));
+            link.setCategory(rs.getString("category"));
+            return link;
+        }, safeDays, safeLimit);
+    }
+
     private String trimTo(String value, int maxLen) {
         if (value == null) {
             return "";

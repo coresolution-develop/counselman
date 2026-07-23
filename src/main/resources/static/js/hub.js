@@ -161,6 +161,23 @@
     });
   }
 
+  // ── 공지 배너 닫기 (updated_at 기준으로 기억 → 새 공지는 다시 뜬다) ────────
+  const notice = document.querySelector('.hub-notice');
+  if (notice) {
+    const STORE_KEY = 'hubNoticeDismissed';
+    const cur = notice.dataset.noticeKey || '';
+    let dismissed = '';
+    try { dismissed = localStorage.getItem(STORE_KEY) || ''; } catch (_) { /* 무시 */ }
+    if (cur && dismissed === cur) {
+      notice.remove();
+    } else {
+      notice.querySelector('[data-notice-dismiss]')?.addEventListener('click', () => {
+        try { localStorage.setItem(STORE_KEY, cur); } catch (_) { /* 무시 */ }
+        notice.remove();
+      });
+    }
+  }
+
   // ── 링크 세트: 카테고리 "모두 열기" (팝업 차단 시 목록 폴백) ────────────
   const renderOpenFallback = (group, blocked) => {
     group.querySelector('.hub-openfallback')?.remove();
