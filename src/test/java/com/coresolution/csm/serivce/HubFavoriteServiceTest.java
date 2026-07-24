@@ -48,11 +48,14 @@ class HubFavoriteServiceTest {
                 .thenReturn(0);
         when(jdbcTemplate.queryForObject(contains("FROM csm.company_link WHERE id = ? AND use_yn = 'Y'"), eq(Integer.class), eq(3L)))
                 .thenReturn(1);
+        // 새 즐겨찾기는 맨 뒤(기존 최대 sort_order + 1)로 들어간다
+        when(jdbcTemplate.queryForObject(contains("MAX(sort_order)"), eq(Integer.class), eq(7L)))
+                .thenReturn(2);
 
         boolean favorited = service().toggle(7L, 3L);
 
         assertThat(favorited).isTrue();
-        verify(jdbcTemplate).update(contains("INSERT INTO csm.hub_member_favorite"), eq(7L), eq(3L));
+        verify(jdbcTemplate).update(contains("INSERT INTO csm.hub_member_favorite"), eq(7L), eq(3L), eq(2));
     }
 
     @Test

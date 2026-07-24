@@ -44,9 +44,14 @@ public class HubFavoriteService {
         if (!isActiveLink(linkId)) {
             throw new IllegalArgumentException("존재하지 않거나 사용할 수 없는 링크입니다.");
         }
+        // 새 즐겨찾기는 맨 뒤에 붙인다 — 화면에서 카드가 즉시 맨 뒤에 추가되는 것과 순서를 맞춘다
+        // (sort_order를 기본값 0으로 두면 재정렬한 사용자는 새로고침 후 위치가 튄다).
+        Integer nextOrder = jdbcTemplate.queryForObject(
+                "SELECT COALESCE(MAX(sort_order) + 1, 0) FROM csm.hub_member_favorite WHERE member_id = ?",
+                Integer.class, memberId);
         jdbcTemplate.update(
-                "INSERT INTO csm.hub_member_favorite (member_id, link_id) VALUES (?, ?)",
-                memberId, linkId);
+                "INSERT INTO csm.hub_member_favorite (member_id, link_id, sort_order) VALUES (?, ?, ?)",
+                memberId, linkId, nextOrder == null ? 0 : nextOrder);
         return true;
     }
 

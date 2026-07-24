@@ -56,15 +56,18 @@
           <a class="hub-btn hub-btn--sm" th:href="@{/admin/company-links}">링크 관리</a>
         </div>
 
-        <!--/* 내 즐겨찾기: 로그인 + 1개 이상일 때만 렌더 */-->
-        <section class="hub-section" data-search-section
-                 th:if="${hubMember != null and favorites != null and !#lists.isEmpty(favorites)}">
+        <!--/* 내 즐겨찾기: 로그인 시 항상 렌더하고, 0개일 때만 감춘다.
+               (★를 누르면 JS가 이 그리드에 카드를 넣고 섹션을 다시 노출 → 새로고침 불필요) */-->
+        <section class="hub-section" id="favSection" data-search-section
+                 th:if="${hubMember != null}"
+                 th:hidden="${favorites == null or #lists.isEmpty(favorites)}">
           <div class="hub-section__head">
             <h2 class="hub-section__title">내 즐겨찾기
-              <span class="hub-section__count" th:text="|${#lists.size(favorites)}개|">0개</span>
+              <span class="hub-section__count" data-fav-count
+                    th:text="|${favorites == null ? 0 : #lists.size(favorites)}개|">0개</span>
             </h2>
           </div>
-          <div class="hub-grid" data-reorder="favorites" th:data-reorder-url="@{/hub/me/favorites/reorder}">
+          <div class="hub-grid" data-fav-grid data-reorder="favorites" th:data-reorder-url="@{/hub/me/favorites/reorder}">
             <div class="hub-card hub-card--reorder" data-fav-card th:each="link : ${favorites}"
                  th:attr="data-search-name=|${link.title} ${link.url}|,data-reorder-id=${link.id}">
               <a class="hub-card__link" target="_blank" rel="noopener noreferrer"
@@ -285,10 +288,15 @@
         </div>
 
         <section class="hub-cat" data-search-section
-                 th:if="${linkGroups != null and !linkGroups.isEmpty()}" th:each="entry : ${linkGroups}">
-          <div class="hub-cat__head">
+                 th:if="${linkGroups != null and !linkGroups.isEmpty()}" th:each="entry : ${linkGroups}"
+                 th:attr="data-cat-name=${entry.key}">
+          <div class="hub-cat__head" data-cat-toggle role="button" tabindex="0" aria-expanded="true"
+               th:aria-label="|${entry.key} 분류 접기·펼치기|">
             <h2 class="hub-cat__title" th:text="${entry.key}">분류</h2>
             <span class="hub-cat__count" th:text="|${#lists.size(entry.value)}개|">0개</span>
+            <svg class="hub-cat__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                 aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
           </div>
           <div class="hub-grid">
             <div class="hub-card" th:each="link : ${entry.value}"

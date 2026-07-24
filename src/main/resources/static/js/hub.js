@@ -4,51 +4,109 @@
 
   const csrfToken = () => document.querySelector('meta[name="_csrf"]')?.content || '';
 
-  // ── ★ favorite toggle (AJAX, no reload) ──────────────────────────────
-  document.querySelectorAll('.lh-fav').forEach((btn) => {
-    btn.addEventListener('click', async (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (btn.disabled) return;
-      const linkId = btn.dataset.linkId;
-      const url = btn.dataset.toggleUrl;
-      if (!linkId || !url) return;
-      btn.disabled = true;
-      try {
-        const params = new URLSearchParams({ linkId, _csrf: csrfToken() });
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'X-Requested-With': 'XMLHttpRequest' },
-          body: params,
+  // 재정렬 컨테이너별 ▲▼ 활성화 갱신 함수. 카드가 동적으로 추가/제거될 때 다시 호출한다.
+  const reorderRefreshers = new Map();
+
+  // ── ★ 즐겨찾기 토글 (AJAX, 새로고침 없이 상단 섹션까지 즉시 반영) ────────
+  const favSection = document.getElementById('favSection');
+  const favGrid = favSection?.querySelector('[data-fav-grid]');
+  const favCountEl = favSection?.querySelector('[data-fav-count]');
+
+  // 카드 수에 맞춰 개수 표시와 섹션 노출 여부를 맞춘다(0개면 섹션을 감춘다).
+  const syncFavSection = () => {
+    if (!favSection || !favGrid) return;
+    const count = favGrid.querySelectorAll('[data-fav-card]').length;
+    if (favCountEl) favCountEl.textContent = `${count}개`;
+    favSection.hidden = count === 0;
+    reorderRefreshers.get(favGrid)?.();
+  };
+
+  // 공용 목록의 카드를 복제해 즐겨찾기 카드로 만든다(설명은 빼고 서버 렌더와 동일한 모양으로).
+  const buildFavCard = (sourceCard, linkId) => {
+    const card = sourceCard.cloneNode(true);
+    card.classList.add('hub-card--reorder');
+    card.setAttribute('data-fav-card', '');
+    card.setAttribute('data-reorder-id', linkId);
+    card.querySelector('.hub-card__desc')?.remove();
+    card.querySelector('.hub-card__check')?.remove();
+    if (!card.querySelector('.hub-card__move')) {
+      const move = document.createElement('span');
+      move.className = 'hub-card__move';
+      move.innerHTML = '<button type="button" class="hub-move" data-move="up" title="위로 이동" aria-label="위로 이동">▲</button>'
+        + '<button type="button" class="hub-move" data-move="down" title="아래로 이동" aria-label="아래로 이동">▼</button>';
+      card.querySelector('.hub-card__link')?.after(move);
+    }
+    const star = card.querySelector('.lh-fav');
+    if (star) {
+      star.classList.add('lh-fav--on');
+      star.setAttribute('aria-pressed', 'true');
+      star.setAttribute('title', '즐겨찾기 해제');
+      star.setAttribute('data-remove-on-unfav', '');
+      star.disabled = false;
+    }
+    return card;
+  };
+
+  const addFavCard = (linkId, sourceCard) => {
+    if (!favGrid || !sourceCard) return;
+    if (favGrid.querySelector(`[data-fav-card][data-reorder-id="${linkId}"]`)) return; // 이미 있음
+    favGrid.appendChild(buildFavCard(sourceCard, linkId));
+    syncFavSection();
+  };
+
+  const removeFavCard = (linkId) => {
+    const card = favGrid?.querySelector(`[data-fav-card][data-reorder-id="${linkId}"]`);
+    if (!card) return;
+    card.style.transition = 'opacity .2s, transform .2s';
+    card.style.opacity = '0';
+    card.style.transform = 'scale(.96)';
+    setTimeout(() => { card.remove(); syncFavSection(); }, 200);
+  };
+
+  // 이벤트 위임 — 동적으로 추가된 즐겨찾기 카드의 ★도 그대로 동작한다.
+  document.addEventListener('click', async (event) => {
+    const btn = event.target.closest('.lh-fav');
+    if (!btn || btn.disabled) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const linkId = btn.dataset.linkId;
+    const url = btn.dataset.toggleUrl;
+    if (!linkId || !url) return;
+    const sourceCard = btn.closest('.hub-card');
+    btn.disabled = true;
+    try {
+      const params = new URLSearchParams({ linkId, _csrf: csrfToken() });
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: params,
+      });
+      if (res.status === 401) { window.location.href = btn.dataset.loginUrl || '/links'; return; }
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && typeof data.favorited === 'boolean') {
+        // 같은 링크의 ★를 전부 동기화한다(공용 목록 ↔ 즐겨찾기 섹션).
+        document.querySelectorAll(`.lh-fav[data-link-id="${linkId}"]`).forEach((star) => {
+          star.classList.toggle('lh-fav--on', data.favorited);
+          star.setAttribute('aria-pressed', String(data.favorited));
         });
-        if (res.status === 401) { window.location.href = btn.dataset.loginUrl || '/links'; return; }
-        const data = await res.json().catch(() => ({}));
-        if (res.ok && typeof data.favorited === 'boolean') {
-          btn.classList.toggle('lh-fav--on', data.favorited);
-          btn.setAttribute('aria-pressed', String(data.favorited));
-          btn.classList.remove('lh-fav--pulse');
-          // reflow to restart animation
-          void btn.offsetWidth;
-          btn.classList.add('lh-fav--pulse');
-          // on the personal page, removing a favorite drops its card
-          if (!data.favorited && btn.dataset.removeOnUnfav != null) {
-            const card = btn.closest('[data-fav-card]');
-            if (card) {
-              card.style.transition = 'opacity .2s, transform .2s';
-              card.style.opacity = '0';
-              card.style.transform = 'scale(.96)';
-              setTimeout(() => card.remove(), 200);
-            }
-          }
+        btn.classList.remove('lh-fav--pulse');
+        void btn.offsetWidth; // reflow to restart animation
+        btn.classList.add('lh-fav--pulse');
+
+        if (data.favorited) {
+          // 즐겨찾기 섹션 밖(공용 목록)에서 눌렀을 때만 카드를 새로 넣는다.
+          if (!btn.closest('[data-fav-card]')) addFavCard(linkId, sourceCard);
         } else {
-          alert(data.error || '즐겨찾기 처리에 실패했습니다.');
+          removeFavCard(linkId);
         }
-      } catch (err) {
-        alert('오류: ' + err.message);
-      } finally {
-        btn.disabled = false;
+      } else {
+        alert(data.error || '즐겨찾기 처리에 실패했습니다.');
       }
-    });
+    } catch (err) {
+      alert('오류: ' + err.message);
+    } finally {
+      btn.disabled = false;
+    }
   });
 
   // ── 검색 필터 (허브 전체: 즐겨찾기 + 내 링크 + 공용 링크) ────────────
@@ -75,9 +133,40 @@
         visible += hits;
       });
       if (noResult) noResult.hidden = !(q !== '' && visible === 0);
+      // 검색 중에는 접힌 카테고리도 펼쳐 보여준다(CSS .is-searching).
+      document.body.classList.toggle('is-searching', q !== '');
       clearKbd(); // 결과 집합이 바뀌면 키보드 하이라이트 초기화
     });
   }
+
+  // ── 공용 카테고리 접기/펼치기 (접힌 상태는 localStorage에 기억) ──────────
+  const CAT_STORE = 'hubCatCollapsed';
+  let collapsedCats;
+  try { collapsedCats = new Set(JSON.parse(localStorage.getItem(CAT_STORE) || '[]')); }
+  catch (_) { collapsedCats = new Set(); }
+  const saveCollapsed = () => {
+    try { localStorage.setItem(CAT_STORE, JSON.stringify([...collapsedCats])); } catch (_) { /* 무시 */ }
+  };
+  document.querySelectorAll('.hub-cat[data-cat-name]').forEach((section) => {
+    const name = section.dataset.catName || '';
+    const head = section.querySelector('[data-cat-toggle]');
+    if (!head) return;
+    const apply = (collapsed) => {
+      section.classList.toggle('hub-cat--collapsed', collapsed);
+      head.setAttribute('aria-expanded', String(!collapsed));
+    };
+    apply(collapsedCats.has(name));
+    const toggle = () => {
+      const collapsed = !section.classList.contains('hub-cat--collapsed');
+      apply(collapsed);
+      if (collapsed) collapsedCats.add(name); else collapsedCats.delete(name);
+      saveCollapsed();
+    };
+    head.addEventListener('click', toggle);
+    head.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+    });
+  });
 
   // ── 키보드 빠른 실행: Cmd/Ctrl+K 포커스, Enter로 열기, ↑↓ 결과 이동 ──────
   let kbdActive = -1;
@@ -436,6 +525,8 @@
       else card.querySelector('[data-move]:not([disabled])')?.focus();
     });
 
+    // 즐겨찾기 카드가 동적으로 추가/제거될 때 ▲▼ 양 끝 상태를 다시 맞추기 위해 등록해 둔다.
+    reorderRefreshers.set(container, refreshEnds);
     refreshEnds();
   });
 })();
