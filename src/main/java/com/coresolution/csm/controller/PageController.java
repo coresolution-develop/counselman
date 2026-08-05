@@ -2703,10 +2703,6 @@ public class PageController {
         model.addAttribute("endVar", "on");
         model.addAttribute("st", "");
         model.addAttribute("kw", "");
-        String instname = (String) session.getAttribute("instname");
-        if ((instname == null || instname.isBlank()) && userinfo != null) {
-            instname = userinfo.getUs_col_05();
-        }
         LocalDate now = LocalDate.now();
         boolean hasData = false;
         int firstYear = now.getYear();
@@ -2716,7 +2712,6 @@ public class PageController {
         try {
             Map<String, Object> params = new HashMap<>();
             params.put("inst", inst);
-            params.put("instname", instname);
             Map<String, Object> dateRange = cs.getCounselDateRange(params);
             if (dateRange != null) {
                 java.sql.Date firstDateRaw = (java.sql.Date) dateRange.get("first_date");
@@ -2753,17 +2748,12 @@ public class PageController {
         if (inst == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("세션이 만료되었습니다.");
         }
-        String instname = (String) session.getAttribute("instname");
-        if ((instname == null || instname.isBlank()) && session.getAttribute("userInfo") instanceof Userdata info) {
-            instname = info.getUs_col_05();
-        }
         try {
             Map<String, Object> params = new HashMap<>();
             params.put("year", year);
             params.put("month", month);
             params.put("counselor", counselor);
             params.put("inst", inst);
-            params.put("instname", instname);
             return ResponseEntity.ok(cs.getMonthlyCounselStatistics(params));
         } catch (Exception e) {
             log.error("statistics1 error", e);
@@ -2782,17 +2772,12 @@ public class PageController {
         if (inst == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("세션이 만료되었습니다.");
         }
-        String instname = (String) session.getAttribute("instname");
-        if ((instname == null || instname.isBlank()) && session.getAttribute("userInfo") instanceof Userdata info) {
-            instname = info.getUs_col_05();
-        }
         try {
             Map<String, Object> params = new HashMap<>();
             params.put("year", year);
             params.put("month", month);
             params.put("counselor", counselor);
             params.put("inst", inst);
-            params.put("instname", instname);
             return ResponseEntity.ok(cs.getTypeStatistics(params));
         } catch (Exception e) {
             log.error("statisticsType error", e);
@@ -2811,17 +2796,12 @@ public class PageController {
         if (inst == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("세션이 만료되었습니다.");
         }
-        String instname = (String) session.getAttribute("instname");
-        if ((instname == null || instname.isBlank()) && session.getAttribute("userInfo") instanceof Userdata info) {
-            instname = info.getUs_col_05();
-        }
         try {
             Map<String, Object> params = new HashMap<>();
             params.put("year", year);
             params.put("month", month);
             params.put("counselor", counselor);
             params.put("inst", inst);
-            params.put("instname", instname);
             return ResponseEntity.ok(cs.selectAdmissionSuccessStats(params));
         } catch (Exception e) {
             log.error("statisticsAdmissionSuccess error", e);
@@ -2840,17 +2820,12 @@ public class PageController {
         if (inst == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("세션이 만료되었습니다.");
         }
-        String instname = (String) session.getAttribute("instname");
-        if ((instname == null || instname.isBlank()) && session.getAttribute("userInfo") instanceof Userdata info) {
-            instname = info.getUs_col_05();
-        }
         try {
             Map<String, Object> params = new HashMap<>();
             params.put("year", year);
             params.put("month", month);
             params.put("counselor", counselor);
             params.put("inst", inst);
-            params.put("instname", instname);
             return ResponseEntity.ok(cs.selectAdmissionTypeStats(params));
         } catch (Exception e) {
             log.error("statisticsByAdmissionType error", e);
@@ -2869,17 +2844,12 @@ public class PageController {
         if (inst == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("세션이 만료되었습니다.");
         }
-        String instname = (String) session.getAttribute("instname");
-        if ((instname == null || instname.isBlank()) && session.getAttribute("userInfo") instanceof Userdata info) {
-            instname = info.getUs_col_05();
-        }
         try {
             Map<String, Object> params = new HashMap<>();
             params.put("year", year);
             params.put("month", month);
             params.put("counselor", counselor);
             params.put("inst", inst);
-            params.put("instname", instname);
             return ResponseEntity.ok(cs.selectAdmissionTypeSuccessStats(params));
         } catch (Exception e) {
             log.error("statisticsByAdmissionTypeSuccess error", e);
@@ -2898,17 +2868,12 @@ public class PageController {
         if (inst == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("세션이 만료되었습니다.");
         }
-        String instname = (String) session.getAttribute("instname");
-        if ((instname == null || instname.isBlank()) && session.getAttribute("userInfo") instanceof Userdata info) {
-            instname = info.getUs_col_05();
-        }
         try {
             Map<String, Object> params = new HashMap<>();
             params.put("year", year);
             params.put("month", month);
             params.put("counselor", counselor);
             params.put("inst", inst);
-            params.put("instname", instname);
             return ResponseEntity.ok(cs.getCurrentLocationStats(params));
         } catch (Exception e) {
             log.error("statisticsByCurrentLocation error", e);
@@ -2927,17 +2892,12 @@ public class PageController {
         if (inst == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("세션이 만료되었습니다.");
         }
-        String instname = (String) session.getAttribute("instname");
-        if ((instname == null || instname.isBlank()) && session.getAttribute("userInfo") instanceof Userdata info) {
-            instname = info.getUs_col_05();
-        }
         try {
             Map<String, Object> params = new HashMap<>();
             params.put("year", year);
             params.put("month", month);
             params.put("counselor", counselor);
             params.put("inst", inst);
-            params.put("instname", instname);
             return ResponseEntity.ok(cs.getCurrentLocationSuccessStats(params));
         } catch (Exception e) {
             log.error("statisticsByCurrentLocationSuccess error", e);
@@ -2956,17 +2916,12 @@ public class PageController {
         if (inst == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("세션이 만료되었습니다.");
         }
-        String instname = (String) session.getAttribute("instname");
-        if ((instname == null || instname.isBlank()) && session.getAttribute("userInfo") instanceof Userdata info) {
-            instname = info.getUs_col_05();
-        }
         try {
             Map<String, Object> params = new HashMap<>();
             params.put("year", year);
             params.put("month", month);
             params.put("counselor", counselor);
             params.put("inst", inst);
-            params.put("instname", instname);
             return ResponseEntity.ok(cs.getNonAdmissionReasonStats(params));
         } catch (Exception e) {
             log.error("statisticsNonAdmissionReason error", e);
@@ -2996,7 +2951,6 @@ public class PageController {
             params.put("month", month);
             params.put("counselor", counselor);
             params.put("inst", inst);
-            params.put("instname", instname);
 
             writeStatisticsMetaSheet(workbook, year, month, counselor, instname);
             writeMapSheet(
