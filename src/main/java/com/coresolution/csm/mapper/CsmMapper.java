@@ -1109,7 +1109,6 @@ public interface CsmMapper {
           .append(" MAX(STR_TO_DATE(cs_col_16, '%Y-%m-%d')) AS last_date ")
           .append("FROM csm.counsel_data_").append(t).append(" ")
           .append("WHERE cs_col_16 IS NOT NULL ");
-      appendInstNameFilter(sb, p);
       return sb.toString();
     }
 
@@ -1122,7 +1121,6 @@ public interface CsmMapper {
           .append(" COUNT(*) AS count ")
           .append("FROM csm.counsel_data_").append(t).append(" ")
           .append("WHERE cs_col_16 IS NOT NULL ");
-      appendInstNameFilter(sb, p);
       sb.append(" AND STR_TO_DATE(cs_col_16, '%Y-%m-%d') BETWEEN ")
           .append(" DATE_SUB(STR_TO_DATE(CONCAT(#{year}, '-', LPAD(#{month},2,'0'), '-01'), '%Y-%m-%d'), INTERVAL 12 MONTH) ")
           .append(" AND LAST_DAY(STR_TO_DATE(CONCAT(#{year}, '-', LPAD(#{month},2,'0'), '-01'), '%Y-%m-%d')) ");
@@ -1141,7 +1139,6 @@ public interface CsmMapper {
           .append(" COUNT(*) AS count ")
           .append("FROM csm.counsel_data_").append(t).append(" ")
           .append("WHERE cs_col_16 IS NOT NULL ");
-      appendInstNameFilter(sb, p);
       sb.append(" AND STR_TO_DATE(cs_col_16, '%Y-%m-%d') BETWEEN ")
           .append(" DATE_SUB(STR_TO_DATE(CONCAT(#{year}, '-', LPAD(#{month},2,'0'), '-01'), '%Y-%m-%d'), INTERVAL 12 MONTH) ")
           .append(" AND LAST_DAY(STR_TO_DATE(CONCAT(#{year}, '-', LPAD(#{month},2,'0'), '-01'), '%Y-%m-%d')) ");
@@ -1161,7 +1158,6 @@ public interface CsmMapper {
           .append("FROM csm.counsel_data_").append(t).append(" ")
           .append("WHERE cs_col_19 = '입원완료' ")
           .append(" AND cs_col_16 IS NOT NULL ");
-      appendInstNameFilter(sb, p);
       sb.append(" AND STR_TO_DATE(cs_col_16, '%Y-%m-%d') BETWEEN ")
           .append(" DATE_SUB(STR_TO_DATE(CONCAT(#{year}, '-', LPAD(#{month},2,'0'), '-01'), '%Y-%m-%d'), INTERVAL 12 MONTH) ")
           .append(" AND LAST_DAY(STR_TO_DATE(CONCAT(#{year}, '-', LPAD(#{month},2,'0'), '-01'), '%Y-%m-%d')) ");
@@ -1181,7 +1177,6 @@ public interface CsmMapper {
           .append(" COUNT(*) AS count ")
           .append("FROM csm.counsel_data_").append(t).append(" ")
           .append("WHERE cs_col_16 IS NOT NULL ");
-      appendInstNameFilter(sb, p);
       sb.append(" AND STR_TO_DATE(cs_col_16, '%Y-%m-%d') BETWEEN ")
           .append(" DATE_SUB(STR_TO_DATE(CONCAT(#{year}, '-', LPAD(#{month},2,'0'), '-01'), '%Y-%m-%d'), INTERVAL 12 MONTH) ")
           .append(" AND LAST_DAY(STR_TO_DATE(CONCAT(#{year}, '-', LPAD(#{month},2,'0'), '-01'), '%Y-%m-%d')) ");
@@ -1202,7 +1197,6 @@ public interface CsmMapper {
           .append("FROM csm.counsel_data_").append(t).append(" ")
           .append("WHERE cs_col_19 = '입원완료' ")
           .append(" AND cs_col_16 IS NOT NULL ");
-      appendInstNameFilter(sb, p);
       sb.append(" AND STR_TO_DATE(cs_col_16, '%Y-%m-%d') BETWEEN ")
           .append(" DATE_SUB(STR_TO_DATE(CONCAT(#{year}, '-', LPAD(#{month},2,'0'), '-01'), '%Y-%m-%d'), INTERVAL 12 MONTH) ")
           .append(" AND LAST_DAY(STR_TO_DATE(CONCAT(#{year}, '-', LPAD(#{month},2,'0'), '-01'), '%Y-%m-%d')) ");
@@ -1222,7 +1216,6 @@ public interface CsmMapper {
           .append(" COUNT(*) AS count ")
           .append("FROM csm.counsel_data_").append(t).append(" ")
           .append("WHERE cs_col_16 IS NOT NULL ");
-      appendInstNameFilter(sb, p);
       sb.append(" AND STR_TO_DATE(cs_col_16, '%Y-%m-%d') BETWEEN ")
           .append(" DATE_SUB(STR_TO_DATE(CONCAT(#{year}, '-', LPAD(#{month},2,'0'), '-01'), '%Y-%m-%d'), INTERVAL 12 MONTH) ")
           .append(" AND LAST_DAY(STR_TO_DATE(CONCAT(#{year}, '-', LPAD(#{month},2,'0'), '-01'), '%Y-%m-%d')) ");
@@ -1243,7 +1236,6 @@ public interface CsmMapper {
           .append("FROM csm.counsel_data_").append(t).append(" ")
           .append("WHERE cs_col_19 = '입원완료' ")
           .append(" AND cs_col_16 IS NOT NULL ");
-      appendInstNameFilter(sb, p);
       sb.append(" AND STR_TO_DATE(cs_col_16, '%Y-%m-%d') BETWEEN ")
           .append(" DATE_SUB(STR_TO_DATE(CONCAT(#{year}, '-', LPAD(#{month},2,'0'), '-01'), '%Y-%m-%d'), INTERVAL 12 MONTH) ")
           .append(" AND LAST_DAY(STR_TO_DATE(CONCAT(#{year}, '-', LPAD(#{month},2,'0'), '-01'), '%Y-%m-%d')) ");
@@ -1263,7 +1255,6 @@ public interface CsmMapper {
           .append("FROM csm.counsel_data_").append(t).append(" ")
           .append("WHERE cs_col_19 = '입원안함' ")
           .append(" AND cs_col_16 IS NOT NULL ");
-      appendInstNameFilter(sb, p);
       sb.append(" AND STR_TO_DATE(cs_col_16, '%Y-%m-%d') BETWEEN ")
           .append(" DATE_SUB(STR_TO_DATE(CONCAT(#{year}, '-', LPAD(#{month},2,'0'), '-01'), '%Y-%m-%d'), INTERVAL 12 MONTH) ")
           .append(" AND LAST_DAY(STR_TO_DATE(CONCAT(#{year}, '-', LPAD(#{month},2,'0'), '-01'), '%Y-%m-%d')) ");
@@ -1277,13 +1268,6 @@ public interface CsmMapper {
       Object counselor = p.get("counselor");
       if (counselor instanceof String c && !c.isBlank()) {
         sb.append(" AND TRIM(cs_col_17) = #{counselor} ");
-      }
-    }
-
-    private static void appendInstNameFilter(StringBuilder sb, Map<String, Object> p) {
-      Object instname = p.get("instname");
-      if (instname instanceof String n && !n.isBlank()) {
-        sb.append(" AND (cs_col_34 IS NULL OR cs_col_34 = #{instname}) ");
       }
     }
 
