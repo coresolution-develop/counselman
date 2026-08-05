@@ -1014,9 +1014,10 @@ function statsPage() {
     },
     handleYearChange() {
       this.months = this.monthOptions(Number(this.filter.year));
-      if (!this.months.includes(Number(this.filter.month))) {
-        this.filter.month = this.months[this.months.length - 1] || null;
-      }
+      // Jump to the selected year's latest month (12월 for past years) so the
+      // 13-month window ends where the user expects instead of staying on the
+      // previous year's month.
+      this.filter.month = this.months[this.months.length - 1] || null;
       this.loadStatistics();
     },
     async fetchJson(path) {
