@@ -384,6 +384,11 @@ function AppManagementPanel({ allServices, onSaved, accent }) {
             <input className="ia-field__input" placeholder="서비스명" value={form.serviceName} onChange={e => f('serviceName', e.target.value)} style={{ '--ring': a.to }} />
           </Field>
         </div>
+        <div className="ia-form__row" style={{ gridTemplateColumns: '1fr' }}>
+          <Field icon={<I.Pen width={14} height={14} />}>
+            <input className="ia-field__input" placeholder="설명 (포털 카드에 표시)" value={form.description} onChange={e => f('description', e.target.value)} style={{ '--ring': a.to }} />
+          </Field>
+        </div>
         <div className="ia-form__row">
           <Field icon={<I.Link width={14} height={14} />}>
             <input className="ia-field__input" placeholder="localhost URL" value={form.baseUrlLocal} onChange={e => f('baseUrlLocal', e.target.value)} style={{ '--ring': a.to }} />
