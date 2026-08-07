@@ -2041,15 +2041,15 @@ public class PageController {
         int incompleteCnt = cs.CounselListCnt(cri);
 
         // 목록은 활성 빠른필터 기준 첫 페이지만(LIMIT) 조회 — 이후는 무한 스크롤로 로드
+        // perPageNum+1건을 읽어 다음 페이지 유무를 직접 판정한다(카운트와 무관하게 정확)
         cri.setQuickFilter(quickFilter);
+        cri.setProbeExtra(true);
         List<CounselData> cslist = cs.searchCounselData(cri);
         if (cslist == null) cslist = Collections.emptyList();
-        int activeCnt = switch (cri.getQuickFilter()) {
-            case "today" -> todayCnt;
-            case "incomplete" -> incompleteCnt;
-            default -> totalCnt;
-        };
-        boolean hasMore = ((long) page * perPageNum) < activeCnt;
+        boolean hasMore = cslist.size() > cri.getPerPageNum();
+        if (hasMore) {
+            cslist = new ArrayList<>(cslist.subList(0, cri.getPerPageNum()));
+        }
         postProcessDecryptAndMask(cslist, inst, cri.getSearchType(), cri.getKeyword());
 
         List<Map<String, Object>> queueItems = listCounselReservationQueueItems(inst);
@@ -2123,7 +2123,8 @@ public class PageController {
                 end);
         cri.setQuickFilter(quickFilter);
 
-        // 1) 조회
+        // 1) 조회 — perPageNum+1건을 읽어 다음 페이지 유무를 직접 판정한다(카운트 쿼리 불필요)
+        cri.setProbeExtra(true);
         List<CounselData> raw = cs.searchCounselData(cri);
         if (raw == null)
             raw = List.of();
@@ -2140,7 +2141,12 @@ public class PageController {
             }
         }
 
-        int totalCnt = cs.CounselListCnt(cri);
+        // 2-1) 초과분 1건은 "더 있다"는 신호일 뿐이므로 잘라낸다
+        boolean hasMore = cslist.size() > cri.getPerPageNum();
+        if (hasMore) {
+            cslist = new ArrayList<>(cslist.subList(0, cri.getPerPageNum()));
+        }
+
         // 3) 복호화/마스킹
         postProcessDecryptAndMask(cslist, inst, cri.getSearchType(), cri.getKeyword());
 
@@ -2155,7 +2161,6 @@ public class PageController {
         // 5) 직렬화 안전한 맵으로 변환 (byte[] 등 제거)
         List<Map<String, Object>> rows = toRowMaps(cslist, orderItems, inst);
 
-        boolean hasMore = (page * perPageNum) < totalCnt;
         log.warn("[JSON] dao size={} first={}", (raw == null ? -1 : raw.size()),
                 (raw != null && !raw.isEmpty() ? raw.get(0) : null));
 
@@ -7293,15 +7298,12 @@ public class PageController {
             cri.setKeywordBytes(null);
             log.debug("검색어 없음 → 키워드 조건 제외");
         } else if ("phone".equals(searchType)) {
-            if (keyword.length() == 4) {
-                // 뒷자리/중간 4자리 LIKE
-                cri.setKeyword(keyword);
-                cri.setKeywordBytes(null);
-            } else {
-                // 전체번호 SHA-256
-                cri.setKeywordBytes(hashSHA256(keyword));
-                cri.setKeyword(keyword);
-            }
+            // 자릿수 제한 없이 부분검색: 숫자만 남겨 정규화 비교하고, 입력한 그대로의
+            // 해시는 정확일치 경로로 함께 넘긴다. 이전에는 4자리가 아니면 해시 정확일치만
+            // 시도해서 8자리·앞자리 같은 부분 입력이 항상 0건이었다.
+            String digits = keyword.replaceAll("[^0-9]", "");
+            cri.setKeyword(digits.isEmpty() ? keyword.trim() : digits);
+            cri.setKeywordBytes(hashSHA256(keyword));
         } else if ("patient".equals(searchType) || "guardian".equals(searchType)) {
             // 환자/보호자 이름 SHA-256
             cri.setKeywordBytes(hashSHA256(keyword));
