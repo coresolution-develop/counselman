@@ -743,6 +743,9 @@ public interface CsmMapper {
   @SelectProvider(type = StatisticsSqlProvider.class, method = "getCounselDateRange")
   Map<String, Object> getCounselDateRange(Map<String, Object> params);
 
+  @SelectProvider(type = StatisticsSqlProvider.class, method = "getCounselMonthlyCounts")
+  List<Map<String, Object>> getCounselMonthlyCounts(Map<String, Object> params);
+
   @SelectProvider(type = StatisticsSqlProvider.class, method = "getTypeStatistics")
   List<Map<String, Object>> getTypeStatistics(Map<String, Object> params);
 
@@ -1110,6 +1113,23 @@ public interface CsmMapper {
           .append("FROM csm.counsel_data_").append(t).append(" ")
           .append("WHERE cs_col_16 IS NOT NULL ");
       return sb.toString();
+    }
+
+    /**
+     * 기관 전체의 월별 상담 건수. 년/월 셀렉트에 "(N건)"을 붙여, 상담이 0건인 달을
+     * 고르고 나서야 비어 있음을 알게 되는 상황을 막는다.
+     */
+    public static String getCounselMonthlyCounts(Map<String, Object> p) {
+      String t = sanitizeInst((String) p.get("inst"));
+      return new StringBuilder()
+          .append("SELECT ")
+          .append(" DATE_FORMAT(STR_TO_DATE(cs_col_16, '%Y-%m-%d'), '%Y-%m') AS month, ")
+          .append(" COUNT(*) AS cnt ")
+          .append("FROM csm.counsel_data_").append(t).append(" ")
+          .append("WHERE cs_col_16 IS NOT NULL ")
+          .append("GROUP BY month ")
+          .append("ORDER BY month ASC ")
+          .toString();
     }
 
     public static String getMonthlyCounselStatistics(Map<String, Object> p) {

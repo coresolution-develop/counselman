@@ -59,6 +59,17 @@ class StatisticsSqlProviderTest {
     }
 
     @Test
+    void monthlyCounts_aggregatesWholeInstitutionByMonth() {
+        // 년/월 셀렉트의 "(N건)" 라벨용. 선택 기간과 무관하게 전체 기간을 집계해야 한다.
+        String sql = CsmMapper.StatisticsSqlProvider.getCounselMonthlyCounts(params());
+        assertThat(sql).contains("DATE_FORMAT(STR_TO_DATE(cs_col_16, '%Y-%m-%d'), '%Y-%m') AS month");
+        assertThat(sql).contains("COUNT(*) AS cnt");
+        assertThat(sql).contains("GROUP BY month");
+        assertThat(sql).doesNotContain("#{year}");
+        assertThat(sql).doesNotContain("cs_col_34");
+    }
+
+    @Test
     void counselorFilter_stillApplies() {
         // 상담자 필터는 그대로 동작해야 한다(제거 대상 아님).
         Map<String, Object> p = params();

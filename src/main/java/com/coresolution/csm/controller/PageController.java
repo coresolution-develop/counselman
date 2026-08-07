@@ -2709,9 +2709,19 @@ public class PageController {
         int firstMonth = now.getMonthValue();
         int lastYear = now.getYear();
         int lastMonth = now.getMonthValue();
+        Map<String, Integer> monthlyCounts = new LinkedHashMap<>();
         try {
             Map<String, Object> params = new HashMap<>();
             params.put("inst", inst);
+            for (Map<String, Object> row : Optional.ofNullable(cs.getCounselMonthlyCounts(params))
+                    .orElse(List.of())) {
+                String month = safeObjectString(row.get("month"));
+                if (month.isBlank()) {
+                    continue;
+                }
+                Object cnt = row.get("cnt");
+                monthlyCounts.put(month, cnt instanceof Number n ? n.intValue() : 0);
+            }
             Map<String, Object> dateRange = cs.getCounselDateRange(params);
             if (dateRange != null) {
                 java.sql.Date firstDateRaw = (java.sql.Date) dateRange.get("first_date");
@@ -2734,6 +2744,7 @@ public class PageController {
         model.addAttribute("firstMonth", firstMonth);
         model.addAttribute("lastYear", lastYear);
         model.addAttribute("lastMonth", lastMonth);
+        model.addAttribute("monthlyCountsJson", writeJsonOrEmptyObject(monthlyCounts));
         return "design/consultation-stats";
     }
 
@@ -6534,6 +6545,16 @@ public class PageController {
     private String safeObjectString(Object value) {
         if (value == null) return "";
         return String.valueOf(value).trim();
+    }
+
+    /** 템플릿 인라인 스크립트로 내려보낼 JSON. 실패해도 화면이 죽지 않게 빈 객체로 대체한다. */
+    private String writeJsonOrEmptyObject(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (Exception e) {
+            log.warn("json serialize failed for {}", value == null ? "null" : value.getClass(), e);
+            return "{}";
+        }
     }
 
     /** 신규 페이지 (빈 폼) */

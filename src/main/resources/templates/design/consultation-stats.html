@@ -67,6 +67,16 @@
       border-color: var(--brand-500);
       box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-500) 12%, transparent);
     }
+    /* 셀렉트와 같은 높이로 정렬해 필터 바 한 줄에 자연스럽게 얹힌다 */
+    .cs-filter__period {
+      display: inline-flex;
+      align-items: center;
+      height: 38px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
     .cs-filter__spacer { flex: 1; min-width: 0; }
     .cs-filter__export {
       display: inline-flex;
@@ -507,7 +517,7 @@
     <div class="page"
          x-data="statsPage()"
          x-init="init()"
-         th:attr="data-has-data=${hasData},data-first-year=${firstYear},data-first-month=${firstMonth},data-last-year=${lastYear},data-last-month=${lastMonth}">
+         th:attr="data-has-data=${hasData},data-first-year=${firstYear},data-first-month=${firstMonth},data-last-year=${lastYear},data-last-month=${lastMonth},data-monthly-counts=${monthlyCountsJson}">
 
       <div class="page__header">
         <div>
@@ -544,7 +554,7 @@
         <div class="cs-filter__field">
           <label class="cs-filter__label">월</label>
           <select class="cs-filter__select" x-model.number="filter.month" @change="loadStatistics()">
-            <template x-for="m in months" :key="m"><option :value="m" x-text="m + '월'"></option></template>
+            <template x-for="m in months" :key="m"><option :value="m" x-text="monthOptionLabel(m)"></option></template>
           </select>
         </div>
         <div class="cs-filter__field">
@@ -553,6 +563,10 @@
             <option value="">전체</option>
             <template x-for="c in counselors" :key="c"><option :value="c" x-text="c"></option></template>
           </select>
+        </div>
+        <div class="cs-filter__field">
+          <span class="cs-filter__label">조회 기간</span>
+          <strong class="cs-filter__period" x-text="queryPeriodLabel()"></strong>
         </div>
         <div class="cs-filter__spacer"></div>
         <button class="cs-filter__export" type="button" @click="exportExcel()">
@@ -976,6 +990,7 @@ function statsPage() {
     firstMonth: null,
     lastYear: null,
     lastMonth: null,
+    monthlyCounts: {},
 
     contextPath() {
       const meta = document.querySelector('meta[name="app-context-path"]');
@@ -992,6 +1007,11 @@ function statsPage() {
       this.firstMonth = Number(root.dataset.firstMonth);
       this.lastYear = Number(root.dataset.lastYear);
       this.lastMonth = Number(root.dataset.lastMonth);
+      try {
+        this.monthlyCounts = JSON.parse(root.dataset.monthlyCounts || '{}');
+      } catch (e) {
+        this.monthlyCounts = {};
+      }
       this.years = this.numberRange(this.firstYear, this.lastYear);
       this.filter.year = this.lastYear;
       this.months = this.monthOptions(this.filter.year);
@@ -1011,6 +1031,26 @@ function statsPage() {
         end = this.lastMonth;
       }
       return this.numberRange(start, end);
+    },
+    /** 해당 연/월의 실제 상담 건수. 셀렉트에 노출해 0건인 달을 고르기 전에 알 수 있게 한다. */
+    monthCount(year, month) {
+      const key = `${year}-${String(month).padStart(2, '0')}`;
+      return this.monthlyCounts[key] || 0;
+    },
+    monthOptionLabel(month) {
+      return `${month}월 (${this.monthCount(this.filter.year, month)}건)`;
+    },
+    /**
+     * 실제 조회 기간. 통계는 선택월 하나가 아니라 선택월로 끝나는 13개월 추이라서,
+     * 화면에 명시하지 않으면 "2026년 8월"을 골랐는데 2025년 열이 보여 헷갈린다.
+     */
+    queryPeriodLabel() {
+      const year = Number(this.filter.year);
+      const month = Number(this.filter.month);
+      if (!year || !month) return '-';
+      const fmt = (y, m) => `${y}.${String(m).padStart(2, '0')}`;
+      // 12개월 전은 항상 직전 연도의 같은 달이다 (month는 1~12).
+      return `${fmt(year - 1, month)} ~ ${fmt(year, month)}`;
     },
     handleYearChange() {
       this.months = this.monthOptions(Number(this.filter.year));
@@ -1158,7 +1198,10 @@ function statsPage() {
 
     init() {
       this.readPageState();
+      // 데이터가 없으면 loadStatistics()가 호출되지 않아 loading이 계속 true로 남고
+      // 스켈레톤이 영구히 돌았다. 안내 문구를 보여주려면 여기서 내려줘야 한다.
       if (this.hasData) this.loadStatistics();
+      else this.loading = false;
       this.$nextTick(() => {
         _resizeHandler = () => this.resizeAll();
         window.addEventListener('resize', _resizeHandler);
