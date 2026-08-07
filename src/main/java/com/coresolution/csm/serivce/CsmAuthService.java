@@ -3006,6 +3006,10 @@ public class CsmAuthService {
         return cs.getCounselDateRange(params);
     }
 
+    public List<Map<String, Object>> getCounselMonthlyCounts(Map<String, Object> params) {
+        return cs.getCounselMonthlyCounts(params);
+    }
+
     public List<Map<String, Object>> getTypeStatistics(Map<String, Object> params) {
         return cs.getTypeStatistics(params);
     }

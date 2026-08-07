@@ -1,6 +1,13 @@
 package com.coresolution.csm.serivce;
 
+import java.net.URI;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -19,6 +26,15 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class HubCustomLinkService {
 
+    private static final int IMPORT_LIMIT = 300;
+    // Netscape 북마크 HTML을 폴더 구조까지 인식해 순서대로 훑는다:
+    //   group1 = 폴더명(<H3>), group2/group3 = 링크 url/제목(<A>), 매칭이 </DL>이면 폴더 닫힘.
+    private static final Pattern BOOKMARK_TOKEN = Pattern.compile(
+            "<h3[^>]*>(.*?)</h3>"
+                    + "|<a\\s+[^>]*href\\s*=\\s*\"([^\"]*)\"[^>]*>(.*?)</a>"
+                    + "|</dl>",
+            Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+
     private final JdbcTemplate jdbcTemplate;
     private final HubMemberService hubMemberService;
 
@@ -27,12 +43,14 @@ public class HubCustomLinkService {
         if (memberId <= 0) {
             return List.of();
         }
+        // 미분류(빈 카테고리)는 맨 뒤로, 나머지는 카테고리명 오름차순 → 카테고리 안에서 sort_order.
         return jdbcTemplate.query("""
-                SELECT id, member_id, title, url, memo, sort_order,
+                SELECT id, member_id, title, url, memo, category, sort_order,
                        DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at
                   FROM csm.hub_member_custom_link
                  WHERE member_id = ? AND use_yn = 'Y'
-                 ORDER BY sort_order ASC, id ASC
+                 ORDER BY CASE WHEN category IS NULL OR category = '' THEN 1 ELSE 0 END,
+                          category ASC, sort_order ASC, id ASC
                 """, (rs, rowNum) -> mapRow(rs), memberId);
     }
 
@@ -43,7 +61,7 @@ public class HubCustomLinkService {
             return null;
         }
         List<HubCustomLink> rows = jdbcTemplate.query("""
-                SELECT id, member_id, title, url, memo, sort_order,
+                SELECT id, member_id, title, url, memo, category, sort_order,
                        DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at
                   FROM csm.hub_member_custom_link
                  WHERE id = ? AND member_id = ? AND use_yn = 'Y'
@@ -53,7 +71,7 @@ public class HubCustomLinkService {
     }
 
     @Transactional
-    public long create(long memberId, String title, String url, String memo, Integer sortOrder) {
+    public long create(long memberId, String title, String url, String memo, String category, Integer sortOrder) {
         hubMemberService.ensureTables();
         if (memberId <= 0) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
@@ -61,17 +79,20 @@ public class HubCustomLinkService {
         String safeTitle = requireText(title, "링크 이름", 200);
         String safeUrl = HubUrls.normalizeHttpUrl(url);
         String safeMemo = trimTo(memo, 300);
+        String safeCategory = trimTo(category, 100);
         int safeSort = sortOrder == null ? 0 : Math.max(0, Math.min(sortOrder, 9999));
         jdbcTemplate.update("""
-                INSERT INTO csm.hub_member_custom_link (member_id, title, url, memo, sort_order)
-                VALUES (?, ?, ?, ?, ?)
-                """, memberId, safeTitle, safeUrl, safeMemo.isBlank() ? null : safeMemo, safeSort);
+                INSERT INTO csm.hub_member_custom_link (member_id, title, url, memo, category, sort_order)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """, memberId, safeTitle, safeUrl, safeMemo.isBlank() ? null : safeMemo,
+                safeCategory.isBlank() ? null : safeCategory, safeSort);
         Long id = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
         return id == null ? 0L : id;
     }
 
     @Transactional
-    public boolean update(long id, long memberId, String title, String url, String memo, Integer sortOrder) {
+    public boolean update(long id, long memberId, String title, String url, String memo,
+            String category, Integer sortOrder) {
         hubMemberService.ensureTables();
         if (id <= 0 || memberId <= 0) {
             throw new IllegalArgumentException("잘못된 요청입니다.");
@@ -79,13 +100,38 @@ public class HubCustomLinkService {
         String safeTitle = requireText(title, "링크 이름", 200);
         String safeUrl = HubUrls.normalizeHttpUrl(url);
         String safeMemo = trimTo(memo, 300);
+        String safeCategory = trimTo(category, 100);
         int safeSort = sortOrder == null ? 0 : Math.max(0, Math.min(sortOrder, 9999));
         // WHERE에 member_id를 포함해 타인 링크 수정 불가(가드레일 ①-b)
         return jdbcTemplate.update("""
                 UPDATE csm.hub_member_custom_link
-                   SET title = ?, url = ?, memo = ?, sort_order = ?
+                   SET title = ?, url = ?, memo = ?, category = ?, sort_order = ?
                  WHERE id = ? AND member_id = ? AND use_yn = 'Y'
-                """, safeTitle, safeUrl, safeMemo.isBlank() ? null : safeMemo, safeSort, id, memberId) > 0;
+                """, safeTitle, safeUrl, safeMemo.isBlank() ? null : safeMemo,
+                safeCategory.isBlank() ? null : safeCategory, safeSort, id, memberId) > 0;
+    }
+
+    /**
+     * 드래그 재정렬. 전달된 id 순서대로 sort_order를 0,1,2…로 다시 매긴다.
+     * WHERE에 member_id를 포함해 타인 링크는 건드리지 못한다(가드레일 ①-b).
+     */
+    @Transactional
+    public void reorder(long memberId, List<Long> orderedIds) {
+        hubMemberService.ensureTables();
+        if (memberId <= 0 || orderedIds == null || orderedIds.isEmpty()) {
+            return;
+        }
+        int order = 0;
+        for (Long id : orderedIds) {
+            if (id == null || id <= 0) {
+                continue;
+            }
+            jdbcTemplate.update("""
+                    UPDATE csm.hub_member_custom_link
+                       SET sort_order = ?
+                     WHERE id = ? AND member_id = ? AND use_yn = 'Y'
+                    """, order++, id, memberId);
+        }
     }
 
     @Transactional
@@ -101,6 +147,108 @@ public class HubCustomLinkService {
                 """, id, memberId) > 0;
     }
 
+    /**
+     * 선택 삭제. 전달된 id들을 한 번에 소프트 삭제한다.
+     * WHERE에 member_id를 포함해 타인 링크는 삭제되지 않는다(가드레일 ①-b).
+     * @return 실제 삭제된 건수
+     */
+    @Transactional
+    public int deleteMany(long memberId, List<Long> ids) {
+        hubMemberService.ensureTables();
+        if (memberId <= 0 || ids == null || ids.isEmpty()) {
+            return 0;
+        }
+        int deleted = 0;
+        for (Long id : ids) {
+            if (id == null || id <= 0) {
+                continue;
+            }
+            deleted += jdbcTemplate.update("""
+                    UPDATE csm.hub_member_custom_link
+                       SET use_yn = 'N'
+                     WHERE id = ? AND member_id = ? AND use_yn = 'Y'
+                    """, id, memberId);
+        }
+        return deleted;
+    }
+
+    /**
+     * 브라우저 북마크 HTML(Netscape 포맷)을 파싱해 개인 링크로 일괄 등록한다.
+     * http(s)만 허용, 기존 URL·파일 내 중복은 건너뛰며, 한 번에 최대 {@value #IMPORT_LIMIT}건.
+     * @return [등록 건수, 건너뛴 건수(중복·무효·초과)]
+     */
+    @Transactional
+    public int[] importBookmarks(long memberId, String html) {
+        hubMemberService.ensureTables();
+        if (memberId <= 0 || html == null || html.isBlank()) {
+            return new int[] { 0, 0 };
+        }
+        // 이미 가진 URL(정규화된 저장값) 집합 — 여기에 add하면서 파일 내 중복까지 함께 거른다.
+        Set<String> seen = new HashSet<>(jdbcTemplate.queryForList(
+                "SELECT url FROM csm.hub_member_custom_link WHERE member_id = ? AND use_yn = 'Y'",
+                String.class, memberId));
+        // 폴더 스택: <H3>에서 push, </DL>에서 pop. 링크의 카테고리는 스택 맨 위(가장 가까운 폴더).
+        Deque<String> folders = new ArrayDeque<>();
+        Matcher matcher = BOOKMARK_TOKEN.matcher(html);
+        int imported = 0;
+        int skipped = 0;
+        while (matcher.find()) {
+            if (matcher.group(1) != null) { // <H3>폴더명</H3>
+                folders.push(trimTo(unescapeHtml(matcher.group(1)), 100));
+                continue;
+            }
+            if (matcher.group(2) == null) { // </DL> — 폴더 닫힘
+                if (!folders.isEmpty()) {
+                    folders.pop();
+                }
+                continue;
+            }
+            String safeUrl;
+            try {
+                safeUrl = HubUrls.normalizeHttpUrl(matcher.group(2));
+            } catch (IllegalArgumentException e) {
+                skipped++; // javascript:, place:, 상대경로 등
+                continue;
+            }
+            if (!seen.add(safeUrl) || imported >= IMPORT_LIMIT) {
+                skipped++;
+                continue;
+            }
+            String title = unescapeHtml(matcher.group(3));
+            if (title.isBlank()) {
+                title = hostOf(safeUrl);
+            }
+            if (title.length() > 200) {
+                title = title.substring(0, 200);
+            }
+            String category = folders.isEmpty() ? null : folders.peek();
+            jdbcTemplate.update("""
+                    INSERT INTO csm.hub_member_custom_link (member_id, title, url, category, sort_order)
+                    VALUES (?, ?, ?, ?, ?)
+                    """, memberId, title, safeUrl, category, 0);
+            imported++;
+        }
+        return new int[] { imported, skipped };
+    }
+
+    private String unescapeHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+        // &amp;는 마지막에 풀어 "&amp;lt;" 같은 이중 인코딩이 조기 치환되지 않게 한다.
+        return value.replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"")
+                .replace("&#39;", "'").replace("&#x27;", "'").replace("&amp;", "&").trim();
+    }
+
+    private String hostOf(String url) {
+        try {
+            String host = URI.create(url).getHost();
+            return host == null ? url : host;
+        } catch (Exception e) {
+            return url;
+        }
+    }
+
     private HubCustomLink mapRow(java.sql.ResultSet rs) throws java.sql.SQLException {
         HubCustomLink link = new HubCustomLink();
         link.setId(rs.getLong("id"));
@@ -108,6 +256,7 @@ public class HubCustomLinkService {
         link.setTitle(rs.getString("title"));
         link.setUrl(rs.getString("url"));
         link.setMemo(rs.getString("memo"));
+        link.setCategory(rs.getString("category"));
         link.setSortOrder(rs.getInt("sort_order"));
         link.setCreatedAt(rs.getString("created_at"));
         return link;

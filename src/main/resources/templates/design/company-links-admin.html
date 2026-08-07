@@ -79,6 +79,29 @@
         <div th:if="${linkMessage}" class="hub-alert hub-alert--ok" th:text="${linkMessage}"></div>
         <div th:if="${linkError}" class="hub-alert hub-alert--err" th:text="${linkError}"></div>
 
+        <!--/* 공지 배너 관리: /links 상단에 뜨는 안내 문구. 메시지 비우거나 '노출' 끄면 숨김 */-->
+        <section class="adm-panel" style="margin-bottom:18px;">
+          <div class="adm-panel__head">공지 배너</div>
+          <form class="lh-form" th:action="@{/admin/company-links/notice}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+            <label class="lh-field"><span class="lh-label">메시지 (비우면 배너 숨김)</span>
+              <textarea class="lh-input" name="message" rows="2" maxlength="500" style="min-height:56px;resize:vertical;"
+                        placeholder="예) EMR 점검 중입니다 (오늘 14:00까지)"
+                        th:text="${notice != null ? notice.message : ''}"></textarea></label>
+            <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;">
+              <label class="lh-field" style="flex:1;min-width:160px;"><span class="lh-label">강조</span>
+                <select class="lh-input" name="level">
+                  <option value="info" th:selected="${notice == null or notice.level != 'warn'}">일반 (파랑)</option>
+                  <option value="warn" th:selected="${notice != null and notice.level == 'warn'}">주의 (주황)</option>
+                </select></label>
+              <label class="lh-field" style="flex-direction:row;align-items:center;gap:8px;">
+                <input type="checkbox" name="active" th:checked="${notice != null and notice.activeYn == 'Y'}" />
+                <span class="lh-label" style="margin:0;">지금 노출</span></label>
+            </div>
+            <div class="lh-actions"><button type="submit" class="lh-btn lh-btn--primary">공지 저장</button></div>
+          </form>
+        </section>
+
         <section class="adm-grid">
           <aside class="adm-panel">
             <div class="adm-panel__head">링크 추가</div>

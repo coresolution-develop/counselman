@@ -118,12 +118,12 @@ class HubFlowIntegrationTest {
         System.out.println("[5] 개인페이지 즐겨찾기 조회 OK (" + favorites.size() + "건)");
 
         // 5) 커스텀 링크 — http(s)만 허용
-        assertThatThrownBy(() -> customLinkService.create(memberId, "위험", "javascript:alert(1)", null, 0))
+        assertThatThrownBy(() -> customLinkService.create(memberId, "위험", "javascript:alert(1)", null, null, 0))
                 .hasMessageContaining("http 또는 https");
-        long customId = customLinkService.create(memberId, "내 메모장", "https://memo.example.com", "업무 메모", 0);
+        long customId = customLinkService.create(memberId, "내 메모장", "https://memo.example.com", "업무 메모", null, 0);
         assertThat(customLinkService.listOwn(memberId)).extracting("id").contains(customId);
         // 타인(다른 memberId)은 수정 불가
-        assertThat(customLinkService.update(customId, memberId + 1, "탈취", "https://evil.example.com", null, 0)).isFalse();
+        assertThat(customLinkService.update(customId, memberId + 1, "탈취", "https://evil.example.com", null, null, 0)).isFalse();
         System.out.println("[6] 커스텀 링크 OK (javascript: 거부 + 생성 + 타인 수정 차단)");
 
         // 6) 최근 사용 — 같은 url 중복 클릭 + 다수 클릭 → url별 1건, 최신순 상위 8

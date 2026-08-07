@@ -58,7 +58,7 @@ public class HubGoController {
             }
             HubCustomLink link = hubCustomLinkService.findOwn(id, member.getId());
             if (link == null) {
-                return "redirect:/hub/me";
+                return "redirect:/links";
             }
             hubHistoryService.record(member.getId(), "CUSTOM", null, link.getId(), link.getTitle(), link.getUrl());
             return "redirect:" + link.getUrl();

@@ -1,0 +1,299 @@
+/* 차량운행관리 관리자 콘솔 전용 스타일(데스크톱). mediplat.css 위에 얹는다. */
+
+.fleet-admin-shell {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 20px 16px 48px;
+}
+
+/* .topbar는 position:fixed(min-height 80px, 모바일 132px)라 본문이 가려진다.
+   mediplat.css의 ".topbar + .page-shell { padding-top:108px }" 관례를 fleet 컨테이너에도 동일 적용. */
+.topbar + .fleet-admin-shell {
+    padding-top: 108px;
+}
+
+@media (max-width: 960px) {
+    .topbar + .fleet-admin-shell {
+        padding-top: 160px;
+    }
+}
+
+.fleet-admin-card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 22px;
+    box-shadow: 0 1px 3px rgba(26, 35, 50, 0.08);
+    margin-bottom: 20px;
+}
+
+.fleet-admin-card h2 {
+    margin: 0 0 4px;
+    font-size: 18px;
+}
+
+.fleet-admin-card .desc {
+    margin: 0 0 16px;
+    color: #55606e;
+    font-size: 14px;
+}
+
+.fleet-admin table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.fleet-admin th,
+.fleet-admin td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #eef1f4;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.fleet-admin th {
+    color: #55606e;
+    font-weight: 600;
+    background: #f7f9fb;
+}
+
+.fleet-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    align-items: end;
+    margin-top: 8px;
+}
+
+.fleet-form-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #3a4552;
+}
+
+.fleet-form-grid input,
+.fleet-filter input,
+.fleet-filter select {
+    height: 44px;
+    padding: 0 12px;
+    font-size: 15px;
+    border: 1px solid #d5dbe2;
+    border-radius: 9px;
+    box-sizing: border-box;
+}
+
+.fleet-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.fleet-btn {
+    height: 44px;
+    padding: 0 18px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    background: #2f6df6;
+    border: none;
+    border-radius: 9px;
+    cursor: pointer;
+}
+
+.fleet-btn.ghost {
+    background: #eef2f7;
+    color: #2f6df6;
+}
+
+/* 목록과 등록 폼 사이 구분 소제목 */
+.fleet-subhead {
+    margin: 24px 0 8px;
+    padding-top: 16px;
+    border-top: 1px solid #eef1f4;
+    font-size: 14px;
+    font-weight: 700;
+    color: #3a4552;
+}
+
+/* QR 토큰 셀의 복사 버튼(기본 버튼보다 작게) */
+.fleet-btn.fleet-copy {
+    height: 30px;
+    padding: 0 12px;
+    font-size: 13px;
+    margin-left: 6px;
+}
+
+.fleet-thumb {
+    height: 46px;
+    border-radius: 6px;
+    border: 1px solid #e3e8ee;
+    cursor: zoom-in;
+    transform-origin: left center;
+    transition: transform 0.15s ease;
+}
+
+/* hover 시 확대해 계기판 숫자 확인을 돕는다 */
+.fleet-thumb:hover {
+    transform: scale(2.6);
+    position: relative;
+    z-index: 5;
+    box-shadow: 0 6px 20px rgba(26, 35, 50, 0.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fleet-thumb {
+        transition: none;
+    }
+}
+
+/* 사진 파일 유실(404) 시 깨진 아이콘 대신 표시 */
+.fleet-thumb-missing {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 46px;
+    width: 46px;
+    border-radius: 6px;
+    border: 1px dashed #d5dbe2;
+    background: #f7f9fb;
+    color: #8a94a1;
+    font-size: 12px;
+}
+
+.fleet-status {
+    display: inline-block;
+    white-space: nowrap;
+    font-size: 12px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: #eef1f4;
+    color: #3a4552;
+}
+
+.fleet-status.running {
+    background: #e7f0ff;
+    color: #2f6df6;
+}
+
+.fleet-row-warn {
+    background: #fff5ec;
+}
+
+.fleet-warn-tag {
+    color: #b4520a;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.fleet-muted {
+    color: #8a94a1;
+}
+
+/* 모바일: 넓은 표를 세로 카드 목록으로 전환(라벨 왼쪽 · 값 오른쪽).
+   각 td의 data-label 속성을 라벨로 사용한다. 데스크톱(>720px)은 표 그대로. */
+@media (max-width: 720px) {
+    .fleet-admin table,
+    .fleet-admin tbody,
+    .fleet-admin tr,
+    .fleet-admin td {
+        display: block;
+        width: auto;
+    }
+
+    .fleet-admin thead {
+        display: none;
+    }
+
+    /* 한 행 = 카드 한 장 */
+    .fleet-admin tbody tr {
+        border: 1px solid #e3e8ee;
+        border-radius: 12px;
+        padding: 8px 14px;
+        margin-bottom: 12px;
+        background: #fff;
+    }
+
+    .fleet-admin tbody tr.fleet-row-warn {
+        background: #fff5ec;
+        border-color: #f3d5b5;
+    }
+
+    .fleet-admin td {
+        position: relative;
+        padding: 7px 0 7px 42%;
+        border: none;
+        border-bottom: 1px solid #f2f4f7;
+        text-align: right;
+        min-height: 34px;
+    }
+
+    .fleet-admin td:last-child {
+        border-bottom: none;
+    }
+
+    .fleet-admin td[data-label]::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 0;
+        top: 7px;
+        width: 38%;
+        text-align: left;
+        font-weight: 600;
+        color: #55606e;
+        white-space: nowrap;
+    }
+
+    /* 빈 상태 안내행(colspan)은 라벨 없이 가운데 정렬 */
+    .fleet-admin td:not([data-label]) {
+        padding-left: 0;
+        text-align: center;
+    }
+}
+
+/* 모바일: 상단 헤더가 본문 영역을 과하게 먹지 않도록 압축(fleet 화면 한정).
+   공용 mediplat.css의 .topbar(fixed, 132px+)를 fleet 화면에서만 static + 컴팩트로 덮는다. */
+@media (max-width: 720px) {
+    .topbar.fleet-topbar {
+        position: static;
+        min-height: 0;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 10px;
+        padding: 10px 14px;
+    }
+
+    .topbar.fleet-topbar .eyebrow {
+        display: none;
+    }
+
+    .topbar.fleet-topbar h1 {
+        margin: 0;
+        font-size: 18px;
+    }
+
+    .topbar.fleet-topbar .user-meta {
+        display: none;
+    }
+
+    .topbar.fleet-topbar .topbar-actions {
+        width: 100%;
+        gap: 6px;
+    }
+
+    .topbar.fleet-topbar .ghost-btn {
+        padding: 7px 10px;
+        font-size: 13px;
+        border-radius: 10px;
+    }
+
+    /* 헤더가 흐름에 들어오므로 본문 상단 여백을 정상 값으로 되돌린다 */
+    .topbar.fleet-topbar + .fleet-admin-shell {
+        padding-top: 16px;
+    }
+}

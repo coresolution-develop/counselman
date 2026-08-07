@@ -17,8 +17,13 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.coresolution.csm.serivce.CompanyLinkService;
+import com.coresolution.csm.serivce.HubCustomLinkService;
 import com.coresolution.csm.serivce.HubFavoriteService;
+import com.coresolution.csm.serivce.HubHistoryService;
+import com.coresolution.csm.serivce.HubMemoService;
+import com.coresolution.csm.serivce.HubNoticeService;
 import com.coresolution.csm.vo.CompanyLink;
+import com.coresolution.csm.vo.HubCustomLink;
 import com.coresolution.csm.vo.HubMemberSession;
 import com.coresolution.csm.vo.Userdata;
 import com.coresolution.csm.web.HubSessions;
@@ -32,6 +37,10 @@ public class CompanyLinkController {
 
     private final CompanyLinkService companyLinkService;
     private final HubFavoriteService hubFavoriteService;
+    private final HubMemoService hubMemoService;
+    private final HubCustomLinkService hubCustomLinkService;
+    private final HubHistoryService hubHistoryService;
+    private final HubNoticeService hubNoticeService;
 
     @GetMapping("/links")
     public String links(Model model, HttpSession session) {
@@ -49,6 +58,25 @@ public class CompanyLinkController {
         model.addAttribute("favorites", hubMember == null
                 ? java.util.List.of()
                 : hubFavoriteService.listFavorites(hubMember.getId()));
+        // 로그인 시에만 개인 메모장을 노출한다(미로그인은 조회 자체를 하지 않는다).
+        model.addAttribute("memo", hubMember == null
+                ? ""
+                : hubMemoService.find(hubMember.getId()));
+        // 개인 커스텀 링크. 예전 /hub/me를 이 페이지가 흡수했다(관리 폼도 여기서 렌더).
+        // 카테고리별 그룹으로 내려준다(미분류는 "기타"). 개수 표시용 flat 리스트도 함께 전달.
+        List<HubCustomLink> customLinks = hubMember == null
+                ? java.util.List.of()
+                : hubCustomLinkService.listOwn(hubMember.getId());
+        model.addAttribute("customLinks", customLinks);
+        model.addAttribute("customLinkGroups", groupCustomByCategory(customLinks));
+        // 최근 사용: 클릭 추적(hub_member_link_history)을 상단에 다시 노출한다(로그인 시에만).
+        model.addAttribute("recent", hubMember == null
+                ? java.util.List.of()
+                : hubHistoryService.listRecent(hubMember.getId()));
+        // 인기 링크: 전 직원 클릭 집계 TOP(최근 30일). 개인정보 없는 집계라 미로그인도 노출.
+        model.addAttribute("popular", hubHistoryService.listPopularPublic(6, 30));
+        // 관리자 공지 배너(활성일 때만 non-null).
+        model.addAttribute("notice", hubNoticeService.findActive());
         return "design/company-links";
     }
 
@@ -59,7 +87,19 @@ public class CompanyLinkController {
         model.addAttribute("linkGroups", groupByCategory(links));
         model.addAttribute("categories", companyLinkService.listCategories());
         model.addAttribute("hubMember", HubSessions.current(session)); // 사이드바 프로필 표시용
+        model.addAttribute("notice", hubNoticeService.find()); // 공지 배너 관리 폼 현재값
         return "design/company-links-admin";
+    }
+
+    @PostMapping("/admin/company-links/notice")
+    public String saveNotice(
+            @RequestParam(value = "message", required = false, defaultValue = "") String message,
+            @RequestParam(value = "level", required = false, defaultValue = "info") String level,
+            @RequestParam(value = "active", required = false) String active,
+            RedirectAttributes redirectAttributes) {
+        hubNoticeService.save(message, level, active != null);
+        redirectAttributes.addFlashAttribute("linkMessage", "공지 배너가 저장되었습니다.");
+        return "redirect:/admin/company-links";
     }
 
     @PostMapping("/admin/company-links/category-order")
@@ -136,6 +176,17 @@ public class CompanyLinkController {
     @ResponseBody
     public Map<String, Object> listLinks() {
         return Map.of("links", companyLinkService.listActiveLinks());
+    }
+
+    private Map<String, List<HubCustomLink>> groupCustomByCategory(List<HubCustomLink> links) {
+        Map<String, List<HubCustomLink>> groups = new LinkedHashMap<>();
+        for (HubCustomLink link : links) {
+            String category = link.getCategory() == null || link.getCategory().isBlank()
+                    ? "기타"
+                    : link.getCategory().trim();
+            groups.computeIfAbsent(category, key -> new java.util.ArrayList<>()).add(link);
+        }
+        return groups;
     }
 
     private Map<String, List<CompanyLink>> groupByCategory(List<CompanyLink> links) {

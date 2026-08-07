@@ -91,10 +91,11 @@ class HubGoControllerTest {
     }
 
     @Test
-    void custom_notOwned_redirectsToMe() {
+    void custom_notOwned_redirectsToHub() {
         when(hubCustomLinkService.findOwn(5L, 7L)).thenReturn(null);
 
-        assertThat(controller().go("custom", 5L, loggedInSession())).isEqualTo("redirect:/hub/me");
+        // 커스텀 링크 목록이 허브로 흡수되어 폴백도 /links로 간다.
+        assertThat(controller().go("custom", 5L, loggedInSession())).isEqualTo("redirect:/links");
         verifyNoInteractions(hubHistoryService);
     }
 

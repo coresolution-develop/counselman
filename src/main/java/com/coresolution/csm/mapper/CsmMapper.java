@@ -743,6 +743,9 @@ public interface CsmMapper {
   @SelectProvider(type = StatisticsSqlProvider.class, method = "getCounselDateRange")
   Map<String, Object> getCounselDateRange(Map<String, Object> params);
 
+  @SelectProvider(type = StatisticsSqlProvider.class, method = "getCounselMonthlyCounts")
+  List<Map<String, Object>> getCounselMonthlyCounts(Map<String, Object> params);
+
   @SelectProvider(type = StatisticsSqlProvider.class, method = "getTypeStatistics")
   List<Map<String, Object>> getTypeStatistics(Map<String, Object> params);
 
@@ -920,32 +923,7 @@ public interface CsmMapper {
         sb.append(" AND c.cs_col_08 = #{pathType} ");
       }
 
-      boolean hasKeyword = nonEmpty(cri.getKeyword()) || cri.getKeywordBytes() != null;
-      if (hasKeyword) {
-        switch (String.valueOf(cri.getSearchType())) {
-          case "patient" -> sb.append(
-              " AND AES_DECRYPT(UNHEX(c.cs_col_01), #{aesKey}) LIKE CONCAT('%', #{keyword}, '%') ");
-          case "guardian" -> sb.append(
-              " AND AES_DECRYPT(UNHEX(g.name), #{aesKey}) LIKE CONCAT('%', #{keyword}, '%') ");
-          case "phone" -> {
-            sb.append(" AND ( ");
-            sb.append("  (#{keywordBytes} IS NOT NULL AND g.contact_number_hash = #{keywordBytes}) ");
-            sb.append("  OR (#{keywordBytes} IS NULL AND ( ");
-            sb.append(
-                "       AES_DECRYPT(UNHEX(g.contact_number), #{aesKey}) LIKE CONCAT('%', #{keyword}, '%') ");
-            sb.append("    OR RIGHT(AES_DECRYPT(UNHEX(g.contact_number), #{aesKey}), 4) = #{keyword} ");
-            sb.append("    OR MID(AES_DECRYPT(UNHEX(g.contact_number), #{aesKey}), ");
-            sb.append("       LENGTH(AES_DECRYPT(UNHEX(g.contact_number), #{aesKey})) - 8, 4) = #{keyword} ");
-            sb.append("  )) ) ");
-          }
-          case "counselor" -> sb.append(" AND c.cs_col_17 LIKE CONCAT('%', #{keyword}, '%') ");
-          case "content" ->
-            sb.append(" AND REPLACE(REPLACE(c.cs_col_32, '\n', ''), '\r', '') LIKE CONCAT('%', #{keyword}, '%') ");
-          default -> {
-            /* no-op */ }
-        }
-      }
-
+      appendKeywordFilter(sb, cri);
       appendQuickFilter(sb, cri);
 
       // Tiebreak by cs_idx DESC so same-date rows are deterministic (newest first)
@@ -953,7 +931,7 @@ public interface CsmMapper {
       sb.append(" ORDER BY STR_TO_DATE(c.cs_col_16, '%Y-%m-%d') DESC, c.cs_idx DESC ");
       // 목록은 페이지네이션(무한 스크롤) 유지. fetchAll(월별 캘린더의 그 달 조회)일 때만 LIMIT 생략.
       if (!cri.isFetchAll()) {
-        sb.append(" LIMIT #{pageStart}, #{perPageNum} ");
+        sb.append(" LIMIT #{pageStart}, #{fetchLimit} ");
       }
       return sb.toString();
     }
@@ -982,35 +960,43 @@ public interface CsmMapper {
         sb.append(" AND c.cs_col_08 = #{pathType} ");
       }
 
-      boolean hasKeyword = nonEmpty(cri.getKeyword()) || cri.getKeywordBytes() != null;
-      if (hasKeyword) {
-        String type = String.valueOf(cri.getSearchType());
-        switch (type) {
-          case "patient" -> sb.append(" AND c.cs_col_01_hash = #{keywordBytes} ");
-          case "guardian" -> sb.append(" AND g.name_hash    = #{keywordBytes} ");
-          case "phone" -> {
-            if (cri.getKeywordBytes() != null) {
-              sb.append(" AND g.contact_number_hash = #{keywordBytes} ");
-            } else {
-              sb.append(" AND ( ")
-                  .append(
-                      " AES_DECRYPT(UNHEX(g.contact_number), #{aesKey}) LIKE CONCAT('%', #{keyword}, '%') ")
-                  .append(" OR RIGHT(AES_DECRYPT(UNHEX(g.contact_number), #{aesKey}), 4) = #{keyword} ")
-                  .append(" OR MID( ")
-                  .append("     AES_DECRYPT(UNHEX(g.contact_number), #{aesKey}), ")
-                  .append("     LENGTH(AES_DECRYPT(UNHEX(g.contact_number), #{aesKey})) - 8, 4 ")
-                  .append(" ) = #{keyword} ) ");
-            }
-          }
-          case "counselor" -> sb.append(" AND c.cs_col_17 LIKE CONCAT('%', #{keyword}, '%') ");
-          case "content" -> sb.append(" AND c.cs_col_32 LIKE CONCAT('%', #{keyword}, '%') ");
-          default -> {
-            /* no-op */ }
-        }
-      }
-
+      appendKeywordFilter(sb, cri);
       appendQuickFilter(sb, cri);
       return sb.toString();
+    }
+
+    /**
+     * 검색어 술어. 목록과 카운트가 **반드시 동일한 조건**을 써야 한다.
+     *
+     * 이전에는 목록이 부분일치(AES_DECRYPT ... LIKE)인데 카운트는 이름 전체 해시
+     * 정확일치여서, "김" 같은 부분검색이면 목록엔 첫 페이지가 뜨지만 카운트가 0으로
+     * 나와 무한 스크롤이 2페이지를 못 불러오고 빠른필터 배지도 0으로 찍혔다.
+     */
+    private static void appendKeywordFilter(StringBuilder sb, Criteria cri) {
+      boolean hasKeyword = nonEmpty(cri.getKeyword()) || cri.getKeywordBytes() != null;
+      if (!hasKeyword) {
+        return;
+      }
+      switch (String.valueOf(cri.getSearchType())) {
+        case "patient" -> sb.append(
+            " AND AES_DECRYPT(UNHEX(c.cs_col_01), #{aesKey}) LIKE CONCAT('%', #{keyword}, '%') ");
+        case "guardian" -> sb.append(
+            " AND AES_DECRYPT(UNHEX(g.name), #{aesKey}) LIKE CONCAT('%', #{keyword}, '%') ");
+        case "phone" ->
+          // keyword는 숫자만 남긴 형태로 들어온다. 저장된 번호는 하이픈 유무가 섞여
+          // 있으므로 양쪽을 정규화해 비교하고, 해시는 빠른 정확일치 경로로만 곁들인다.
+          sb.append(" AND ( g.contact_number_hash = #{keywordBytes} ")
+              .append("   OR REPLACE(REPLACE(REPLACE( ")
+              .append("        AES_DECRYPT(UNHEX(g.contact_number), #{aesKey}) ")
+              .append("      , '-', ''), ' ', ''), '.', '') LIKE CONCAT('%', #{keyword}, '%') ) ");
+        case "counselor" -> sb.append(" AND c.cs_col_17 LIKE CONCAT('%', #{keyword}, '%') ");
+        case "content" ->
+          sb.append(" AND REPLACE(REPLACE(c.cs_col_32, '\n', ''), '\r', '') LIKE CONCAT('%', #{keyword}, '%') ");
+        default ->
+          // searchType 미지정이면 환자명 기준으로 검색한다. 이전에는 조용히 무시해서
+          // URL 직접 진입 시 검색어를 넣어도 전체 목록이 나왔다.
+          sb.append(" AND AES_DECRYPT(UNHEX(c.cs_col_01), #{aesKey}) LIKE CONCAT('%', #{keyword}, '%') ");
+      }
     }
 
     /** 상단 빠른필터(오늘/미완료) 술어. 목록·카운트 양쪽에서 공통 사용. */
@@ -1110,6 +1096,23 @@ public interface CsmMapper {
           .append("FROM csm.counsel_data_").append(t).append(" ")
           .append("WHERE cs_col_16 IS NOT NULL ");
       return sb.toString();
+    }
+
+    /**
+     * 기관 전체의 월별 상담 건수. 년/월 셀렉트에 "(N건)"을 붙여, 상담이 0건인 달을
+     * 고르고 나서야 비어 있음을 알게 되는 상황을 막는다.
+     */
+    public static String getCounselMonthlyCounts(Map<String, Object> p) {
+      String t = sanitizeInst((String) p.get("inst"));
+      return new StringBuilder()
+          .append("SELECT ")
+          .append(" DATE_FORMAT(STR_TO_DATE(cs_col_16, '%Y-%m-%d'), '%Y-%m') AS month, ")
+          .append(" COUNT(*) AS cnt ")
+          .append("FROM csm.counsel_data_").append(t).append(" ")
+          .append("WHERE cs_col_16 IS NOT NULL ")
+          .append("GROUP BY month ")
+          .append("ORDER BY month ASC ")
+          .toString();
     }
 
     public static String getMonthlyCounselStatistics(Map<String, Object> p) {

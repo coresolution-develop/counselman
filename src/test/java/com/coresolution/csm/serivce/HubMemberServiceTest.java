@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -39,6 +40,9 @@ class HubMemberServiceTest {
     void setUp() {
         service = new HubMemberService(jdbcTemplate);
         ReflectionTestUtils.setField(service, "signupCode", "core");
+        // ensureTables()의 멱등 컬럼 마이그레이션 조회는 "컬럼 있음"으로 응답해 ALTER를 건너뛰게 한다.
+        lenient().when(jdbcTemplate.queryForObject(contains("information_schema"), eq(Integer.class), any(), any()))
+                .thenReturn(1);
     }
 
     @Test

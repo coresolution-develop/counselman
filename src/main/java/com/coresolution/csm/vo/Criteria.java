@@ -6,6 +6,7 @@ public class Criteria {
     private int page;
     private int perPageNum;
     private boolean fetchAll;
+    private boolean probeExtra;
     private String quickFilter;
 
     private String keyword;
@@ -56,6 +57,7 @@ public class Criteria {
         this.page = 1;
         this.perPageNum = 10;
         this.fetchAll = false;
+        this.probeExtra = false;
         this.quickFilter = "all";
         this.keyword = "";
         this.keywordBytes = null; // ✅ 기본값 설정
@@ -187,6 +189,24 @@ public class Criteria {
         } else {
             this.perPageNum = perPageNum;
         }
+    }
+
+    /**
+     * 목록 조회의 LIMIT 행 수. probeExtra면 perPageNum보다 1건 더 읽어서,
+     * 별도 카운트 쿼리 없이 다음 페이지 존재 여부를 판정할 수 있게 한다.
+     * 오프셋(getPageStart)은 perPageNum 기준을 유지하므로 페이지 경계는 바뀌지 않는다.
+     */
+    public int getFetchLimit() {
+        return probeExtra ? perPageNum + 1 : perPageNum;
+    }
+
+    public boolean isProbeExtra() {
+        return probeExtra;
+    }
+
+    /** true면 perPageNum+1건을 읽는다. 호출부는 초과분을 잘라내고 hasMore로 해석해야 한다. */
+    public void setProbeExtra(boolean probeExtra) {
+        this.probeExtra = probeExtra;
     }
 
     public boolean isFetchAll() {

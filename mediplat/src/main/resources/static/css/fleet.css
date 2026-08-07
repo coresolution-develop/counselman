@@ -1,0 +1,242 @@
+/* 차량운행관리 운전자 모바일 화면. mediplat.css 위에 얹는 화면 전용 스타일. */
+
+.fleet-body {
+    margin: 0;
+    background: #f4f6f8;
+    color: #1a2332;
+    -webkit-text-size-adjust: 100%;
+}
+
+.fleet-topbar {
+    padding: 20px 20px 12px;
+    background: #1a2332;
+    color: #fff;
+}
+
+.fleet-topbar .eyebrow {
+    margin: 0;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    opacity: 0.7;
+    text-transform: uppercase;
+}
+
+.fleet-topbar h1 {
+    margin: 4px 0 0;
+    font-size: 20px;
+}
+
+.fleet-shell {
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 16px;
+}
+
+.fleet-card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(26, 35, 50, 0.08);
+}
+
+.fleet-card h2 {
+    margin: 0 0 12px;
+    font-size: 18px;
+}
+
+.fleet-vehicle {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid #eef1f4;
+}
+
+.fleet-vehicle strong {
+    font-size: 20px;
+}
+
+.fleet-vehicle span {
+    color: #55606e;
+}
+
+.fleet-vehicle em {
+    font-style: normal;
+    color: #8a94a1;
+    font-size: 13px;
+}
+
+.fleet-hint {
+    color: #55606e;
+    font-size: 14px;
+    margin: 0 0 12px;
+}
+
+.fleet-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.fleet-field > span,
+.fleet-field-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #3a4552;
+}
+
+.fleet-field input,
+.fleet-field select {
+    height: 48px;
+    padding: 0 14px;
+    font-size: 16px; /* iOS 확대 방지 */
+    border: 1px solid #d5dbe2;
+    border-radius: 10px;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+.fleet-field input:focus,
+.fleet-field select:focus {
+    outline: 2px solid #2f6df6;
+    outline-offset: 1px;
+    border-color: #2f6df6;
+}
+
+.fleet-capture {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 8px 0 18px;
+}
+
+.fleet-capture input[type='file'] {
+    font-size: 15px;
+}
+
+.fleet-preview {
+    width: 100%;
+    max-height: 220px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid #e3e8ee;
+}
+
+.fleet-ocr-status {
+    margin: 0;
+    font-size: 13px;
+    color: #2f6df6;
+}
+
+.fleet-primary {
+    width: 100%;
+    height: 52px;
+    font-size: 17px;
+    font-weight: 700;
+    color: #fff;
+    background: #2f6df6;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+.fleet-primary:disabled {
+    background: #aeb8c4;
+    cursor: not-allowed;
+}
+
+.fleet-driver-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.fleet-driver-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 14px 16px;
+    background: #f7f9fb;
+    border: 1px solid #e3e8ee;
+    border-radius: 10px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.fleet-driver-item strong {
+    font-size: 17px;
+}
+
+.fleet-driver-item span {
+    font-size: 13px;
+    color: #8a94a1;
+}
+
+.fleet-driver-item:disabled {
+    opacity: 0.5;
+}
+
+.fleet-empty {
+    text-align: center;
+    color: #55606e;
+    line-height: 1.6;
+    padding: 20px 0;
+}
+
+.fleet-warn {
+    color: #b4520a;
+    font-size: 14px;
+}
+
+.fleet-loading {
+    text-align: center;
+    color: #8a94a1;
+    padding: 40px 0;
+}
+
+.fleet-done {
+    text-align: center;
+}
+
+.fleet-check {
+    width: 64px;
+    height: 64px;
+    line-height: 64px;
+    margin: 4px auto 12px;
+    border-radius: 50%;
+    background: #e7f3ec;
+    color: #1f8a4c;
+    font-size: 34px;
+}
+
+.fleet-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%) translateY(20px);
+    max-width: 90%;
+    padding: 12px 18px;
+    background: #1a2332;
+    color: #fff;
+    border-radius: 10px;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+    z-index: 50;
+}
+
+.fleet-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fleet-toast {
+        transition: none;
+    }
+}

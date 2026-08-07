@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>차량 운행 기록</title>
+    <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
+    <link rel="stylesheet" th:href="@{/css/mediplat.css}">
+    <link rel="stylesheet" th:href="@{/css/fleet.css}">
+</head>
+<body class="fleet-body">
+<header class="fleet-topbar">
+    <p class="eyebrow">MediPlat</p>
+    <h1>차량 운행 기록</h1>
+</header>
+
+<main class="fleet-shell">
+    <div id="fleet-app" class="fleet-app">
+        <p class="fleet-loading">불러오는 중…</p>
+    </div>
+</main>
+
+<script th:inline="javascript">
+    window.FLEET = { qrToken: /*[[${qrToken}]]*/ '' };
+</script>
+<script type="module" th:src="@{/js/fleet/driver.js}"></script>
+</body>
+</html>
