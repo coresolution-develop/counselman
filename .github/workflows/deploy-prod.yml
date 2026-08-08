@@ -1,8 +1,8 @@
 name: Deploy PROD
 
 # Push to `prod` → build + test on a GitHub-hosted runner, then a self-hosted
-# runner ON the prod server stages the artifact into /opt/csm-next/deploy/staging
-# (no inbound SSH). The csm-next-deploy timer (02:30 KST) applies it at dawn.
+# runner ON the prod server stages the artifacts into /opt/csm-next/deploy/staging
+# (no inbound SSH). The csm-next-deploy timer (02:30 KST) applies them at dawn.
 #
 # SETUP: register a self-hosted runner on the prod server with the label `prod`
 #   (Settings → Actions → Runners → New self-hosted runner; add `--labels prod`).
@@ -39,13 +39,18 @@ jobs:
           restore-keys: gradle-
       - name: Test gate (abort prod deploy if red)
         run: ./gradlew test --console=plain -PexcludeIntegration
-      - name: Build PROD war
-        run: ./gradlew prodWar --console=plain
-      - name: Upload artifact
+      - name: Build PROD packages
+        run: ./gradlew packageProdDeploy --console=plain
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: prod-war
-          path: build/libs/csm-prod.war
+          name: prod-deploy
+          # sms/links are built by packageProdDeploy but the nightly deploy
+          # script only knows csm.war / mediplat.jar / cancer-treatment.jar,
+          # so only ship what it can actually install.
+          path: |
+            build/deploy/prod/csm-prod.war
+            build/deploy/prod/mediplat-prod.jar
           retention-days: 1
 
   deploy:
@@ -55,18 +60,23 @@ jobs:
     # the artifact touches the live prod server (GitHub Environment `prod`).
     environment: prod
     steps:
-      - name: Download artifact
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: prod-war
+          name: prod-deploy
           path: artifact
-      - name: Stage war for scheduled (dawn) deploy
+      - name: Stage artifacts for scheduled (dawn) deploy
         run: |
           STAGING=/opt/csm-next/deploy/staging
-          # Do NOT deploy directly. Drop the war into the staging dir + deploy.ok
-          # marker; the csm-next-deploy timer (02:30 KST) applies it and restarts
-          # csm-next. Atomic rename so a timer never sees a half-written war.
+          # Do NOT deploy directly. Drop the artifacts into the staging dir +
+          # deploy.ok marker; the csm-next-deploy timer (02:30 KST) applies them
+          # and restarts csm-next / mediplat-next. Atomic rename so a timer never
+          # sees a half-written file. Staged names must match what
+          # deploy-nightly.sh looks for (csm.war, mediplat.jar).
           cp artifact/csm-prod.war "$STAGING/csm.war.new"
           mv -f "$STAGING/csm.war.new" "$STAGING/csm.war"
+          cp artifact/mediplat-prod.jar "$STAGING/mediplat.jar.new"
+          mv -f "$STAGING/mediplat.jar.new" "$STAGING/mediplat.jar"
+          # Marker last: the script deploys everything present once it sees this.
           touch "$STAGING/deploy.ok"
-          echo "Staged csm.war -> $STAGING + deploy.ok. Scheduled deploy timer will apply it at the next window."
+          echo "Staged csm.war + mediplat.jar -> $STAGING + deploy.ok. Scheduled deploy timer will apply them at the next window."
