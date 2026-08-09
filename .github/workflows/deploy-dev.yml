@@ -34,6 +34,14 @@ jobs:
           restore-keys: gradle-
       - name: Build DEV packages
         run: ./gradlew packageDevDeploy --console=plain
+      - name: Checksum artifacts
+        # Recorded at the source so the deploy job can prove the bytes that
+        # reach the dev server are the bytes that were built here. A truncated
+        # csm.war once shipped to prod unnoticed and took the service down.
+        run: |
+          cd build/deploy/dev
+          sha256sum csm-dev.war mediplat-dev.jar links-dev.jar | tee SHA256SUMS
+          ls -l csm-dev.war mediplat-dev.jar links-dev.jar
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -42,6 +50,7 @@ jobs:
             build/deploy/dev/csm-dev.war
             build/deploy/dev/mediplat-dev.jar
             build/deploy/dev/links-dev.jar
+            build/deploy/dev/SHA256SUMS
           retention-days: 1
 
   deploy:
@@ -53,6 +62,21 @@ jobs:
         with:
           name: dev-deploy
           path: artifact
+      - name: Verify artifacts before deploying
+        # dev has no staging step: the next job copies straight over the live
+        # files and restarts. Verify everything up front so a corrupt artifact
+        # cannot take the service down, and so a bad file never leaves half the
+        # apps replaced. Checksum catches a truncated/altered transfer; the
+        # archive test catches a file of the right size that is not a readable
+        # zip.
+        run: |
+          cd artifact
+          sha256sum -c SHA256SUMS
+          unzip -t csm-dev.war > /dev/null
+          unzip -t mediplat-dev.jar > /dev/null
+          unzip -t links-dev.jar > /dev/null
+          ls -l csm-dev.war mediplat-dev.jar links-dev.jar
+          echo "artifacts verified: checksum + archive integrity OK"
       - name: Deploy on dev server (local)
         run: |
           mkdir -p /opt/links/app
