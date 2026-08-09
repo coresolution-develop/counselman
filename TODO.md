@@ -1,6 +1,6 @@
 # MediPlat 작업 현황
 
-> 최종 업데이트: 2026-06-02
+> 최종 업데이트: 2026-08-09
 
 ---
 
@@ -11,6 +11,28 @@
 ### 🔥 P0 — 운영 차단 / 명시적 요청
 
 > ✅ **P0-1 / P0-2 / P0-3 모두 2026-06-02 완료** — 상세는 아래 "완료된 작업" 참조.
+
+#### [P0-4] mediplat 설정 파일 하드코딩 시크릿 제거 — **미착수 / 최우선**
+- **문제**: [application.properties](mediplat/src/main/resources/application.properties)의 `${ENV:기본값}` 구조에서 기본값 자리에 실제 운영 DB 접속정보(13·15행), 개인정보 복호화 AES 키(21행), 부트스트랩 관리자 비밀번호(26행), SSO 공유 시크릿(33행)이 들어 있음
+- **위험**: 환경변수만 누락되면 조용히 실제 값으로 동작. 저장소 접근자 누구나 운영 DB 접속 가능. git 이력에도 잔존
+- **수정 방향**: 기본값 제거 → 미설정 시 **기동 실패**하도록 변경 (조용한 fallback이 더 위험)
+- **후속 필수**: 노출된 DB 비밀번호·AES 키 **로테이션**. AES 키 교체 시 기존 암호화 데이터 재암호화 계획 별도 수립 필요
+- **선행 확인**: 운영 서버에 해당 환경변수가 실제로 주입돼 있는지 먼저 검증 (없으면 기본값 제거 시 기동 실패)
+- **작업량**: 코드 30분 + 키 로테이션/재암호화는 별도 산정
+- **출처**: 2026-08-09 mediplat 점검 (상세: [docs/handoff-2026-08-09.md](docs/handoff-2026-08-09.md))
+
+#### [P0-5] mediplat CSRF 보호 도입 — **미착수**
+- **문제**: Spring Security 미도입(`spring-security-crypto`만 의존)이라 `SecurityFilterChain` 부재 → `_csrf`가 항상 null. 템플릿이 `th:if="${_csrf != null}"`로 방어적으로 짜여 있어 **조용히 무력화**됨
+- **영향**: `/admin/users`, `/admin/access`, `/admin/services`, `/admin/institutions`, `/fleet/admin/*`, `/seminar-room/*` 등 상태변경 POST 전부
+- **증폭 요인**: `/admin/maintenance`는 임의 HTML을 웹 루트 파일로 기록 → 관리자 세션 탈취 없이도 점검 페이지에 스크립트 주입 가능
+- **수정 방향**: `spring-boot-starter-security` 추가 후 **CSRF만 활성화**, 인가는 기존 세션 가드 유지. 폼이 많아 단계적 적용 권장
+- **작업량**: 4~6시간 (회귀 위험 있음)
+
+#### [P0-6] mediplat 세션 고정(Session Fixation) 대응 — **미착수 / 착수 쉬움**
+- **문제**: [MediplatController.java:130](mediplat/src/main/java/com/coresolution/mediplat/controller/MediplatController.java#L130) 인증 성공 후 세션 ID 회전 없이 `setAttribute`
+- **수정 방향**: 인증 직후 `session.invalidate()` → 새 세션에 사용자 심기 (CSM `MediplatSsoController`의 `request.changeSessionId()` 패턴 참고)
+- **확인 필요**: `LoginAuditSessionListener`가 세션 파기 이벤트를 듣고 있어 로그아웃 감사 로그 중복/오탐 여부 검증
+- **작업량**: 30분 + 검증
 
 ### ⚠️ P1 — 반복 버그 / 사용자 경험
 
@@ -74,9 +96,48 @@
 - [ ] 챗봇 FAQ 검색 비로그인 접근 — 로그인 전 FAQ 패널 노출 검토
 - [ ] 좌측 네비게이션 스크롤 CSS 수정
 
+**2026-08-09 mediplat 점검에서 나온 항목** (상세: [docs/handoff-2026-08-09.md](docs/handoff-2026-08-09.md))
+
+- [ ] mediplat 로그인 시도 제한 없음 — brute force 무제한. `recordLogin`은 성공만 기록, 실패 카운트 부재. IP+계정 단위 제한 필요
+- [ ] mediplat 미인증 프리뷰 엔드포인트 제거 — `MediplatController:1361,1366`의 `/design/login`, `/design/portal` (데이터 노출은 없음)
+- [ ] mediplat 세션 타임아웃 명시 — 현재 Boot 기본 30분 암묵 의존. `server.servlet.session.timeout=30m` 명시
+- [ ] `NewsletterService` 테스트 0건 — 802줄 서비스에 테스트 없음 (AI 추천 캐시·피드백 로직 미검증)
+- [ ] N+1 제거 — `PlatformStoreService:434` 뷰어 계정마다 `listRoomBoardViewerScopeInstCodes` 1쿼리. `IN (...)` 일괄 조회로 변경
+- [ ] mediplat 폼 접근성 — 입력 컨트롤 대비 라벨 부족 (`institution-admin-app.jsx` 32개 중 2개, `portal-app.jsx` 14개 중 2개). placeholder만으로는 WCAG 3.3.2 위반. 최소 `aria-label` 부여
+- [ ] `deploy-dev.yml`/`deploy-prod.yml` 아티팩트 전송 안정화 검토 — 146MB 다운로드에 13분 소요. 잘림 재발 시 아티팩트 경유 제거(러너 직접 빌드 등) 고려
+
 ---
 
 ## ✅ 완료된 작업
+
+### 2026-08-09 배포 파이프라인 정비 + 운영 장애 대응 + mediplat 점검
+
+> 세션 상세 기록: [docs/handoff-2026-08-09.md](docs/handoff-2026-08-09.md)
+
+#### mediplat 앱 등록 설명칸 — **완료 / 운영 반영**
+- 증상: 기관 관리 > 앱 등록에서 서비스명은 수정되는데 설명은 수정 불가
+- 원인: 폼 state·저장 전송·서버 저장은 모두 정상이었고 **입력 UI만 누락**. 구 `admin.html`엔 있었으나 React 패널로 옮기며 빠짐
+- 수정: [institution-admin-app.jsx:387](mediplat/src/main/resources/static/jsx/institution-admin-app.jsx#L387) 전체 폭 설명 입력칸 추가 (`cff7f4c`)
+
+#### 배포 파이프라인 — mediplat 누락 해소 + 검증 게이트
+- [x] `deploy-prod.yml`이 `prodWar`만 호출해 **mediplat이 prod 파이프라인에 아예 없었음** → `packageProdDeploy`로 전환, `mediplat.jar` 스테이징 추가 (`49a44af`)
+  - 이 때문에 운영 mediplat이 6/18 빌드로 7주간 방치. 서버측 `deploy-nightly.sh`·`/etc/default/csm-next-deploy`는 이미 mediplat을 지원하고 있었음
+- [x] 아티팩트 **체크섬 + zip 무결성 검증 게이트** prod/dev 양쪽 도입 (`6852146`, `d2375a1`)
+  - 실제 장애 파일과 동일하게 잘라 재현 테스트 → `sha256sum -c` exit 1, `unzip -t` exit 9로 차단 확인
+  - dev는 스테이징이 없어 즉시 라이브 덮어쓰기 → 첫 `cp` 전에 3개 아티팩트 일괄 검증
+- [x] dev ↔ prod 완전 동기화 (백머지 후 격차 0/0)
+
+#### 운영 장애 — `/csm` 전체 404 (08:35 발견 → 08:42 복구)
+- 증상: CounselMan·병실현황판 SSO 진입 모두 실패, Tomcat 404, 앱 예외 로그 없음
+- 원인: 02:30 야간 배포가 적용한 `csm.war`가 **127,920,134 → 52,287,189 bytes로 잘린 파일**. 컨텍스트 explode 실패
+- 확정 근거: 동일 커밋 로컬 빌드는 정상(921 엔트리, 무결성 통과) / 문제 파일 `file` 결과 `Zip archive data`(앞부분만 온전) / 워크플로가 `cp`→`mv`를 완료했으므로 러너 수신 시점에 이미 잘려 있었음 → **아티팩트 전송 중 잘림**
+- 배제된 가설: 디스크 풀(20G 여유), 이중 압축(재압축 시 118MB), SSO 서명·시크릿
+- 복구: `csm.war.bak-20260809-023026`(8/5 빌드) 롤백 + explode 디렉터리 정리 + 재시작
+- 재발 방지: 위 검증 게이트
+
+#### mediplat 앱 전체 점검 (보안 > 성능 > 접근성 > 코드품질)
+- CRITICAL 1 / HIGH 2 / MEDIUM 4 / LOW 2 도출 → P0-4·P0-5·P0-6 및 P3 항목으로 등록
+- 양호 확인: SQL 전량 파라미터 바인딩, BCrypt, fleet 기기토큰(selector/validator + SecureRandom + 상수시간 비교), SSO HMAC-SHA256, 파일 업로드 path traversal 차단, IDOR 테넌트 스코프, 멀티테넌시 `inst_code` 일관 적용
 
 ### 2026-06-02 P0 일괄 처리 (헤더 / 권한 UI / 스케줄 영속화)
 
