@@ -41,6 +41,14 @@ jobs:
         run: ./gradlew test --console=plain -PexcludeIntegration
       - name: Build PROD packages
         run: ./gradlew packageProdDeploy --console=plain
+      - name: Checksum artifacts
+        # Recorded at the source so the deploy job can prove the bytes that
+        # reach the prod server are the bytes that were built here. A truncated
+        # csm.war once shipped to prod unnoticed and took the service down.
+        run: |
+          cd build/deploy/prod
+          sha256sum csm-prod.war mediplat-prod.jar | tee SHA256SUMS
+          ls -l csm-prod.war mediplat-prod.jar
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -51,6 +59,7 @@ jobs:
           path: |
             build/deploy/prod/csm-prod.war
             build/deploy/prod/mediplat-prod.jar
+            build/deploy/prod/SHA256SUMS
           retention-days: 1
 
   deploy:
@@ -65,6 +74,18 @@ jobs:
         with:
           name: prod-deploy
           path: artifact
+      - name: Verify artifacts before staging
+        # Fail loudly here rather than let a corrupt file sit in staging until
+        # the 02:30 timer copies it over the live app. Checksum catches a
+        # truncated/altered transfer; the archive test catches a file that is
+        # the right size but not a readable zip.
+        run: |
+          cd artifact
+          sha256sum -c SHA256SUMS
+          unzip -t csm-prod.war > /dev/null
+          unzip -t mediplat-prod.jar > /dev/null
+          ls -l csm-prod.war mediplat-prod.jar
+          echo "artifacts verified: checksum + archive integrity OK"
       - name: Stage artifacts for scheduled (dawn) deploy
         run: |
           STAGING=/opt/csm-next/deploy/staging
