@@ -297,7 +297,7 @@ properties 파일에서 평문 비밀값을 모두 제거하고 환경변수로 
 
 #### 1) csdev DB 비밀번호 — MySQL 8 이중 비밀번호로 무중단 교체
 
-`csdev` 계정은 **csm, mediplat(DataSource 2개), ResvHub** 가 공유합니다.
+`csdev` 계정은 **csm, mediplat(DataSource 2개), cancer-treatment, ResvHub** 가 공유합니다.
 한 번에 바꾸면 갱신되지 않은 앱이 즉시 접속 실패하므로, 구/신 비밀번호를 함께
 받아주는 기간을 두고 순차 갱신합니다.
 
@@ -308,9 +308,10 @@ ALTER USER 'csdev'@'%' IDENTIFIED BY '<새비밀번호>' RETAIN CURRENT PASSWORD
 
 ```bash
 # ② 앱을 하나씩 갱신하고 재기동 (각 단계마다 정상 동작 확인 후 다음으로)
-#    - csm            : /etc/default/... 의 SPRING_DATASOURCE_PASSWORD
-#    - mediplat       : MEDIPLAT_DATASOURCE_PASSWORD + PLATFORM_COUNSELMAN_DATASOURCE_PASSWORD (2개)
-#    - ResvHub        : 별도 리포지토리. 담당자 확인 필요
+#    - csm              : /etc/default/... 의 SPRING_DATASOURCE_PASSWORD
+#    - mediplat         : MEDIPLAT_DATASOURCE_PASSWORD + PLATFORM_COUNSELMAN_DATASOURCE_PASSWORD (2개)
+#    - cancer-treatment : CANCER_TREATMENT_DATASOURCE_PASSWORD (없으면 SPRING_DATASOURCE_PASSWORD)
+#    - ResvHub          : 별도 리포지토리. 담당자 확인 필요
 ```
 
 ```sql
@@ -330,11 +331,21 @@ ALTER USER 'csdev'@'%' DISCARD OLD PASSWORD;
 가져야만 서명이 맞습니다. 구/신 키를 동시에 받아주는 로직이 없으므로 **점검창을 잡고
 전 앱을 동시에 갱신·재기동**해야 합니다.
 
-대상: **csm**, **mediplat**, **ResvHub**(별도 리포지토리), 그리고 `mp_service` 에 등록된
-서비스들 — `FORMFLOW`, `COUNSELMAN`, `ROOM_BOARD`, `SEMINAR_ROOM`, `CANCER_TREATMENT`,
-`RESVHUB`, `FLEET`.
+이 리포지토리 안에서 **동일한 환경변수명**으로 이 값을 읽는 앱(코드로 확인 완료):
 
-> 교체 전에 각 서비스가 이 환경변수를 실제로 쓰는지 확인하세요.
+| 앱 | 프로퍼티 | 읽는 환경변수 |
+|---|---|---|
+| mediplat (발급) | `platform.counselman.sso-shared-secret` | `COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET` |
+| csm (검증) | `mediplat.sso.shared-secret` | `MEDIPLAT_SSO_SHARED_SECRET` → 없으면 `COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET` |
+| cancer-treatment (검증) | `cancer-treatment.sso.shared-secret` | `COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET` |
+| sms (동결, 검증) | `sms.sso.shared-secret` | `COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET` |
+
+리포지토리 밖: **ResvHub** 가 같은 환경변수명을 쓴다고 확인되었습니다(별도 리포지토리).
+그 외 `mp_service` 등록 서비스 — `FORMFLOW`, `ROOM_BOARD`, `SEMINAR_ROOM`, `RESVHUB`,
+`FLEET` — 중 별도 앱으로 구동되는 것이 있다면 함께 갱신해야 합니다.
+(`ROOM_BOARD`·`SEMINAR_ROOM`·`FLEET` 는 csm/mediplat 내부 화면이라 별도 갱신 대상이 아닙니다.)
+
+> 교체 전 실제 사용처 확인:
 > `for p in $(pgrep -f 'java -jar'); do sudo tr '\0' '\n' < /proc/$p/environ | grep SSO_SHARED; done`
 
 #### git 이력 정리
@@ -346,11 +357,15 @@ ALTER USER 'csdev'@'%' DISCARD OLD PASSWORD;
 
 ### 후속 과제
 
-- **cancer-treatment 앱**의 `cancer-treatment.sso.shared-secret` 기본값 `change-me` 는
-  이번 범위에 포함하지 않았습니다. 실제 비밀값은 아니지만 동일하게 정리 대상입니다.
 - **SSO `expires` 상한 검증**은 csm(`MediplatSsoService`)에만 추가했습니다.
-  동일 결함이 **ResvHub 및 그 외 SSO 수신 앱**에도 있으나 별도 리포지토리이므로
-  각 리포에서 같은 검증을 추가해야 합니다.
+  같은 결함이 아래에 남아 있습니다.
+  - `cancer-treatment` 의 `SsoService.validateAndResolveTarget` — 이 리포지토리 안이지만
+    별도 앱이라 이번 범위에 넣지 않았습니다. `mediplat.sso.max-ttl-seconds` 와 같은 방식으로
+    상한을 추가하면 됩니다.
+  - **ResvHub** 및 그 외 SSO 수신 앱 — 별도 리포지토리이므로 각 리포에서 추가해야 합니다.
+- **cancer-treatment DB 기본값**이 H2 인메모리입니다. `CANCER_TREATMENT_DATASOURCE_*` 나
+  `SPRING_DATASOURCE_*` 가 비어 있으면 **기동은 성공하지만 데이터가 휘발됩니다.**
+  비밀값이 아니라 이번에 손대지 않았으나, 운영 환경변수 점검 시 함께 확인하십시오.
 
 ## 14. 작업 현황 정리 (GitHub push + 로컬 반영분)
 
