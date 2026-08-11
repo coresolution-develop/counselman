@@ -102,6 +102,7 @@ cp .env.example .env.local
 |---|---|
 | CounselMan (csm) | [`.env.example`](.env.example) |
 | MediPlat | [`mediplat/.env.example`](mediplat/.env.example) |
+| cancer-treatment | [`cancer-treatment/.env.example`](cancer-treatment/.env.example) |
 | sms (미사용) | [`sms/.env.example`](sms/.env.example) |
 
 로컬에서 최소한으로 필요한 키:
@@ -122,8 +123,14 @@ PLATFORM_ADMIN_PASSWORD=
 - `MEDIPLAT_SSO_SHARED_SECRET` 과 `COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET` 는 동일해야 합니다.
   (`MEDIPLAT_SSO_SHARED_SECRET` 미설정 시 후자로 폴백하므로 보통 후자 하나만 채우면 됩니다.)
 - `LOGIN_AES_KEY` 는 AES-128 키로 **정확히 16자**여야 합니다.
-- 서버 환경에서는 `.env` 파일이 아니라 systemd `EnvironmentFile` 로 주입합니다.
-  자세한 내용은 [`scripts/systemd/README.md`](scripts/systemd/README.md) 를 참고하세요.
+- 서버 환경에서는 `.env` 파일을 쓰지 않습니다. **앱마다 주입 경로가 다릅니다.**
+
+| 앱 | 서버 주입 경로 |
+|---|---|
+| **csm** | **Tomcat 의 `bin/setenv.sh` 에 `export`** — csm 은 자기 systemd 유닛 없이 Tomcat 프로세스 안에서 돌기 때문에 `EnvironmentFile` 로는 들어가지 않습니다 |
+| mediplat / cancer-treatment / links | systemd `EnvironmentFile` |
+
+  절차와 운영 배포 전 점검 항목은 [`scripts/systemd/README.md`](scripts/systemd/README.md) 참고.
 
 ## 5. 포트 점유 확인
 

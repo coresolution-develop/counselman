@@ -73,33 +73,58 @@ sudo systemctl enable --now nightly-deploy.timer
 systemctl list-timers nightly-deploy.timer
 ```
 
-## 시크릿 주입 (EnvironmentFile) — 필수
+## 시크릿 주입 — 필수 (앱마다 주입 경로가 다르다)
 
 properties 파일에서 평문 비밀값을 제거했습니다. **아래 값이 없으면 앱이 기동에 실패합니다.**
-값은 systemd `EnvironmentFile` 로 주입하고, 파일 권한은 반드시 `600` 으로 둡니다.
+전체 키 목록은 `.env.example`, `mediplat/.env.example`, `cancer-treatment/.env.example` 참고.
 
-전체 키 목록은 리포지토리의 `.env.example`, `mediplat/.env.example` 을 참고하세요.
+| 앱 | 실행 형태 | 주입 경로 |
+|---|---|---|
+| **csm** | Tomcat WAR (자체 systemd 유닛 없음) | **Tomcat 의 `bin/setenv.sh`** ← 아래 주의 |
+| mediplat | 독립 JAR (systemd) | `EnvironmentFile` |
+| cancer-treatment | 독립 JAR (systemd) | `EnvironmentFile` |
+| links | 독립 JAR (systemd) | `EnvironmentFile` |
+
+> ⚠️ **csm 전용 `EnvironmentFile` 을 만들어도 동작하지 않습니다.**
+> csm 은 자기 systemd 유닛이 없고 **Tomcat 프로세스 안에서 동작**합니다. 따라서 csm 이 보는
+> 환경변수는 곧 Tomcat 프로세스의 환경입니다. `/etc/default/csm-next` 같은 파일을 만들어도
+> 아무 유닛도 읽지 않습니다. Tomcat 유닛에 `EnvironmentFile` 을 추가하는 방법도 가능하지만,
+> **현재 서버는 `setenv.sh` 방식을 쓰고 있으므로 그쪽에 맞춥니다.**
 
 ```bash
 # ── csm (Tomcat WAR) ─────────────────────────────────────────────────────
-# Tomcat 유닛에서 읽도록 설정합니다. (유닛 파일에 EnvironmentFile=-/etc/default/csm-next 추가)
-sudo tee /etc/default/csm-next >/dev/null <<'EOF'
-SPRING_PROFILES_ACTIVE=prod
-SPRING_DATASOURCE_URL=jdbc:mysql://<prod-db-host>:3306/csm?serverTimezone=Asia/Seoul&useSSL=false&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
-SPRING_DATASOURCE_USERNAME=<user>
-SPRING_DATASOURCE_PASSWORD=<pass>
-LOGIN_AES_KEY=<정확히 16자>
-COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET=<전 서비스 공유값>
-SPRING_MAIL_PASSWORD=<gmail 앱 비밀번호>
-KAKAO_CLIENT_ID=<kakao app id>
-KAKAO_CLIENT_SECRET=<kakao app secret>
-BIZPPURIO_PROD_ACCOUNT=<account>
-BIZPPURIO_PROD_USERNAME=<username>
-BIZPPURIO_PROD_PASSWORD=<password>
-CSM_BASE_URL=https://<prod-host>/csm
-EOF
-sudo chmod 600 /etc/default/csm-next
+# 반드시 백업 후 추가. 기존 export 는 지우지 말 것.
+sudo cp -a /usr/local/tomcat10/bin/setenv.sh /usr/local/tomcat10/bin/setenv.sh.bak-$(date +%Y%m%d%H%M)
 
+sudo tee -a /usr/local/tomcat10/bin/setenv.sh >/dev/null <<'EOF'
+
+# --- 시크릿 환경변수화 이후 필수 ---
+export SPRING_PROFILES_ACTIVE="prod"
+export SPRING_DATASOURCE_URL="jdbc:mysql://<prod-db-host>:3306/csm?serverTimezone=Asia/Seoul&useSSL=false&characterEncoding=UTF-8&allowPublicKeyRetrieval=true"
+export SPRING_DATASOURCE_USERNAME="<user>"
+export SPRING_DATASOURCE_PASSWORD="<pass>"
+export LOGIN_AES_KEY="<정확히 16자>"
+export COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET="<전 서비스 공유값>"
+export SPRING_MAIL_PASSWORD="<gmail 앱 비밀번호>"
+export KAKAO_CLIENT_ID="<kakao app id>"
+export KAKAO_CLIENT_SECRET="<kakao app secret>"
+export BIZPPURIO_PROD_ACCOUNT="<account>"
+export BIZPPURIO_PROD_USERNAME="<username>"
+export BIZPPURIO_PROD_PASSWORD="<password>"
+export CSM_BASE_URL="https://<prod-host>/csm"
+EOF
+
+# 이제 이 파일이 시크릿을 담으므로 권한을 조입니다. 소유자는 Tomcat 실행 계정.
+sudo chmod 600 /usr/local/tomcat10/bin/setenv.sh
+sudo chown tomcat /usr/local/tomcat10/bin/setenv.sh
+sudo bash -n /usr/local/tomcat10/bin/setenv.sh && echo "문법 OK"
+```
+
+> 값에 공백(`LOGIN_AES_KEY`)이나 `&`(JDBC URL), `!`(비밀번호)가 들어가므로 **반드시 큰따옴표로
+> 감쌉니다.** 따옴표를 빠뜨리면 셸이 값을 자르거나 히스토리 확장이 일어납니다.
+> dev 프로파일이면 `BIZPPURIO_PROD_*` 대신 `BIZPPURIO_DEV_*` 를 씁니다.
+
+```bash
 # ── mediplat ─────────────────────────────────────────────────────────────
 sudo tee /etc/default/mediplat-next >/dev/null <<'EOF'
 PLATFORM_RUNTIME_ENV=PROD
@@ -126,20 +151,102 @@ sudo chmod 600 /etc/default/mediplat-next
 EnvironmentFile=/etc/default/mediplat-next
 ```
 
-적용 후:
+적용 후 (유닛 이름은 환경마다 다릅니다 — dev 는 `mediplat`, prod 는 `mediplat-next`):
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl restart mediplat-next
-sudo journalctl -u mediplat-next -n 50 --no-pager
+sudo systemctl restart mediplat
+sudo journalctl -u mediplat -n 50 --no-pager
 ```
 
 > **기동 실패 시 확인할 로그**
 > `Could not resolve placeholder 'SPRING_DATASOURCE_PASSWORD'` 같은 메시지가 보이면
-> 해당 키가 EnvironmentFile 에 없다는 뜻입니다. 값을 채우고 재기동하세요.
+> 해당 키가 주입되지 않았다는 뜻입니다. 값을 채우고 재기동하세요.
+>
+> `@Value("${...:기본값}")` 에 기본값이 있어도 소용없습니다. 기본값은 **키 자체가 없을 때만**
+> 적용되고, 지금처럼 키의 값이 미해석 플레이스홀더(`${ENV}`)면 그대로 예외가 납니다.
+> 실제 사례: `platform.bootstrap.admin-password` 는 `:ChangeMe123!` 기본값이 있는데도
+> `PLATFORM_ADMIN_PASSWORD` 미주입으로 mediplat 이 크래시 루프에 빠졌습니다.
 
 > **DEV/PROD 에서 `PLATFORM_RUNTIME_ENV` 를 반드시 설정하세요.** 미설정 시 LOCAL 로
-> 간주되어 서비스 base URL 에 localhost 가 등록될 수 있습니다.
+> 간주되어 서비스 base URL 검증이 생략되고 localhost 주소가 그대로 등록됩니다.
+> 다만 **이미 localhost 로 등록된 상태에서 갑자기 DEV/PROD 로 바꾸면** 해당 서비스들이
+> `Skipping bootstrap of service` 로 빠져 포털에서 사라집니다. 순서를 지키세요:
+> ① `COUNSELMAN_BASE_URL` / `CANCER_TREATMENT_BASE_URL` 을 실제 도메인으로 먼저 채운다
+> → ② 그다음 `PLATFORM_RUNTIME_ENV` 를 설정한다.
+
+## 🔴 운영(prod) 배포 전 필수 점검
+
+**변경 전 `application-prod.properties` 는 DB 접속정보를 파일에 하드코딩하고 있었습니다.**
+즉 운영 csm 은 지금까지 `SPRING_DATASOURCE_*` 를 **한 번도 주입받은 적이 없습니다.**
+같은 이유로 `LOGIN_AES_KEY`, `KAKAO_CLIENT_*`, `SPRING_MAIL_PASSWORD`, `BIZPPURIO_PROD_*`
+도 없을 가능성이 높습니다.
+
+**이 상태로 신규 WAR 를 배포하면 다음 배포 시점에 csm 이 죽습니다.**
+(dev 에서 실제로 발생했고, `setenv.sh` 주입으로 복구했습니다.)
+
+배포 **전에** 아래를 확인하세요.
+
+```bash
+# 현재 Tomcat 프로세스가 실제로 들고 있는 키 (값은 출력되지 않는다)
+sudo tr '\0' '\n' < /proc/$(pgrep -f tomcat | head -1)/environ \
+  | grep -oE '^(SPRING_DATASOURCE_[A-Z]+|LOGIN_AES_KEY|KAKAO_CLIENT_[A-Z]+|SPRING_MAIL_PASSWORD|BIZPPURIO_PROD_[A-Z]+|COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET|SPRING_PROFILES_ACTIVE)=' \
+  | sort -u
+```
+
+아래 12개가 모두 나와야 합니다. 하나라도 빠지면 **배포하지 말고 먼저 `setenv.sh` 를 채우세요.**
+
+```
+SPRING_PROFILES_ACTIVE
+SPRING_DATASOURCE_URL / _USERNAME / _PASSWORD
+LOGIN_AES_KEY
+COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET
+SPRING_MAIL_PASSWORD
+KAKAO_CLIENT_ID / KAKAO_CLIENT_SECRET
+BIZPPURIO_PROD_ACCOUNT / _USERNAME / _PASSWORD
+```
+
+mediplat·cancer-treatment 도 동일하게 확인합니다.
+
+```bash
+for u in mediplat-next cancer-treatment-next; do
+  echo "=== $u"; systemctl show "$u" -p EnvironmentFiles --no-pager
+done
+```
+
+> mediplat 은 `PLATFORM_ADMIN_PASSWORD` 가 **필수**입니다(없으면 크래시 루프).
+> cancer-treatment 는 `COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET` 이 필수입니다.
+
+## 배포 검증 — Tomcat hot-deploy 는 조용히 실패한다
+
+csm 은 WAR 를 교체하면 Tomcat 이 재시작 없이 hot-deploy 합니다. **이때 Spring 컨텍스트가
+죽어도 `Deployment ... has finished` 는 정상적으로 찍힙니다.** 배포 로그만 보고 성공으로
+판단하면 안 됩니다.
+
+실제 사례: 환경변수 미주입 상태에서 신규 WAR 가 hot-deploy 되어 컨텍스트가
+`Could not resolve placeholder 'LOGIN_AES_KEY'` 로 실패했는데, 배포 로그에는
+`finished in [15,960] ms` 만 남았습니다.
+
+WAR 교체 후 아래 3가지를 **모두** 확인하세요.
+
+```bash
+# ① 응답 확인 — 200/302 여야 한다. 404 면 컨텍스트가 안 올라온 것이다.
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/csm/login
+```
+
+```bash
+# ② 재기동 이후 구간에 오류가 없어야 한다.
+sudo tail -300 /usr/local/tomcat10/logs/catalina.out \
+  | grep -iE "SEVERE|Could not resolve placeholder|startup failed|Server startup in"
+```
+
+```bash
+# ③ 실제로 새 빌드가 서비스 중인지 — build.time 이 방금 빌드 시각이어야 한다.
+sudo cat /usr/local/tomcat10/webapps/csm/WEB-INF/classes/META-INF/build-info.properties
+```
+
+> ②에서 `Caused by:` 줄은 스택트레이스 연속 줄이라 **타임스탬프가 없습니다.** `grep` 만
+> 걸면 1년 전 오류와 방금 오류를 구분할 수 없으니, 반드시 `tail` 로 구간을 좁혀서 보세요.
 
 ## 일상 사용 (작업자)
 

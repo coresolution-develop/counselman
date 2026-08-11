@@ -108,7 +108,36 @@ redirects `/links` to csm):
   via the DB-backed remember-me token, so an in-memory session store is fine.
 - **mediplat:** still redirects `/links` to csm's `/csm/links`; unchanged. Only
   repoint it at cutover when csm's in-app hub is retired.
-- **Ports:** 8081 csm · 8082 mediplat · 8083 cancer-treatment ·
-  **8084 ResvHub (별도 리포지토리)** · 8085/18085 links — no collision.
-  이전 판에는 8084가 `sms`로 적혀 있었으나 잘못된 배정이다. 8084는 ResvHub가 점유 중이며,
-  `sms` 앱은 미사용·미배포 상태다(랜덤 포트로 고정). `sms/README.md` 참고.
+- **Ports:** 아래 표 참고. `links`는 dev 8085 / prod 18085 권장으로 충돌 없음.
+
+### 포트 배정 — 문서보다 서버 실측을 신뢰할 것
+
+> 이전 판에는 `8081 csm · 8082 mediplat · 8083 cancer-treatment · 8084 sms` 로 적혀
+> 있었으나 **어느 환경과도 일치하지 않았다.** 특히 8084를 `sms`로 오기한 탓에, 실제로는
+> ResvHub가 쓰고 있는 포트를 비어 있다고 판단할 뻔했다. 배포·연동 작업 전에는 반드시
+> 서버에서 실측하라.
+
+```bash
+sudo ss -lntp | grep java
+```
+
+**dev (2026-08-11 실측)**
+
+| 포트 | 서비스 | 비고 |
+|---|---|---|
+| 8080 | **csm** | Tomcat 10.1 (`tomcat.service`). 8005 = shutdown 포트 |
+| ? | mediplat | `mediplat.service` — 실측 시점에 크래시 루프라 **포트 미확인** |
+| 18083 | cancer-treatment | `cancer-treatment.service` |
+| **8084** | **ResvHub** | `resvhub.service` — **별도 리포지토리** |
+| 8085 | links | `links.service` |
+| 9090 / 8185 | 미상 | 이 리포지토리 소속 아님 |
+
+**prod (미실측 — 배포 전 확인 필요)**
+
+| 포트 | 서비스 | 근거 |
+|---|---|---|
+| 18082 | mediplat | `docs/handoff-2026-08-09.md` (`mediplat-next`) |
+| — | csm / cancer-treatment / links / ResvHub | **확인되지 않음** |
+
+**`sms` 앱은 어느 환경에도 배포되어 있지 않다.** 8084를 쓰지 않도록 기본 포트를
+`0`(랜덤)으로 고정해 두었다. 상세는 [`sms/README.md`](../sms/README.md).
