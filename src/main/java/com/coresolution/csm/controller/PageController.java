@@ -3583,33 +3583,27 @@ public class PageController {
                 : ResponseEntity.status(HttpStatus.NOT_FOUND).body("상용구를 찾을 수 없습니다.");
     }
 
+    /**
+     * 폐기된 레거시 발송 엔드포인트. 410 Gone만 반환한다.
+     *
+     * <p>과금 우회 경로였다. 세션 기관(inst)을 확인하지 않고, refkey를 만들지 않으며,
+     * {@code transmission_history_<inst>}에 이력을 전혀 남기지 않은 채 게이트웨이를 직접
+     * 호출했다. 선불 충전 과금이 붙으면 이 경로로 나간 문자는 차감도 추적도 되지 않는다.
+     *
+     * <p>전 소스에서 호출자를 찾지 못해 차단만 하고 코드는 남겨둔다.
+     * 아래 로그가 2주간 한 건도 남지 않으면 메서드째 제거한다.
+     * 검색 키: {@code [sms/sendSMS][gone]}
+     */
     @PostMapping(value = { "sms/sendSMS", "/sms/sendSMS" }, produces = "text/plain;charset=UTF-8")
     @ResponseBody
-    public ResponseEntity<?> sendSmsByLegacyContract(@RequestBody Map<String, Object> payload) {
-        try {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> content = (Map<String, Object>) payload.get("content");
-            String type = Optional.ofNullable(payload.get("type")).map(String::valueOf).orElse("")
-                    .toUpperCase(Locale.ROOT);
-            @SuppressWarnings("unchecked")
-            Map<String, Object> inner = content == null ? null
-                    : (Map<String, Object>) content.get(type.toLowerCase(Locale.ROOT));
-            if (inner == null) {
-                return ResponseEntity.badRequest().body("content." + type.toLowerCase(Locale.ROOT) + " 파라미터가 없습니다.");
-            }
-
-            Map<String, Object> response = externalSmsGatewayService.send(payload);
-            String raw = String.valueOf(response.getOrDefault("_raw", response.toString()));
-            String desc = Optional.ofNullable(response.get("description")).map(String::valueOf).orElse("");
-            if ("success".equalsIgnoreCase(desc)) {
-                return ResponseEntity.ok(raw);
-            }
-            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(raw);
-        } catch (Exception e) {
-            log.error("[sms/sendSMS] send fail", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("문자 전송 중 오류 발생: " + e.getMessage());
-        }
+    public ResponseEntity<?> sendSmsByLegacyContract(HttpServletRequest request) {
+        log.warn("[sms/sendSMS][gone] 폐기된 발송 엔드포인트 호출됨. ip={}, xff={}, referer={}, userAgent={}",
+                request.getRemoteAddr(),
+                Optional.ofNullable(request.getHeader("X-Forwarded-For")).orElse("-"),
+                Optional.ofNullable(request.getHeader("Referer")).orElse("-"),
+                Optional.ofNullable(request.getHeader("User-Agent")).orElse("-"));
+        return ResponseEntity.status(HttpStatus.GONE)
+                .body("이 엔드포인트는 더 이상 사용되지 않습니다. /csm/api/external/sendSMS 를 사용하세요.");
     }
 
     @PostMapping(value = { "api/external/SMSRequest",
