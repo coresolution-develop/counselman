@@ -36,10 +36,20 @@ out/
 ### VS Code ###
 .vscode/
 .DS_Store
-.env.local
-.env.prod
-mediplat/.env.local
-mediplat/.env.prod
+
+### Secrets — .env.example 만 커밋한다 ###
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+*-secret.properties
+**/*-secret.properties
+*-secrets.properties
+**/*-secrets.properties
+application-secret*.properties
+**/application-secret*.properties
 
 ### MediPlat runtime data ###
 mediplat/mediplat/data/

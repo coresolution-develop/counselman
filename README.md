@@ -74,26 +74,50 @@ git pull origin main
 - `platform.counselman.login.aes-key`
 - `platform.counselman.sso-shared-secret`
 
-## 4. 권장 환경변수
+## 4. 환경변수 (필수)
 
-필수는 아니지만, PC별 환경 차이를 줄이려면 아래 값을 환경변수로 맞추는 것을 권장합니다.
+**properties 파일에는 더 이상 비밀값 기본값이 없습니다.** 아래 값이 비어 있으면 애플리케이션이
+기동 단계에서 실패합니다(의도된 fail-fast 동작).
+
+설정 방법:
 
 ```bash
-export SPRING_PROFILES_ACTIVE=local
-export LOGIN_AES_KEY='This is key!!!!!'
-export MEDIPLAT_SSO_SHARED_SECRET='change-me'
-export COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET='change-me'
-export MEDIPLAT_PLATFORM_BASE_URL='http://localhost:8082'
-export COUNSELMAN_BASE_URL='http://localhost:8081/csm'
-export PLATFORM_RUNTIME_ENV='LOCAL'
+cp .env.example .env.local
+# .env.local 을 열어 값을 채운다. 이 파일은 .gitignore 대상이다.
+./scripts/local-up.sh
+```
+
+`scripts/local-up.sh` 가 `.env.local` 을 자동으로 읽고, 누락된 키가 있으면
+어떤 키가 없는지 먼저 알려준 뒤 중단합니다.
+
+전체 키 목록과 설명은 각 앱의 템플릿을 참고하세요.
+
+| 앱 | 템플릿 |
+|---|---|
+| CounselMan (csm) | [`.env.example`](.env.example) |
+| MediPlat | [`mediplat/.env.example`](mediplat/.env.example) |
+| sms (미사용) | [`sms/.env.example`](sms/.env.example) |
+
+로컬에서 최소한으로 필요한 키:
+
+```
+SPRING_PROFILES_ACTIVE=local
+DEV_DB_PASSWORD=
+LOGIN_AES_KEY=
+SPRING_MAIL_PASSWORD=
+KAKAO_CLIENT_ID=
+KAKAO_CLIENT_SECRET=
+COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET=
+PLATFORM_ADMIN_PASSWORD=
 ```
 
 주의:
 
-- `MEDIPLAT_SSO_SHARED_SECRET`
-- `COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET`
-
-위 두 값은 동일해야 합니다.
+- `MEDIPLAT_SSO_SHARED_SECRET` 과 `COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET` 는 동일해야 합니다.
+  (`MEDIPLAT_SSO_SHARED_SECRET` 미설정 시 후자로 폴백하므로 보통 후자 하나만 채우면 됩니다.)
+- `LOGIN_AES_KEY` 는 AES-128 키로 **정확히 16자**여야 합니다.
+- 서버 환경에서는 `.env` 파일이 아니라 systemd `EnvironmentFile` 로 주입합니다.
+  자세한 내용은 [`scripts/systemd/README.md`](scripts/systemd/README.md) 를 참고하세요.
 
 ## 5. 포트 점유 확인
 
@@ -243,6 +267,84 @@ PROD 배포 묶음:
 - `mediplat`를 `systemd`로 운영할 때는 `SPRING_DATASOURCE_*`와 `PLATFORM_COUNSELMAN_DATASOURCE_*`가 모두 같은 `csm` MySQL을 가리키도록 맞춰야 합니다. `SPRING_DATASOURCE_URL`이 H2로 남아 있으면 로컬과 다른 기관/권한 데이터가 보일 수 있습니다.
 - 서버용 설정(`nginx`, `systemd`, `Tomcat`, `SSL 인증서`)은 로컬 실행에 포함되지 않습니다.
 - 다른 PC에서 실행 시에도 DB 접속 정보와 SSO secret 값만 맞으면 동일하게 사용할 수 있습니다.
+
+## 13-A. 보안 — 시크릿 관리와 회수(rotation) 대상
+
+### 현재 상태
+
+properties 파일에서 평문 비밀값을 모두 제거하고 환경변수로 전환했습니다. 값은
+로컬은 `.env.local`, 서버는 systemd `EnvironmentFile` 로 주입합니다.
+
+### ⚠️ 아직 끝나지 않았습니다 — 사람이 해야 할 일
+
+**파일에서 값을 지워도 git 이력에 남은 과거 비밀번호는 그대로입니다.**
+리포지토리 접근 권한을 가진 사람은 `git log -p` 로 전부 복원할 수 있습니다.
+따라서 아래 자격증명은 **모두 실제로 교체해야** 이 작업이 완료됩니다.
+
+| # | 대상 | 교체 난이도 | 비고 |
+|---|---|---|---|
+| 1 | **csdev DB 비밀번호** | 무중단 가능 | 아래 절차 참고 |
+| 2 | **SSO 공유 시크릿** | **점검창 필요** | 무중단 수단 없음 |
+| 3 | Kakao client-secret | 무중단 가능 | 개발자센터에서 재발급 후 `KAKAO_CLIENT_SECRET` 갱신 |
+| 4 | 메일 계정 비밀번호 | 무중단 가능 | Gmail 앱 비밀번호 재발급 후 `SPRING_MAIL_PASSWORD` 갱신 |
+| 5 | 플랫폼 관리자 비밀번호 | 무중단 가능 | `PLATFORM_ADMIN_PASSWORD` 변경 후 MediPlat 재기동(계정이 갱신됨) |
+
+#### 1) csdev DB 비밀번호 — MySQL 8 이중 비밀번호로 무중단 교체
+
+`csdev` 계정은 **csm, mediplat(DataSource 2개), ResvHub** 가 공유합니다.
+한 번에 바꾸면 갱신되지 않은 앱이 즉시 접속 실패하므로, 구/신 비밀번호를 함께
+받아주는 기간을 두고 순차 갱신합니다.
+
+```sql
+-- ① 새 비밀번호 설정 + 기존 비밀번호도 당분간 유효하게 유지
+ALTER USER 'csdev'@'%' IDENTIFIED BY '<새비밀번호>' RETAIN CURRENT PASSWORD;
+```
+
+```bash
+# ② 앱을 하나씩 갱신하고 재기동 (각 단계마다 정상 동작 확인 후 다음으로)
+#    - csm            : /etc/default/... 의 SPRING_DATASOURCE_PASSWORD
+#    - mediplat       : MEDIPLAT_DATASOURCE_PASSWORD + PLATFORM_COUNSELMAN_DATASOURCE_PASSWORD (2개)
+#    - ResvHub        : 별도 리포지토리. 담당자 확인 필요
+```
+
+```sql
+-- ③ 전 앱이 새 비밀번호로 붙은 것을 확인한 뒤에만 실행
+SELECT user, host, db, COUNT(*) FROM information_schema.processlist
+ WHERE user = 'csdev' GROUP BY user, host, db;
+
+ALTER USER 'csdev'@'%' DISCARD OLD PASSWORD;
+```
+
+> mediplat 은 DataSource 가 2개(`mediplat-store`, `mediplat-counselman`)라 환경변수도
+> 2개를 함께 바꿔야 합니다. 하나만 바꾸면 포털은 뜨지만 CounselMan 계정 로그인이 깨집니다.
+
+#### 2) SSO 공유 시크릿 — 무중단 교체 수단 없음
+
+`COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET` 는 발급자(mediplat)와 검증자들이 **같은 값**을
+가져야만 서명이 맞습니다. 구/신 키를 동시에 받아주는 로직이 없으므로 **점검창을 잡고
+전 앱을 동시에 갱신·재기동**해야 합니다.
+
+대상: **csm**, **mediplat**, **ResvHub**(별도 리포지토리), 그리고 `mp_service` 에 등록된
+서비스들 — `FORMFLOW`, `COUNSELMAN`, `ROOM_BOARD`, `SEMINAR_ROOM`, `CANCER_TREATMENT`,
+`RESVHUB`, `FLEET`.
+
+> 교체 전에 각 서비스가 이 환경변수를 실제로 쓰는지 확인하세요.
+> `for p in $(pgrep -f 'java -jar'); do sudo tr '\0' '\n' < /proc/$p/environ | grep SSO_SHARED; done`
+
+#### git 이력 정리
+
+`git filter-repo` 등으로 과거 커밋에서 비밀값을 지우는 작업은 **이 문서에서 수행하지
+않습니다.** 전 개발자의 클론을 무효화하고 CI/배포 이력에 영향을 주므로 운영 판단이
+필요합니다. 위 1~5번 교체를 먼저 끝내면 이력에 남은 값은 무력화되므로, 이력 정리는
+그다음에 별도로 결정하십시오.
+
+### 후속 과제
+
+- **cancer-treatment 앱**의 `cancer-treatment.sso.shared-secret` 기본값 `change-me` 는
+  이번 범위에 포함하지 않았습니다. 실제 비밀값은 아니지만 동일하게 정리 대상입니다.
+- **SSO `expires` 상한 검증**은 csm(`MediplatSsoService`)에만 추가했습니다.
+  동일 결함이 **ResvHub 및 그 외 SSO 수신 앱**에도 있으나 별도 리포지토리이므로
+  각 리포에서 같은 검증을 추가해야 합니다.
 
 ## 14. 작업 현황 정리 (GitHub push + 로컬 반영분)
 

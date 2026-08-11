@@ -40,7 +40,8 @@ init_local_defaults() {
   export DEV_DB_PORT="${DEV_DB_PORT:-3306}"
   export DEV_DB_NAME="${DEV_DB_NAME:-csm}"
   export DEV_DB_USERNAME="${DEV_DB_USERNAME:-csdev}"
-  export DEV_DB_PASSWORD="${DEV_DB_PASSWORD:-Core0220!_!@@}"
+  # 비밀번호 기본값은 두지 않는다. .env.local(gitignore 대상)에 DEV_DB_PASSWORD를 정의할 것.
+  export DEV_DB_PASSWORD="${DEV_DB_PASSWORD:-}"
 
   # 로컬 실행 시에도 기본 DB는 DEV DB를 사용한다. 필요하면 SPRING_DATASOURCE_*로 명시 오버라이드한다.
   export SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL:-jdbc:mysql://${DEV_DB_HOST}:${DEV_DB_PORT}/${DEV_DB_NAME}?serverTimezone=Asia/Seoul&useSSL=false&characterEncoding=UTF-8&allowPublicKeyRetrieval=true}"
@@ -66,6 +67,46 @@ init_local_defaults() {
   # OPENAI_API_KEY가 있으면 로컬 MediPlat 뉴스레터 AI 추천을 자동 활성화
   if [[ -n "${OPENAI_API_KEY:-}" ]]; then
     export MEDIPLAT_NEWSLETTER_AI_ENABLED="${MEDIPLAT_NEWSLETTER_AI_ENABLED:-true}"
+  fi
+}
+
+# 시크릿 평문 기본값을 properties에서 제거했으므로, 누락 시 Spring 스택트레이스 대신
+# 어떤 키가 없는지 먼저 알려준다. 값은 .env.local 에 정의한다(.env.example 참고).
+require_local_env() {
+  local missing=()
+  local key
+  for key in \
+    DEV_DB_PASSWORD \
+    LOGIN_AES_KEY \
+    SPRING_MAIL_PASSWORD \
+    KAKAO_CLIENT_ID \
+    KAKAO_CLIENT_SECRET \
+    COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET \
+    PLATFORM_ADMIN_PASSWORD
+  do
+    if [[ -z "${!key:-}" ]]; then
+      missing+=("${key}")
+    fi
+  done
+
+  # dev/prod 프로파일에서만 Bizppurio 프로퍼티가 로드된다(local 프로파일엔 없음).
+  case "${SPRING_PROFILES_ACTIVE}" in
+    prod*) local prefix="BIZPPURIO_PROD" ;;
+    dev*)  local prefix="BIZPPURIO_DEV" ;;
+    *)     local prefix="" ;;
+  esac
+  if [[ -n "${prefix}" ]]; then
+    for key in "${prefix}_ACCOUNT" "${prefix}_USERNAME" "${prefix}_PASSWORD"; do
+      if [[ -z "${!key:-}" ]]; then
+        missing+=("${key}")
+      fi
+    done
+  fi
+
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    echo "[FAIL] 다음 환경변수가 비어 있습니다: ${missing[*]}" >&2
+    echo "       ${ROOT_DIR}/.env.local 에 정의하세요. 키 목록은 .env.example 참고." >&2
+    exit 2
   fi
 }
 
@@ -200,6 +241,7 @@ trap cleanup EXIT INT TERM
 ensure_java17
 load_local_env
 init_local_defaults
+require_local_env
 kill_port "${CSM_PORT}" "csm"
 kill_port "${MEDIPLAT_PORT}" "mediplat"
 kill_port "${CANCER_TREATMENT_PORT}" "cancer-treatment"

@@ -21,11 +21,14 @@ cd /Users/leesumin/csm/mediplat
 
 ## 기본 관리자 계정
 
-- 기관코드: `core`
-- 아이디: `coreadmin`
-- 비밀번호: `123qwe`
+- 기관코드: `PLATFORM_ADMIN_INST_CODE` (기본 `core`)
+- 아이디: `PLATFORM_ADMIN_USERNAME` (기본 `coreadmin`)
+- 비밀번호: **`PLATFORM_ADMIN_PASSWORD` 환경변수 — 기본값 없음(필수)**
 
-운영 전에는 반드시 환경변수로 변경해야 합니다.
+MediPlat 은 기동할 때마다 이 계정을 생성/갱신합니다. `PLATFORM_ADMIN_PASSWORD` 가
+비어 있으면 기동에 실패합니다(의도된 fail-fast 동작).
+
+키 목록은 [`.env.example`](.env.example) 을 참고하세요.
 
 일반 기관 사용자는 `MediPlat` 로컬 계정이 아니라 `CounselMan` 실제 계정으로 로그인합니다.
 

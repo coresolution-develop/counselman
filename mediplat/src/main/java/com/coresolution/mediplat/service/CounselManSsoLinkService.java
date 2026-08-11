@@ -29,7 +29,7 @@ public class CounselManSsoLinkService {
     @Value("${platform.bootstrap.counselman-base-url:http://localhost:8081/csm}")
     private String configuredCounselManBaseUrl;
 
-    @Value("${platform.counselman.sso-shared-secret:change-me}")
+    @Value("${platform.counselman.sso-shared-secret}")
     private String sharedSecret;
 
     @Value("${platform.counselman.sso-expire-seconds:60}")

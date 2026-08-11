@@ -73,6 +73,74 @@ sudo systemctl enable --now nightly-deploy.timer
 systemctl list-timers nightly-deploy.timer
 ```
 
+## 시크릿 주입 (EnvironmentFile) — 필수
+
+properties 파일에서 평문 비밀값을 제거했습니다. **아래 값이 없으면 앱이 기동에 실패합니다.**
+값은 systemd `EnvironmentFile` 로 주입하고, 파일 권한은 반드시 `600` 으로 둡니다.
+
+전체 키 목록은 리포지토리의 `.env.example`, `mediplat/.env.example` 을 참고하세요.
+
+```bash
+# ── csm (Tomcat WAR) ─────────────────────────────────────────────────────
+# Tomcat 유닛에서 읽도록 설정합니다. (유닛 파일에 EnvironmentFile=-/etc/default/csm-next 추가)
+sudo tee /etc/default/csm-next >/dev/null <<'EOF'
+SPRING_PROFILES_ACTIVE=prod
+SPRING_DATASOURCE_URL=jdbc:mysql://<prod-db-host>:3306/csm?serverTimezone=Asia/Seoul&useSSL=false&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+SPRING_DATASOURCE_USERNAME=<user>
+SPRING_DATASOURCE_PASSWORD=<pass>
+LOGIN_AES_KEY=<정확히 16자>
+COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET=<전 서비스 공유값>
+SPRING_MAIL_PASSWORD=<gmail 앱 비밀번호>
+KAKAO_CLIENT_ID=<kakao app id>
+KAKAO_CLIENT_SECRET=<kakao app secret>
+BIZPPURIO_PROD_ACCOUNT=<account>
+BIZPPURIO_PROD_USERNAME=<username>
+BIZPPURIO_PROD_PASSWORD=<password>
+CSM_BASE_URL=https://<prod-host>/csm
+EOF
+sudo chmod 600 /etc/default/csm-next
+
+# ── mediplat ─────────────────────────────────────────────────────────────
+sudo tee /etc/default/mediplat-next >/dev/null <<'EOF'
+PLATFORM_RUNTIME_ENV=PROD
+SPRING_DATASOURCE_URL=jdbc:mysql://<prod-db-host>:3306/csm?serverTimezone=Asia/Seoul&useSSL=false&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+SPRING_DATASOURCE_USERNAME=<user>
+SPRING_DATASOURCE_PASSWORD=<pass>
+# DataSource가 2개다. 아래를 생략하면 위 spring.datasource.* 를 재사용한다.
+# PLATFORM_COUNSELMAN_DATASOURCE_PASSWORD=<pass>
+LOGIN_AES_KEY=<csm과 동일한 16자>
+COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET=<csm과 동일한 값>
+PLATFORM_ADMIN_PASSWORD=<플랫폼 관리자 비밀번호>
+COUNSELMAN_BASE_URL=https://<prod-host>/csm
+CANCER_TREATMENT_BASE_URL=https://<prod-host>/cancer-treatment
+EOF
+sudo chmod 600 /etc/default/mediplat-next
+```
+
+유닛 파일에 아래 지시자가 있는지 확인합니다. `-` 접두어는 "파일이 없어도 기동은 시도"를
+뜻하므로, 필수 시크릿을 쓰는 유닛에서는 접두어 없이 두어 파일 누락을 즉시 드러내는 편이
+안전합니다.
+
+```ini
+[Service]
+EnvironmentFile=/etc/default/mediplat-next
+```
+
+적용 후:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart mediplat-next
+sudo journalctl -u mediplat-next -n 50 --no-pager
+```
+
+> **기동 실패 시 확인할 로그**
+> `Could not resolve placeholder 'SPRING_DATASOURCE_PASSWORD'` 같은 메시지가 보이면
+> 해당 키가 EnvironmentFile 에 없다는 뜻입니다. 값을 채우고 재기동하세요.
+
+> **DEV/PROD 에서 `PLATFORM_RUNTIME_ENV` 를 반드시 설정하세요.** 미설정 시 LOCAL 로
+> 간주되어 서비스 base URL 에 localhost 가 등록될 수 있습니다.
+
 ## 일상 사용 (작업자)
 
 ```bash
