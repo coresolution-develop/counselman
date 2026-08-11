@@ -14,6 +14,12 @@
   별도 Spring Boot + JAR 구조
   로컬 기본 주소: `http://localhost:8082`
 
+- `sms` — **미사용 모듈. 기동 금지**
+  독립 문자 발송 앱이었으나 배포·포털 노출 이력이 없어 동결했습니다.
+  **포트 8084는 ResvHub(예약 시스템, 별도 리포지토리)가 사용 중이므로 재기동하면 안 됩니다.**
+  소스는 보존되어 있습니다. 상세는 [`sms/README.md`](sms/README.md),
+  복원 절차는 [`docs/sms-portal-restore-checklist.md`](docs/sms-portal-restore-checklist.md).
+
 ## 빠른 시작 (두 서버 동시 실행)
 
 `CounselMan`과 `MediPlat`를 동시에 시작하려면 프로젝트 루트에서 아래 명령을 실행합니다.

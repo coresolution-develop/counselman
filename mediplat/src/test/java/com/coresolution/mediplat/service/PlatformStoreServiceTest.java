@@ -374,19 +374,34 @@ class PlatformStoreServiceTest {
         ReflectionTestUtils.setField(storeService, "bootstrapAdminUsername", "platformadmin");
         ReflectionTestUtils.setField(storeService, "bootstrapAdminPassword", "ChangeMe123!");
         ReflectionTestUtils.setField(storeService, "bootstrapAdminName", "Platform Admin");
-        // counselman/cancer have valid DEV URLs; sms is left at the localhost default
+        // counselman has a valid DEV URL; cancer-treatment is left at the localhost default
         ReflectionTestUtils.setField(storeService, "bootstrapCounselmanBaseUrl", "https://dev.sosyge.net/csm");
-        ReflectionTestUtils.setField(storeService, "bootstrapCancerTreatmentBaseUrl", "https://dev.sosyge.net/cancer-treatment");
-        ReflectionTestUtils.setField(storeService, "bootstrapSmsBaseUrl", "http://localhost:8084/sms");
+        ReflectionTestUtils.setField(storeService, "bootstrapCancerTreatmentBaseUrl", "http://localhost:8083/cancer-treatment");
         ReflectionTestUtils.setField(storeService, "configuredRuntimeEnv", "DEV");
         ReflectionTestUtils.setField(storeService, "activeProfiles", "dev");
 
-        // Before the fix this threw "DEV URL에는 localhost를 사용할 수 없습니다." and aborted boot.
+        // Before 7541d45 this threw "DEV URL에는 localhost를 사용할 수 없습니다." during
+        // bootstrapDefaults, aborting @PostConstruct and taking the whole portal down (502).
         assertDoesNotThrow(storeService::initialize);
 
-        // Valid services are still registered; only the misconfigured SMS service is skipped.
+        // Only the misconfigured service is skipped; every other service still registers.
+        assertNull(storeService.findService("CANCER_TREATMENT"));
         assertNotNull(storeService.findService("COUNSELMAN"));
-        assertNotNull(storeService.findService("CANCER_TREATMENT"));
+        assertNotNull(storeService.findService("ROOM_BOARD"));
+        assertNotNull(storeService.findService("FLEET"));
+    }
+
+    @Test
+    void bootstrap_doesNotRegisterSmsService() {
+        CounselManAccountService counselManAccountService = org.mockito.Mockito.mock(CounselManAccountService.class);
+        when(counselManAccountService.listInstitutions()).thenReturn(List.of());
+        when(counselManAccountService.isRoomBoardEnabled(anyString())).thenReturn(true);
+
+        PlatformStoreService storeService = newInitializedStoreService(counselManAccountService);
+
+        // sms 앱은 폐기 대상이고 포트 8084는 ResvHub가 점유 중이다. 포털에 다시 노출되면
+        // 브라우저가 8084로 이동해 SSO 서명이 엉뚱한 앱의 액세스 로그에 남는다.
+        // 복원 시에는 docs/sms-portal-restore-checklist.md 절차를 따를 것.
         assertNull(storeService.findService("SMS"));
     }
 

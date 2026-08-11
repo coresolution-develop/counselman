@@ -136,20 +136,9 @@ tasks.register('cancerTreatmentDevJar', GradleBuild) {
 	tasks = ['devJar']
 }
 
-tasks.register('smsDevJar', GradleBuild) {
-	group = 'build'
-	description = 'Build SMS JAR for DEV deployment'
-	dir = file('sms')
-	tasks = ['devJar']
-}
-
-tasks.register('smsProdJar', GradleBuild) {
-	group = 'build'
-	description = 'Build SMS JAR for PROD deployment'
-	dir = file('sms')
-	tasks = ['prodJar']
-}
-
+// sms 모듈은 빌드 대상에서 제외했다(미사용 앱, 배포 안 함).
+// 포트 8084는 ResvHub가 점유 중이라 실수로 기동하면 예약 시스템과 충돌한다.
+// 소스는 sms/ 에 그대로 남아 있다. 복원 절차: docs/sms-portal-restore-checklist.md
 tasks.register('linksDevJar', GradleBuild) {
 	group = 'build'
 	description = 'Build Links (hub) JAR for DEV deployment'
@@ -165,9 +154,9 @@ tasks.register('linksProdJar', GradleBuild) {
 }
 
 tasks.register('packageDevDeploy') {
-	dependsOn 'devWar', 'mediplatDevJar', 'cancerTreatmentDevJar', 'smsDevJar', 'linksDevJar'
+	dependsOn 'devWar', 'mediplatDevJar', 'cancerTreatmentDevJar', 'linksDevJar'
 	group = 'build'
-	description = 'Build CSM DEV WAR, MediPlat DEV JAR, Cancer Treatment DEV JAR, SMS DEV JAR, and Links DEV JAR, then collect them in one folder'
+	description = 'Build CSM DEV WAR, MediPlat DEV JAR, Cancer Treatment DEV JAR, and Links DEV JAR, then collect them in one folder'
 
 	doLast {
 		def deployDir = file("$buildDir/deploy/dev")
@@ -178,7 +167,6 @@ tasks.register('packageDevDeploy') {
 			from "$buildDir/libs/csm-dev.war"
 			from "${projectDir}/mediplat/build/libs/mediplat-dev.jar"
 			from "${projectDir}/cancer-treatment/build/libs/cancer-treatment-dev.jar"
-			from "${projectDir}/sms/build/libs/sms-dev.jar"
 			from "${projectDir}/links/build/libs/links-dev.jar"
 			into deployDir
 		}
@@ -187,15 +175,14 @@ tasks.register('packageDevDeploy') {
 		println "- ${deployDir}/csm-dev.war"
 		println "- ${deployDir}/mediplat-dev.jar"
 		println "- ${deployDir}/cancer-treatment-dev.jar"
-		println "- ${deployDir}/sms-dev.jar"
 		println "- ${deployDir}/links-dev.jar"
 	}
 }
 
 tasks.register('packageProdDeploy') {
-	dependsOn 'prodWar', 'mediplatProdJar', 'smsProdJar', 'linksProdJar'
+	dependsOn 'prodWar', 'mediplatProdJar', 'linksProdJar'
 	group = 'build'
-	description = 'Build CSM PROD WAR, MediPlat PROD JAR, SMS PROD JAR, and Links PROD JAR, then collect them in one folder'
+	description = 'Build CSM PROD WAR, MediPlat PROD JAR, and Links PROD JAR, then collect them in one folder'
 
 	doLast {
 		def deployDir = file("$buildDir/deploy/prod")
@@ -205,7 +192,6 @@ tasks.register('packageProdDeploy') {
 		copy {
 			from "$buildDir/libs/csm-prod.war"
 			from "${projectDir}/mediplat/build/libs/mediplat-prod.jar"
-			from "${projectDir}/sms/build/libs/sms-prod.jar"
 			from "${projectDir}/links/build/libs/links-prod.jar"
 			into deployDir
 		}
@@ -213,7 +199,6 @@ tasks.register('packageProdDeploy') {
 		println "PROD deploy bundle created: ${deployDir}"
 		println "- ${deployDir}/csm-prod.war"
 		println "- ${deployDir}/mediplat-prod.jar"
-		println "- ${deployDir}/sms-prod.jar"
 		println "- ${deployDir}/links-prod.jar"
 	}
 }

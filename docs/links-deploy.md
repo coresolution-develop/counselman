@@ -108,5 +108,7 @@ redirects `/links` to csm):
   via the DB-backed remember-me token, so an in-memory session store is fine.
 - **mediplat:** still redirects `/links` to csm's `/csm/links`; unchanged. Only
   repoint it at cutover when csm's in-app hub is retired.
-- **Ports:** 8081 csm · 8082 mediplat · 8083 cancer-treatment · 8084 sms ·
-  8085/18085 links — no collision.
+- **Ports:** 8081 csm · 8082 mediplat · 8083 cancer-treatment ·
+  **8084 ResvHub (별도 리포지토리)** · 8085/18085 links — no collision.
+  이전 판에는 8084가 `sms`로 적혀 있었으나 잘못된 배정이다. 8084는 ResvHub가 점유 중이며,
+  `sms` 앱은 미사용·미배포 상태다(랜덤 포트로 고정). `sms/README.md` 참고.

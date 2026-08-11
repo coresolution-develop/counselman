@@ -1,1 +1,6 @@
 rootProject.name = 'csm'
+
+// mediplat / cancer-treatment / sms / links 는 include 하지 않는다.
+// 각자 독립 Gradle 빌드이고, 루트에서는 build.gradle 의 GradleBuild 태스크로만 호출한다.
+// sms 는 미사용 앱이라 그 태스크마저 제거했다 — 루트에서 빌드되지 않는다.
+// 재도입 절차: docs/sms-portal-restore-checklist.md

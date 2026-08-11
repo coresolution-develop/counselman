@@ -48,6 +48,11 @@ public class PlatformStoreService {
     private static final String SERVICE_CODE_ROOM_BOARD = "ROOM_BOARD";
     private static final String SERVICE_CODE_SEMINAR_ROOM = "SEMINAR_ROOM";
     private static final String SERVICE_CODE_CANCER_TREATMENT = "CANCER_TREATMENT";
+    /**
+     * 현재 부트스트랩에서 등록하지 않는다(sms 앱 폐기). 결제 연동 후 문자 기능이 포털에
+     * 다시 등장할 예정이라 상수는 남겨 둔다. 복원 절차는 docs/sms-portal-restore-checklist.md 참고.
+     */
+    @SuppressWarnings("unused")
     private static final String SERVICE_CODE_SMS = "SMS";
     private static final String SERVICE_CODE_FLEET = "FLEET";
     private static final String INTEGRATION_CODE_ROOMBOARD_CSM_LINK = "ROOMBOARD_CSM_LINK";
@@ -81,9 +86,6 @@ public class PlatformStoreService {
 
     @Value("${platform.bootstrap.cancer-treatment-base-url:http://localhost:8083/cancer-treatment}")
     private String bootstrapCancerTreatmentBaseUrl;
-
-    @Value("${platform.bootstrap.sms-base-url:http://localhost:8084/sms}")
-    private String bootstrapSmsBaseUrl;
 
     @Value("${platform.runtime-env:}")
     private String configuredRuntimeEnv;
@@ -1277,9 +1279,6 @@ public class PlatformStoreService {
         String cancerLocalBaseUrl = ENV_LOCAL.equals(runtimeEnvCode) ? bootstrapCancerTreatmentBaseUrl : null;
         String cancerDevBaseUrl = ENV_DEV.equals(runtimeEnvCode) ? bootstrapCancerTreatmentBaseUrl : null;
         String cancerProdBaseUrl = ENV_PROD.equals(runtimeEnvCode) ? bootstrapCancerTreatmentBaseUrl : null;
-        String smsLocalBaseUrl = ENV_LOCAL.equals(runtimeEnvCode) ? bootstrapSmsBaseUrl : null;
-        String smsDevBaseUrl = ENV_DEV.equals(runtimeEnvCode) ? bootstrapSmsBaseUrl : null;
-        String smsProdBaseUrl = ENV_PROD.equals(runtimeEnvCode) ? bootstrapSmsBaseUrl : null;
         saveInstitution(bootstrapAdminInstCode, bootstrapAdminInstName, USE_Y);
         saveUser(
                 bootstrapAdminInstCode,
@@ -1340,19 +1339,9 @@ public class PlatformStoreService {
                 "암센터 치료 예약 및 치료상태 실시간 관리 서비스",
                 USE_Y,
                 4));
-        bootstrapService(SERVICE_CODE_SMS, () -> saveService(
-                SERVICE_CODE_SMS,
-                "문자/SMS",
-                bootstrapSmsBaseUrl,
-                smsLocalBaseUrl,
-                smsDevBaseUrl,
-                smsProdBaseUrl,
-                "/mediplat/sso/entry",
-                "/sms-send",
-                "/sms-send",
-                "문자(SMS/LMS/MMS) 발송 · 내역 · 비용 관리 서비스",
-                USE_Y,
-                5));
+        // SMS(문자) 서비스는 등록하지 않는다. sms 앱은 폐기 대상이고, 포트 8084는 ResvHub가
+        // 점유 중이라 base URL을 되살리면 브라우저가 엉뚱한 앱으로 이동한다.
+        // 결제 연동 후 복원 절차: docs/sms-portal-restore-checklist.md
         bootstrapService(SERVICE_CODE_FLEET, () -> saveService(
                 SERVICE_CODE_FLEET,
                 "차량운행관리",
@@ -1369,7 +1358,7 @@ public class PlatformStoreService {
         saveInstitutionServiceAccess(
                 bootstrapAdminInstCode,
                 List.of(DEFAULT_SERVICE_CODE, SERVICE_CODE_ROOM_BOARD, SERVICE_CODE_SEMINAR_ROOM, SERVICE_CODE_CANCER_TREATMENT,
-                        SERVICE_CODE_SMS, SERVICE_CODE_FLEET));
+                        SERVICE_CODE_FLEET));
 
         seedPlatformAdminServiceRoles();
     }
