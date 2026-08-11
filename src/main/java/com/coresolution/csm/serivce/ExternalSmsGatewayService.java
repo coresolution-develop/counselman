@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -51,6 +52,19 @@ public class ExternalSmsGatewayService {
 
     @Value("${sms.bizppurio.password:}")
     private String password;
+
+    /**
+     * 커넥션 수립 제한(ms). 짧게 잡아도 안전하다 — 연결조차 되지 않았다면 발송은 일어나지 않는다.
+     */
+    @Value("${sms.bizppurio.connect-timeout:5000}")
+    private int connectTimeoutMs;
+
+    /**
+     * 응답 대기 제한(ms). 이 값이 없으면 무한 대기가 되어 톰캣 워커 스레드가 묶인다.
+     * 발송 호출에서 이 타임아웃이 걸리면 접수 여부를 알 수 없다({@link BizppurioTimeoutException} 참고).
+     */
+    @Value("${sms.bizppurio.read-timeout:10000}")
+    private int readTimeoutMs;
 
     private volatile String token;
     private volatile Instant tokenExpiry;
@@ -139,7 +153,8 @@ public class ExternalSmsGatewayService {
         requestBody.put("content", Map.of(type, normalizedTyped));
 
         String bearer = getToken();
-        HttpResult result = postJson(messageUrl, requestBody, Map.of("Authorization", "Bearer " + bearer));
+        HttpResult result = postJson(messageUrl, requestBody, Map.of("Authorization", "Bearer " + bearer),
+                BizppurioTimeoutException.Phase.MESSAGE);
         Map<String, Object> body = parseBody(result.body);
         body.put("_http_status", result.status);
         body.put("_raw", result.body);
@@ -155,7 +170,8 @@ public class ExternalSmsGatewayService {
                     "Bizppurio credentials are not configured. Set sms.bizppurio.username/password.");
         }
         String basic = Base64.getEncoder().encodeToString((username + ":" + password).getBytes(StandardCharsets.UTF_8));
-        HttpResult result = postJson(tokenUrl, Map.of(), Map.of("Authorization", "Basic " + basic));
+        HttpResult result = postJson(tokenUrl, Map.of(), Map.of("Authorization", "Basic " + basic),
+                BizppurioTimeoutException.Phase.TOKEN);
         Map<String, Object> body = parseBody(result.body);
         String code = safeString(body.get("code"));
         String desc = safeString(body.get("description"));
@@ -177,35 +193,59 @@ public class ExternalSmsGatewayService {
         return token;
     }
 
-    private HttpResult postJson(String url, Map<String, Object> payload, Map<String, String> headers) throws Exception {
+    /**
+     * 타임아웃은 {@link BizppurioTimeoutException}으로 변환해 던진다. 일반 실패와 구분해야
+     * 호출자가 "명시적 실패"와 "결과 불명"을 다르게 처리할 수 있다.
+     *
+     * <p>여기서 재시도하지 않는다. 발송 호출이 타임아웃된 경우 비즈뿌리오가 이미 접수했을 수
+     * 있어 재요청하면 중복 발송된다.
+     */
+    private HttpResult postJson(
+            String url,
+            Map<String, Object> payload,
+            Map<String, String> headers,
+            BizppurioTimeoutException.Phase phase) throws Exception {
         HttpsURLConnection conn = (HttpsURLConnection) new URL(url).openConnection();
-        conn.setRequestMethod("POST");
-        conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-        conn.setRequestProperty("Accept-Charset", "UTF-8");
-        for (Map.Entry<String, String> e : headers.entrySet()) {
-            conn.setRequestProperty(e.getKey(), e.getValue());
-        }
-        conn.setDoOutput(true);
-        conn.setConnectTimeout(15000);
+        try {
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            conn.setRequestProperty("Accept-Charset", "UTF-8");
+            for (Map.Entry<String, String> e : headers.entrySet()) {
+                conn.setRequestProperty(e.getKey(), e.getValue());
+            }
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(connectTimeoutMs);
+            conn.setReadTimeout(readTimeoutMs);
 
-        String body = objectMapper.writeValueAsString(payload);
-        try (OutputStream os = conn.getOutputStream()) {
-            os.write(body.getBytes(StandardCharsets.UTF_8));
-        }
+            String body = objectMapper.writeValueAsString(payload);
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(body.getBytes(StandardCharsets.UTF_8));
+            }
 
-        int status = conn.getResponseCode();
-        InputStream is = (status >= 200 && status < 300) ? conn.getInputStream() : conn.getErrorStream();
-        StringBuilder sb = new StringBuilder();
-        if (is != null) {
-            try (BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = br.readLine()) != null) {
-                    sb.append(line);
+            int status = conn.getResponseCode();
+            InputStream is = (status >= 200 && status < 300) ? conn.getInputStream() : conn.getErrorStream();
+            StringBuilder sb = new StringBuilder();
+            if (is != null) {
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        sb.append(line);
+                    }
                 }
             }
+            return new HttpResult(status, sb.toString());
+        } catch (SocketTimeoutException e) {
+            BizppurioTimeoutException timeout =
+                    new BizppurioTimeoutException(phase, url, connectTimeoutMs, readTimeoutMs, e);
+            if (timeout.isDeliveryOutcomeUnknown()) {
+                log.error("[sms][timeout][outcome-unknown] {} — 재시도·즉시 환불 금지", timeout.getMessage());
+            } else {
+                log.error("[sms][timeout] {}", timeout.getMessage());
+            }
+            throw timeout;
+        } finally {
+            conn.disconnect();
         }
-        conn.disconnect();
-        return new HttpResult(status, sb.toString());
     }
 
     private Map<String, Object> parseBody(String json) {
