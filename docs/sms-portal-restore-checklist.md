@@ -1,8 +1,26 @@
 # 문자 기능 포털 복원 체크리스트
 
-> 작성: 2026-08-11 (Task 0-D)
+> 작성: 2026-08-11 (Task 0-D) · 갱신: 2026-08-11 (dev 배포 실측 반영)
 > 대상: 선불 충전 결제 연동 이후 "문자" 기능을 MediPlat 포털에 다시 노출할 때
-> 전제: 발송 실행은 **csm(8081)** 이 담당하고, 지갑·결제는 **mediplat(8082)** 에 둔다
+> 전제: 발송 실행은 **csm** 이 담당하고, 지갑·결제는 **mediplat** 에 둔다
+> (포트는 환경마다 다르다 — `docs/links-deploy.md` 참고)
+
+---
+
+## ⚠️ 먼저 읽을 것 — `mp_service` 는 코드가 아니라 운영자가 관리한다
+
+`PlatformStoreService.bootstrapDefaults()` 는 **기본 서비스의 씨앗만 심는다.** 실제 운영
+DB 에는 코드에 존재하지 않는 서비스가 관리자 화면을 통해 추가되어 있다.
+
+dev 실측(2026-08-11)에서 확인된 서비스: `MEDITOKS`, `TRAMS`, `AMB`, `BEAUDESK`,
+`RESVHUB`, `BEAUTYHUB` — 전부 부트스트랩 코드에 없다.
+
+여기서 두 가지가 따라온다.
+
+1. **코드에서 등록을 제거해도 기존 DB 행은 사라지지 않는다.** 부트스트랩이 더 이상
+   `upsert` 하지 않을 뿐이다. 포털 카드를 없애려면 **DB 행을 직접 지워야 한다.**
+2. **복원할 때도 코드 수정 없이 관리자 화면으로 등록하는 선택지가 있다.** 아래 3번은
+   "부트스트랩이 자동으로 심게 하려면" 의 절차다. 일회성이면 화면 등록이 더 간단하다.
 
 ---
 
@@ -82,6 +100,40 @@ SELECT inst_code, service_code, use_yn FROM csm.mp_institution_service WHERE ser
 >
 > **주의 3**: `upsertService` 는 `ON DUPLICATE KEY UPDATE` 로 `use_yn` 까지 덮어쓴다.
 > 관리자 UI 에서 서비스를 꺼도 다음 재기동에 `Y` 로 되돌아온다.
+
+---
+
+## 3-A. 동결 당시 DB 정리 이력 (Task 0-D 의 D-6 정정)
+
+Task 0-D 는 "`mp_service` / `mp_institution_service` 에 SMS 행이 없으므로 **DB 정리
+불필요**"로 판단했다. **이 판단은 환경 하나에만 맞았다.**
+
+| 환경 | 동결 시점 SMS 행 | 원인 |
+|---|---|---|
+| **prod** | 없음 | `SMS_BASE_URL` 미설정 → localhost 기본값 → DEV/PROD 엔드포인트 검증에 걸려 `Skipping bootstrap of service 'SMS'` 로 **조용히 실패**해 왔다 |
+| **dev** | **있었음** (`use_yn='Y'`, `base_url=https://dev.sosyge.net/sms`) | `SMS_BASE_URL` 이 **정상적으로 주입돼 있었다.** localhost 가 아니므로 검증을 통과해 정상 등록됨 |
+
+즉 "조용한 실패"는 **prod 한정 현상**이었다. dev 는 설정이 갖춰져 있어 제대로 등록됐고,
+코드에서 등록을 제거한 뒤에도 행이 그대로 남아 포털에 카드가 계속 노출됐다.
+
+2026-08-11 dev 에서 아래로 정리했다(백업 후 실행).
+
+```sql
+DELETE FROM csm.mp_institution_service WHERE service_code = 'SMS';  -- 3건
+DELETE FROM csm.mp_service_endpoint    WHERE service_code = 'SMS';  -- 1건
+DELETE FROM csm.mp_service             WHERE service_code = 'SMS';  -- 1건
+```
+
+**교훈:** 서비스 등록을 코드에서 제거할 때는 **환경마다 DB 상태를 따로 확인**해야 한다.
+한 환경에서 행이 없다고 다른 환경도 같다고 가정하면 안 된다.
+
+```sql
+-- 환경별로 각각 실행할 것
+SELECT service_code, base_url, use_yn FROM csm.mp_service WHERE service_code = 'SMS';
+```
+
+> 참고: `platform.bootstrap.sms-base-url` 프로퍼티를 제거했으므로, 각 환경의
+> EnvironmentFile 에 남아 있는 `SMS_BASE_URL` 은 이제 **읽는 곳이 없는 값**이다. 지워도 된다.
 
 ---
 

@@ -42,11 +42,38 @@
 - 따라서 OTP 건의 기관코드는 **항상 `"pwd-"`** 로 읽힌다. 존재하지 않는 기관이므로
   `updateMessageHistoryStatus` 가 0건을 갱신하고 `no history row updated` 경고만 남는다.
 - 다른 발송 경로는 `buildSmsRefkey` 가 `{inst}{yyyyMMddHHmmss}{rand4}` 를 만들어 앞 4자리가
-  기관코드가 되지만, **기관코드가 4자가 아닌 기관이 생기면 동일하게 깨진다.**
+  기관코드가 된다. **기관코드가 정확히 4자일 때만 성립한다.**
 
-**조치 방향:** refkey 포맷을 `{instCode}-{messageId}` 같은 결정적 형식으로 재정의하고,
-수신부의 `substring(0, 4)` 를 구분자 파싱으로 교체한다. 과금 도입 시 refkey가 차감 원장과
-메시지를 잇는 유일한 키가 되므로 **선행 과제**다.
+#### 기관코드 길이 — prod 확인이 필요한 구조적 위험
+
+코드가 허용하는 기관코드 범위와 콜백의 가정이 어긋나 있다.
+
+| 위치 | 규칙 |
+|---|---|
+| `safeInst()` ([SmsService.java:218](../src/main/java/com/coresolution/csm/serivce/SmsService.java)) | `[A-Za-z0-9_]{2,20}` — **2~20자 허용** |
+| 콜백 기관 복원 ([PageController.java:3639](../src/main/java/com/coresolution/csm/controller/PageController.java)) | `refkey.substring(0, 4)` — **4자 고정 가정** |
+| `mp_institution.inst_code` | `VARCHAR(50)` |
+
+4자가 아닌 기관이 존재하면 그 기관의 발송 결과 리포트는 **전량 유실**된다(존재하지 않는
+테이블을 UPDATE 하려다 0건 갱신 + 경고 로그).
+
+**아직 prod 에서 확인되지 않았다.** dev 에는 9자 코드(`HSOP_0001`)가 있으나 테스트 잔재로
+확인되어 판정 근거에서 제외했다. prod 에서 아래 한 번으로 결론난다.
+
+```sql
+-- 'transmission_history_' 는 21자이므로 22번째부터가 기관코드다
+SELECT table_name, CHAR_LENGTH(SUBSTRING(table_name, 22)) AS inst_len
+FROM information_schema.tables
+WHERE table_schema='csm' AND table_name LIKE 'transmission_history_%'
+  AND CHAR_LENGTH(SUBSTRING(table_name, 22)) <> 4;
+```
+
+- **0건** → 현재 prod 는 안전. Phase 1 에서는 "앞으로도 4자를 넘지 않도록 강제"만 하면 된다.
+- **1건 이상** → 해당 기관은 이미 결과 리포트가 유실 중이다. 우선순위를 올려야 한다.
+
+**조치 방향:** 어느 쪽이든 refkey 포맷을 `{instCode}-{messageId}` 같은 **구분자 있는 결정적
+형식**으로 재정의하고, 수신부의 `substring(0, 4)` 를 파싱으로 교체한다. 과금 도입 시 refkey가
+차감 원장과 메시지를 잇는 유일한 키가 되므로 **선행 과제**다.
 
 ### ② OTP는 발송 이력 자체가 남지 않아 발송량 추적이 불가능하다
 
