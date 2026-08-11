@@ -1903,62 +1903,6 @@ public class PageController {
         return ResponseEntity.ok(Map.of("result", updated > 0 ? "1" : "0", "updated", updated));
     }
 
-    // @GetMapping(value = "counsel/list", params = "!requestType")
-    // public ModelAndView listView(
-    // ModelAndView mv,
-    // HttpSession session,
-    // Criteria cri,
-    // @RequestParam(value = "dateRange", defaultValue = "") String dateRange,
-    // @RequestParam(value = "searchType", defaultValue = "") String searchType,
-    // @RequestParam(value = "keyword", defaultValue = "") String keyword,
-    // @RequestParam(value = "end", defaultValue = "on") String end,
-    // @RequestParam(value = "page", defaultValue = "1") int page,
-    // @RequestParam(value = "perPageNum", defaultValue = "30") int perPageNum) {
-
-    // String inst = ensureInst(session);
-    // if (inst == null)
-    // return new ModelAndView("redirect:/login"); // context-path `/csm` 자동 부착됨
-
-    // // --- 세션 userInfo가 없으면 보충 ---
-    // Userdata info = (Userdata) session.getAttribute("userInfo");
-    // if (info == null) {
-    // String username =
-    // SecurityContextHolder.getContext().getAuthentication().getName();
-    // info = cs.loadUserInfo(inst, username); // <- 서비스 호출
-    // if (info != null)
-    // session.setAttribute("userInfo", info);
-    // }
-    // mv.addObject("info", info);
-    // System.out.println("Info = " + info);
-
-    // // 검색조건 세팅
-    // bindCriteria(cri, inst, page, perPageNum, dateRange, searchType, keyword,
-    // end);
-
-    // // 데이터 조회
-    // List<CounselData> cslist = cs.searchCounselData(cri);
-    // int totalCnt = cs.CounselListCnt(cri);
-
-    // // 복호화/마스킹
-    // postProcessDecryptAndMask(cslist, inst);
-
-    // // 페이징
-    // Paging pageMaker = new Paging();
-    // pageMaker.setCri(cri);
-    // pageMaker.setTotalCount(totalCnt);
-
-    // // 모델
-    // mv.addObject("cri", cri);
-    // mv.addObject("pageMaker", pageMaker);
-    // mv.addObject("cnt", totalCnt);
-    // mv.addObject("cslist", cslist);
-    // mv.addObject("orderItems", cs.getOrderItems(inst));
-    // mv.addObject("innerContentItems", cs.getInnerContentItems(inst));
-
-    // mv.setViewName("csm/counsel/list");
-    // return mv;
-    // }
-
     /** JSON 반환 (무한스크롤 등 AJAX) */
     // @GetMapping(value = "/list", params = "requestType=json")
     // @ResponseBody

@@ -61,18 +61,35 @@
 "회사 부담분이 월 얼마인지"를 알 수 없으면 단가 협상도 이상 급증 탐지도 불가능하다.
 `billable = N` 플래그를 가진 이력 행으로 기록하는 방향을 권한다.
 
-## 미확인 — 실동작 확인 필요
+## CSRF 처리 방식 (Task 0-G 조사 결과)
 
-`POST /csm/api/external/sendSMS` 는 `SecurityConfig` 의 CSRF 예외 목록에 없어 토큰이
-필요하지만, 호출 측 [list.js:1264](../src/main/resources/static/js/csm/counsel/list.js) 의
-`fetch` 는 `Content-Type` 만 보내고 CSRF 헤더를 붙이지 않는다. 같은 파일 안의 다른 호출
-(L518, L644)은 `meta[name="_csrf"]` 를 읽어 헤더에 넣고 있어 **대량 발송 경로만 누락된
-것으로 보인다.**
+`POST /csm/api/external/sendSMS` 는 `SecurityConfig` 의 CSRF 예외 목록에 **없다**.
+예외 목록에 있는 것은 결과 리포트 수신용 `/api/external/SMSRequest` 뿐이니 혼동하지 말 것.
+따라서 발송 API는 **CSRF 토큰이 필수**다.
 
-현재 구성대로면 403이 예상되나, 운영에서 대량 발송이 정상 동작한다는 보고가 있으면 전제가
-틀린 것이다. **이번 작업 범위(발송 동작 변경 금지)에 해당하므로 수정하지 않았다.**
-운영 로그에서 다음을 확인한 뒤 별건으로 처리한다.
+토큰 저장소는 커스터마이징이 없어 Spring Security 기본값인 `HttpSessionCsrfTokenRepository`
+(세션 기반, 쿠키 기반 아님)를 쓴다. 전역 `fetch` 인터셉터나 공통 래퍼는 존재하지 않으므로,
+**호출부가 매번 직접 헤더를 넣어야 한다.**
 
-```bash
-sudo journalctl -u csm-next --since "30 days ago" | grep -c "api/external/sendSMS"
-```
+live 화면 두 곳 모두 `<meta name="_csrf">` / `<meta name="_csrf_header">` 를 읽어 헤더에
+넣고 있어 정상 통과한다.
+
+| 화면 | 토큰 주입 위치 |
+|---|---|
+| [design/consultation-list.html:1709](../src/main/resources/templates/design/consultation-list.html) | `sendBulkSms()` — meta → `[csrfHeader]: csrf` |
+| [design/inpatient-consultation.html:1990](../src/main/resources/templates/design/inpatient-consultation.html) | `csrf()` 헬퍼 → `[c.header]: c.token` |
+
+> 초판에는 "`list.js` 의 대량 발송 fetch 에 CSRF 헤더가 없어 403이 예상된다"고 적혀 있었다.
+> **틀린 분석이었다.** 해당 파일은 활성 라우트가 없는 레거시 템플릿의 스크립트였고,
+> `/counsel/list` 는 `design/consultation-list` 를 렌더링한다. 혼동을 막기 위해 죽은
+> 템플릿·스크립트는 Task 0-H 에서 삭제했다.
+
+### Phase 1 배치 발송 API 설계 시 주의
+
+세션 기반 CSRF이므로 **호출자에 따라 처리가 갈린다.** 하나의 엔드포인트에 CSRF 예외를 걸어
+두 용도를 겸하게 하면 브라우저 CSRF 방어가 통째로 사라진다. 경로를 분리할 것.
+
+| 호출자 | CSRF | 필요 조치 |
+|---|---|---|
+| 브라우저 (csm 화면) | 통과 | 기존과 동일하게 meta → 헤더 주입 |
+| mediplat → csm 서버 간 | **통과 불가** | 내부 전용 경로에만 CSRF 예외 + HMAC 서명 검증 + 소스 IP 제한 |
