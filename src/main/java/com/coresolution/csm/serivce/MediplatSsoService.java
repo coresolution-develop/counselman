@@ -8,6 +8,8 @@ import java.util.Base64;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -15,16 +17,21 @@ import org.springframework.util.StringUtils;
 @Service
 public class MediplatSsoService {
 
+    private static final Logger log = LoggerFactory.getLogger(MediplatSsoService.class);
+
     private final String sharedSecret;
     private final long allowedClockSkewSeconds;
+    private final long maxTtlSeconds;
     private final String defaultTarget;
 
     public MediplatSsoService(
             @Value("${mediplat.sso.shared-secret:}") String sharedSecret,
             @Value("${mediplat.sso.allowed-clock-skew-seconds:60}") long allowedClockSkewSeconds,
+            @Value("${mediplat.sso.max-ttl-seconds:300}") long maxTtlSeconds,
             @Value("${mediplat.sso.default-target:/counsel/list}") String defaultTarget) {
         this.sharedSecret = sharedSecret == null ? "" : sharedSecret.trim();
         this.allowedClockSkewSeconds = allowedClockSkewSeconds;
+        this.maxTtlSeconds = maxTtlSeconds;
         this.defaultTarget = normalizeTarget(defaultTarget);
     }
 
@@ -48,6 +55,14 @@ public class MediplatSsoService {
         long now = Instant.now().getEpochSecond();
         if (expires < now - allowedClockSkewSeconds) {
             throw new IllegalArgumentException("SSO 요청이 만료되었습니다.");
+        }
+        // 상한 검증. 하한만 보면 발급 측이 expires를 크게 잡을수록 토큰이 오래 살아남는다.
+        // 서명이 유효해도 유효기간이 비정상적으로 길면 거부한다 — 유출된 URL의 재사용 창을 제한한다.
+        // 발급 측(mediplat) 기본값은 60초이므로 정상 트래픽은 영향을 받지 않는다.
+        if (maxTtlSeconds > 0 && expires - now > maxTtlSeconds) {
+            log.warn("[mediplat-sso] rejected: expires too far in the future. inst={}, userId={}, ttl={}s, maxTtl={}s",
+                    inst, userId, expires - now, maxTtlSeconds);
+            throw new IllegalArgumentException("SSO 요청의 유효기간이 허용 범위를 초과했습니다.");
         }
 
         String normalizedTargetToken = targetToken == null ? "" : targetToken.trim();
@@ -109,6 +124,10 @@ public class MediplatSsoService {
         if (expires < now - allowedClockSkewSeconds) {
             throw new TokenExpiredException("병실현황판 접근 토큰이 만료되었습니다.");
         }
+        // 여기에는 mediplat.sso.max-ttl-seconds 상한을 적용하지 않는다.
+        // 이 토큰은 SSO 진입 토큰과 달리 csm이 스스로 발급하는 뷰어 쿠키로,
+        // RoomBoardController.VIEWER_PASS_TTL_SECONDS(30일)를 의도적으로 사용한다.
+        // 상한을 걸면 정상 뷰어 쿠키가 전부 거부된다.
     }
 
     private String decodeTarget(String targetToken) {
