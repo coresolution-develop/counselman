@@ -119,6 +119,7 @@ public class CsmSchemaBootstrapService {
                     """);
             ensurePermissionMasterTables();
             ensureChatInstTokenTable();
+            ensureSmsBatchTable();
             return;
         }
 
@@ -151,6 +152,36 @@ public class CsmSchemaBootstrapService {
                     us_col_07 VARCHAR(100),
                     UNIQUE (us_col_01, us_col_02)
                 )
+                """);
+    }
+
+    /**
+     * 문자 배치 발송 단위 테이블. 기관별 분할 대상이 아니다 — 단일 테이블 + inst_code 컬럼.
+     *
+     * <p>Phase 4 선불 지갑 도입 시 이 테이블이 지갑 원장의 참조 대상이 된다
+     * (sms_wallet_tx.ref_type='SMS_BATCH', ref_id=batch_id). 차감 금액은 total_cost(전 단위)를 쓴다.
+     * idem_key 는 기관 단위로만 유일하면 되므로 (inst_code, idem_key) 복합 UNIQUE 다.
+     */
+    private void ensureSmsBatchTable() {
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS csm.sms_batch (
+                    batch_id       VARCHAR(64)  NOT NULL PRIMARY KEY,
+                    inst_code      VARCHAR(50)  NOT NULL,
+                    idem_key       VARCHAR(64)  NOT NULL,
+                    from_phone     VARCHAR(20)  NOT NULL,
+                    send_type      VARCHAR(10)  NOT NULL,
+                    total_count    INT          NOT NULL DEFAULT 0,
+                    success_count  INT          NOT NULL DEFAULT 0,
+                    failed_count   INT          NOT NULL DEFAULT 0,
+                    unknown_count  INT          NOT NULL DEFAULT 0,
+                    unit_cost      INT          NOT NULL,
+                    total_cost     INT          NOT NULL DEFAULT 0,
+                    billable       CHAR(1)      NOT NULL DEFAULT 'Y',
+                    created_by     VARCHAR(100),
+                    created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uk_batch_idem (inst_code, idem_key),
+                    KEY ix_batch_inst (inst_code, created_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """);
     }
 
@@ -578,9 +609,15 @@ public class CsmSchemaBootstrapService {
         String[] columns = {
             "reserve_time datetime DEFAULT NULL",
             "send_type varchar(10) DEFAULT NULL",
-            "refkey varchar(50) DEFAULT NULL"
+            "refkey varchar(50) DEFAULT NULL",
+            "cost int DEFAULT NULL",                  // 발송 시점 단가 스냅샷, 전(錢) 단위 (9.6원 = 960)
+            "billable char(1) NOT NULL DEFAULT 'Y'",  // 과금 대상 여부. OTP는 'N'
+            "message_key varchar(64) DEFAULT NULL",   // 비즈뿌리오 접수 응답 messagekey
+            "vendor_code varchar(10) DEFAULT NULL",   // 비즈뿌리오 접수 응답 code
+            "batch_id varchar(64) DEFAULT NULL"       // csm.sms_batch 참조. 단건 발송도 배치 1건
         };
-        String[] columnNames = { "reserve_time", "send_type", "refkey" };
+        String[] columnNames = { "reserve_time", "send_type", "refkey",
+                "cost", "billable", "message_key", "vendor_code", "batch_id" };
         for (int i = 0; i < columnNames.length; i++) {
             try {
                 Integer cnt = jdbcTemplate.queryForObject(
@@ -594,6 +631,26 @@ public class CsmSchemaBootstrapService {
             } catch (Exception e) {
                 log.warn("[schema-bootstrap] column migration skipped {}.{}: {}", tableName, columnNames[i], e.toString());
             }
+        }
+        // refkey UNIQUE 승격은 기존 데이터 중복 검증 후 별도 단계로 진행한다 (docs/sms-batch-ops.md).
+        // 그 전까지는 일반 인덱스로 콜백 UPDATE 풀스캔만 해소한다.
+        ensureIndex(tableName, "ix_th_refkey", "refkey");
+        ensureIndex(tableName, "ix_th_batch_id", "batch_id");
+    }
+
+    private void ensureIndex(String tableName, String indexName, String columnExpr) {
+        try {
+            Integer cnt = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS " +
+                "WHERE TABLE_SCHEMA = 'csm' AND TABLE_NAME = ? AND INDEX_NAME = ?",
+                Integer.class, tableName, indexName);
+            if (cnt == null || cnt == 0) {
+                jdbcTemplate.execute("ALTER TABLE csm." + tableName
+                        + " ADD INDEX " + indexName + " (" + columnExpr + ")");
+                log.info("[schema-bootstrap] added index {} to {}", indexName, tableName);
+            }
+        } catch (Exception e) {
+            log.warn("[schema-bootstrap] index migration skipped {}.{}: {}", tableName, indexName, e.toString());
         }
     }
 }

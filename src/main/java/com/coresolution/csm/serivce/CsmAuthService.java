@@ -517,7 +517,15 @@ public class CsmAuthService {
                         + "created_at datetime default current_timestamp,"
                         + "send_type varchar(10),"
                         + "refkey varchar(50) default null,"
-                        + "reserve_time datetime default null"
+                        + "reserve_time datetime default null,"
+                        + "cost int default null,"                  // 발송 시점 단가 스냅샷, 전(錢) 단위 (9.6원 = 960)
+                        + "billable char(1) not null default 'Y',"  // 과금 대상 여부. OTP는 'N'
+                        + "message_key varchar(64) default null,"   // 비즈뿌리오 접수 응답 messagekey
+                        + "vendor_code varchar(10) default null,"   // 비즈뿌리오 접수 응답 code
+                        + "batch_id varchar(64) default null,"      // csm.sms_batch 참조. 단건 발송도 배치 1건
+                        // refkey UNIQUE 승격은 기존 데이터 중복 검증 후 별도 단계로 진행한다 (docs/sms-batch-ops.md)
+                        + "KEY ix_th_refkey (refkey),"
+                        + "KEY ix_th_batch_id (batch_id)"
                         + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
                 "CREATE TABLE IF NOT EXISTS csm.phone_number_" + safe + " ("
