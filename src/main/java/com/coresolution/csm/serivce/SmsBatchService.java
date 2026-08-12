@@ -164,7 +164,7 @@ public class SmsBatchService {
                 sleepQuietly(sendDelayMs);
             }
             first = false;
-            RecipientResult r = sendOne(inst, message, fromDigits, to,
+            RecipientResult r = sendOne(inst, message, null, fromDigits, to,
                     resolved.type(), resolved.subject(), unitCost, "Y", batchId);
             results.add(r);
             switch (r.status()) {
@@ -193,14 +193,19 @@ public class SmsBatchService {
      * 단건 발송: 이력 READY INSERT → refkey 확정 → 게이트웨이 호출 → 접수 결과 반영.
      * OTP 등 배치 외 단건 경로도 이 메서드를 사용한다 (billable='N' 지정).
      * 반환 status: SUCCESS / FAILED / UNKNOWN
+     *
+     * @param historyContents 이력에 남길 본문. null 이면 발송 본문을 그대로 남긴다.
+     *                        OTP 처럼 평문을 남기면 안 되는 경우 마스킹본을 넘긴다.
      */
-    public RecipientResult sendOne(String inst, String contents, String fromDigits, String toDigits,
+    public RecipientResult sendOne(String inst, String contents, String historyContents,
+            String fromDigits, String toDigits,
             String type, String subject, Integer costJeon, String billable, String batchId) {
         long historyId;
         String refkey;
         try {
             historyId = smsService.insertHistoryReady(
-                    inst, contents, fromDigits, toDigits, type, costJeon, billable, batchId);
+                    inst, historyContents != null ? historyContents : contents,
+                    fromDigits, toDigits, type, costJeon, billable, batchId);
             refkey = SmsRefkey.format(inst, historyId);
             smsService.assignHistoryRefkey(inst, historyId, refkey);
         } catch (Exception e) {

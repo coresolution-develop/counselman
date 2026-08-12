@@ -1806,6 +1806,8 @@
                         <div class="sms-recipient-row">
                           <input type="checkbox" :checked="r.on" @change="r.on = $event.target.checked" />
                           <span class="phone" x-text="r.phone"></span>
+                          <span x-show="r.failed" :title="r.failReason || ''"
+                                style="color:var(--danger,#dc2626);font-size:11px;font-weight:700;">전송실패</span>
                           <button class="rm" title="제거" @click="sms.recipients.splice(ri,1)">
                             <svg><use href="#i-x"/></svg>
                           </button>
@@ -1826,8 +1828,11 @@
                     </div>
                   </div>
                 </div>
-                <!-- 예약발송 -->
-                <div class="sms-card">
+                <!-- 예약발송 UI 숨김 (Phase 1-B): 90일간 실사용 0건, sendtime 형식 불일치로 미동작.
+                     클라이언트는 yyyyMMddHHmm 을 보내는데 서버 이력 기록은 epoch 초로 해석해 값이 오염된다.
+                     복원하려면 클라이언트·서버·비즈뿌리오 3자 형식 통일이 선행되어야 하며,
+                     배치 API(/api/counsel/sms/batch)는 예약발송을 지원하지 않는다. -->
+                <div class="sms-card" style="display:none">
                   <div class="sms-card__head">예약발송</div>
                   <div class="sms-card__body">
                     <div class="sms-schedule">
@@ -1971,8 +1976,8 @@
               <div class="btn-group">
                 <button class="btn btn--ghost" @click="closeSms()">닫기</button>
                 <button class="btn btn--primary" @click="sendSms()"
-                        :disabled="!sms.body || !sms.recipients.filter(r=>r.on).length">
-                  <svg><use href="#i-send"/></svg>전송
+                        :disabled="sms.sending || !sms.body || !sms.recipients.filter(r=>r.on).length">
+                  <svg><use href="#i-send"/></svg><span x-text="sms.sending ? '전송중...' : '전송'"></span>
                 </button>
               </div>
             </div>
@@ -2580,6 +2585,7 @@ function inpatientForm() {
       senderOptions: _smsSenderOptions,
       recipients: [],
       newRecipient: '',
+      sending: false,
       schedule: { on: false, date: '', hour: '', min: '' },
       body: '',
       signature: '',
@@ -2681,42 +2687,63 @@ function inpatientForm() {
     },
 
     async sendSms() {
+      if (this.sms.sending) return;
       const active = this.sms.recipients.filter(r => r.on && r.phone);
       if (!active.length || !this.sms.body) return;
       const text = this.sms.body + (this.sms.signature ? '\n' + this.sms.signature : '');
+      // 타입은 서버가 확정한다. clientType 은 화면 표시와의 불일치 관측용.
       let byteLen = 0;
       for (const ch of text) byteLen += ch.charCodeAt(0) > 127 ? 2 : 1;
-      const type = byteLen > 90 ? 'lms' : 'sms';
+      const clientType = byteLen > 90 ? 'lms' : 'sms';
       const c = csrf();
-      let failCount = 0;
-      for (const r of active) {
-        const payload = {
-          type,
-          from: this.sms.sender,
-          to:   r.phone,
-          content: { [type]: { message: text } },
-        };
-        if (this.sms.schedule.on && this.sms.schedule.date) {
-          const hh = String(this.sms.schedule.hour || 0).padStart(2, '0');
-          const mm = String(this.sms.schedule.min  || 0).padStart(2, '0');
-          payload.sendtime = this.sms.schedule.date.replace(/-/g, '') + hh + mm;
+      const idemKey = (crypto.randomUUID && crypto.randomUUID())
+                    || (Date.now().toString(36) + Math.random().toString(36).slice(2));
+      this.sms.sending = true;
+      try {
+        const res = await fetch(ctx + '/api/counsel/sms/batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', [c.header]: c.token },
+          body: JSON.stringify({
+            idemKey,
+            fromPhone:  this.sms.sender,
+            message:    text,
+            recipients: active.map(r => r.phone),
+            clientType,
+          }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data || !data.batchId) {
+          alert((data && data.message) || '전송 요청에 실패했습니다.');
+          return;
         }
-        try {
-          const res = await fetch(ctx + '/api/external/sendSMS', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', [c.header]: c.token },
-            body: JSON.stringify(payload),
-          });
-          const data = await res.json();
-          if (!res.ok || data.description !== 'success') failCount++;
-        } catch { failCount++; }
-      }
-      if (failCount === 0) {
-        alert('문자가 전송되었습니다.');
-        this.refreshSmsHistory();
-        this.closeSms();
-      } else {
-        alert('일부 전송에 실패했습니다 (' + failCount + '/' + active.length + '건)');
+
+        // 건별 결과 반영: 실패 수신자만 켜진 상태로 남겨 재전송 시 중복 발송을 막는다.
+        const failedMap = new Map();
+        (data.results || []).forEach(r => { if (r.status === 'FAILED') failedMap.set(r.recipient, r.reason || ''); });
+        this.sms.recipients.forEach(r => {
+          if (!r.on) return;
+          const digits = String(r.phone || '').replace(/\D/g, '');
+          if (failedMap.has(digits)) {
+            r.failed = true; r.failReason = failedMap.get(digits);
+          } else {
+            r.failed = false; r.on = false;
+          }
+        });
+
+        const unknownNote = data.unknown > 0 ? ' (결과 확인 중 ' + data.unknown + '건)' : '';
+        if (data.failed === 0) {
+          alert('문자가 전송되었습니다.' + unknownNote);
+          this.refreshSmsHistory();
+          this.closeSms();
+        } else {
+          alert('전송 완료 ' + data.success + '건 / 실패 ' + data.failed + '건' + unknownNote
+              + '\n실패한 수신자만 선택된 상태로 남았습니다. 전송을 다시 누르면 실패 건만 재전송됩니다.');
+          this.refreshSmsHistory();
+        }
+      } catch (e) {
+        alert('전송 중 오류가 발생했습니다.');
+      } finally {
+        this.sms.sending = false;
       }
     },
 

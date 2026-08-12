@@ -165,6 +165,8 @@ public class PageController {
     @Autowired
     private ExternalSmsGatewayService externalSmsGatewayService;
     @Autowired
+    private com.coresolution.csm.serivce.SmsBatchService smsBatchService;
+    @Autowired
     private CounselListService counselListService;
     @Autowired
     private ModuleFeatureService moduleFeatureService;
@@ -429,18 +431,19 @@ public class PageController {
         String userIdStr = String.valueOf(user.getUs_col_01());
         String code = smsOtpService.issue(inst, userIdStr, user.getUs_col_11(), normalizedPhone);
         String message = "[CSM] 비밀번호 변경 인증번호: " + code + " (5분 이내 입력)";
+        // 이력에는 인증번호 평문을 남기지 않는다.
+        String historyContents = "[CSM] 비밀번호 변경 인증번호: ****** (5분 이내 입력)";
 
         try {
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("type", "sms");
-            payload.put("from", from);
-            payload.put("to", normalizedPhone);
-            payload.put("refkey", "pwd-otp-" + inst + "-" + userIdStr + "-" + System.currentTimeMillis());
-            payload.put("content", Map.of("sms", Map.of("message", message)));
-            Map<String, Object> resp = externalSmsGatewayService.send(payload);
-            String desc = Optional.ofNullable(resp.get("description")).map(String::valueOf).orElse("");
-            if (!"success".equalsIgnoreCase(desc)) {
-                log.warn("[findpwd/sms] gateway returned non-success inst={} userId={} resp={}", inst, userIdStr, resp);
+            // OTP 는 과금 제외(billable='N')지만 벤더 비용은 실제로 발생하므로 이력·단가 스냅샷은 남긴다.
+            // refkey 는 MP-{inst}-{historyId} 를 따르므로 결과 리포트 콜백 매핑도 정상 동작한다.
+            String fromDigits = from.replaceAll("[^0-9]", "");
+            com.coresolution.csm.serivce.SmsBatchService.RecipientResult sendResult =
+                    smsBatchService.sendOne(inst, message, historyContents, fromDigits, normalizedPhone,
+                            "sms", null, ss.unitCostJeon(inst, "sms"), "N", null);
+            if (!"SUCCESS".equals(sendResult.status())) {
+                log.warn("[findpwd/sms] send not accepted inst={} userId={} status={} reason={}",
+                        inst, userIdStr, sendResult.status(), sendResult.reason());
                 smsOtpService.consume(inst, userIdStr);
                 response.put("result", false);
                 response.put("msg", "SMS 발송에 실패했습니다. 잠시 후 다시 시도해 주세요.");
@@ -3373,6 +3376,9 @@ public class PageController {
                             "description", "fail",
                             "message", "세션이 만료되었습니다."));
         }
+        // 배치 API(/api/counsel/sms/batch)로 이관 완료된 레거시 경로.
+        // 이 로그가 2주간 나오지 않으면 메서드째 제거 가능하다. 검색 키: [api/external/sendSMS][deprecated]
+        log.warn("[api/external/sendSMS][deprecated] legacy send path called. inst={}", inst);
         if (payload == null || payload.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of(
                     "description", "fail",

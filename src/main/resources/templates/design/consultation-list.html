@@ -1120,6 +1120,8 @@
                     <input type="checkbox" x-model="r.checked" />
                     <span class="bulk-recv-name" x-text="r.name"></span>
                     <span class="bulk-recv-phone" x-text="r.phone"></span>
+                    <span x-show="r.failed" :title="r.failReason || ''"
+                          style="color:var(--danger,#dc2626);font-size:11px;font-weight:700;">전송실패</span>
                   </label>
                 </template>
               </div>
@@ -1698,6 +1700,7 @@ function listPage() {
     },
 
     async sendBulkSms() {
+      if (this.bulkSending) return;
       if (!this.bulkFrom) { alert('발신번호를 선택해주세요.'); return; }
       const msg = this.bulkMsg.trim();
       if (!msg) { alert('메시지를 입력해주세요.'); return; }
@@ -1708,39 +1711,54 @@ function listPage() {
       this.bulkSending = true;
       const csrf       = document.querySelector('meta[name="_csrf"]')?.content || '';
       const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
-      const now  = new Date();
-      const pad  = n => String(n).padStart(2, '0');
-      const base = now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate())
-                 + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds());
-      const bytes    = this.calcBytes(msg);
-      const sendType = bytes > 90 ? 'lms' : 'sms';
+      // 타입은 서버가 확정한다. clientType 은 화면 표시와의 불일치 관측용.
+      const clientType = this.calcBytes(msg) > 90 ? 'lms' : 'sms';
+      const idemKey = (crypto.randomUUID && crypto.randomUUID())
+                    || (Date.now().toString(36) + Math.random().toString(36).slice(2));
 
-      const results = await Promise.all(targets.map((t, i) => {
-        const payload = {
-          refkey: base + String(i).padStart(3, '0'),
-          type:   sendType,
-          from:   this.bulkFrom,
-          to:     t.phone.replace(/-/g, ''),
-          content: sendType === 'lms'
-            ? { lms: { subject: msg.substring(0, 20), message: msg } }
-            : { sms: { message: msg } }
-        };
-        return fetch(ctx + '/api/external/sendSMS', {
+      try {
+        const res  = await fetch(ctx + '/api/counsel/sms/batch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', [csrfHeader]: csrf },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            idemKey,
+            fromPhone:  this.bulkFrom,
+            message:    msg,
+            recipients: targets.map(t => t.phone),
+            clientType
+          }),
           credentials: 'same-origin'
-        }).then(r => r.json()).then(res => ({ ok: res?.description === 'success' }))
-          .catch(() => ({ ok: false }));
-      }));
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data || !data.batchId) {
+          alert((data && data.message) || '전송 요청에 실패했습니다.');
+          return;
+        }
 
-      this.bulkSending = false;
-      const failed = results.filter(r => !r.ok).length;
-      if (failed === 0) {
-        alert(`${targets.length}건 전송 완료`);
-        this.bulkSmsOpen = false;
-      } else {
-        alert(`전송 완료: ${results.length - failed}건\n실패: ${failed}건`);
+        // 건별 결과 반영: 실패 수신자만 선택 상태로 남겨 재전송 시 중복 발송을 막는다.
+        const failedMap = new Map();
+        (data.results || []).forEach(r => { if (r.status === 'FAILED') failedMap.set(r.recipient, r.reason || ''); });
+        this.bulkRecipients.forEach(r => {
+          if (!r.checked) return;
+          const digits = String(r.phone || '').replace(/\D/g, '');
+          if (failedMap.has(digits)) {
+            r.failed = true; r.failReason = failedMap.get(digits);
+          } else {
+            r.failed = false; r.checked = false;
+          }
+        });
+
+        const unknownNote = data.unknown > 0 ? `\n결과 확인 중: ${data.unknown}건` : '';
+        if (data.failed === 0) {
+          alert(`${data.total}건 전송 완료${unknownNote}`);
+          this.bulkSmsOpen = false;
+        } else {
+          alert(`전송 완료: ${data.success}건\n실패: ${data.failed}건${unknownNote}\n실패한 수신자만 선택된 상태로 남았습니다. 다시 전송을 누르면 실패 건만 재전송됩니다.`);
+        }
+      } catch (e) {
+        alert('전송 중 오류가 발생했습니다.');
+      } finally {
+        this.bulkSending = false;
       }
     },
 
