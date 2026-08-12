@@ -435,12 +435,14 @@ public class PageController {
         String historyContents = "[CSM] 비밀번호 변경 인증번호: ****** (5분 이내 입력)";
 
         try {
-            // OTP 는 과금 제외(billable='N')지만 벤더 비용은 실제로 발생하므로 이력·단가 스냅샷은 남긴다.
+            // OTP 는 과금 제외(billable='N')이며 cost 도 0 으로 기록한다 — 차감 합산에서 billable
+            // 조건이 누락되어도 기관에 청구될 수 없게 구조적으로 막는다. 회사 부담분 비용이
+            // 필요하면 조회 시점에 COUNT × 단가로 계산한다 (docs/sms-batch-ops.md).
             // refkey 는 MP-{inst}-{historyId} 를 따르므로 결과 리포트 콜백 매핑도 정상 동작한다.
             String fromDigits = from.replaceAll("[^0-9]", "");
             com.coresolution.csm.serivce.SmsBatchService.RecipientResult sendResult =
                     smsBatchService.sendOne(inst, message, historyContents, fromDigits, normalizedPhone,
-                            "sms", null, ss.unitCostJeon(inst, "sms"), "N", null);
+                            "sms", null, 0, "N", null);
             if (!"SUCCESS".equals(sendResult.status())) {
                 log.warn("[findpwd/sms] send not accepted inst={} userId={} status={} reason={}",
                         inst, userIdStr, sendResult.status(), sendResult.reason());

@@ -56,12 +56,25 @@ GROUP BY inst_code, DATE_FORMAT(created_at, '%Y-%m'), send_type
 ORDER BY month DESC, inst_code, send_type;
 ```
 
-### OTP(회사 부담분) 월별 비용
+### 회사 부담분(OTP) 발송량 집계
+
+`billable='N'` 행은 **cost 를 0 으로 기록**한다 — 차감 합산에서 billable 조건이 누락되어도
+기관에 청구될 수 없게 하기 위함이다. 비용이 필요하면 조회 시점에 건수 × 단가로 계산한다.
 
 ```sql
+-- 발송량 (건수 기준)
 SELECT DATE_FORMAT(created_at, '%Y-%m') AS month,
-       COUNT(*)                          AS cnt,
-       ROUND(SUM(COALESCE(cost, 0)) / 100, 1) AS cost_won
+       inst_code,
+       COUNT(*) AS cnt
+FROM csm.v_transmission_history_all
+WHERE billable = 'N'
+GROUP BY DATE_FORMAT(created_at, '%Y-%m'), inst_code
+ORDER BY month DESC, inst_code;
+
+-- 비용 추정이 필요하면 건수에 단가를 곱한다 (OTP 는 전부 SMS, 예: 9.6원)
+SELECT DATE_FORMAT(created_at, '%Y-%m') AS month,
+       COUNT(*)                AS cnt,
+       ROUND(COUNT(*) * 9.6, 1) AS est_cost_won   -- 단가 변경 시 숫자만 교체
 FROM csm.v_transmission_history_all
 WHERE billable = 'N'
 GROUP BY DATE_FORMAT(created_at, '%Y-%m')
