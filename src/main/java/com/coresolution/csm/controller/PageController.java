@@ -102,6 +102,7 @@ import com.coresolution.csm.serivce.CsmPasswordResetTokenService;
 import com.coresolution.csm.serivce.CsmSmsOtpService;
 import com.coresolution.csm.serivce.ExternalSmsGatewayService;
 import com.coresolution.csm.util.AuthContactValidator;
+import com.coresolution.csm.util.SmsRefkey;
 import com.coresolution.csm.serivce.SmsService;
 import com.coresolution.csm.util.AES128;
 import com.coresolution.csm.vo.AdmissionReservationItem;
@@ -3382,8 +3383,7 @@ public class PageController {
                 .toLowerCase(Locale.ROOT);
         String from = Optional.ofNullable(payload.get("from")).map(String::valueOf).orElse("");
         String to = Optional.ofNullable(payload.get("to")).map(String::valueOf).orElse("");
-        String requestRefkey = buildSmsRefkey(inst,
-                Optional.ofNullable(payload.get("refkey")).map(String::valueOf).orElse(""));
+        String requestRefkey = buildSmsRefkey(inst);
         payload.put("refkey", requestRefkey);
 
         String message = "";
@@ -3574,24 +3574,39 @@ public class PageController {
             log.warn("[api/external/SMSRequest] callback ignored: empty refkey, payloadKeys={}", payload.keySet());
             return ResponseEntity.ok().build();
         }
-        String inst = refkey.length() >= 4 ? refkey.substring(0, 4) : "";
+        Optional<SmsRefkey.Parsed> parsedRefkey = SmsRefkey.parse(refkey);
+        boolean newFormat = parsedRefkey.isPresent();
+        String inst;
+        if (newFormat) {
+            inst = parsedRefkey.get().instCode();
+        } else {
+            // 구형식({INST}{ts}{rand4}) 폴백. 배포 이전에 발송된 문자의 콜백이 뒤늦게 도착하는
+            // 과도기용이다. 이 INFO 로그가 일정 기간 나오지 않으면 폴백 경로를 제거해도 된다.
+            inst = refkey.length() >= 4 ? refkey.substring(0, 4) : "";
+            log.info("[api/external/SMSRequest] legacy refkey fallback. refkey={}", refkey);
+        }
         String resultCode = readAsString(normalized, "result", "resultcode", "result_code", "code", "status").trim();
         String status;
         if ("4100".equals(resultCode) || "6600".equals(resultCode)) {
-            status = "전송완료";
+            status = newFormat ? "DONE" : "전송완료";
         } else if (resultCode.isBlank()) {
             // 콜백 포맷 차이로 코드가 비어도 즉시 실패로 단정하지 않는다.
-            status = "전송중";
+            // 신규 체계 행은 상태를 덮지 않고(SENT 유지), 구형식만 기존 동작을 유지한다.
+            status = newFormat ? null : "전송중";
         } else {
-            status = "전송실패";
+            status = newFormat ? "ERROR" : "전송실패";
         }
         log.info("[api/external/SMSRequest] callback received inst={}, refkey={}, resultCode={}, status={}", inst,
                 refkey, resultCode, status);
 
         try {
-            int updated = ss.updateMessageHistoryStatus(inst, refkey, status);
-            if (updated == 0) {
-                log.warn("[api/external/SMSRequest] no history row updated. inst={}, refkey={}", inst, refkey);
+            if (status != null) {
+                int updated = newFormat
+                        ? ss.updateMessageHistoryStatusById(inst, parsedRefkey.get().historyId(), status)
+                        : ss.updateMessageHistoryStatus(inst, refkey, status);
+                if (updated == 0) {
+                    log.warn("[api/external/SMSRequest] no history row updated. inst={}, refkey={}", inst, refkey);
+                }
             }
         } catch (Exception e) {
             log.error("[api/external/SMSRequest] history update fail inst={}, refkey={}", inst, refkey, e);
@@ -7111,14 +7126,12 @@ public class PageController {
         return normalized;
     }
 
-    private String buildSmsRefkey(String inst, String incomingRefkey) {
+    /**
+     * 레거시 경로(relaySendSms) 전용 refkey. 클라이언트가 보낸 refkey 는 전면 무시한다.
+     * 신규 배치 경로는 SmsRefkey(MP-{inst}-{historyId}) 형식을 쓴다.
+     */
+    private String buildSmsRefkey(String inst) {
         String normalizedInst = inst == null ? "" : inst.replaceAll("[^A-Za-z0-9_]", "");
-        if (incomingRefkey != null) {
-            String trimmed = incomingRefkey.trim();
-            if (!trimmed.isBlank() && trimmed.startsWith(normalizedInst)) {
-                return trimmed;
-            }
-        }
         String ts = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
         int rnd = 1000 + (int) (Math.random() * 9000);
         return normalizedInst + ts + rnd;

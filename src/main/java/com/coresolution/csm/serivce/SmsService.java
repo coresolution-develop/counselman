@@ -215,6 +215,13 @@ public class SmsService {
         return jdbcTemplate.update(sql, status, refkey);
     }
 
+    /** 신규 refkey(MP-{inst}-{historyId}) 콜백용 — PK 로 직접 갱신한다. */
+    public int updateMessageHistoryStatusById(String inst, long id, String status) {
+        String t = safeInst(inst);
+        String sql = "UPDATE csm.transmission_history_" + t + " SET status = ? WHERE id = ?";
+        return jdbcTemplate.update(sql, status, id);
+    }
+
     private String safeInst(String inst) {
         if (inst == null) {
             throw new IllegalArgumentException("inst is null");
