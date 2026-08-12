@@ -1029,6 +1029,42 @@ public class CsmAuthService {
         return cs.coreTemplateDelete(idx);
     }
 
+    /**
+     * 전 기관 발송 이력 집계 뷰(csm.v_transmission_history_all)를 재생성한다.
+     *
+     * <p>기관별 테이블 구조라 전체 발송량·비용 집계가 어려운 문제를 UNION ALL 뷰로 푼다.
+     * 부트스트랩(refreshFromPlatform)에서 컬럼·collation 보강이 끝난 기관 목록으로 호출되므로
+     * 신규 기관 추가 시 자동 반영된다. 뷰 생성 실패가 앱 기동을 막으면 안 되므로
+     * 호출부에서 예외를 로그로 삼키고 계속 진행한다.
+     *
+     * <p>COLLATE 를 뷰 정의에 명시하지 않는다 — 테이블 collation 자체를 utf8mb4_0900_ai_ci 로
+     * 통일·고정했으므로 불필요하고, 컬럼별 COLLATE 표현식은 인덱스 활용을 막는다.
+     */
+    public void recreateTransmissionHistoryAllView(List<String> instCodes) {
+        List<String> valid = instCodes == null ? List.of()
+                : instCodes.stream()
+                        .filter(c -> c != null && c.matches("[A-Za-z0-9_]{2,20}"))
+                        .distinct()
+                        .toList();
+        if (valid.isEmpty()) {
+            log.warn("[schema-bootstrap] v_transmission_history_all skipped: no institutions");
+            return;
+        }
+        String columns = "id, contents, from_phone, to_phone, status, response, created_at, "
+                + "send_type, refkey, reserve_time, cost, billable, message_key, vendor_code, batch_id";
+        StringBuilder sql = new StringBuilder("CREATE OR REPLACE VIEW csm.v_transmission_history_all AS ");
+        for (int i = 0; i < valid.size(); i++) {
+            String inst = valid.get(i);
+            if (i > 0) {
+                sql.append(" UNION ALL ");
+            }
+            sql.append("SELECT '").append(inst).append("' AS inst_code, ").append(columns)
+               .append(" FROM csm.transmission_history_").append(inst);
+        }
+        jdbcTemplate.execute(sql.toString());
+        log.info("[schema-bootstrap] recreated v_transmission_history_all with {} institutions", valid.size());
+    }
+
     public int corePriceInsertAll(String smsPrice, String lmsPrice, String mmsPrice) {
         return cs.corePriceInsertAll(smsPrice, lmsPrice, mmsPrice);
     }

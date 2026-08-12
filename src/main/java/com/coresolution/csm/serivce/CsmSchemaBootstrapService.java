@@ -2,6 +2,7 @@ package com.coresolution.csm.serivce;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -59,6 +60,7 @@ public class CsmSchemaBootstrapService {
                     FROM csm.mp_institution
                     ORDER BY id ASC
                     """);
+            List<String> historyReadyInsts = new ArrayList<>();
             for (Map<String, Object> row : institutions) {
                 String instCode = normalizeInstCode(Objects.toString(row.get("inst_code"), null));
                 if (!StringUtils.hasText(instCode)) {
@@ -70,6 +72,7 @@ public class CsmSchemaBootstrapService {
                 try {
                     csmAuthService.createCoreInstSchemaTables(instCode);
                     ensureTransmissionHistoryColumns(instCode);
+                    historyReadyInsts.add(instCode.replaceAll("[^a-zA-Z0-9_]", "_"));
                     ensureRoleIconColumn(instCode);
                     transactionTemplate.executeWithoutResult(status -> {
                         upsertCoreInstitution(instCode, instName, useYn);
@@ -79,6 +82,12 @@ public class CsmSchemaBootstrapService {
                 } catch (Exception e) {
                     log.warn("[schema-bootstrap] inst={} skipped: {}", instCode, e.toString());
                 }
+            }
+            try {
+                // 컬럼·collation 보강이 끝난 기관만 포함한다. 실패가 기동을 막으면 안 된다.
+                csmAuthService.recreateTransmissionHistoryAllView(historyReadyInsts);
+            } catch (Exception e) {
+                log.warn("[schema-bootstrap] v_transmission_history_all recreate failed: {}", e.toString());
             }
         } catch (Exception e) {
             log.warn("[schema-bootstrap] refresh skipped: {}", e.toString());
