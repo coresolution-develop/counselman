@@ -181,7 +181,7 @@ public class CsmSchemaBootstrapService {
                     created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE KEY uk_batch_idem (inst_code, idem_key),
                     KEY ix_batch_inst (inst_code, created_at)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
                 """);
     }
 
@@ -603,9 +603,32 @@ public class CsmSchemaBootstrapService {
         }
     }
 
+    /**
+     * 기관별 이력 테이블의 collation 을 utf8mb4_0900_ai_ci 로 통일한다.
+     * 생성 시기에 따라 unicode_ci / 0900_ai_ci 가 갈려 있어, UNION ALL 집계 뷰가
+     * "Illegal mix of collations" 로 실패하는 것을 막는다. 실패해도 기동은 계속한다.
+     */
+    private void ensureTransmissionHistoryCollation(String tableName) {
+        try {
+            String collation = jdbcTemplate.queryForObject(
+                "SELECT COALESCE(table_collation, '') FROM INFORMATION_SCHEMA.TABLES " +
+                "WHERE TABLE_SCHEMA = 'csm' AND TABLE_NAME = ?",
+                String.class, tableName);
+            if (collation != null && !collation.isBlank()
+                    && !"utf8mb4_0900_ai_ci".equalsIgnoreCase(collation)) {
+                jdbcTemplate.execute("ALTER TABLE csm." + tableName
+                        + " CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci");
+                log.info("[schema-bootstrap] converted collation {} -> utf8mb4_0900_ai_ci on {}", collation, tableName);
+            }
+        } catch (Exception e) {
+            log.warn("[schema-bootstrap] collation migration skipped {}: {}", tableName, e.toString());
+        }
+    }
+
     private void ensureTransmissionHistoryColumns(String instCode) {
         String safe = instCode.replaceAll("[^a-zA-Z0-9_]", "_");
         String tableName = "transmission_history_" + safe;
+        ensureTransmissionHistoryCollation(tableName);
         String[] columns = {
             "reserve_time datetime DEFAULT NULL",
             "send_type varchar(10) DEFAULT NULL",
@@ -632,13 +655,13 @@ public class CsmSchemaBootstrapService {
                 log.warn("[schema-bootstrap] column migration skipped {}.{}: {}", tableName, columnNames[i], e.toString());
             }
         }
-        // refkey UNIQUE 승격은 기존 데이터 중복 검증 후 별도 단계로 진행한다 (docs/sms-batch-ops.md).
-        // 그 전까지는 일반 인덱스로 콜백 UPDATE 풀스캔만 해소한다.
-        ensureIndex(tableName, "ix_th_refkey", "refkey");
-        ensureIndex(tableName, "ix_th_batch_id", "batch_id");
+        // refkey UNIQUE: 중복 발송 구조적 차단 (2026-08-12 전 기관 중복 0건 검증 완료).
+        // 만에 하나 중복이 생겨 ALTER 가 실패하면 WARN 만 남기고 기동은 계속한다.
+        ensureIndex(tableName, "uk_th_refkey", "refkey", true);
+        ensureIndex(tableName, "ix_th_batch_id", "batch_id", false);
     }
 
-    private void ensureIndex(String tableName, String indexName, String columnExpr) {
+    private void ensureIndex(String tableName, String indexName, String columnExpr, boolean unique) {
         try {
             Integer cnt = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS " +
@@ -646,7 +669,7 @@ public class CsmSchemaBootstrapService {
                 Integer.class, tableName, indexName);
             if (cnt == null || cnt == 0) {
                 jdbcTemplate.execute("ALTER TABLE csm." + tableName
-                        + " ADD INDEX " + indexName + " (" + columnExpr + ")");
+                        + " ADD " + (unique ? "UNIQUE INDEX " : "INDEX ") + indexName + " (" + columnExpr + ")");
                 log.info("[schema-bootstrap] added index {} to {}", indexName, tableName);
             }
         } catch (Exception e) {

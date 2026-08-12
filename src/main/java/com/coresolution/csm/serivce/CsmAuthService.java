@@ -277,7 +277,7 @@ public class CsmAuthService {
                         + "id_col_03 varchar(50) default null comment '기관코드',"
                         + "id_col_04 varchar(5) default 'y' comment '사용상태',"
                         + "id_col_05 varchar(50) default null comment '비고'"
-                        + ") comment='기관 테이블'",
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci comment='기관 테이블'",
 
                 "CREATE TABLE IF NOT EXISTS csm.user_data_" + safe + " ("
                         + "us_col_01 int NOT NULL AUTO_INCREMENT COMMENT '사용자코드',"
@@ -295,13 +295,13 @@ public class CsmAuthService {
                         + "us_col_13 varchar(100) DEFAULT NULL COMMENT '부서',"
                         + "us_col_14 varchar(100) DEFAULT NULL COMMENT '직급',"
                         + "PRIMARY KEY (us_col_01)"
-                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='사용자정보'",
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='사용자정보'",
 
                 "CREATE TABLE IF NOT EXISTS csm.counsel_category1_" + safe + " ("
                         + "cc_col_01 int not null auto_increment primary key,"
                         + "cc_col_02 varchar(50) default null comment '대분류명',"
                         + "turn int default null comment '분류 순서'"
-                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
 
                 "CREATE TABLE IF NOT EXISTS csm.counsel_category2_" + safe + " ("
                         + "cc_col_01 int not null auto_increment primary key,"
@@ -312,7 +312,7 @@ public class CsmAuthService {
                         + "cc_col_06 tinyint(1) default 0 comment '텍스트박스여부',"
                         + "cc_col_07 tinyint(1) default 0 comment '셀렉트박스여부',"
                         + "turn int default null comment '분류 순서'"
-                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
 
                 "CREATE TABLE IF NOT EXISTS csm.counsel_category3_" + safe + " ("
                         + "cc_col_01 int not null auto_increment primary key,"
@@ -320,7 +320,7 @@ public class CsmAuthService {
                         + "cc_col_03 varchar(255) default null comment '셀렉트박스 옵션',"
                         + "cc_col_04 int not null comment '소분류 idx',"
                         + "turn int default null comment '분류 순서'"
-                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
 
                 "CREATE TABLE IF NOT EXISTS csm.counsel_data_" + safe + " ("
                         + "cs_idx int auto_increment primary key,"
@@ -369,7 +369,7 @@ public class CsmAuthService {
                         + "cs_col_41 varchar(50) default null,"
                         + "cs_col_42 varchar(50) default null,"
                         + "cs_col_01_hash varbinary(32) default null"
-                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
 
                 "CREATE TABLE IF NOT EXISTS csm.counsel_data_" + safe + "_entries ("
                         + "entry_id int auto_increment primary key,"
@@ -378,7 +378,7 @@ public class CsmAuthService {
                         + "subcategory_id int null,"
                         + "field_type varchar(30) default null,"
                         + "value text"
-                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
 
                 "CREATE TABLE IF NOT EXISTS csm.counsel_data_" + safe + "_guardians ("
                         + "id int auto_increment primary key,"
@@ -390,7 +390,7 @@ public class CsmAuthService {
                         + "updated_at timestamp default current_timestamp on update current_timestamp,"
                         + "name_hash varbinary(32) default null,"
                         + "contact_number_hash varbinary(32) default null"
-                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
 
                 "CREATE TABLE IF NOT EXISTS csm.counsel_admission_pledge_" + safe + " ("
                         + "id bigint auto_increment primary key,"
@@ -420,7 +420,7 @@ public class CsmAuthService {
                         + "created_at timestamp default current_timestamp,"
                         + "updated_at timestamp default current_timestamp on update current_timestamp,"
                         + "unique key uq_cs_idx (cs_idx)"
-                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
 
                 "CREATE TABLE IF NOT EXISTS csm.counsel_reservation_" + safe + " ("
                         + "id bigint auto_increment primary key,"
@@ -440,7 +440,7 @@ public class CsmAuthService {
                         + "updated_at timestamp default current_timestamp on update current_timestamp,"
                         + "key idx_status_priority_reserved (status, priority, reserved_at),"
                         + "key idx_linked_cs_idx (linked_cs_idx)"
-                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
 
                 "CREATE TABLE IF NOT EXISTS csm.counsel_list_" + safe + " ("
                         + "idx int auto_increment primary key,"
@@ -448,7 +448,7 @@ public class CsmAuthService {
                         + "comment TEXT default null,"
                         + "turn int default null,"
                         + "view_yn varchar(5) not null default 'y'"
-                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
 
                 "CREATE TABLE IF NOT EXISTS csm.counsel_log_" + safe + " ("
                         + "idx int auto_increment primary key,"
@@ -461,7 +461,7 @@ public class CsmAuthService {
                         + "created_at varchar(255) default null,"
                         + "updated_at varchar(255) default null,"
                         + "counsel_at varchar(255) default null"
-                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
 
                 "CREATE TABLE IF NOT EXISTS csm.counsel_log_guardians_" + safe + " ("
                         + "idx int auto_increment primary key,"
@@ -470,7 +470,7 @@ public class CsmAuthService {
                         + "counsel_relationship varchar(255) default null,"
                         + "counsel_number varchar(255) default null,"
                         + "counsel_at varchar(50) default null"
-                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
 
                 "CREATE TABLE IF NOT EXISTS csm.counsel_audio_" + safe + " ("
                         + "id bigint auto_increment primary key,"
@@ -485,7 +485,7 @@ public class CsmAuthService {
                         + "created_by varchar(100) default null,"
                         + "created_at timestamp default current_timestamp,"
                         + "updated_at timestamp default current_timestamp on update current_timestamp"
-                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
 
                 "CREATE TABLE IF NOT EXISTS csm.counsel_file_" + safe + " ("
                         + "id bigint auto_increment primary key,"
@@ -498,14 +498,14 @@ public class CsmAuthService {
                         + "created_by varchar(100) default null,"
                         + "created_at timestamp default current_timestamp,"
                         + "updated_at timestamp default current_timestamp on update current_timestamp"
-                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
 
                 "CREATE TABLE IF NOT EXISTS csm.message_templates_" + safe + " ("
                         + "id int auto_increment primary key,"
                         + "title varchar(255) not null,"
                         + "template text not null,"
                         + "created_at datetime default current_timestamp"
-                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
 
                 "CREATE TABLE IF NOT EXISTS csm.transmission_history_" + safe + " ("
                         + "id int auto_increment primary key,"
@@ -523,23 +523,23 @@ public class CsmAuthService {
                         + "message_key varchar(64) default null,"   // 비즈뿌리오 접수 응답 messagekey
                         + "vendor_code varchar(10) default null,"   // 비즈뿌리오 접수 응답 code
                         + "batch_id varchar(64) default null,"      // csm.sms_batch 참조. 단건 발송도 배치 1건
-                        // refkey UNIQUE 승격은 기존 데이터 중복 검증 후 별도 단계로 진행한다 (docs/sms-batch-ops.md)
-                        + "KEY ix_th_refkey (refkey),"
+                        // refkey UNIQUE: 중복 발송 구조적 차단 + 콜백 UPDATE 풀스캔 해소 (2026-08-12 전 기관 중복 0건 검증 완료)
+                        + "UNIQUE KEY uk_th_refkey (refkey),"
                         + "KEY ix_th_batch_id (batch_id)"
-                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
 
                 "CREATE TABLE IF NOT EXISTS csm.phone_number_" + safe + " ("
                         + "id int auto_increment primary key,"
                         + "phone_num varchar(15) not null,"
                         + "phone_name varchar(100) not null"
-                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
 
                 "CREATE TABLE IF NOT EXISTS csm.card_" + safe + " ("
                         + "id int auto_increment primary key,"
                         + "title varchar(50) not null,"
                         + "content varchar(1000) not null,"
                         + "created_at datetime default current_timestamp"
-                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
 
                 "CREATE TABLE IF NOT EXISTS csm.sms_request_" + safe + " ("
                         + "id bigint not null auto_increment primary key,"
@@ -553,7 +553,7 @@ public class CsmAuthService {
                         + "result varchar(50) not null,"
                         + "refkey varchar(50) default null,"
                         + "insert_date datetime not null default current_timestamp"
-                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+                        + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci");
 
         for (String ddl : ddls) {
             jdbcTemplate.execute(ddl);
@@ -576,13 +576,13 @@ public class CsmAuthService {
                 + "created_at datetime DEFAULT CURRENT_TIMESTAMP,"
                 + "updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,"
                 + "UNIQUE KEY uq_role_code (role_code)"
-                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci");
 
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS csm.role_permission_" + safe + " ("
                 + "role_id         bigint NOT NULL,"
                 + "permission_code varchar(64) NOT NULL,"
                 + "PRIMARY KEY (role_id, permission_code)"
-                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci");
 
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS csm.user_role_" + safe + " ("
                 + "user_id     bigint NOT NULL,"
@@ -590,14 +590,14 @@ public class CsmAuthService {
                 + "assigned_at datetime DEFAULT CURRENT_TIMESTAMP,"
                 + "assigned_by varchar(100),"
                 + "PRIMARY KEY (user_id, role_id)"
-                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci");
 
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS csm.user_permission_" + safe + " ("
                 + "user_id         bigint NOT NULL,"
                 + "permission_code varchar(64) NOT NULL,"
                 + "granted         tinyint(1) NOT NULL DEFAULT 1,"
                 + "PRIMARY KEY (user_id, permission_code)"
-                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci");
 
         seedRoles(safe);
     }
@@ -612,7 +612,7 @@ public class CsmAuthService {
                 + "use_yn     char(1)      NOT NULL DEFAULT 'Y',"
                 + "created_at datetime DEFAULT CURRENT_TIMESTAMP,"
                 + "updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
-                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci");
     }
 
     private void ensureChatTables(String safe) {
@@ -625,7 +625,7 @@ public class CsmAuthService {
                 + "status          varchar(20)  NOT NULL DEFAULT 'WAITING',"
                 + "created_at      datetime DEFAULT CURRENT_TIMESTAMP,"
                 + "updated_at      datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
-                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci");
 
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS csm.chat_message_" + safe + " ("
                 + "id          bigint AUTO_INCREMENT PRIMARY KEY,"
@@ -634,7 +634,7 @@ public class CsmAuthService {
                 + "sender_name varchar(100) NOT NULL DEFAULT '',"
                 + "content     text         NOT NULL,"
                 + "sent_at     datetime DEFAULT CURRENT_TIMESTAMP"
-                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci");
     }
 
     private void seedRoles(String safe) {
@@ -2798,7 +2798,7 @@ public class CsmAuthService {
                 + "created_at timestamp default current_timestamp,"
                 + "updated_at timestamp default current_timestamp on update current_timestamp,"
                 + "unique key uq_cs_idx (cs_idx)"
-                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci";
         try {
             jdbcTemplate.execute(sql);
             ensureAdmissionPledgeColumns(safeInst);
