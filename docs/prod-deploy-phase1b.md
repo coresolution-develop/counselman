@@ -49,6 +49,50 @@ staging 적재 확인 후 수동으로 적용해 즉시 검증하는 것을 강�
 | 개발서버 csm | 포트 8080, `/usr/local/tomcat10` (**이 절차서 대상 아님**) |
 | 주의 | 실서버 8084는 ResvHub. csm이 아니다 |
 
+### 배포 시각 — 업무 종료 후(18:00 이후) 권장
+
+**업무시간 중 배포는 피한다.** 사유:
+
+| 사유 | 내용 |
+|---|---|
+| httpd reload 시 콜백 순단 | 4단계에서 `systemctl reload httpd` 를 하면 순간적으로 콜백 수신이 끊길 수 있다. 발송이 활발한 시간대에 하면 그 구간 결과 리포트가 유실된다 |
+| ALTER 실패 시 문자 전면 중단 | 3-1이 실패하면 **문자 발송이 전건 실패**한다. 업무 중이면 곧바로 업무 장애다 |
+| 롤백 여유 | 7단계 롤백은 WAR 복원 + Tomcat 재기동 + httpd 원복까지 포함한다. 시간 압박 없이 수행할 여유가 필요하다 |
+| 실발송 검증 | 5단계는 실제 문자를 1건 발송한다. 업무 발송과 섞이면 검증 대상 식별이 어려워진다 |
+
+**새벽 배포도 권하지 않는다.** 02:30 타이머에 맡기면 ALTER 실패로 문자가 죽어도
+아침까지 아무도 모른다(2-C 참조). **검증할 사람이 깨어 있는 시간에 배포한다.**
+
+### 배포 중단 판정 기준 — 롤백 / 재시도 / 계속 진행
+
+각 단계 실패 시 어떻게 할지 미리 정해둔다. **"중단"은 다음 단계로 넘어가지 않는다는 뜻이다.**
+
+| 단계 | 실패 내용 | 판정 |
+|---|---|---|
+| 0-1 | refkey 중복 존재 | **배포 중단.** 코드 수정 후 재배포. 데이터 삭제 금지 |
+| 0-2 | 사용 기관 발신번호 미등록 | **배포 중단.** 발신번호 등록 후 재개(재시도 가능) |
+| 0-3 | 단가 FALLBACK | **계속 진행.** 기록만 남긴다 |
+| 1 | 백업 실패 | **배포 중단.** 백업 없이 배포하지 않는다 |
+| 2-B | 테스트 게이트 실패 | **배포 중단.** staging 적재 안 됨 |
+| 2-C | 타이머 유닛을 못 찾음 | **재시도.** E항 분기 참조 |
+| 2-D | 기동 실패(404 / `Started CsmApplication` 없음) | **즉시 롤백(7단계)** |
+| **3-1** | **컬럼 5종 중 하나라도 누락** | **즉시 롤백(7단계).** 아래 별도 설명 |
+| 3-2 | 인덱스 누락 | **계속 진행.** 보고 후 후속 처리 |
+| 3-3 | `sms_batch` 테이블 없음 | **즉시 롤백(7단계)** |
+| 3-4 | collation 미통일 / 뷰 없음 | **계속 진행.** 발송에 영향 없음 |
+| 4-3 | `httpd -t` 문법 오류 | **재시도.** 백업본 복구 후 재편집 |
+| 5 | 발신번호 거부 | **0-2로 복귀(재시도).** 롤백 불필요 |
+| 5 | 발송 오류(코드 원인) | **즉시 롤백(7단계)** |
+| 5 | `UNKNOWN` 반환 | **중단하고 보고.** 재발송 금지(중복 발송 위험) |
+| 6 | 30분 경과 후에도 `SENT` 유지 | **4단계 재점검(재시도).** 롤백은 판단 후 결정 |
+
+> **3-1이 이번 배포의 최대 위험 지점이다.**
+> 발송 INSERT가 `cost`·`billable`·`batch_id` 를 직접 참조하는데, 스키마 부트스트랩은
+> ALTER 실패를 WARN으로 삼키고 기동을 계속한다. 즉 **기동은 성공했는데 문자만 전건 실패**하는
+> 상태가 만들어진다. 컬럼이 하나라도 빠진 채 4·5단계로 넘어가면 원인 파악이 어려워지고,
+> 그 사이 사용자가 발송을 시도하면 전부 실패한다.
+> **`new_cols = 5` 를 전 기관에서 확인하기 전에는 절대 다음 단계로 가지 않는다.**
+
 ---
 
 ## 0단계 — 사전 확인 (배포 전, 지금 실행 가능)
@@ -190,10 +234,76 @@ systemctl list-timers --all | grep -i deploy
 sudo systemctl start <UNIT>.service && sleep 5 && sudo journalctl -u <UNIT>.service -n 40 --no-pager
 ```
 
-**성공 판정**: 로그에 `csm.war` 배포 및 서비스 재기동 기록이 있고 `ERROR` 가 없다.
+**성공 판정**: 로그에 `deploying csm.war -> ...` / `installed` / `marker consumed` 가 있고
+`ERROR` 가 없다.
 
-**실패 시 조치**: 유닛을 찾지 못하면 타이머 적용을 기다리거나, 운영자가 쓰던 기존 배포 방식으로
-`/opt/csm-next/deploy/staging/csm.war` 를 Tomcat webapps 에 반영한다. 어느 쪽이든 **3단계 검증은 필수**다.
+#### 유닛을 못 찾거나 경로가 다를 때의 분기 (E항)
+
+저장소 스크립트의 기본 경로와 워크플로가 쓰는 경로가 다르다. **서버 실제 설정이 기준이다.**
+
+| 위치 | 값 |
+|---|---|
+| 워크플로 적재 경로 | `/opt/csm-next/deploy/staging` |
+| `scripts/deploy-nightly.sh` 기본값 | `STAGING_DIR=/opt/deploy/staging`, `TOMCAT_WEBAPPS=/usr/local/tomcat10/webapps` (**개발서버 경로**) |
+
+서버에 설치된 유닛이 override 파일로 경로를 재정의하고 있을 수 있다. 아래로 실제 값을 확인한다.
+
+```bash
+systemctl cat <UNIT>.service | grep -E "ExecStart|Environment|EnvironmentFile"
+cat /etc/default/nightly-deploy 2>/dev/null; cat /etc/sysconfig/nightly-deploy 2>/dev/null
+```
+
+**분기 판정**
+
+| 확인 결과 | 조치 |
+|---|---|
+| 유닛이 있고 `STAGING_DIR` 이 `/opt/csm-next/deploy/staging`, `TOMCAT_WEBAPPS` 가 `/opt/csm-next/tomcat/webapps` | 그대로 `systemctl start` 실행 |
+| 유닛은 있으나 **경로가 개발서버 기본값**(`/opt/deploy/staging`, `/usr/local/tomcat10/webapps`) | **실행하지 말 것.** 그대로 돌리면 워크플로가 적재한 산출물을 못 찾거나 엉뚱한 경로에 배포한다. 환경변수를 덮어 1회 실행: <br>`sudo STAGING_DIR=/opt/csm-next/deploy/staging TOMCAT_WEBAPPS=/opt/csm-next/tomcat/webapps CSM_SERVICE=csm-next /path/to/deploy-nightly.sh` |
+| 유닛이 없음 | 수동 반영: 아래 참조 |
+
+유닛이 없을 때의 수동 반영(백업 포함):
+
+```bash
+TS=$(date +%Y%m%d-%H%M%S)
+sudo cp -a /opt/csm-next/tomcat/webapps/csm.war /opt/csm-next/tomcat/webapps/csm.war.bak-${TS}
+sudo cp -a /opt/csm-next/deploy/staging/csm.war /opt/csm-next/tomcat/webapps/csm.war.new-${TS}
+sudo mv -f /opt/csm-next/tomcat/webapps/csm.war.new-${TS} /opt/csm-next/tomcat/webapps/csm.war
+sudo systemctl restart csm-next
+```
+
+**어느 분기를 타든 3단계 검증은 반드시 수행한다.**
+
+> 수동 반영 분기를 탔다면 `/opt/csm-next/deploy/staging/deploy.ok` 가 그대로 남는다.
+> 아래 2-D 이후 "타이머 처리"를 반드시 읽을 것.
+
+### 2-C-2. 02:30 타이머가 다시 도는가 — 확인 결과
+
+[scripts/deploy-nightly.sh](../scripts/deploy-nightly.sh) 를 확인한 결과다.
+
+| 질문 | 답 |
+|---|---|
+| 이미 적용된 staging 을 다시 적용하는가 | **아니다.** 스크립트는 `deploy.ok` 마커가 없으면 `no marker; skipping` 으로 즉시 종료한다(exit 0) |
+| 마커는 언제 사라지는가 | 배포 성공 시 스크립트가 마커를 **archive 로 이동**해 소비한다(`marker consumed`). 산출물(`csm.war`)도 함께 archive 로 이동한다 |
+| 재적용 부작용 | 정상 종료했다면 **재기동·ALTER 재실행 모두 일어나지 않는다.** 설령 마커가 남아 재실행되어도 산출물이 이미 archive 로 옮겨져 `marker present but no known artifacts` 로 끝나 서비스 재기동이 없다. ALTER 자체도 `INFORMATION_SCHEMA` 존재 확인 후 실행이라 재실행되어도 no-op 이다 |
+
+**따라서 정상 수동 실행 후에는 타이머를 별도로 손댈 필요가 없다.** 다만 아래를 확인한다.
+
+```bash
+ls -l /opt/csm-next/deploy/staging/
+```
+
+**성공 판정**: `deploy.ok` 와 `csm.war` 이 **없다**(archive 로 소비됨).
+
+**마커가 남아 있다면** — 수동 반영 분기를 탔거나 스크립트가 중간에 실패한 경우다. 둘 중 하나를 택한다.
+
+```bash
+# (권장) 이번 배포는 이미 검증했으므로 마커를 치워 새벽 재실행을 막는다
+sudo mkdir -p /opt/csm-next/deploy/archive/manual-$(date +%Y%m%d-%H%M%S)
+sudo mv /opt/csm-next/deploy/staging/deploy.ok /opt/csm-next/deploy/archive/manual-$(date +%Y%m%d-%H%M%S)/
+```
+
+마커를 남겨두면 02:30 에 타이머가 같은 산출물을 다시 적용하고 **csm-next 를 재기동한다.**
+검증이 끝난 상태에서의 불필요한 새벽 재기동이므로 권하지 않는다.
 
 ### 2-D. 기동 확인
 
@@ -473,23 +583,119 @@ git checkout prod && git reset --hard 0903572 && git push --force-with-lease ori
 
 ---
 
-## 배포 후 관측 (당일 ~ 1주)
+## 배포 후 관찰
+
+### 배포 당일 (배포 직후 ~ 취침 전)
+
+#### D-1. 배치 API 오류 로그
 
 ```bash
-# 단가 폴백 발생 (기관코드 포함)
-sudo grep '\[sms-price\]' /opt/csm-next/tomcat/logs/catalina.out | tail -20
+sudo grep -E '\[api/counsel/sms/batch\]|\[sms-batch\]' /opt/csm-next/tomcat/logs/catalina.out | tail -30
+```
 
+**정상 판정**: `type mismatch` 외의 ERROR 가 없다.
+**이상 판정**: `history insert fail` → 컬럼 누락. **3-1로 복귀.**
+`send fail` 다수 → 게이트웨이 문제. `response` 컬럼 확인 후 보고.
+
+#### D-2. 발신번호 거부 발생 여부 (신규 제약이라 당일이 가장 위험)
+
+```bash
+sudo grep -c '등록되지 않은 발신번호' /opt/csm-next/tomcat/logs/catalina.out
+```
+
+**정상 판정**: `0`
+**이상 판정**: 1 이상이면 해당 기관이 문자를 못 보내고 있다. **0-2로 복귀**해 발신번호를 등록한다.
+
+#### D-3. 실패·결과불명 건
+
+```sql
+SELECT inst_code, status, COUNT(*) AS cnt
+FROM csm.v_transmission_history_all
+WHERE created_at >= CURDATE()
+GROUP BY inst_code, status
+ORDER BY inst_code, status;
+```
+
+**정상 판정**: `SENT` 또는 `DONE` 이 대부분.
+**이상 판정**: `FAILED` 가 절반 이상이거나 `READY` 가 남아 있으면 조사 대상.
+`UNKNOWN` 은 재발송하지 말 것.
+
+### 다음 영업일 오전 (필수)
+
+#### D-4. 발송 건수가 평소 수준인가 — **급감 = 발신번호 검증에 걸린 것**
+
+```sql
+SELECT DATE(created_at) AS d, inst_code, COUNT(*) AS cnt
+FROM csm.v_transmission_history_all
+WHERE created_at >= CURDATE() - INTERVAL 14 DAY
+GROUP BY DATE(created_at), inst_code
+ORDER BY d DESC, inst_code;
+```
+
+**정상 판정**: 배포 다음 날 건수가 **배포 이전 같은 요일 대비 크게 다르지 않다**
+(일 40~50건 규모이므로 요일별 편차 감안).
+**이상 판정**: 특정 기관만 0건이거나 급감 → 그 기관의 발신번호 등록을 **0-2 쿼리로 확인**한다.
+발송 자체가 막힌 것이므로 **사용자는 조용히 못 보내고 있을 수 있다.** 우선순위 높음.
+
+#### D-5. `SENT` 에 머문 채 `DONE` 으로 안 바뀌는 건이 쌓이는가
+
+```sql
+SELECT inst_code, COUNT(*) AS stuck_sent, MIN(created_at) AS oldest
+FROM csm.v_transmission_history_all
+WHERE status = 'SENT' AND created_at < NOW() - INTERVAL 2 HOUR
+GROUP BY inst_code;
+```
+
+**정상 판정**: 0건이거나 소수(벤더 지연).
+**이상 판정**: 배포 이후 건이 계속 쌓이면 **4단계 httpd 라우팅이 동작하지 않는 것**이다.
+아래로 콜백이 어디로 갔는지 확인한다.
+
+```bash
+sudo grep -h "SMSRequest" /var/log/httpd/access_log | tail -20
+sudo grep "api/external/SMSRequest" /opt/csm-next/tomcat/logs/catalina.out | tail -20
+```
+
+httpd access log 에는 요청이 있는데 catalina.out 에 없으면 → 레거시로 가고 있다. **4-2 재점검.**
+
+#### D-6. 단가 폴백 WARN
+
+```bash
+sudo grep '\[sms-price\]' /opt/csm-next/tomcat/logs/catalina.out | tail -20
+sudo grep -ho '\[sms-price\] inst=[A-Za-z0-9_]* type=[a-z]*' /opt/csm-next/tomcat/logs/catalina.out | sort | uniq -c | sort -rn
+```
+
+**정상 판정**: 0건, 또는 0-3에서 이미 파악한 기관만 나온다.
+**이상 판정**: 예상 밖 기관이 나오면 단가 데이터를 확인한다.
+**배포 차단 사유는 아니지만 Phase 4 전에는 반드시 해소해야 한다.**
+
+#### D-7. READY 24시간 잔재 (크래시 윈도우)
+
+```sql
+SELECT inst_code, id, to_phone, created_at
+FROM csm.v_transmission_history_all
+WHERE status = 'READY' AND created_at < NOW() - INTERVAL 24 HOUR
+ORDER BY created_at;
+```
+
+**정상 판정**: 0건.
+**이상 판정**: 행이 있으면 이력 INSERT 후 발송 전에 앱이 죽은 것이다. 복구 로직은 의도적으로
+없으므로, 벤더 콘솔에서 실제 발송 여부를 확인해 수동 정리한다.
+
+### 1주간 (제거 판단용)
+
+```bash
 # 레거시 발송 경로 호출 — 화면 이관이 끝났으므로 0건이어야 정상
-sudo grep '\[api/external/sendSMS\]\[deprecated\]' /opt/csm-next/tomcat/logs/catalina.out | wc -l
+sudo grep -c '\[api/external/sendSMS\]\[deprecated\]' /opt/csm-next/tomcat/logs/catalina.out
 
 # 구형식 refkey 콜백 — 시간이 지나며 0으로 수렴해야 한다
-sudo grep 'legacy refkey fallback' /opt/csm-next/tomcat/logs/catalina.out | wc -l
+sudo grep -c 'legacy refkey fallback' /opt/csm-next/tomcat/logs/catalina.out
 
-# 클라이언트/서버 메시지 타입 불일치
+# 클라이언트/서버 메시지 타입 불일치 (관측용, 즉시 조치 대상 아님)
 sudo grep '\[sms-batch\] type mismatch' /opt/csm-next/tomcat/logs/catalina.out | tail -10
 ```
 
-READY 24시간 잔재·UNKNOWN 건 관측 쿼리는 [sms-batch-ops.md](sms-batch-ops.md) 참조.
+2주간 각각 0건이면 `relaySendSms` 와 콜백 구형식 폴백을 제거할 수 있다.
+상세는 [sms-batch-ops.md](sms-batch-ops.md) "제거 판단용 로그 검색 키" 참조.
 
 ## 미해결 사항 (이번 배포 범위 아님)
 
