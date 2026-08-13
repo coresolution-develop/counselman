@@ -1,1 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a7fc8"></stop><stop offset="1" stop-color="#0a3f80"></stop></linearGradient></defs><rect width="512" height="512" rx="115" fill="url(#g)"></rect><text x="256" y="248" text-anchor="middle" font-family="Manrope" font-size="120" font-weight="800" letter-spacing="-6" fill="#ffffff">Medi</text><text x="256" y="372" text-anchor="middle" font-family="Manrope" font-size="120" font-weight="600" letter-spacing="-6" fill="#bcdcff">Plat</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="counselman app icon">
+<clipPath id="rrcounselman"><path d="M 0 114 A 114 114 0 0 1 114 0 H 398 A 114 114 0 0 1 512 114 V 398 A 114 114 0 0 1 398 512 H 114 A 114 114 0 0 1 0 398 Z"></path></clipPath>
+<g clip-path="url(#rrcounselman)"><rect width="512" height="512" fill="#0C4890"></rect><path d="M 0 424 C 128 384 300 452 512 396 V 512 H 0 Z" fill="#2478C0"></path></g>
+<g transform="translate(256,256) scale(0.72) translate(-256,-256)"><g transform="translate(6,6) translate(256,256) scale(1) translate(-256,-256)"><rect x="216" y="96" width="200" height="184" rx="60" fill="#B7D6F0"></rect>
+<path d="M 156 168 H 260 A 60 60 0 0 1 320 228 V 292 A 60 60 0 0 1 260 352 H 226 L 132 416 L 170 352 H 156 A 60 60 0 0 1 96 292 V 228 A 60 60 0 0 1 156 168 Z" fill="#FFFFFF" stroke="#0C4890" stroke-width="24" stroke-linejoin="round"></path></g></g>
+</svg>

@@ -285,6 +285,10 @@ PROD 배포 묶음:
   `COUNSELMAN_BASE_URL` 같은 환경변수를 바꿔도 **기존 행에는 반영되지 않으니**, URL 변경은
   `/admin`의 앱 등록 화면에서 수정하세요. 기동 로그의
   `Service 'X' already registered; keeping stored settings` 가 이 경우입니다.
+- **아이콘 세트는 시스템별로 분리돼 있습니다.** `static/icon/new/`는 CounselMan(및 링크허브),
+  `static/icon/wardhub/`는 병실현황판(`design/ward-status.html` + `manifest.json`) 전용입니다.
+  각 폴더의 `favicon.svg`·`app-icon.svg`가 원본이고 PNG는 여기서 만든 것입니다.
+  PNG 재생성은 브라우저 렌더러로 하세요 — ImageMagick 내장 SVG 렌더러는 `stroke` 패스를 누락시킵니다.
 
 ## 13-A. 보안 — 시크릿 관리와 회수(rotation) 대상
 
