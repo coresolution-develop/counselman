@@ -10,8 +10,10 @@ import org.springframework.transaction.annotation.Transactional;
 import com.coresolution.csm.vo.CompanyLink;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class CompanyLinkService {
 
@@ -41,19 +43,78 @@ public class CompanyLinkService {
                     updated_at timestamp default current_timestamp on update current_timestamp
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """);
+        // 운영자가 지정하는 값들. 비어 있으면 화면단에서 이름 기반 기본값으로 떨어진다.
+        ensureColumn("company_link", "env", "varchar(10) DEFAULT NULL");
+        ensureColumn("company_link_category", "color", "varchar(20) DEFAULT NULL");
+        ensureColumn("company_link_category", "color_dark", "varchar(20) DEFAULT NULL");
+        ensureColumn("company_link_category", "short_label", "varchar(10) DEFAULT NULL");
+    }
+
+    /** 컬럼이 없을 때만 추가한다. 실패해도 기동을 막지 않는다(기존 스키마 부트스트랩과 같은 방식). */
+    private void ensureColumn(String table, String column, String definition) {
+        try {
+            Integer count = jdbcTemplate.queryForObject("""
+                    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                     WHERE TABLE_SCHEMA = 'csm' AND TABLE_NAME = ? AND COLUMN_NAME = ?
+                    """, Integer.class, table, column);
+            if (count == null || count == 0) {
+                jdbcTemplate.execute("ALTER TABLE csm." + table + " ADD COLUMN " + column + " " + definition);
+                log.info("[company-link] added column {}.{}", table, column);
+            }
+        } catch (Exception e) {
+            log.warn("[company-link] column migration skipped {}.{}: {}", table, column, e.toString());
+        }
     }
 
     public List<java.util.Map<String, Object>> listCategories() {
         ensureTable();
         return jdbcTemplate.queryForList("""
                 SELECT cl.category AS category_name,
-                       COALESCE(cat.sort_order, 9999) AS sort_order
+                       COALESCE(cat.sort_order, 9999) AS sort_order,
+                       cat.color AS color,
+                       cat.color_dark AS color_dark,
+                       cat.short_label AS short_label
                   FROM csm.company_link cl
                   LEFT JOIN csm.company_link_category cat ON cat.category_name = cl.category
                  WHERE cl.use_yn = 'Y'
-                 GROUP BY cl.category, cat.sort_order
+                 GROUP BY cl.category, cat.sort_order, cat.color, cat.color_dark, cat.short_label
                  ORDER BY COALESCE(cat.sort_order, 9999) ASC, cl.category ASC
                 """);
+    }
+
+    /** 분류 색상·축약 저장. 순서는 건드리지 않는다(순서 저장과 독립적으로 눌린다). */
+    @Transactional
+    public void saveCategoryStyle(String category, String color, String colorDark, String shortLabel) {
+        ensureTable();
+        String safeCategory = trimTo(category, 80);
+        if (safeCategory.isBlank()) return;
+        String safeColor = normalizeHex(color);
+        String safeColorDark = normalizeHex(colorDark);
+        String safeShort = trimTo(shortLabel, 10);
+        jdbcTemplate.update("""
+                INSERT INTO csm.company_link_category (category_name, sort_order, color, color_dark, short_label)
+                VALUES (?, 9999, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE color = ?, color_dark = ?, short_label = ?
+                """,
+                safeCategory, safeColor, safeColorDark, safeShort.isBlank() ? null : safeShort,
+                safeColor, safeColorDark, safeShort.isBlank() ? null : safeShort);
+    }
+
+    /** 아는 환경값만 저장한다. 비었거나 모르는 값이면 null → 화면단에서 이름·host로 자동 판정. */
+    private String normalizeEnv(String value) {
+        if (value == null) return null;
+        String text = value.trim().toLowerCase(java.util.Locale.ROOT);
+        return switch (text) {
+            case "prod", "dev", "demo" -> text;
+            default -> null;
+        };
+    }
+
+    /** #rrggbb 형태만 통과시킨다 — 색상값이 그대로 style 속성에 들어가므로 임의 문자열을 넣지 않는다. */
+    private String normalizeHex(String value) {
+        if (value == null) return null;
+        String text = value.trim().toLowerCase(java.util.Locale.ROOT);
+        return text.matches("#[0-9a-f]{6}") ? text : null;
     }
 
     @Transactional
@@ -72,7 +133,7 @@ public class CompanyLinkService {
     public List<CompanyLink> listActiveLinks() {
         ensureTable();
         return jdbcTemplate.query("""
-                SELECT cl.id, cl.title, cl.url, cl.description, cl.category, cl.sort_order, cl.use_yn,
+                SELECT cl.id, cl.title, cl.url, cl.description, cl.category, cl.env, cl.sort_order, cl.use_yn,
                        DATE_FORMAT(cl.created_at,'%%Y-%%m-%%d %%H:%%i:%%s') AS created_at,
                        DATE_FORMAT(cl.updated_at,'%%Y-%%m-%%d %%H:%%i:%%s') AS updated_at
                   FROM csm.company_link cl
@@ -86,6 +147,7 @@ public class CompanyLinkService {
             link.setUrl(rs.getString("url"));
             link.setDescription(rs.getString("description"));
             link.setCategory(rs.getString("category"));
+            link.setEnv(rs.getString("env"));
             link.setSortOrder(rs.getInt("sort_order"));
             link.setUseYn(rs.getString("use_yn"));
             link.setCreatedAt(rs.getString("created_at"));
@@ -101,7 +163,7 @@ public class CompanyLinkService {
             return null;
         }
         List<CompanyLink> rows = jdbcTemplate.query("""
-                SELECT cl.id, cl.title, cl.url, cl.description, cl.category, cl.sort_order, cl.use_yn
+                SELECT cl.id, cl.title, cl.url, cl.description, cl.category, cl.env, cl.sort_order, cl.use_yn
                   FROM csm.company_link cl
                  WHERE cl.id = ? AND cl.use_yn = 'Y'
                  LIMIT 1
@@ -112,6 +174,7 @@ public class CompanyLinkService {
             link.setUrl(rs.getString("url"));
             link.setDescription(rs.getString("description"));
             link.setCategory(rs.getString("category"));
+            link.setEnv(rs.getString("env"));
             link.setSortOrder(rs.getInt("sort_order"));
             link.setUseYn(rs.getString("use_yn"));
             return link;
@@ -120,7 +183,7 @@ public class CompanyLinkService {
     }
 
     @Transactional
-    public long createLink(String title, String url, String description, String category, Integer sortOrder, String actor) {
+    public long createLink(String title, String url, String description, String category, String env, Integer sortOrder, String actor) {
         ensureTable();
         String safeTitle = requireText(title, "링크 이름", 100);
         String safeUrl = normalizeUrl(url);
@@ -129,13 +192,14 @@ public class CompanyLinkService {
         int safeSortOrder = sortOrder == null ? 0 : Math.max(0, Math.min(sortOrder, 9999));
         jdbcTemplate.update("""
                 INSERT INTO csm.company_link
-                (title, url, description, category, sort_order, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                (title, url, description, category, env, sort_order, created_by, updated_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 safeTitle,
                 safeUrl,
                 safeDescription.isBlank() ? null : safeDescription,
                 safeCategory.isBlank() ? null : safeCategory,
+                normalizeEnv(env),
                 safeSortOrder,
                 trimTo(actor, 100),
                 trimTo(actor, 100));
@@ -156,7 +220,7 @@ public class CompanyLinkService {
     }
 
     @Transactional
-    public boolean updateLink(long id, String title, String url, String description, String category, Integer sortOrder, String actor) {
+    public boolean updateLink(long id, String title, String url, String description, String category, String env, Integer sortOrder, String actor) {
         ensureTable();
         if (id <= 0) {
             throw new IllegalArgumentException("수정할 링크가 올바르지 않습니다.");
@@ -172,6 +236,7 @@ public class CompanyLinkService {
                        url = ?,
                        description = ?,
                        category = ?,
+                       env = ?,
                        sort_order = ?,
                        updated_by = ?
                  WHERE id = ? AND use_yn = 'Y'
@@ -180,6 +245,7 @@ public class CompanyLinkService {
                 safeUrl,
                 safeDescription.isBlank() ? null : safeDescription,
                 safeCategory.isBlank() ? null : safeCategory,
+                normalizeEnv(env),
                 safeSortOrder,
                 trimTo(actor, 100),
                 id) > 0;

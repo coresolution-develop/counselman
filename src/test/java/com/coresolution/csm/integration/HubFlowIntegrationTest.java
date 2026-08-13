@@ -100,7 +100,7 @@ class HubFlowIntegrationTest {
         System.out.println("[3] 로그인 OK (오답 거부 → 정답 성공)");
 
         // 공용 링크 시드 (관리자 큐레이션 가정)
-        long linkId = companyLinkService.createLink("HARS", "https://hars.example.com", "병원 HARS", "병원", 1, "it");
+        long linkId = companyLinkService.createLink("HARS", "https://hars.example.com", "병원 HARS", "병원", null, 1, "it");
 
         // 3) ★ 즐겨찾기 토글
         assertThat(favoriteService.toggle(memberId, linkId)).isTrue();

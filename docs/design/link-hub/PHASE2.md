@@ -20,25 +20,25 @@
 
 ## 2단계 작업 목록
 
-### A. 링크에 `env` 컬럼 추가 (우선순위 높음)
+### A. 링크에 `env` 컬럼 추가 — ✅ 완료
 
-지금은 `HubLinkPresenter.envOf()`가 **이름에 DEMO 포함 / host가 `dev.`·`-dev.`·`.dev.`** 규칙으로 판정한다.
-운영/개발 구분이 목적상 안전장치이므로 운영자가 직접 지정하는 편이 맞다.
+`company_link.env varchar(10)` 추가 (`CompanyLinkService.ensureTable()`의 `ensureColumn`이 기동 시 처리).
 
-- `CompanyLinkService.ensureTable()`에 `ALTER TABLE csm.company_link ADD COLUMN env varchar(10) ...` 추가
-  (같은 파일의 DDL이 SSOT라 별도 마이그레이션 스크립트 불필요)
-- `CompanyLink`·`CompanyLinkService` CRUD에 env 반영
-- `HubLinkPresenter.envOf()`를 컬럼 조회로 교체. 컬럼이 비었을 때만 현재 규칙을 폴백으로 유지
-- 관리 화면(탭 1)에 환경 선택 UI 추가
+- 값은 `prod` / `dev` / `demo`. 비어 있으면 예전처럼 이름·host로 자동 판정한다.
+- 관리 화면 링크 추가·편집에 "환경" 셀렉트(자동 판정 / 운영 / 개발 / DEMO) 추가.
+- `HubLinkView.envSource`가 저장된 원본값을 들고 있어, 셀렉트가 "자동 판정"과
+  "명시적으로 운영"을 구분한다.
 
-### B. 분류 메타 컬럼 (색상 · 축약)
+### B. 분류 메타 컬럼 (색상 · 축약) — ✅ 완료
 
-지금은 `HubLinkPresenter.CATEGORIES` 맵에 분류명 → 색·축약이 하드코딩돼 있고,
-표에 없는 분류는 이름 해시로 팔레트에서 고른다.
+`company_link_category`에 `color` / `color_dark` / `short_label` 추가.
 
-- `company_link_category`에 `color`, `color_dark`, `short_label` 컬럼 추가
-- 관리 화면 탭 2(분류 순서)에서 색상을 8색 세트 중에서만 고르도록 UI 제공
-- presenter는 DB 값 우선, 없으면 현재 기본값 폴백
+- 관리 화면 탭 2에서 분류를 고르면 우측에 색상(정해진 10색 세트) · 축약 · 미리보기가 열린다.
+- 저장 엔드포인트: `POST /admin/company-links/category-style`.
+- 우선순위는 **운영자 지정값 → 핸드오프 기본 표 → 이름 해시 팔레트**. 색만 고르고
+  축약을 비워두면 축약만 기본값으로 채워진다.
+- 색상은 8색 세트에서만 고르게 하고, 서비스가 `#rrggbb` 형식을 한 번 더 검증한다
+  (값이 그대로 `style` 속성에 들어가므로).
 
 ### C. 기기 · 세션 목록
 
@@ -48,14 +48,14 @@
 - `HubRememberService.listForMember(memberId)` 추가 (기기명·최근 사용 시각·현재 세션 여부)
 - 계정 화면에 세션 행 렌더 + 개별 로그아웃
 
-### D. 링크 관리 화면 (탭 3개)
+### D. 링크 관리 화면 (탭 3개) — ✅ 완료
 
-`design/company-links-admin.html`은 **1단계에서 손대지 않았다.** 인라인 스타일로 자립해 있고
-hub.css 토큰의 예전 이름(`--card-bg` 등)을 별칭으로 이어둬서 색만 새 팔레트를 따른다.
+탭(링크 / 분류 순서 / 공지)으로 재구성. 링크 추가는 우측 슬라이드 패널,
+분류 순서는 드래그 정렬, 공지는 실시간 배너 미리보기.
+동작은 `static/js/hub-admin.js`에 있다.
 
-- 탭 구조(링크 / 분류 순서 / 공지)로 재구성
-- 링크 추가를 상시 노출 폼 → 슬라이드 패널·모달로
-- 테이블 컬럼: 환경 · 뱃지 · 이름 · URL · 분류 · 순서+작업
+**공지 강조는 안내/주의 2택이다.** 디자인은 3택(안내·주의·점검)이나
+`HubNoticeService`가 `info`/`warn`만 받는다. 3번째를 넣으려면 서비스·DB를 함께 손대야 한다.
 
 ### E. 회원가입 "소속 분류" 필드
 

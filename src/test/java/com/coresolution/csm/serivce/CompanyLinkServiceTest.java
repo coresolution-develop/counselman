@@ -23,7 +23,7 @@ class CompanyLinkServiceTest {
         CompanyLinkService service = new CompanyLinkService(jdbcTemplate);
         when(jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long.class)).thenReturn(3L);
 
-        service.createLink("상담 CRM", "https://crm.example.com", "상담 시스템", "운영", 10, "public");
+        service.createLink("상담 CRM", "https://crm.example.com", "상담 시스템", "운영", null, 10, "public");
 
         verify(jdbcTemplate).update(
                 contains("INSERT INTO csm.company_link"),
@@ -31,6 +31,7 @@ class CompanyLinkServiceTest {
                 eq("https://crm.example.com"),
                 eq("상담 시스템"),
                 eq("운영"),
+                eq(null),   // env 미지정 → 자동 판정
                 eq(10),
                 eq("public"),
                 eq("public"));
@@ -40,7 +41,7 @@ class CompanyLinkServiceTest {
     void createLink_rejectsJavascriptUrl() {
         CompanyLinkService service = new CompanyLinkService(jdbcTemplate);
 
-        assertThatThrownBy(() -> service.createLink("위험 링크", "javascript:alert(1)", "", "", 0, "public"))
+        assertThatThrownBy(() -> service.createLink("위험 링크", "javascript:alert(1)", "", "", null, 0, "public"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("http 또는 https");
     }
@@ -50,7 +51,7 @@ class CompanyLinkServiceTest {
         CompanyLinkService service = new CompanyLinkService(jdbcTemplate);
         when(jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long.class)).thenReturn(4L);
 
-        service.createLink("스테이 결제", "https://stay_djm.cspay.co.kr/products", "", "결제", 0, "public");
+        service.createLink("스테이 결제", "https://stay_djm.cspay.co.kr/products", "", "결제", null, 0, "public");
 
         verify(jdbcTemplate).update(
                 contains("INSERT INTO csm.company_link"),
@@ -58,6 +59,7 @@ class CompanyLinkServiceTest {
                 eq("https://stay_djm.cspay.co.kr/products"),
                 eq(null),
                 eq("결제"),
+                eq(null),   // env 미지정 → 자동 판정
                 eq(0),
                 eq("public"),
                 eq("public"));
@@ -89,12 +91,13 @@ class CompanyLinkServiceTest {
                 eq("https://crm.example.com"),
                 eq("상담 시스템"),
                 eq("운영"),
+                eq(null),
                 eq(10),
                 eq("public"),
                 eq(5L)))
                 .thenReturn(1);
 
-        service.updateLink(5L, "상담 CRM", "https://crm.example.com", "상담 시스템", "운영", 10, "public");
+        service.updateLink(5L, "상담 CRM", "https://crm.example.com", "상담 시스템", "운영", null, 10, "public");
 
         verify(jdbcTemplate).update(
                 contains("UPDATE csm.company_link"),
@@ -102,6 +105,7 @@ class CompanyLinkServiceTest {
                 eq("https://crm.example.com"),
                 eq("상담 시스템"),
                 eq("운영"),
+                eq(null),
                 eq(10),
                 eq("public"),
                 eq(5L));

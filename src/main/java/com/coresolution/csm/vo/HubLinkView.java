@@ -23,10 +23,15 @@ public class HubLinkView {
     private String catColor;
     private String catColorDark;
 
-    /** prod | dev | demo */
+    /** prod | dev | demo — 저장값이 없으면 이름·host로 판정한 결과가 들어간다. */
     private String env;
     /** 운영 | 개발 | DEMO */
     private String envLabel;
+    /**
+     * DB에 저장된 환경값 그대로. 자동 판정 상태면 빈 문자열이다.
+     * 관리 화면의 환경 셀렉트가 "자동 판정"과 "명시적으로 운영"을 구분하려면 이 값이 필요하다.
+     */
+    private String envSource = "";
 
     private Integer sortOrder;
     private boolean favorite;

@@ -328,9 +328,17 @@ class HubTemplateRenderTest {
         ctx.setVariable("publicCount", rows.size());
         ctx.setVariable("categoryNav", List.of());
         ctx.setVariable("categoryRows", List.of(Map.of(
-                "name", "병원", "color", "#2f5bb8", "colorDark", "#7fa9ff", "count", 1, "sortOrder", 1)));
+                "name", "병원", "color", "#2f5bb8", "colorDark", "#7fa9ff",
+                "count", 1, "sortOrder", 1, "shortLabel", "병원")));
+        ctx.setVariable("envPalette", HubLinkPresenter.ENV_OPTIONS);
+        ctx.setVariable("colorPalette", HubLinkPresenter.PALETTE_OPTIONS);
 
         String html = engine.process("design/company-links-admin", ctx);
+
+        assertThat(html).contains("/admin/company-links/category-style"); // 분류 색상 저장
+        assertThat(html).contains("adm-swatch");                          // 8색 세트 선택
+        assertThat(html).contains("name=\"env\"");                        // 환경 지정 셀렉트
+        assertThat(html).contains("자동 판정");
 
         assertThat(html).contains("hub-sidebar");                 // 공통 셸
         assertThat(html).contains("링크 관리");

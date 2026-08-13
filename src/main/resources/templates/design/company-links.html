@@ -218,15 +218,17 @@
                     <span class="lh-main">
                       <span class="lh-name" th:text="${row.title}">서비스명</span>
                     </span>
-                    <span class="lh-meta" th:text="${row.host}">example.com</span>
-                    <span class="lh-act" th:if="${hubMember != null}">
-                      <button type="button" class="lh-fav"
-                              th:classappend="${row.favorite} ? ' lh-fav--on' : ''"
-                              th:data-link-id="${row.id}"
-                              th:data-toggle-url="@{/hub/me/favorites/toggle}"
-                              th:data-login-url="@{/hub/login}"
-                              th:aria-pressed="${row.favorite}"
-                              aria-label="즐겨찾기 토글" title="즐겨찾기에 추가/해제">★</button>
+                    <span class="lh-tail">
+                      <span class="lh-meta" th:text="${row.host}">example.com</span>
+                      <span class="lh-act" th:if="${hubMember != null}">
+                        <button type="button" class="lh-fav"
+                                th:classappend="${row.favorite} ? ' lh-fav--on' : ''"
+                                th:data-link-id="${row.id}"
+                                th:data-toggle-url="@{/hub/me/favorites/toggle}"
+                                th:data-login-url="@{/hub/login}"
+                                th:aria-pressed="${row.favorite}"
+                                aria-label="즐겨찾기 토글" title="즐겨찾기에 추가/해제">★</button>
+                      </span>
                     </span>
                   </div>
                 </div>
@@ -340,16 +342,18 @@
                         <span class="lh-name" th:text="${row.title}">제목</span>
                         <span class="lh-host" th:text="${row.host}">example.com</span>
                       </span>
-                      <span class="lh-acct" th:if="${row.hasAccountInfo}" title="계정정보가 메모에 있습니다">
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
-                        <span>계정</span>
-                      </span>
-                      <span class="lh-act">
-                        <button type="button" data-move="up" title="위로 이동" aria-label="위로 이동">▲</button>
-                        <button type="button" data-move="down" title="아래로 이동" aria-label="아래로 이동">▼</button>
-                        <button type="button" class="lh-edit" th:data-edit-toggle="${row.id}"
-                                th:aria-label="|${row.title} 수정|" title="수정">✎</button>
+                      <span class="lh-tail">
+                        <span class="lh-acct" th:if="${row.hasAccountInfo}" title="계정정보가 메모에 있습니다">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
+                          <span>계정</span>
+                        </span>
+                        <span class="lh-act">
+                          <button type="button" data-move="up" title="위로 이동" aria-label="위로 이동">▲</button>
+                          <button type="button" data-move="down" title="아래로 이동" aria-label="아래로 이동">▼</button>
+                          <button type="button" class="lh-edit" th:data-edit-toggle="${row.id}"
+                                  th:aria-label="|${row.title} 수정|" title="수정">✎</button>
+                        </span>
                       </span>
                     </div>
                     <div class="hub-edit" th:id="'edit-' + ${row.id}" hidden>

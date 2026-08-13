@@ -144,6 +144,101 @@
 
     catList.addEventListener('drop', (e) => e.preventDefault());
 
+    // ── 분류 편집: 행 선택 → 색상·축약 지정 ─────────────────────────────
+    const editPanel = document.getElementById('catEditPanel');
+    const editEmpty = document.getElementById('catEditEmpty');
+    if (editPanel) {
+      const nameEl = document.getElementById('catEditName');
+      const countEl = document.getElementById('catEditCount');
+      const dotEl = document.getElementById('catEditDot');
+      const badgeEl = document.getElementById('catEditBadge');
+      const shortEl = document.getElementById('catEditShort');
+      const swatches = [...editPanel.querySelectorAll('.adm-swatch')];
+      let selected = null;   // 편집 중인 .adm-catrow
+      let color = null;
+      let colorDark = null;
+
+      const paintPreview = () => {
+        if (color) {
+          dotEl?.style.setProperty('--c', color);
+          dotEl?.style.setProperty('--c-dark', colorDark || color);
+          badgeEl?.style.setProperty('--c', color);
+          badgeEl?.style.setProperty('--c-dark', colorDark || color);
+        }
+        if (badgeEl) badgeEl.textContent = (shortEl?.value || '').trim() || '분류';
+        swatches.forEach((s) => s.classList.toggle('adm-swatch--on', s.dataset.color === color));
+      };
+
+      const select = (row) => {
+        selected = row;
+        rows().forEach((r) => r.classList.toggle('is-selected', r === row));
+        // 저장값이 없으면 행에 렌더된 기본값(자동 배정 색)을 그대로 출발점으로 쓴다.
+        color = row.dataset.color || null;
+        colorDark = row.dataset.colorDark || null;
+        if (nameEl) nameEl.textContent = row.dataset.cat || '';
+        if (countEl) countEl.textContent = `링크 ${row.dataset.count || 0}개`;
+        if (shortEl) shortEl.value = row.dataset.short || '';
+        editPanel.hidden = false;
+        if (editEmpty) editEmpty.hidden = true;
+        paintPreview();
+      };
+
+      catList.addEventListener('click', (e) => {
+        const row = e.target.closest('.adm-catrow');
+        if (row) select(row);
+      });
+      catList.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const row = e.target.closest('.adm-catrow');
+        if (!row) return;
+        e.preventDefault();
+        select(row);
+      });
+
+      swatches.forEach((swatch) => {
+        swatch.addEventListener('click', () => {
+          color = swatch.dataset.color;
+          colorDark = swatch.dataset.colorDark;
+          paintPreview();
+        });
+      });
+      shortEl?.addEventListener('input', paintPreview);
+
+      document.getElementById('catStyleSave')?.addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        const url = btn.dataset.url;
+        if (!url || !selected) return;
+        const params = new URLSearchParams({
+          _csrf: csrfToken(),
+          category: selected.dataset.cat || '',
+          color: color || '',
+          colorDark: colorDark || '',
+          shortLabel: (shortEl?.value || '').trim(),
+        });
+        btn.disabled = true;
+        const msg = document.getElementById('catStyleMsg');
+        try {
+          const res = await fetch(url, { method: 'POST', body: params });
+          const data = await res.json().catch(() => ({}));
+          if (data.ok) {
+            // 목록 행에도 반영해 두면 다시 골랐을 때 방금 저장한 값이 나온다.
+            selected.dataset.color = color || '';
+            selected.dataset.colorDark = colorDark || '';
+            selected.dataset.short = (shortEl?.value || '').trim();
+            selected.querySelector('.adm-catdot')?.style.setProperty('--c', color || '');
+            selected.querySelector('.adm-catdot')?.style.setProperty('--c-dark', colorDark || '');
+            if (msg) { msg.style.display = 'inline'; setTimeout(() => { msg.style.display = 'none'; }, 2000); }
+          } else {
+            alert('저장 실패: ' + (data.msg || ''));
+          }
+        } catch (err) {
+          alert('저장 중 오류: ' + err.message);
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    }
+
     document.getElementById('catOrderSave')?.addEventListener('click', async (e) => {
       const btn = e.currentTarget;
       const url = btn.dataset.url;

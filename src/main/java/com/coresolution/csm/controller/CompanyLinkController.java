@@ -56,11 +56,15 @@ public class CompanyLinkController {
                 ? new java.util.HashSet<>(hubFavoriteService.listFavoriteLinkIds(hubMember.getId()))
                 : java.util.Set.of();
 
+        // 운영자가 지정한 분류 색상·축약. 비어 있는 항목은 presenter가 기본값으로 채운다.
+        Map<String, HubLinkPresenter.Category> styles =
+                hubLinkPresenter.categoryStyles(companyLinkService.listCategories());
+
         List<CompanyLink> links = companyLinkService.listActiveLinks();
-        List<HubLinkView> linkRows = hubLinkPresenter.publicLinks(links, favoriteIds, loggedIn);
+        List<HubLinkView> linkRows = hubLinkPresenter.publicLinks(links, favoriteIds, loggedIn, styles);
         model.addAttribute("linkRows", linkRows);
         model.addAttribute("linkGroupRows", groupRowsByCategory(linkRows));
-        model.addAttribute("categoryNav", categoryNav(linkRows));
+        model.addAttribute("categoryNav", categoryNav(linkRows, styles));
 
         // 필터 칩 개수 — 환경별 집계는 링크 목록에서 바로 센다.
         model.addAttribute("publicCount", linkRows.size());
@@ -68,7 +72,7 @@ public class CompanyLinkController {
         model.addAttribute("devCount", countEnv(linkRows, "dev") + countEnv(linkRows, "demo"));
 
         model.addAttribute("favoriteRows", loggedIn
-                ? hubLinkPresenter.publicLinks(hubFavoriteService.listFavorites(hubMember.getId()), favoriteIds, true)
+                ? hubLinkPresenter.publicLinks(hubFavoriteService.listFavorites(hubMember.getId()), favoriteIds, true, styles)
                 : java.util.List.of());
         // 로그인 시에만 개인 메모장을 노출한다(미로그인은 조회 자체를 하지 않는다).
         model.addAttribute("memo", loggedIn ? hubMemoService.find(hubMember.getId()) : "");
@@ -78,7 +82,7 @@ public class CompanyLinkController {
         List<HubCustomLink> customLinks = loggedIn
                 ? hubCustomLinkService.listOwn(hubMember.getId())
                 : java.util.List.of();
-        List<HubLinkView> customRows = hubLinkPresenter.customLinks(customLinks);
+        List<HubLinkView> customRows = hubLinkPresenter.customLinks(customLinks, styles);
         model.addAttribute("customRows", customRows);
         model.addAttribute("customGroupRows", groupRowsByCategory(customRows));
         model.addAttribute("customCount", customRows.size());
@@ -89,7 +93,7 @@ public class CompanyLinkController {
                 : java.util.List.of());
         // 인기 링크: 전 직원 클릭 집계 TOP(최근 30일). 개인정보 없는 집계라 미로그인도 노출.
         model.addAttribute("popularRows",
-                hubLinkPresenter.publicLinks(hubHistoryService.listPopularPublic(6, 30), favoriteIds, loggedIn));
+                hubLinkPresenter.publicLinks(hubHistoryService.listPopularPublic(6, 30), favoriteIds, loggedIn, styles));
         // 관리자 공지 배너(활성일 때만 non-null).
         model.addAttribute("notice", hubNoticeService.findActive());
         return "design/company-links";
@@ -97,13 +101,17 @@ public class CompanyLinkController {
 
     @GetMapping("/admin/company-links")
     public String manage(Model model, HttpSession session) {
+        Map<String, HubLinkPresenter.Category> styles =
+                hubLinkPresenter.categoryStyles(companyLinkService.listCategories());
         List<CompanyLink> links = companyLinkService.listActiveLinks();
         // 관리 화면은 링크를 열지 않고 표로만 다루므로 즐겨찾기·경유 경로 없이 매핑한다.
-        List<HubLinkView> linkRows = hubLinkPresenter.publicLinks(links, java.util.Set.of(), false);
+        List<HubLinkView> linkRows = hubLinkPresenter.publicLinks(links, java.util.Set.of(), false, styles);
         model.addAttribute("linkRows", linkRows);
         model.addAttribute("publicCount", linkRows.size());
-        model.addAttribute("categoryNav", categoryNav(linkRows)); // 사이드바 분류 목록
-        model.addAttribute("categoryRows", categoryRows(linkRows)); // 탭 2(분류 순서)
+        model.addAttribute("categoryNav", categoryNav(linkRows, styles)); // 사이드바 분류 목록
+        model.addAttribute("categoryRows", categoryRows(linkRows, styles)); // 탭 2(분류 순서)
+        model.addAttribute("envPalette", HubLinkPresenter.ENV_OPTIONS);
+        model.addAttribute("colorPalette", HubLinkPresenter.PALETTE_OPTIONS);
         model.addAttribute("hubMember", HubSessions.current(session)); // 사이드바 프로필 표시용
         model.addAttribute("notice", hubNoticeService.find()); // 공지 배너 관리 폼 현재값
         return "design/company-links-admin";
@@ -118,6 +126,22 @@ public class CompanyLinkController {
         hubNoticeService.save(message, level, active != null);
         redirectAttributes.addFlashAttribute("linkMessage", "공지 배너가 저장되었습니다.");
         return "redirect:/admin/company-links";
+    }
+
+    /** 분류 색상·축약 저장. 색상은 8색 세트 중에서만 오고, 서비스가 #rrggbb 형식을 한 번 더 검증한다. */
+    @PostMapping("/admin/company-links/category-style")
+    @ResponseBody
+    public Map<String, Object> saveCategoryStyle(
+            @RequestParam("category") String category,
+            @RequestParam(value = "color", required = false) String color,
+            @RequestParam(value = "colorDark", required = false) String colorDark,
+            @RequestParam(value = "shortLabel", required = false) String shortLabel) {
+        try {
+            companyLinkService.saveCategoryStyle(category, color, colorDark, shortLabel);
+            return Map.of("ok", true);
+        } catch (Exception e) {
+            return Map.of("ok", false, "msg", String.valueOf(e.getMessage()));
+        }
     }
 
     @PostMapping("/admin/company-links/category-order")
@@ -145,11 +169,12 @@ public class CompanyLinkController {
             @RequestParam("url") String url,
             @RequestParam(value = "description", required = false, defaultValue = "") String description,
             @RequestParam(value = "category", required = false, defaultValue = "") String category,
+            @RequestParam(value = "env", required = false, defaultValue = "") String env,
             @RequestParam(value = "sortOrder", required = false) Integer sortOrder,
             HttpSession session,
             RedirectAttributes redirectAttributes) {
         try {
-            companyLinkService.createLink(title, url, description, category, sortOrder, actor(session));
+            companyLinkService.createLink(title, url, description, category, env, sortOrder, actor(session));
             redirectAttributes.addFlashAttribute("linkMessage", "링크가 추가되었습니다.");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("linkError", e.getMessage());
@@ -164,11 +189,12 @@ public class CompanyLinkController {
             @RequestParam("url") String url,
             @RequestParam(value = "description", required = false, defaultValue = "") String description,
             @RequestParam(value = "category", required = false, defaultValue = "") String category,
+            @RequestParam(value = "env", required = false, defaultValue = "") String env,
             @RequestParam(value = "sortOrder", required = false) Integer sortOrder,
             HttpSession session,
             RedirectAttributes redirectAttributes) {
         try {
-            boolean updated = companyLinkService.updateLink(id, title, url, description, category, sortOrder, actor(session));
+            boolean updated = companyLinkService.updateLink(id, title, url, description, category, env, sortOrder, actor(session));
             redirectAttributes.addFlashAttribute(
                     updated ? "linkMessage" : "linkError",
                     updated ? "링크가 수정되었습니다." : "수정할 링크를 찾을 수 없습니다.");
@@ -209,10 +235,10 @@ public class CompanyLinkController {
     }
 
     /** 사이드바 분류 목록 — 이름·색·개수. 링크 목록 순서(분류 sort_order)를 그대로 따른다. */
-    private List<Map<String, Object>> categoryNav(List<HubLinkView> rows) {
+    private List<Map<String, Object>> categoryNav(List<HubLinkView> rows, Map<String, HubLinkPresenter.Category> styles) {
         List<Map<String, Object>> nav = new java.util.ArrayList<>();
         for (Map.Entry<String, List<HubLinkView>> entry : groupRowsByCategory(rows).entrySet()) {
-            HubLinkPresenter.Category style = hubLinkPresenter.category(entry.getKey());
+            HubLinkPresenter.Category style = hubLinkPresenter.category(entry.getKey(), styles);
             nav.add(Map.of(
                     "name", entry.getKey(),
                     "color", style.color(),
@@ -223,7 +249,7 @@ public class CompanyLinkController {
     }
 
     /** 분류 순서 탭용 — 사이드바 항목에 저장된 sort_order를 붙인다. */
-    private List<Map<String, Object>> categoryRows(List<HubLinkView> rows) {
+    private List<Map<String, Object>> categoryRows(List<HubLinkView> rows, Map<String, HubLinkPresenter.Category> styles) {
         Map<String, Object> orders = new LinkedHashMap<>();
         for (Map<String, Object> row : companyLinkService.listCategories()) {
             Object name = row.get("category_name");
@@ -232,9 +258,10 @@ public class CompanyLinkController {
             }
         }
         List<Map<String, Object>> out = new java.util.ArrayList<>();
-        for (Map<String, Object> nav : categoryNav(rows)) {
+        for (Map<String, Object> nav : categoryNav(rows, styles)) {
             Map<String, Object> merged = new LinkedHashMap<>(nav);
             merged.put("sortOrder", orders.getOrDefault(nav.get("name"), 9999));
+            merged.put("shortLabel", hubLinkPresenter.category(nav.get("name").toString(), styles).shortLabel());
             out.add(merged);
         }
         return out;

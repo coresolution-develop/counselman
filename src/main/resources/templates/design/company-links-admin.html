@@ -104,6 +104,14 @@
                     <div class="hub-field"><label>정렬 순서</label>
                       <input class="hub-input" type="number" name="sortOrder" min="0" max="9999" th:value="${row.sortOrder}" /></div>
                   </div>
+                  <div class="hub-form__row" style="margin-top:12px">
+                    <div class="hub-field"><label>환경</label>
+                      <select class="adm-select" name="env" style="height:38px">
+                        <option th:each="opt : ${envPalette}" th:value="${opt.value}" th:text="${opt.label}"
+                                th:selected="${opt.value == row.envSource}">자동 판정</option>
+                      </select></div>
+                    <div class="hub-field"></div>
+                  </div>
                   <div class="hub-field" style="margin-top:12px"><label>설명</label>
                     <textarea class="hub-textarea" name="description" maxlength="500"
                               th:text="${row.description}"></textarea></div>
@@ -139,7 +147,9 @@
               </div>
               <div class="adm-catlist" id="catOrderList">
                 <div class="adm-catrow" th:each="cat : ${categoryRows}" draggable="true"
-                     th:data-cat="${cat.name}">
+                     th:data-cat="${cat.name}" th:data-color="${cat.color}"
+                     th:data-color-dark="${cat.colorDark}" th:data-short="${cat.shortLabel}"
+                     th:data-count="${cat.count}" tabindex="0">
                   <span class="adm-cathandle" aria-hidden="true">⠿</span>
                   <span class="adm-catdot" aria-hidden="true"
                         th:style="|--c:${cat.color};--c-dark:${cat.colorDark}|"></span>
@@ -152,9 +162,51 @@
                 <div class="hub-empty__text">분류가 없습니다. 링크에 분류를 지정하면 여기에 나타납니다.</div>
               </div>
             </div>
-            <div class="adm-hint">
-              분류 색상은 지금 분류명에 따라 자동 배정됩니다.<br />
-              색상을 직접 고르려면 분류 색상 컬럼이 필요합니다 (2단계).
+            <!--/* 분류 편집 — 행을 고르면 열린다 */-->
+            <div class="adm-hint" id="catEditEmpty">
+              왼쪽에서 분류를 고르면<br />색상과 축약을 바꿀 수 있습니다.
+            </div>
+            <div class="acc-card" id="catEditPanel" hidden>
+              <div class="acc-card__head">
+                <span class="adm-catdot" id="catEditDot" aria-hidden="true"></span>
+                <h2 class="acc-card__title" id="catEditName">분류</h2>
+                <span class="acc-card__note" id="catEditCount"></span>
+              </div>
+
+              <div class="hub-field" style="margin-bottom:14px">
+                <span class="hub-label">색상</span>
+                <div class="adm-swatches">
+                  <button type="button" class="adm-swatch" th:each="p : ${colorPalette}"
+                          th:style="|--c:${p.color};--c-dark:${p.colorDark}|"
+                          th:data-color="${p.color}" th:data-color-dark="${p.colorDark}"
+                          th:title="${p.name}" th:aria-label="${p.name}"></button>
+                </div>
+                <span class="hub-form__hint">색약 대응을 고려한 세트라 이 중에서만 고를 수 있습니다.</span>
+              </div>
+
+              <div class="hub-field" style="margin-bottom:14px">
+                <label for="catEditShort">축약 (뱃지에 들어갈 2글자)</label>
+                <input class="hub-input" type="text" id="catEditShort" maxlength="4" placeholder="예) 병원" />
+              </div>
+
+              <div class="hub-field" style="margin-bottom:14px">
+                <span class="hub-label">미리보기</span>
+                <div class="lh-row" style="border:1px solid var(--border)">
+                  <span class="lh-env" style="color:var(--env-prod);background:var(--env-prod-tint)">운영</span>
+                  <span class="lh-badge" id="catEditBadge">분류</span>
+                  <span class="lh-main">
+                    <span class="lh-name" id="catEditSample">예시 링크</span>
+                    <span class="lh-host">example.com</span>
+                  </span>
+                  <span></span>
+                </div>
+              </div>
+
+              <div class="acc-card__foot">
+                <span id="catStyleMsg" style="font-size:11.5px;color:var(--env-prod);display:none;margin-right:auto">저장됐습니다.</span>
+                <button type="button" class="hub-btn hub-btn--primary hub-btn--sm" id="catStyleSave"
+                        th:data-url="@{/admin/company-links/category-style}">색상 저장</button>
+              </div>
             </div>
           </div>
         </section>
@@ -228,6 +280,11 @@
           <datalist id="admCategories">
             <option th:each="cat : ${categoryRows}" th:value="${cat.name}"></option>
           </datalist></div>
+        <div class="hub-field" style="margin-bottom:12px"><label for="addEnv">환경</label>
+          <select class="adm-select" id="addEnv" name="env" style="height:38px;width:100%">
+            <option th:each="opt : ${envPalette}" th:value="${opt.value}" th:text="${opt.label}">자동 판정</option>
+          </select>
+          <span class="hub-form__hint">자동 판정은 host에 dev가 있으면 개발, 이름에 DEMO가 있으면 DEMO로 봅니다.</span></div>
         <div class="hub-field" style="margin-bottom:12px"><label for="addSortOrder">정렬 순서</label>
           <input class="hub-input" type="number" id="addSortOrder" name="sortOrder" min="0" max="9999" value="0" /></div>
         <div class="hub-field" style="margin-bottom:16px"><label for="addDescription">설명</label>

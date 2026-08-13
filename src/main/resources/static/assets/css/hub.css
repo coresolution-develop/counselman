@@ -374,11 +374,21 @@ body.hub-body {
 /* 컴팩트 행 — 인기 / 최근 / 분류 목록 */
 .lh-row--compact { min-height: 34px; padding: 4px 9px; }
 .lh-row--compact .lh-name { font-size: 13px; }
-.lh-row--rank { grid-template-columns: 16px 42px minmax(0, 1fr) auto; }
+.lh-row--rank { grid-template-columns: 16px 42px minmax(0, 1fr) minmax(0, auto); }
 .lh-rank { font-size: 11px; font-family: var(--font-mono); color: var(--fg3); text-align: center; }
-.lh-meta { font-size: 11px; font-family: var(--font-mono); color: var(--fg3); flex: 0 0 auto; }
-.lh-row--plain { grid-template-columns: 42px minmax(0, 1fr) auto; }
-.lh-row--recent { grid-template-columns: minmax(0, 1fr) auto; }
+.lh-row--recent { grid-template-columns: minmax(0, 1fr) minmax(0, auto); }
+
+/* host·시각 같은 우측 보조 텍스트. 줄바꿈시키면 행 높이가 들쭉날쭉해지므로 한 줄로 자른다. */
+.lh-meta {
+  font-size: 11px; font-family: var(--font-mono); color: var(--fg3);
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right;
+}
+
+/* 행 끝에 붙는 것들(host + 액션)을 한 칸에 모은다.
+   그리드 열 수와 자식 수가 어긋나면 마지막 자식이 다음 줄로 밀려 행이 깨진다. */
+.lh-tail { display: flex; align-items: center; gap: 6px; min-width: 0; justify-content: flex-end; }
+.lh-tail .lh-meta { flex: 0 1 auto; }
+.lh-tail .lh-act { flex: 0 0 auto; }
 
 /* 계정정보 칩 — 값은 절대 렌더하지 않는다 */
 .lh-acct {
@@ -409,8 +419,10 @@ body.hub-body {
 .hub-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 
 /* 개인 링크 행은 환경 라벨 없이 뱃지 + 이름 */
-.lh-row--mine { grid-template-columns: 22px minmax(0, 1fr) auto; min-height: 36px; }
+.lh-row--mine { grid-template-columns: 22px minmax(0, 1fr) minmax(0, auto); min-height: 36px; }
 .lh-row--mine .lh-badge { width: 22px; height: 22px; font-size: 9.5px; }
+/* 선택 모드에서는 체크박스가 grid 항목으로 들어오므로 열을 하나 더 준다 */
+.is-selecting .lh-row--mine { grid-template-columns: 18px 22px minmax(0, 1fr) minmax(0, auto); }
 
 /* ---- 내 메모 ----------------------------------------------------------- */
 .hub-memo-card {
@@ -626,6 +638,20 @@ body.hub-body {
   padding: 28px 20px; text-align: center; border: 1px dashed var(--border);
   border-radius: var(--radius-lg); color: var(--fg3); font-size: 12.5px; line-height: 1.6;
 }
+.adm-hint[hidden] { display: none; }
+.adm-catrow.is-selected { background: var(--accent-tint); }
+.adm-catrow:focus-visible { outline: 2px solid var(--brand); outline-offset: -1px; }
+
+/* 분류 색상 선택 — 자유 입력 대신 정해진 세트에서만 고른다 */
+.adm-swatches { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.adm-swatch {
+  width: 26px; height: 26px; padding: 0; cursor: pointer;
+  border: 2px solid transparent; border-radius: var(--radius-sm); background: var(--c);
+}
+:root[data-theme="dark"] .adm-swatch { background: var(--c-dark); }
+.adm-swatch:hover { border-color: var(--fg3); }
+.adm-swatch--on { border-color: var(--fg1); }
+.adm-swatch:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
 /* 공지 탭 */
 .adm-notice-split { display: grid; grid-template-columns: 560px minmax(0, 1fr); gap: 20px; align-items: start; }
