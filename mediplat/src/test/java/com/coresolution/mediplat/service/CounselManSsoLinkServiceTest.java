@@ -159,6 +159,7 @@ class CounselManSsoLinkServiceTest {
                 "/counsel/list?page=1&perPageNum=10",
                 "/admin/main",
                 "description",
+                null,
                 "Y",
                 1,
                 "Y");
@@ -177,6 +178,7 @@ class CounselManSsoLinkServiceTest {
                 "/cancer-treatment-schedule",
                 "/cancer-treatment-schedule",
                 "description",
+                null,
                 "Y",
                 4,
                 "Y");

@@ -337,9 +337,50 @@ function InstSettingsPanel({ selectedInstCode, instInfo, allServices, enabledSer
 /* ============================================================
    PANEL 2: App / Service Registration
    ============================================================ */
+/* 포털 카드에 쓸 아이콘 선택기. 목록은 서버가 static/icons 를 훑어 내려준다
+   (availableIcons). 새 아이콘은 SVG 파일을 넣고 배포하면 여기에 자동으로 나타난다. */
+function IconPicker({ value, onChange, accent }) {
+  const icons = __ADMIN__.availableIcons || [];
+  return (
+    <div className="ia-iconpick">
+      <div className="ia-iconpick__label">포털 아이콘</div>
+      <div className="ia-iconpick__grid">
+        <button
+          type="button"
+          title="미지정 (기본 아이콘)"
+          aria-pressed={!value}
+          className={`ia-iconpick__item ${!value ? 'is-on' : ''}`}
+          style={{ '--ring': accent }}
+          onClick={() => onChange('')}
+        >
+          <span className="ia-iconpick__none">기본</span>
+        </button>
+        {icons.map(key => (
+          <button
+            key={key}
+            type="button"
+            title={key}
+            aria-pressed={value === key}
+            className={`ia-iconpick__item ${value === key ? 'is-on' : ''}`}
+            style={{ '--ring': accent }}
+            onClick={() => onChange(key)}
+          >
+            <img src={`/icons/${key}-appicon.svg`} alt={key} />
+          </button>
+        ))}
+      </div>
+      <div className="ia-iconpick__hint">
+        {icons.length === 0
+          ? 'static/icons 에 {key}-appicon.svg 를 넣고 배포하면 목록에 나타납니다.'
+          : (value ? `선택됨: ${value}` : '미지정이면 포털에서 기본 아이콘으로 표시됩니다.')}
+      </div>
+    </div>
+  );
+}
+
 function AppManagementPanel({ allServices, onSaved, accent }) {
   const a = IA_ACCENTS[accent] || IA_ACCENTS.blue;
-  const emptyForm = { serviceCode: '', serviceName: '', baseUrlLocal: '', baseUrlDev: '', baseUrlProd: '', userTarget: '', adminTarget: '', ssoEntryPath: '/mediplat/sso/entry', description: '', useYn: 'Y', displayOrder: 0 };
+  const emptyForm = { serviceCode: '', serviceName: '', baseUrlLocal: '', baseUrlDev: '', baseUrlProd: '', userTarget: '', adminTarget: '', ssoEntryPath: '/mediplat/sso/entry', description: '', iconKey: '', useYn: 'Y', displayOrder: 0 };
   const [form, setForm] = React.useState(emptyForm);
   const [editCode, setEditCode] = React.useState(null);
   const [saving, setSaving] = React.useState(false);
@@ -349,7 +390,7 @@ function AppManagementPanel({ allServices, onSaved, accent }) {
 
   function handleEdit(svc) {
     setEditCode(svc.serviceCode);
-    setForm({ serviceCode: svc.serviceCode, serviceName: svc.serviceName, baseUrlLocal: svc.baseUrlLocal || '', baseUrlDev: svc.baseUrlDev || '', baseUrlProd: svc.baseUrlProd || '', userTarget: svc.userTarget || '', adminTarget: svc.adminTarget || '', ssoEntryPath: svc.ssoEntryPath || '/mediplat/sso/entry', description: svc.description || '', useYn: svc.useYn || 'Y', displayOrder: svc.displayOrder ?? 0 });
+    setForm({ serviceCode: svc.serviceCode, serviceName: svc.serviceName, baseUrlLocal: svc.baseUrlLocal || '', baseUrlDev: svc.baseUrlDev || '', baseUrlProd: svc.baseUrlProd || '', userTarget: svc.userTarget || '', adminTarget: svc.adminTarget || '', ssoEntryPath: svc.ssoEntryPath || '/mediplat/sso/entry', description: svc.description || '', iconKey: svc.iconKey || '', useYn: svc.useYn || 'Y', displayOrder: svc.displayOrder ?? 0 });
   }
 
   async function handleSave(e) {
@@ -389,6 +430,9 @@ function AppManagementPanel({ allServices, onSaved, accent }) {
             <input className="ia-field__input" placeholder="설명 (포털 카드에 표시)" value={form.description} onChange={e => f('description', e.target.value)} style={{ '--ring': a.to }} />
           </Field>
         </div>
+        <div className="ia-form__row" style={{ gridTemplateColumns: '1fr' }}>
+          <IconPicker value={form.iconKey} onChange={v => f('iconKey', v)} accent={a.to} />
+        </div>
         <div className="ia-form__row">
           <Field icon={<I.Link width={14} height={14} />}>
             <input className="ia-field__input" placeholder="localhost URL" value={form.baseUrlLocal} onChange={e => f('baseUrlLocal', e.target.value)} style={{ '--ring': a.to }} />
@@ -426,11 +470,16 @@ function AppManagementPanel({ allServices, onSaved, accent }) {
       {/* Service list */}
       <div className="ia-table-wrap">
         <table className="ia-table">
-          <thead><tr><th>코드</th><th>서비스명</th><th>상태</th><th style={{ width: 44 }}></th></tr></thead>
+          <thead><tr><th style={{ width: 44 }}>아이콘</th><th>코드</th><th>서비스명</th><th>상태</th><th style={{ width: 44 }}></th></tr></thead>
           <tbody>
-            {allServices.length === 0 && <tr><td colSpan={4} className="ia-empty">등록된 앱 없음</td></tr>}
+            {allServices.length === 0 && <tr><td colSpan={5} className="ia-empty">등록된 앱 없음</td></tr>}
             {allServices.map(svc => (
               <tr key={svc.serviceCode} className={`ia-table__row ${svc.serviceCode === editCode ? 'is-editing' : ''}`}>
+                <td>
+                  {svc.iconKey
+                    ? <img className="ia-table__icon" src={`/icons/${svc.iconKey}-appicon.svg`} alt={svc.iconKey} title={svc.iconKey} />
+                    : <span className="ia-table__icon ia-table__icon--none" title="미지정">—</span>}
+                </td>
                 <td className="ia-table__code">{svc.serviceCode}</td>
                 <td className="ia-table__name">{svc.serviceName}</td>
                 <td><span className={`ia-badge ${svc.useYn === 'Y' ? 'ia-badge--on' : 'ia-badge--off'}`}>{svc.useYn === 'Y' ? '사용' : '중지'}</span></td>
@@ -1094,6 +1143,25 @@ const css = `
 .ia-toast svg { color: #10b981; }
 .ia-toast--err { background: #991b1b; }
 @keyframes ia-pop { from { opacity: 0; transform: translateX(-50%) translateY(calc(100% + 4px)) scale(.94); } to { opacity: 1; transform: translateX(-50%) translateY(100%) scale(1); } }
+
+/* Icon picker */
+.ia-iconpick { border: 1px solid var(--ink-200); border-radius: 9px; padding: 10px 12px 11px; background: var(--ink-50); }
+.ia-iconpick__label { font-size: 11.5px; font-weight: 600; color: var(--ink-500); margin-bottom: 8px; }
+.ia-iconpick__grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.ia-iconpick__item {
+  width: 44px; height: 44px; padding: 0; border-radius: 10px; overflow: hidden;
+  border: 1px solid var(--ink-200); background: #fff;
+  display: grid; place-items: center; transition: border-color .1s, box-shadow .1s;
+}
+.ia-iconpick__item:hover { border-color: var(--ink-300); }
+.ia-iconpick__item.is-on { border-color: var(--ring, #1d4ed8); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring, #1d4ed8) 28%, transparent); }
+.ia-iconpick__item img { width: 100%; height: 100%; display: block; }
+.ia-iconpick__none { font-size: 11px; font-weight: 600; color: var(--ink-400); }
+.ia-iconpick__hint { margin-top: 8px; font-size: 11px; color: var(--ink-400); }
+
+/* Service table icon */
+.ia-table__icon { width: 26px; height: 26px; border-radius: 6px; display: block; }
+.ia-table__icon--none { display: grid; place-items: center; color: var(--ink-300); background: var(--ink-100); font-size: 11px; }
 `;
 
 /* ============================================================

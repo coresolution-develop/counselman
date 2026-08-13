@@ -29,6 +29,7 @@ import com.coresolution.mediplat.service.CounselManSsoLinkService;
 import com.coresolution.mediplat.service.MaintenanceService;
 import com.coresolution.mediplat.service.PlatformStoreService;
 import com.coresolution.mediplat.service.SeminarRoomService;
+import com.coresolution.mediplat.service.ServiceIconCatalog;
 
 class InstitutionAdminFlowTest {
 
@@ -50,7 +51,7 @@ class InstitutionAdminFlowTest {
         SeminarRoomService seminarRoomService = mock(SeminarRoomService.class);
 
         MaintenanceService maintenanceService = mock(MaintenanceService.class);
-        MediplatController controller = new MediplatController(storeService, counselManSsoLinkService, seminarRoomService, maintenanceService);
+        MediplatController controller = new MediplatController(storeService, counselManSsoLinkService, seminarRoomService, maintenanceService, newIconCatalog());
 
         MockHttpSession adminSession = new MockHttpSession();
         String loginView = controller.login(
@@ -122,7 +123,7 @@ class InstitutionAdminFlowTest {
         dataSource.setUrl("jdbc:h2:mem:institution-admin-flow-" + UUID.randomUUID() + ";MODE=MySQL;DB_CLOSE_DELAY=-1");
 
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-        PlatformStoreService storeService = new PlatformStoreService(jdbcTemplate, counselManAccountService);
+        PlatformStoreService storeService = new PlatformStoreService(jdbcTemplate, counselManAccountService, newIconCatalog());
         ReflectionTestUtils.setField(storeService, "bootstrapAdminInstCode", "core");
         ReflectionTestUtils.setField(storeService, "bootstrapAdminInstName", "MediPlat Platform");
         ReflectionTestUtils.setField(storeService, "bootstrapAdminUsername", "platformadmin");
@@ -135,4 +136,12 @@ class InstitutionAdminFlowTest {
         storeService.initialize();
         return storeService;
     }
+
+    /** 테스트에서도 실제 static/icons 를 훑은 카탈로그를 쓴다(아이콘 key 검증 경로 동일). */
+    private static ServiceIconCatalog newIconCatalog() {
+        ServiceIconCatalog catalog = new ServiceIconCatalog();
+        catalog.load();
+        return catalog;
+    }
+
 }

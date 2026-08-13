@@ -28,6 +28,7 @@ import com.coresolution.mediplat.service.CounselManSsoLinkService;
 import com.coresolution.mediplat.service.MaintenanceService;
 import com.coresolution.mediplat.service.PlatformStoreService;
 import com.coresolution.mediplat.service.SeminarRoomService;
+import com.coresolution.mediplat.service.ServiceIconCatalog;
 
 @ExtendWith(MockitoExtension.class)
 class MediplatControllerTest {
@@ -50,7 +51,7 @@ class MediplatControllerTest {
 
     @BeforeEach
     void setUp() {
-        controller = new MediplatController(storeService, counselManSsoLinkService, seminarRoomService, maintenanceService);
+        controller = new MediplatController(storeService, counselManSsoLinkService, seminarRoomService, maintenanceService, newIconCatalog());
     }
 
     @Test
@@ -85,6 +86,7 @@ class MediplatControllerTest {
                 "/counsel/list?page=1&perPageNum=10",
                 "/admin/main",
                 "",
+                null,
                 "Y",
                 1,
                 "Y");
@@ -119,6 +121,7 @@ class MediplatControllerTest {
                 "/counsel/list?page=1&perPageNum=10",
                 "/admin/main",
                 "",
+                null,
                 "N",
                 1,
                 "Y");
@@ -151,6 +154,7 @@ class MediplatControllerTest {
                 "/room-board?popup=1",
                 "/room-board?popup=1",
                 "",
+                null,
                 "Y",
                 2,
                 "Y");
@@ -184,6 +188,7 @@ class MediplatControllerTest {
                 "/seminar-room",
                 "/seminar-room",
                 "",
+                null,
                 "Y",
                 3,
                 "Y");
@@ -214,6 +219,7 @@ class MediplatControllerTest {
                 "/cancer-treatment-schedule",
                 "/cancer-treatment-schedule",
                 "",
+                null,
                 "Y",
                 4,
                 "Y");
@@ -248,6 +254,7 @@ class MediplatControllerTest {
                 "/counsel/list?page=1&perPageNum=10",
                 "/admin/main",
                 "",
+                null,
                 "Y",
                 1,
                 "Y");
@@ -349,6 +356,7 @@ class MediplatControllerTest {
                 "/login",
                 "/login",
                 "",
+                null,
                 "Y",
                 5,
                 "Y");
@@ -362,4 +370,12 @@ class MediplatControllerTest {
         verify(counselManSsoLinkService, never()).createLaunchUrl(any(), any());
         verify(counselManSsoLinkService, never()).createLaunchUrl(any(), any(), any(), any());
     }
+
+    /** 테스트에서도 실제 static/icons 를 훑은 카탈로그를 쓴다(아이콘 key 검증 경로 동일). */
+    private static ServiceIconCatalog newIconCatalog() {
+        ServiceIconCatalog catalog = new ServiceIconCatalog();
+        catalog.load();
+        return catalog;
+    }
+
 }

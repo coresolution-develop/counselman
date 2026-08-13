@@ -59,17 +59,20 @@ MediPlat 은 기동할 때마다 이 계정을 생성/갱신합니다. `PLATFORM
 - **MediPlat 자체 마크**: `mediplat-b` 확정. 포털 헤더는 `mediplat-b-symbol.svg`,
   파비콘/앱아이콘 PNG(`favicon*.png`, `favicon.ico`, `apple-touch-icon.png`,
   `android-chrome-*.png`)는 이 마크에서 생성한 것입니다.
-- **서비스 카드 아이콘**: `portal-app.jsx` 의 `BRAND_APPICON` 이 `serviceCode` → 앱아이콘
-  경로를 매핑합니다. 매핑이 없는 서비스는 기존 라인 글리프(`AppIcon`)로 자동 폴백합니다.
+- **서비스 카드 아이콘**: 코드가 아니라 **관리자 화면에서 지정**합니다.
+  `/admin` → "앱 등록" 패널의 *포털 아이콘* 에서 고르면 `mp_service.icon_key` 에 저장되고,
+  포털 카드가 `/icons/{icon_key}-appicon.svg` 를 씁니다. 기존 앱은 수정으로 바꿀 수 있습니다.
+  미지정이면 포털에서 기본 아이콘 하나로 통일해 표시합니다.
 
-| serviceCode | 아이콘 |
-|---|---|
-| `COUNSELMAN` | `counselman-appicon.svg` |
-| `ROOM_BOARD` | `wardhub-appicon.svg` |
-| 그 외 | 라인 글리프 폴백 |
+선택 목록은 `ServiceIconCatalog` 가 기동할 때 `static/icons/*-appicon.svg` 를 훑어 만듭니다.
+**새 아이콘을 추가하려면 `{key}-appicon.svg` 를 폴더에 넣고 배포·재기동**하면 됩니다 — 코드 수정은 없습니다.
+(`{key}` 는 소문자·숫자·하이픈만. 카탈로그에 없는 key 는 저장 단계에서 거부합니다.)
 
-`reshub-*` 는 아직 MediPlat 에 편입되지 않은 시스템이라 파일만 보관돼 있습니다.
-새 시스템을 붙일 때 `BRAND_APPICON` 에 한 줄 추가하면 카드에 반영됩니다.
+`icon_key` 컬럼은 기동 시 자동으로 추가됩니다(MySQL은 `INFORMATION_SCHEMA` 확인 후 `ALTER`).
+별도 마이그레이션 SQL을 돌릴 필요는 없습니다.
+
+`reshub-*` 는 아직 MediPlat 에 편입되지 않은 시스템이지만, 파일이 있으므로 앱을 등록하면
+바로 아이콘으로 고를 수 있습니다.
 
 PNG 재생성이 필요하면 SVG 를 브라우저 렌더러로 래스터화하세요. ImageMagick 내장 SVG
 렌더러는 `stroke` 패스를 누락시켜 마크가 깨집니다.

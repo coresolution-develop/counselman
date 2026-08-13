@@ -24,51 +24,31 @@ const PORTAL_ACCENTS = {
 /* ------------ Apps registry (백엔드 주입, fallback: 빈 배열) ------------ */
 const APPS = (window.__MP_PORTAL__ && window.__MP_PORTAL__.apps) || [];
 
-/* ------------ App icon glyphs ------------ */
-function AppIcon({ k, size = 22, color = '#fff' }) {
-  const p = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: color, strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' };
-  switch (k) {
-    case 'counsel':
-      return <svg {...p}><path d="M21 12a8 8 0 0 1-11.5 7.2L4 21l1.8-5.5A8 8 0 1 1 21 12z"/><path d="M9 11h6M9 14h4"/></svg>;
-    case 'bed':
-      return <svg {...p}><path d="M3 18V8M21 18v-6a3 3 0 0 0-3-3H10v6"/><path d="M3 14h18M3 18h18"/><circle cx="7" cy="11" r="2"/></svg>;
-    case 'calendar':
-      return <svg {...p}><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="8" cy="14" r="1" fill={color}/><circle cx="12" cy="14" r="1" fill={color}/><circle cx="16" cy="14" r="1" fill={color}/></svg>;
-    case 'sparkle':
-      return <svg {...p}><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4z"/><path d="M19 16l.7 1.8L21 18.5l-1.3.7L19 21l-.7-1.8L17 18.5l1.3-.7z"/></svg>;
-    case 'route':
-      return <svg {...p}><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8 19h7a4 4 0 0 0 0-8H9a4 4 0 0 1 0-8h6"/></svg>;
-    case 'ambulance':
-      return <svg {...p}><rect x="2" y="8" width="13" height="9" rx="1.5"/><path d="M15 11h4l2 3v3h-6"/><circle cx="7" cy="18.5" r="1.8"/><circle cx="17" cy="18.5" r="1.8"/><path d="M7 11.5h3M8.5 10v3"/></svg>;
-    case 'message':
-      return <svg {...p}><path d="M21 11.5a8 8 0 0 1-11.5 7.2L4 20l1.3-4A8 8 0 1 1 21 11.5z"/><path d="M8 10h8M8 13.5h5"/></svg>;
-    case 'form':
-      return <svg {...p}><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>;
-    default:
-      return <svg {...p}><rect x="4" y="4" width="16" height="16" rx="3"/></svg>;
-  }
+/* ------------ Service icons ------------
+   아이콘은 관리자 화면(앱 등록)에서 고른 mp_service.icon_key 로 결정된다.
+   key 가 있으면 /icons 의 앱아이콘 SVG가 타일 자체를 대신한다(앱아이콘에 딥블루
+   배경과 라운드가 이미 들어 있어 타일 배경을 덮어쓴다).
+   미지정이면 서비스 종류와 무관하게 아래 기본 글리프 하나로 통일한다. */
+function DefaultAppIcon({ size = 22, color = '#fff' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+         strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+    </svg>
+  );
 }
 
-/* ------------ Brand app icons (코어솔루션 아이콘 패밀리, /icons) ------------
-   브랜드 아이콘이 있는 서비스는 앱아이콘 SVG가 타일 자체를 대신한다.
-   (앱아이콘에 딥블루 배경과 라운드가 이미 포함돼 있어 타일 배경을 덮어쓴다) */
-const BRAND_APPICON = {
-  COUNSELMAN: '/icons/counselman-appicon.svg',
-  ROOM_BOARD: '/icons/wardhub-appicon.svg',
-};
-
 function ServiceIcon({ app, className, size, gradient }) {
-  const brand = BRAND_APPICON[app.serviceCode];
-  if (brand) {
+  if (app.iconKey) {
     return (
       <div className={`${className} pv-icon--brand${app.active ? '' : ' pv-icon--muted'}`}>
-        <img className="pv-icon__brand-img" src={brand} alt="" />
+        <img className="pv-icon__brand-img" src={`/icons/${app.iconKey}-appicon.svg`} alt="" />
       </div>
     );
   }
   return (
     <div className={className} style={gradient ? { background: gradient } : undefined}>
-      <AppIcon k={app.iconKey} size={size} />
+      <DefaultAppIcon size={size} />
     </div>
   );
 }

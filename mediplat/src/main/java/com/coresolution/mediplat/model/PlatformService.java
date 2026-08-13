@@ -12,6 +12,7 @@ public class PlatformService {
     private final String userTarget;
     private final String adminTarget;
     private final String description;
+    private final String iconKey;
     private final String useYn;
     private final Integer displayOrder;
     private final String accessYn;
@@ -28,6 +29,7 @@ public class PlatformService {
             String userTarget,
             String adminTarget,
             String description,
+            String iconKey,
             String useYn,
             Integer displayOrder,
             String accessYn) {
@@ -42,6 +44,7 @@ public class PlatformService {
         this.userTarget = userTarget;
         this.adminTarget = adminTarget;
         this.description = description;
+        this.iconKey = iconKey;
         this.useYn = useYn;
         this.displayOrder = displayOrder;
         this.accessYn = accessYn;
@@ -89,6 +92,10 @@ public class PlatformService {
 
     public String getDescription() {
         return description;
+    }
+
+    public String getIconKey() {
+        return iconKey;
     }
 
     public String getUseYn() {

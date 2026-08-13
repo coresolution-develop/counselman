@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
@@ -368,7 +369,7 @@ class PlatformStoreServiceTest {
         dataSource.setUrl("jdbc:h2:mem:platform-store-" + UUID.randomUUID() + ";MODE=MySQL;DB_CLOSE_DELAY=-1");
 
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-        PlatformStoreService storeService = new PlatformStoreService(jdbcTemplate, counselManAccountService);
+        PlatformStoreService storeService = new PlatformStoreService(jdbcTemplate, counselManAccountService, newIconCatalog());
         ReflectionTestUtils.setField(storeService, "bootstrapAdminInstCode", "core");
         ReflectionTestUtils.setField(storeService, "bootstrapAdminInstName", "MediPlat Platform");
         ReflectionTestUtils.setField(storeService, "bootstrapAdminUsername", "platformadmin");
@@ -405,13 +406,67 @@ class PlatformStoreServiceTest {
         assertNull(storeService.findService("SMS"));
     }
 
+    @Test
+    void saveService_persistsIconKey_andKeepsItAcrossRestartBootstrap() {
+        CounselManAccountService counselManAccountService = org.mockito.Mockito.mock(CounselManAccountService.class);
+        String jdbcUrl = "jdbc:h2:mem:platform-store-icon-" + UUID.randomUUID() + ";MODE=MySQL;DB_CLOSE_DELAY=-1";
+        PlatformStoreService storeService = newInitializedStoreService(counselManAccountService, jdbcUrl);
+
+        storeService.saveService(
+                "COUNSELMAN", "CounselMan", "http://localhost:8081/csm",
+                "http://localhost:8081/csm", null, null,
+                "/mediplat/sso/entry", "/counsel/list", "/core/admin",
+                "상담관리", "counselman", "Y", 1);
+
+        assertEquals("counselman", storeService.findService("COUNSELMAN").getIconKey());
+
+        // 부트스트랩은 기동할 때마다 COUNSELMAN 을 upsert 한다. 그래도 관리자가 고른
+        // 아이콘은 남아 있어야 한다(같은 DB로 재기동).
+        PlatformStoreService restarted = newInitializedStoreService(counselManAccountService, jdbcUrl);
+
+        assertEquals("counselman", restarted.findService("COUNSELMAN").getIconKey());
+    }
+
+    @Test
+    void saveService_rejectsIconKeyThatIsNotInCatalog() {
+        CounselManAccountService counselManAccountService = org.mockito.Mockito.mock(CounselManAccountService.class);
+        PlatformStoreService storeService = newInitializedStoreService(counselManAccountService);
+
+        assertThrows(IllegalArgumentException.class, () -> storeService.saveService(
+                "NEWAPP", "New App", "http://localhost:9000",
+                "http://localhost:9000", null, null,
+                "/mediplat/sso/entry", "/home", "/admin",
+                null, "../../etc/passwd", "Y", 9));
+    }
+
+    @Test
+    void saveService_blankIconKey_storesNull() {
+        CounselManAccountService counselManAccountService = org.mockito.Mockito.mock(CounselManAccountService.class);
+        PlatformStoreService storeService = newInitializedStoreService(counselManAccountService);
+
+        storeService.saveService(
+                "NEWAPP", "New App", "http://localhost:9000",
+                "http://localhost:9000", null, null,
+                "/mediplat/sso/entry", "/home", "/admin",
+                null, "  ", "Y", 9);
+
+        assertNull(storeService.findService("NEWAPP").getIconKey());
+    }
+
     private PlatformStoreService newInitializedStoreService(CounselManAccountService counselManAccountService) {
+        return newInitializedStoreService(
+                counselManAccountService,
+                "jdbc:h2:mem:platform-store-" + UUID.randomUUID() + ";MODE=MySQL;DB_CLOSE_DELAY=-1");
+    }
+
+    private PlatformStoreService newInitializedStoreService(
+            CounselManAccountService counselManAccountService, String jdbcUrl) {
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
         dataSource.setDriverClassName("org.h2.Driver");
-        dataSource.setUrl("jdbc:h2:mem:platform-store-" + UUID.randomUUID() + ";MODE=MySQL;DB_CLOSE_DELAY=-1");
+        dataSource.setUrl(jdbcUrl);
 
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-        PlatformStoreService storeService = new PlatformStoreService(jdbcTemplate, counselManAccountService);
+        PlatformStoreService storeService = new PlatformStoreService(jdbcTemplate, counselManAccountService, newIconCatalog());
         ReflectionTestUtils.setField(storeService, "bootstrapAdminInstCode", "core");
         ReflectionTestUtils.setField(storeService, "bootstrapAdminInstName", "MediPlat Platform");
         ReflectionTestUtils.setField(storeService, "bootstrapAdminUsername", "platformadmin");
@@ -424,4 +479,12 @@ class PlatformStoreServiceTest {
         storeService.initialize();
         return storeService;
     }
+
+    /** 테스트에서도 실제 static/icons 를 훑은 카탈로그를 쓴다(아이콘 key 검증 경로 동일). */
+    private static ServiceIconCatalog newIconCatalog() {
+        ServiceIconCatalog catalog = new ServiceIconCatalog();
+        catalog.load();
+        return catalog;
+    }
+
 }

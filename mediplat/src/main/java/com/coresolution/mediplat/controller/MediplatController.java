@@ -42,6 +42,7 @@ import com.coresolution.mediplat.service.CounselManSsoLinkService;
 import com.coresolution.mediplat.service.MaintenanceService;
 import com.coresolution.mediplat.service.PlatformStoreService;
 import com.coresolution.mediplat.service.SeminarRoomService;
+import com.coresolution.mediplat.service.ServiceIconCatalog;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -61,6 +62,7 @@ public class MediplatController {
     private final CounselManSsoLinkService counselManSsoLinkService;
     private final SeminarRoomService seminarRoomService;
     private final MaintenanceService maintenanceService;
+    private final ServiceIconCatalog serviceIconCatalog;
 
     @Value("${platform.bootstrap.counselman-base-url:http://localhost:8081/csm}")
     private String counselmanBaseUrl;
@@ -69,11 +71,13 @@ public class MediplatController {
             PlatformStoreService storeService,
             CounselManSsoLinkService counselManSsoLinkService,
             SeminarRoomService seminarRoomService,
-            MaintenanceService maintenanceService) {
+            MaintenanceService maintenanceService,
+            ServiceIconCatalog serviceIconCatalog) {
         this.storeService = storeService;
         this.counselManSsoLinkService = counselManSsoLinkService;
         this.seminarRoomService = seminarRoomService;
         this.maintenanceService = maintenanceService;
+        this.serviceIconCatalog = serviceIconCatalog;
     }
 
     @GetMapping({ "", "/" })
@@ -683,6 +687,7 @@ public class MediplatController {
         model.addAttribute("userServiceRoleOverrides", userServiceRoleOverrides);
         model.addAttribute("instName", storeService.getInstName(selectedInstCode));
         model.addAttribute("canManagePlatform", user.isPlatformAdmin());
+        model.addAttribute("availableIcons", serviceIconCatalog.listIconKeys());
         model.addAttribute("canManageInstitutionUsers", user.isPlatformAdmin() || user.isInstitutionAdmin());
         model.addAttribute("institutions", institutions);
         model.addAttribute("services", storeService.listAllServices());
@@ -1017,6 +1022,7 @@ public class MediplatController {
             @RequestParam("userTarget") String userTarget,
             @RequestParam("adminTarget") String adminTarget,
             @RequestParam(name = "description", required = false) String description,
+            @RequestParam(name = "iconKey", required = false) String iconKey,
             @RequestParam(name = "useYn", defaultValue = "Y") String useYn,
             @RequestParam(name = "displayOrder", defaultValue = "0") Integer displayOrder,
             HttpSession session,
@@ -1036,6 +1042,7 @@ public class MediplatController {
                     userTarget,
                     adminTarget,
                     description,
+                    iconKey,
                     useYn,
                     displayOrder);
             redirectAttributes.addAttribute("message", "서비스가 저장되었습니다.");

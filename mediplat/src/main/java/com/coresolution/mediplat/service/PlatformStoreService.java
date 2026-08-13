@@ -94,10 +94,15 @@ public class PlatformStoreService {
     private String activeProfiles;
 
     private final CounselManAccountService counselManAccountService;
+    private final ServiceIconCatalog serviceIconCatalog;
 
-    public PlatformStoreService(JdbcTemplate jdbcTemplate, CounselManAccountService counselManAccountService) {
+    public PlatformStoreService(
+            JdbcTemplate jdbcTemplate,
+            CounselManAccountService counselManAccountService,
+            ServiceIconCatalog serviceIconCatalog) {
         this.jdbcTemplate = jdbcTemplate;
         this.counselManAccountService = counselManAccountService;
+        this.serviceIconCatalog = serviceIconCatalog;
     }
 
     @PostConstruct
@@ -269,7 +274,7 @@ public class PlatformStoreService {
                        se_dev.base_url AS base_url_dev,
                        se_prod.base_url AS base_url_prod,
                        s.sso_entry_path, s.user_target, s.admin_target,
-                       s.description, s.use_yn, s.display_order, COALESCE(a.use_yn, 'N') AS access_yn
+                       s.description, s.icon_key, s.use_yn, s.display_order, COALESCE(a.use_yn, 'N') AS access_yn
                 FROM mp_service s
                 LEFT JOIN mp_service_endpoint se_runtime
                   ON se_runtime.service_code = s.service_code
@@ -562,7 +567,7 @@ public class PlatformStoreService {
                        se_dev.base_url AS base_url_dev,
                        se_prod.base_url AS base_url_prod,
                        s.sso_entry_path, s.user_target, s.admin_target,
-                       s.description, s.use_yn, s.display_order, 'Y' AS access_yn
+                       s.description, s.icon_key, s.use_yn, s.display_order, 'Y' AS access_yn
                 FROM mp_service s
                 LEFT JOIN mp_service_endpoint se_runtime
                   ON se_runtime.service_code = s.service_code
@@ -689,7 +694,7 @@ public class PlatformStoreService {
                        se_dev.base_url AS base_url_dev,
                        se_prod.base_url AS base_url_prod,
                        s.sso_entry_path, s.user_target, s.admin_target,
-                       s.description, s.use_yn, s.display_order, 'Y' AS access_yn
+                       s.description, s.icon_key, s.use_yn, s.display_order, 'Y' AS access_yn
                 FROM mp_service s
                 LEFT JOIN mp_service_endpoint se_runtime
                   ON se_runtime.service_code = s.service_code
@@ -880,6 +885,7 @@ public class PlatformStoreService {
             String userTarget,
             String adminTarget,
             String description,
+            String iconKey,
             String useYn,
             Integer displayOrder) {
         String normalizedCode = normalizeServiceCode(serviceCode);
@@ -912,6 +918,7 @@ public class PlatformStoreService {
                 normalizePath(userTarget, "/counsel/list?page=1&perPageNum=10&comment="),
                 normalizePath(adminTarget, "/core/admin"),
                 trimToNull(description),
+                serviceIconCatalog.normalizeForSave(iconKey),
                 normalizeYn(useYn),
                 displayOrder == null ? 0 : displayOrder);
         upsertServiceEndpoint(normalizedCode, ENV_LOCAL, normalizedLocalBaseUrl);
@@ -1075,10 +1082,17 @@ public class PlatformStoreService {
                     user_target VARCHAR(255) NOT NULL,
                     admin_target VARCHAR(255) NOT NULL,
                     description VARCHAR(255),
+                    icon_key VARCHAR(50) NULL,
                     use_yn CHAR(1) NOT NULL DEFAULT 'Y',
                     display_order INT NOT NULL DEFAULT 0
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
                 """);
+        Integer iconKeyColExists = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'mp_service' AND COLUMN_NAME = 'icon_key'",
+                Integer.class);
+        if (iconKeyColExists == null || iconKeyColExists == 0) {
+            jdbcTemplate.execute("ALTER TABLE mp_service ADD COLUMN icon_key VARCHAR(50) NULL");
+        }
 
         jdbcTemplate.execute("""
                 CREATE TABLE IF NOT EXISTS mp_institution_service (
@@ -1199,10 +1213,12 @@ public class PlatformStoreService {
                     user_target VARCHAR(255) NOT NULL,
                     admin_target VARCHAR(255) NOT NULL,
                     description VARCHAR(255),
+                    icon_key VARCHAR(50) NULL,
                     use_yn CHAR(1) NOT NULL DEFAULT 'Y',
                     display_order INT NOT NULL DEFAULT 0
                 )
                 """);
+        jdbcTemplate.execute("ALTER TABLE mp_service ADD COLUMN IF NOT EXISTS icon_key VARCHAR(50) NULL");
 
         jdbcTemplate.execute("""
                 CREATE TABLE IF NOT EXISTS mp_institution_service (
@@ -1298,6 +1314,7 @@ public class PlatformStoreService {
                 "/counsel/list?page=1&perPageNum=10&comment=",
                 "/core/admin",
                 "기관별 상담관리 서비스",
+                currentIconKey(DEFAULT_SERVICE_CODE),
                 USE_Y,
                 1));
         bootstrapService(SERVICE_CODE_ROOM_BOARD, () -> saveService(
@@ -1311,6 +1328,7 @@ public class PlatformStoreService {
                 "/room-board?popup=1",
                 "/room-board?popup=1",
                 "기관별 병실현황판 서비스",
+                currentIconKey(SERVICE_CODE_ROOM_BOARD),
                 USE_Y,
                 2));
         bootstrapService(SERVICE_CODE_SEMINAR_ROOM, () -> saveService(
@@ -1324,6 +1342,7 @@ public class PlatformStoreService {
                 "/seminar-room",
                 "/seminar-room",
                 "기관별 세미나실 예약 관리 서비스",
+                currentIconKey(SERVICE_CODE_SEMINAR_ROOM),
                 USE_Y,
                 3));
         bootstrapService(SERVICE_CODE_CANCER_TREATMENT, () -> saveService(
@@ -1337,6 +1356,7 @@ public class PlatformStoreService {
                 "/cancer-treatment-schedule",
                 "/cancer-treatment-schedule",
                 "암센터 치료 예약 및 치료상태 실시간 관리 서비스",
+                currentIconKey(SERVICE_CODE_CANCER_TREATMENT),
                 USE_Y,
                 4));
         // SMS(문자) 서비스는 등록하지 않는다. sms 앱은 폐기 대상이고, 포트 8084는 ResvHub가
@@ -1353,6 +1373,7 @@ public class PlatformStoreService {
                 "/fleet/admin",
                 "/fleet/admin",
                 "사내 차량 운행기록 · 배차 관리 서비스",
+                currentIconKey(SERVICE_CODE_FLEET),
                 USE_Y,
                 6));
         saveInstitutionServiceAccess(
@@ -1369,6 +1390,26 @@ public class PlatformStoreService {
      * takes the portal down. The service is skipped with a WARN; once its endpoint is
      * configured the next boot registers it.
      */
+    /**
+     * 부트스트랩은 매 기동마다 saveService 로 upsert 하므로, 그대로 두면 관리자가 앱 등록
+     * 화면에서 고른 아이콘이 재시작 때마다 초기화된다. 현재 저장값을 읽어 다시 넘겨 보존한다.
+     * 아이콘 파일이 빠져 카탈로그에 없는 값이면 미지정으로 되돌린다.
+     */
+    private String currentIconKey(String serviceCode) {
+        try {
+            List<String> stored = jdbcTemplate.queryForList(
+                    "SELECT icon_key FROM mp_service WHERE service_code = ?",
+                    String.class,
+                    serviceCode);
+            String iconKey = stored.isEmpty() ? null : stored.get(0);
+            return StringUtils.hasText(iconKey) && serviceIconCatalog.listIconKeys().contains(iconKey)
+                    ? iconKey
+                    : null;
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
     private void bootstrapService(String serviceCode, Runnable register) {
         try {
             register.run();
@@ -1747,13 +1788,14 @@ public class PlatformStoreService {
             String userTarget,
             String adminTarget,
             String description,
+            String iconKey,
             String useYn,
             Integer displayOrder) {
         if (isMySql()) {
             jdbcTemplate.update("""
                     INSERT INTO mp_service (service_code, service_name, base_url, sso_entry_path, user_target, admin_target,
-                                            description, use_yn, display_order)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                            description, icon_key, use_yn, display_order)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON DUPLICATE KEY UPDATE
                         service_name = ?,
                         base_url = ?,
@@ -1761,6 +1803,7 @@ public class PlatformStoreService {
                         user_target = ?,
                         admin_target = ?,
                         description = ?,
+                        icon_key = ?,
                         use_yn = ?,
                         display_order = ?
                     """,
@@ -1771,6 +1814,7 @@ public class PlatformStoreService {
                     userTarget,
                     adminTarget,
                     description,
+                    iconKey,
                     useYn,
                     displayOrder,
                     serviceName,
@@ -1779,15 +1823,16 @@ public class PlatformStoreService {
                     userTarget,
                     adminTarget,
                     description,
+                    iconKey,
                     useYn,
                     displayOrder);
             return;
         }
         jdbcTemplate.update("""
                 MERGE INTO mp_service (service_code, service_name, base_url, sso_entry_path, user_target, admin_target,
-                                       description, use_yn, display_order)
+                                       description, icon_key, use_yn, display_order)
                 KEY (service_code)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 serviceCode,
                 serviceName,
@@ -1796,6 +1841,7 @@ public class PlatformStoreService {
                 userTarget,
                 adminTarget,
                 description,
+                iconKey,
                 useYn,
                 displayOrder);
     }
@@ -1941,6 +1987,7 @@ public class PlatformStoreService {
                 rs.getString("user_target"),
                 rs.getString("admin_target"),
                 rs.getString("description"),
+                rs.getString("icon_key"),
                 rs.getString("use_yn"),
                 rs.getInt("display_order"),
                 accessYn);
@@ -1959,6 +2006,7 @@ public class PlatformStoreService {
                 service.getUserTarget(),
                 service.getAdminTarget(),
                 service.getDescription(),
+                service.getIconKey(),
                 service.getUseYn(),
                 service.getDisplayOrder(),
                 accessYn);
@@ -1994,6 +2042,7 @@ public class PlatformStoreService {
                 "/room-board?popup=1",
                 "/room-board?popup=1",
                 "입원상담 연동 병실현황판",
+                null,
                 USE_Y,
                 9999,
                 USE_Y));

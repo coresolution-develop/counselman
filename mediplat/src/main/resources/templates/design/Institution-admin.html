@@ -83,7 +83,9 @@
     var instName             = /*[[${instName}]]*/ '';
     var canManagePlatform    = /*[[${canManagePlatform}]]*/ false;
     var maintenanceHtml      = /*[[${maintenanceHtml}]]*/ '';
+    var rawAvailableIcons    = /*[[${availableIcons}]]*/ [];
     window.__MP_ADMIN__ = {
+      availableIcons: rawAvailableIcons,
       user:     rawUser ? { name: rawUser.displayName, org: rawUser.instCode, instName: instName, role: rawUser.roleCode } : {},
       instCode: instCode,
       instName: instName,
@@ -103,6 +105,7 @@
           adminTarget:  s.adminTarget  || '',
           ssoEntryPath: s.ssoEntryPath || '/mediplat/sso/entry',
           description:  s.description  || '',
+          iconKey:      s.iconKey      || '',
           useYn:        s.useYn        || 'Y',
           displayOrder: s.displayOrder != null ? s.displayOrder : 0
         };

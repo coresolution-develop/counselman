@@ -55,12 +55,14 @@
 
 <script th:inline="javascript">
   (function () {
-    var ICON_MAP = {
-      'COUNSELMAN':   { iconKey: 'counsel',   kr: '상담관리',      desc: '상담 접수 · 입원 연계 · 통계까지' },
-      'SEMINAR_ROOM': { iconKey: 'calendar',  kr: '세미나실 예약',  desc: '회의·교육 공간 예약 및 일정' },
-      'ROOM_BOARD':   { iconKey: 'bed',       kr: 'Ward Status',   desc: '병상 가동률과 환자 흐름을 실시간으로' },
-      'FLEET':        { iconKey: 'route',     kr: '차량운행관리',  desc: '사내 차량 운행기록 · 배차 관리' },
-      'FORMFLOW':     { iconKey: 'form',      kr: '폼빌더',        desc: '외부 폼 작성 도구' }
+    /* 아이콘은 mp_service.icon_key(관리자 화면에서 지정)로 결정된다.
+       여기 남은 kr/desc 는 DB 설명이 비었을 때 쓰는 표시용 기본값이다. */
+    var LABEL_MAP = {
+      'COUNSELMAN':   { kr: '상담관리',      desc: '상담 접수 · 입원 연계 · 통계까지' },
+      'SEMINAR_ROOM': { kr: '세미나실 예약',  desc: '회의·교육 공간 예약 및 일정' },
+      'ROOM_BOARD':   { kr: 'Ward Status',   desc: '병상 가동률과 환자 흐름을 실시간으로' },
+      'FLEET':        { kr: '차량운행관리',  desc: '사내 차량 운행기록 · 배차 관리' },
+      'FORMFLOW':     { kr: '폼빌더',        desc: '외부 폼 작성 도구' }
     };
     var services = /*[[${services}]]*/ [];
     var rawUser  = /*[[${user}]]*/ null;
@@ -68,14 +70,14 @@
     window.__MP_PORTAL__ = {
       user: rawUser ? { name: rawUser.displayName, org: rawUser.instCode, instName: instName, role: rawUser.roleCode } : {},
       apps: services.map(function (s) {
-        var meta = ICON_MAP[s.serviceCode] || { iconKey: 'default', kr: '', desc: '' };
+        var meta = LABEL_MAP[s.serviceCode] || { kr: '', desc: '' };
         return {
           id:          s.serviceCode.toLowerCase(),
           name:        s.serviceName,
           kr:          meta.kr,
           active:      s.accessible,
           desc:        s.description || meta.desc,
-          iconKey:     meta.iconKey,
+          iconKey:     s.iconKey || '',
           serviceCode: s.serviceCode,
           href:        s.accessible ? '/launch/' + s.serviceCode : '#',
           note:        s.accessible ? undefined : '준비중'
