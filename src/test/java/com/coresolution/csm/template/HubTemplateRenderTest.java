@@ -323,21 +323,23 @@ class HubTemplateRenderTest {
         WebContext ctx = baseContext();
         ctx.setVariable("hubMember", new HubMemberSession(7L, "a@coresolution.kr", "이수민", "USER"));
         CompanyLink l = link(1L, "HARS", "https://hars-falh.sosyge.net/login", "병원", "통합");
-        ctx.setVariable("links", List.of(l));
-        Map<String, List<CompanyLink>> groups = new LinkedHashMap<>();
-        groups.put("병원", List.of(l));
-        ctx.setVariable("linkGroups", groups);
-        ctx.setVariable("categories", List.of(Map.of("category_name", "병원", "sort_order", 1)));
+        List<HubLinkView> rows = presenter.publicLinks(List.of(l), Set.of(), false);
+        ctx.setVariable("linkRows", rows);
+        ctx.setVariable("publicCount", rows.size());
+        ctx.setVariable("categoryNav", List.of());
+        ctx.setVariable("categoryRows", List.of(Map.of(
+                "name", "병원", "color", "#2f5bb8", "colorDark", "#7fa9ff", "count", 1, "sortOrder", 1)));
 
         String html = engine.process("design/company-links-admin", ctx);
 
         assertThat(html).contains("hub-sidebar");                 // 공통 셸
-        assertThat(html).contains("서비스 링크 관리");
+        assertThat(html).contains("링크 관리");
         assertThat(html).contains("/admin/company-links");        // 추가 폼 action
         assertThat(html).contains("/admin/company-links/category-order"); // 순서 저장
         assertThat(html).contains("/admin/company-links/1/delete");       // 삭제
         assertThat(html).contains("id=\"manageSearch\"");          // JS 훅 보존
-        assertThat(html).contains("lh-cat-order");                 // 분류 순서 JS 훅
+        assertThat(html).contains("id=\"catOrderList\"");          // 분류 순서 JS 훅
+        assertThat(html).contains("adm-tab");                      // 탭 3개 구조
         // D1: 로그인 상태면 사이드바에 프로필(이름/로그아웃), 로그인 버튼 아님
         assertThat(html).contains("이수민님");
         assertThat(html).doesNotContain("hub-profile__login");

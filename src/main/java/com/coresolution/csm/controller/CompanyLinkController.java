@@ -98,9 +98,12 @@ public class CompanyLinkController {
     @GetMapping("/admin/company-links")
     public String manage(Model model, HttpSession session) {
         List<CompanyLink> links = companyLinkService.listActiveLinks();
-        model.addAttribute("links", links);
-        model.addAttribute("linkGroups", groupByCategory(links));
-        model.addAttribute("categories", companyLinkService.listCategories());
+        // 관리 화면은 링크를 열지 않고 표로만 다루므로 즐겨찾기·경유 경로 없이 매핑한다.
+        List<HubLinkView> linkRows = hubLinkPresenter.publicLinks(links, java.util.Set.of(), false);
+        model.addAttribute("linkRows", linkRows);
+        model.addAttribute("publicCount", linkRows.size());
+        model.addAttribute("categoryNav", categoryNav(linkRows)); // 사이드바 분류 목록
+        model.addAttribute("categoryRows", categoryRows(linkRows)); // 탭 2(분류 순서)
         model.addAttribute("hubMember", HubSessions.current(session)); // 사이드바 프로필 표시용
         model.addAttribute("notice", hubNoticeService.find()); // 공지 배너 관리 폼 현재값
         return "design/company-links-admin";
@@ -219,19 +222,26 @@ public class CompanyLinkController {
         return nav;
     }
 
-    private long countEnv(List<HubLinkView> rows, String env) {
-        return rows.stream().filter(row -> env.equals(row.getEnv())).count();
+    /** 분류 순서 탭용 — 사이드바 항목에 저장된 sort_order를 붙인다. */
+    private List<Map<String, Object>> categoryRows(List<HubLinkView> rows) {
+        Map<String, Object> orders = new LinkedHashMap<>();
+        for (Map<String, Object> row : companyLinkService.listCategories()) {
+            Object name = row.get("category_name");
+            if (name != null) {
+                orders.put(name.toString(), row.get("sort_order"));
+            }
+        }
+        List<Map<String, Object>> out = new java.util.ArrayList<>();
+        for (Map<String, Object> nav : categoryNav(rows)) {
+            Map<String, Object> merged = new LinkedHashMap<>(nav);
+            merged.put("sortOrder", orders.getOrDefault(nav.get("name"), 9999));
+            out.add(merged);
+        }
+        return out;
     }
 
-    private Map<String, List<CompanyLink>> groupByCategory(List<CompanyLink> links) {
-        Map<String, List<CompanyLink>> groups = new LinkedHashMap<>();
-        for (CompanyLink link : links) {
-            String category = link.getCategory() == null || link.getCategory().isBlank()
-                    ? "기타"
-                    : link.getCategory().trim();
-            groups.computeIfAbsent(category, key -> new java.util.ArrayList<>()).add(link);
-        }
-        return groups;
+    private long countEnv(List<HubLinkView> rows, String env) {
+        return rows.stream().filter(row -> env.equals(row.getEnv())).count();
     }
 
     private String actor(HttpSession session) {
