@@ -51,6 +51,20 @@ MediPlat 은 기동할 때마다 이 계정을 생성/갱신합니다. `PLATFORM
 
 서비스 URL은 `mp_service_endpoint` 테이블에서 환경별(`LOCAL/DEV/PROD`)로 관리합니다.
 
+## 서비스 기본값 등록 (bootstrap)
+
+기동할 때 `mp_service` 에 없는 기본 서비스(CounselMan, 병실현황판, 세미나실 예약, 암센터,
+차량운행관리)만 새로 등록합니다. **이미 있는 서비스는 건드리지 않습니다.**
+
+관리자가 `/admin` 에서 고친 서비스명·base URL·설명·표시순서·아이콘이 재시작 때 되돌아가지
+않게 하려는 것입니다. 대신 다음을 알아두세요.
+
+- `COUNSELMAN_BASE_URL`, `CANCER_TREATMENT_BASE_URL` 을 바꿔도 **기존 행에는 반영되지 않습니다.**
+  URL 변경은 `/admin` 의 앱 등록 화면에서 하세요.
+- 기동 로그에 `Service 'COUNSELMAN' already registered; keeping stored settings` 가 찍히면
+  기본값을 건너뛴 것입니다(정상).
+- 기본값으로 완전히 되돌리려면 해당 `mp_service` 행을 지우고 재기동하세요.
+
 ## 브랜드 아이콘
 
 코어솔루션 시스템 아이콘 패밀리는 `src/main/resources/static/icons/` 에 있습니다.

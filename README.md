@@ -280,6 +280,11 @@ PROD 배포 묶음:
 - `mediplat`를 `systemd`로 운영할 때는 `SPRING_DATASOURCE_*`와 `PLATFORM_COUNSELMAN_DATASOURCE_*`가 모두 같은 `csm` MySQL을 가리키도록 맞춰야 합니다. `SPRING_DATASOURCE_URL`이 H2로 남아 있으면 로컬과 다른 기관/권한 데이터가 보일 수 있습니다.
 - 서버용 설정(`nginx`, `systemd`, `Tomcat`, `SSL 인증서`)은 로컬 실행에 포함되지 않습니다.
 - 다른 PC에서 실행 시에도 DB 접속 정보와 SSO secret 값만 맞으면 동일하게 사용할 수 있습니다.
+- **`mediplat` 서비스 기본값은 최초 1회만 등록됩니다.** 이미 `mp_service`에 있는 서비스는 기동해도
+  덮어쓰지 않습니다(관리자가 `/admin`에서 고친 이름·URL·설명·표시순서·아이콘 보존). 따라서
+  `COUNSELMAN_BASE_URL` 같은 환경변수를 바꿔도 **기존 행에는 반영되지 않으니**, URL 변경은
+  `/admin`의 앱 등록 화면에서 수정하세요. 기동 로그의
+  `Service 'X' already registered; keeping stored settings` 가 이 경우입니다.
 
 ## 13-A. 보안 — 시크릿 관리와 회수(rotation) 대상
 

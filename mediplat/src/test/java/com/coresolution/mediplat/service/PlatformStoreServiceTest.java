@@ -22,6 +22,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.coresolution.mediplat.model.PlatformInstitution;
 import com.coresolution.mediplat.model.PlatformLoginAudit;
+import com.coresolution.mediplat.model.PlatformService;
 import com.coresolution.mediplat.model.PlatformSessionUser;
 
 class PlatformStoreServiceTest {
@@ -451,6 +452,42 @@ class PlatformStoreServiceTest {
                 null, "  ", "Y", 9);
 
         assertNull(storeService.findService("NEWAPP").getIconKey());
+    }
+
+    @Test
+    void bootstrapDefaults_doNotOverwriteAdminEdits_onRestart() {
+        CounselManAccountService counselManAccountService = org.mockito.Mockito.mock(CounselManAccountService.class);
+        String jdbcUrl = "jdbc:h2:mem:platform-store-bootstrap-" + UUID.randomUUID() + ";MODE=MySQL;DB_CLOSE_DELAY=-1";
+        PlatformStoreService storeService = newInitializedStoreService(counselManAccountService, jdbcUrl);
+
+        // 관리자가 /admin 에서 부트스트랩 기본 서비스를 고친 상황
+        storeService.saveService(
+                "COUNSELMAN", "상담관리(운영)", "https://csm.example.com",
+                "http://localhost:8081/csm", "https://dev.example.com/csm", "https://prod.example.com/csm",
+                "/mediplat/sso/entry", "/counsel/list", "/core/admin",
+                "관리자가 고친 설명", "counselman", "Y", 7);
+
+        // 같은 DB로 재기동 — 부트스트랩이 기본값으로 되돌리면 안 된다.
+        PlatformStoreService restarted = newInitializedStoreService(counselManAccountService, jdbcUrl);
+        PlatformService service = restarted.findService("COUNSELMAN");
+
+        assertEquals("상담관리(운영)", service.getServiceName());
+        assertEquals("관리자가 고친 설명", service.getDescription());
+        assertEquals(7, service.getDisplayOrder().intValue());
+        assertEquals("counselman", service.getIconKey());
+        // LOCAL 로 기동해도 관리자가 넣어둔 DEV/PROD 엔드포인트가 지워지면 안 된다.
+        assertEquals("https://dev.example.com/csm", service.getBaseUrlDev());
+        assertEquals("https://prod.example.com/csm", service.getBaseUrlProd());
+    }
+
+    @Test
+    void bootstrapDefaults_stillSeedsServices_onFirstBoot() {
+        CounselManAccountService counselManAccountService = org.mockito.Mockito.mock(CounselManAccountService.class);
+        PlatformStoreService storeService = newInitializedStoreService(counselManAccountService);
+
+        assertNotNull(storeService.findService("COUNSELMAN"));
+        assertNotNull(storeService.findService("ROOM_BOARD"));
+        assertNotNull(storeService.findService("SEMINAR_ROOM"));
     }
 
     private PlatformStoreService newInitializedStoreService(CounselManAccountService counselManAccountService) {

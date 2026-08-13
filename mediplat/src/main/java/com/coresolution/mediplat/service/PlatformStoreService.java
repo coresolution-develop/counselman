@@ -1314,7 +1314,7 @@ public class PlatformStoreService {
                 "/counsel/list?page=1&perPageNum=10&comment=",
                 "/core/admin",
                 "기관별 상담관리 서비스",
-                currentIconKey(DEFAULT_SERVICE_CODE),
+                null,
                 USE_Y,
                 1));
         bootstrapService(SERVICE_CODE_ROOM_BOARD, () -> saveService(
@@ -1328,7 +1328,7 @@ public class PlatformStoreService {
                 "/room-board?popup=1",
                 "/room-board?popup=1",
                 "기관별 병실현황판 서비스",
-                currentIconKey(SERVICE_CODE_ROOM_BOARD),
+                null,
                 USE_Y,
                 2));
         bootstrapService(SERVICE_CODE_SEMINAR_ROOM, () -> saveService(
@@ -1342,7 +1342,7 @@ public class PlatformStoreService {
                 "/seminar-room",
                 "/seminar-room",
                 "기관별 세미나실 예약 관리 서비스",
-                currentIconKey(SERVICE_CODE_SEMINAR_ROOM),
+                null,
                 USE_Y,
                 3));
         bootstrapService(SERVICE_CODE_CANCER_TREATMENT, () -> saveService(
@@ -1356,7 +1356,7 @@ public class PlatformStoreService {
                 "/cancer-treatment-schedule",
                 "/cancer-treatment-schedule",
                 "암센터 치료 예약 및 치료상태 실시간 관리 서비스",
-                currentIconKey(SERVICE_CODE_CANCER_TREATMENT),
+                null,
                 USE_Y,
                 4));
         // SMS(문자) 서비스는 등록하지 않는다. sms 앱은 폐기 대상이고, 포트 8084는 ResvHub가
@@ -1373,7 +1373,7 @@ public class PlatformStoreService {
                 "/fleet/admin",
                 "/fleet/admin",
                 "사내 차량 운행기록 · 배차 관리 서비스",
-                currentIconKey(SERVICE_CODE_FLEET),
+                null,
                 USE_Y,
                 6));
         saveInstitutionServiceAccess(
@@ -1391,27 +1391,23 @@ public class PlatformStoreService {
      * configured the next boot registers it.
      */
     /**
-     * 부트스트랩은 매 기동마다 saveService 로 upsert 하므로, 그대로 두면 관리자가 앱 등록
-     * 화면에서 고른 아이콘이 재시작 때마다 초기화된다. 현재 저장값을 읽어 다시 넘겨 보존한다.
-     * 아이콘 파일이 빠져 카탈로그에 없는 값이면 미지정으로 되돌린다.
+     * 서비스 기본값은 <b>아직 등록되지 않았을 때만</b> 넣는다.
+     *
+     * <p>예전에는 기동할 때마다 saveService 로 upsert 해서, 관리자가 /admin 에서 고친
+     * 서비스명·base URL·설명·표시순서·아이콘이 재시작마다 부트스트랩 값으로 되돌아갔다.
+     * (게다가 saveService 는 값이 빈 환경의 mp_service_endpoint 행을 지우므로, LOCAL 로
+     * 띄우면 DEV/PROD 엔드포인트까지 날아갔다.)
+     *
+     * <p>대신 이미 등록된 서비스는 저장된 설정을 그대로 둔다. 따라서 배포 후
+     * COUNSELMAN_BASE_URL 같은 환경변수를 바꿔도 기존 행에는 반영되지 않는다 —
+     * URL 변경은 /admin 의 앱 등록 화면에서 수정한다.
      */
-    private String currentIconKey(String serviceCode) {
-        try {
-            List<String> stored = jdbcTemplate.queryForList(
-                    "SELECT icon_key FROM mp_service WHERE service_code = ?",
-                    String.class,
-                    serviceCode);
-            String iconKey = stored.isEmpty() ? null : stored.get(0);
-            return StringUtils.hasText(iconKey) && serviceIconCatalog.listIconKeys().contains(iconKey)
-                    ? iconKey
-                    : null;
-        } catch (RuntimeException e) {
-            return null;
-        }
-    }
-
     private void bootstrapService(String serviceCode, Runnable register) {
         try {
+            if (findService(serviceCode) != null) {
+                log.info("Service '{}' already registered; keeping stored settings", serviceCode);
+                return;
+            }
             register.run();
         } catch (RuntimeException e) {
             log.warn("Skipping bootstrap of service '{}': {}", serviceCode, e.getMessage());
