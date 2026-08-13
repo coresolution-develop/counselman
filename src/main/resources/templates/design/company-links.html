@@ -8,12 +8,24 @@
   <title>링크 허브</title>
   <!--/* PWA: 홈 화면에 앱처럼 설치 (회사 공용 아이콘 재사용) */-->
   <link rel="manifest" th:href="@{/hub-manifest.json}" />
-  <meta name="theme-color" content="#2478C0" />
+  <meta name="theme-color" content="#5e6ad2" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="링크 허브" />
   <link rel="apple-touch-icon" th:href="@{/icon/new/app-icon-180.png}" />
   <link rel="stylesheet" th:href="@{/assets/css/hub.css}" />
+  <!--/* 첫 페인트 전에 테마를 적용해 화면이 번쩍이지 않게 한다 */-->
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('hubTheme');
+        var dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+        var density = localStorage.getItem('hubDensity');
+        if (density) document.documentElement.setAttribute('data-density', density);
+      } catch (e) { /* 저장소 접근 불가면 기본값(라이트) */ }
+    })();
+  </script>
   <script th:inline="javascript">
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
@@ -27,226 +39,358 @@
     <div th:replace="~{hub/fragments/shell :: sidebar('hub', ${hubMember})}"></div>
 
     <main class="hub-content">
-      <div class="hub-container">
+      <div class="hub-topbar">
+        <span class="hub-topbar__title">허브</span>
+        <span class="hub-topbar__sub"
+              th:text="|공용 ${publicCount} · 개인 ${customCount}|">공용 0 · 개인 0</span>
+        <div class="hub-topbar__actions">
+          <button type="button" class="hub-btn hub-btn--sm" id="themeToggle" data-theme-toggle>다크</button>
+          <a class="hub-btn hub-btn--sm hub-btn--primary" th:href="@{/admin/company-links}">링크 관리</a>
+        </div>
+      </div>
+
+      <div class="hub-main">
         <!--/* 관리자 공지 배너: 활성일 때만. 닫기는 updated_at 기준이라 새 공지는 다시 뜬다 */-->
         <div class="hub-notice" th:if="${notice != null}"
              th:classappend="${notice.level == 'warn'} ? ' hub-notice--warn' : ''"
              th:attr="data-notice-key=${notice.updatedAt}">
-          <span class="hub-notice__icon" aria-hidden="true">📢</span>
+          <span class="hub-notice__icon" aria-hidden="true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                 stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+          </span>
           <span class="hub-notice__msg" th:text="${notice.message}">공지 내용</span>
           <button type="button" class="hub-notice__close" data-notice-dismiss aria-label="공지 닫기">×</button>
         </div>
-
-        <header class="hub-pagehead">
-          <h1 class="hub-pagehead__title">서비스 링크</h1>
-          <p class="hub-pagehead__sub">회사에서 운영하는 사이트를 한 곳에서 바로 열 수 있습니다.</p>
-        </header>
 
         <!--/* 커스텀 링크 추가/수정/삭제 결과 (HubMeController가 /links로 리다이렉트하며 전달) */-->
         <div th:if="${customMessage}" class="hub-alert hub-alert--ok" th:text="${customMessage}"></div>
         <div th:if="${customError}" class="hub-alert hub-alert--err" th:text="${customError}"></div>
 
-        <div class="hub-search">
+        <!--/* 검색은 커맨드 팔레트의 입구다 — 클릭하거나 ⌘/Ctrl+K */-->
+        <button type="button" class="hub-search" id="hubSearch" data-palette-open>
           <svg class="hub-search__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-          <input id="hubSearch" type="search" placeholder="링크 이름·주소로 검색  (Ctrl/⌘+K, Enter로 열기)" autocomplete="off" aria-label="링크 검색" />
-        </div>
+               stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+          <span class="hub-search__ph">링크 · 분류 · host 검색</span>
+          <span class="hub-search__hint">
+            <span>커맨드 팔레트</span>
+            <kbd class="hub-kbd">⌘</kbd><kbd class="hub-kbd">K</kbd>
+          </span>
+        </button>
 
-        <div class="hub-toolbar">
-          <a class="hub-btn hub-btn--sm" th:href="@{/admin/company-links}">링크 관리</a>
-        </div>
-
-        <!--/* 내 즐겨찾기: 로그인 시 항상 렌더하고, 0개일 때만 감춘다.
-               (★를 누르면 JS가 이 그리드에 카드를 넣고 섹션을 다시 노출 → 새로고침 불필요) */-->
-        <section class="hub-section" id="favSection" data-search-section
-                 th:if="${hubMember != null}"
-                 th:hidden="${favorites == null or #lists.isEmpty(favorites)}">
-          <div class="hub-section__head">
-            <h2 class="hub-section__title">내 즐겨찾기
-              <span class="hub-section__count" data-fav-count
-                    th:text="|${favorites == null ? 0 : #lists.size(favorites)}개|">0개</span>
-            </h2>
+        <div class="hub-filters">
+          <button type="button" class="hub-chip hub-chip--on" data-filter="all">전체</button>
+          <button type="button" class="hub-chip" data-filter="prod">운영 <span th:text="${prodCount}">0</span></button>
+          <button type="button" class="hub-chip hub-chip--dev" data-filter="dev">개발 <span th:text="${devCount}">0</span></button>
+          <button type="button" class="hub-chip" data-filter="mine" th:if="${hubMember != null}">개인 링크 <span th:text="${customCount}">0</span></button>
+          <div class="hub-density" role="group" aria-label="목록 밀도">
+            <button type="button" class="hub-density__btn hub-density__btn--on" data-density="list">행</button>
+            <button type="button" class="hub-density__btn" data-density="grid">그리드</button>
           </div>
-          <div class="hub-grid" data-fav-grid data-reorder="favorites" th:data-reorder-url="@{/hub/me/favorites/reorder}">
-            <div class="hub-card hub-card--reorder" data-fav-card th:each="link : ${favorites}"
-                 th:attr="data-search-name=|${link.title} ${link.url}|,data-reorder-id=${link.id}">
-              <a class="hub-card__link" target="_blank" rel="noopener noreferrer"
-                 th:href="@{/hub/go/link/{id}(id=${link.id})}" th:aria-label="|${link.title} 열기|"></a>
-              <span class="hub-card__move">
-                <button type="button" class="hub-move" data-move="up" title="위로 이동" aria-label="위로 이동">▲</button>
-                <button type="button" class="hub-move" data-move="down" title="아래로 이동" aria-label="아래로 이동">▼</button>
-              </span>
-              <div class="hub-card__body">
-                <div class="hub-card__top">
-                  <span class="hub-card__title" th:text="${link.title}">서비스명</span>
+        </div>
+
+        <div class="hub-split">
+          <div class="hub-col">
+            <!--/* 즐겨찾기: 로그인 시 항상 렌더하고, 0개일 때만 감춘다.
+                   (★를 누르면 JS가 이 목록에 행을 넣고 섹션을 다시 노출 → 새로고침 불필요) */-->
+            <section class="hub-sec" id="favSection"
+                     th:if="${hubMember != null}"
+                     th:hidden="${#lists.isEmpty(favoriteRows)}">
+              <div class="hub-sec__head">
+                <svg class="hub-sec__icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.8 6.2 20.9l1.1-6.5L2.6 9.8l6.5-.9z" /></svg>
+                <span class="hub-sec__label">즐겨찾기</span>
+                <span class="hub-sec__count" data-fav-count th:text="${#lists.size(favoriteRows)}">0</span>
+                <span class="hub-sec__rule"></span>
+              </div>
+              <div class="lh-grid" data-fav-grid data-reorder="favorites" th:data-reorder-url="@{/hub/me/favorites/reorder}">
+                <div class="lh-row" th:each="row : ${favoriteRows}"
+                     th:classappend="|env-${row.env}|"
+                     data-fav-row th:data-reorder-id="${row.id}"
+                     th:data-name="${row.title}" th:data-host="${row.host}" th:data-env="${row.env}">
+                  <a class="lh-row__link"
+                     th:href="${row.kind == 'raw'} ? ${row.url} : @{/hub/go/{kind}/{id}(kind=${row.kind},id=${row.id})}"
+                     target="_blank" rel="noopener noreferrer"
+                     th:title="${row.url}" th:aria-label="|${row.title} 열기|"></a>
+                  <span class="lh-env" th:text="${row.envLabel}">운영</span>
+                  <span class="lh-badge" th:style="|--c:${row.catColor};--c-dark:${row.catColorDark}|"
+                        th:text="${row.catShort}">코어</span>
+                  <span class="lh-main">
+                    <span class="lh-name" th:text="${row.title}">서비스명</span>
+                    <span class="lh-host" th:text="${row.host}">example.com</span>
+                  </span>
+                  <span class="lh-act">
+                    <button type="button" data-move="up" title="위로 이동" aria-label="위로 이동">▲</button>
+                    <button type="button" data-move="down" title="아래로 이동" aria-label="아래로 이동">▼</button>
+                    <button type="button" class="lh-fav lh-fav--on" aria-pressed="true" title="즐겨찾기 해제"
+                            th:data-link-id="${row.id}"
+                            th:data-toggle-url="@{/hub/me/favorites/toggle}"
+                            th:data-login-url="@{/hub/login}"
+                            data-remove-on-unfav>★</button>
+                  </span>
                 </div>
-                <span class="hub-card__url" th:text="${link.url}">https://example.com</span>
               </div>
-              <button type="button" class="lh-fav lh-fav--on" aria-pressed="true" title="즐겨찾기 해제"
-                      th:data-link-id="${link.id}"
-                      th:data-toggle-url="@{/hub/me/favorites/toggle}"
-                      th:data-login-url="@{/hub/login}"
-                      data-remove-on-unfav>★</button>
-            </div>
-          </div>
-        </section>
+            </section>
 
-        <!--/* 최근 사용: 로그인 + 클릭 이력이 있을 때만. 스냅샷 URL을 새 탭으로 바로 연다 */-->
-        <section class="hub-section" data-search-section
-                 th:if="${hubMember != null and recent != null and !#lists.isEmpty(recent)}">
-          <div class="hub-section__head">
-            <h2 class="hub-section__title">최근 사용
-              <span class="hub-section__count" th:text="|${#lists.size(recent)}개|">0개</span>
-            </h2>
-          </div>
-          <div class="hub-recent">
-            <a class="hub-recent__item" th:each="item : ${recent}"
-               target="_blank" rel="noopener noreferrer" th:href="${item.url}"
-               th:attr="data-search-name=|${item.title} ${item.url}|">
-              <div class="hub-recent__main">
-                <div class="hub-recent__title" th:text="${item.title}">제목</div>
-                <div class="hub-recent__url" th:text="${item.url}">https://example.com</div>
-              </div>
-              <span class="hub-recent__time" th:text="${item.accessedAt}">시간</span>
-            </a>
-          </div>
-        </section>
-
-        <!--/* 내 링크: 로그인 시에만. 예전 /hub/me 화면을 흡수한 영역 */-->
-        <section class="hub-section" id="customSection" data-search-section th:if="${hubMember != null}">
-          <div class="hub-section__head">
-            <h2 class="hub-section__title">내 링크
-              <span class="hub-section__count" th:text="|${customLinks == null ? 0 : #lists.size(customLinks)}개|">0개</span>
-            </h2>
-            <div class="hub-head-actions">
-              <button type="button" id="customSelectToggle" class="hub-btn hub-btn--sm"
-                      th:if="${customLinks != null and !#lists.isEmpty(customLinks)}">선택</button>
-              <button type="button" id="customImportToggle" class="hub-btn hub-btn--sm">가져오기</button>
-              <button type="button" id="customAddToggle" class="hub-btn hub-btn--primary hub-btn--sm">+ 링크 추가</button>
-            </div>
-          </div>
-
-          <!--/* 카테고리 자동완성 목록 (기존 카테고리들, "기타" 제외) */-->
-          <datalist id="customCategories">
-            <option th:each="entry : ${customLinkGroups}" th:if="${entry.key != '기타'}" th:value="${entry.key}"></option>
-          </datalist>
-
-          <!--/* 선택 삭제 바 — 선택 모드일 때만 노출 */-->
-          <div class="hub-selbar" id="customBulkBar" hidden>
-            <form th:action="@{/hub/me/custom-links/bulk-delete}" method="post" id="customBulkForm" class="hub-selbar__form">
-              <input type="hidden" name="ids" id="customBulkIds" />
-              <span class="hub-selbar__count"><b data-sel-count>0</b>개 선택됨</span>
-              <button type="submit" class="hub-btn hub-btn--sm hub-btn--danger" data-sel-delete disabled>선택 삭제</button>
-              <button type="button" class="hub-btn hub-btn--sm" id="customSelectCancel">취소</button>
-            </form>
-          </div>
-
-          <!--/* 브라우저 북마크 HTML 업로드 → 개인 링크 일괄 등록 */-->
-          <form id="customImportForm" class="hub-form" th:action="@{/hub/me/custom-links/import}"
-                method="post" enctype="multipart/form-data" hidden>
-            <div class="hub-field">
-              <label for="importFile">브라우저 북마크 HTML 파일</label>
-              <input class="hub-input hub-input--file" type="file" id="importFile" name="file"
-                     accept=".html,.htm,text/html" required />
-              <span class="hub-form__hint">크롬·엣지: 북마크 관리자 → 내보내기로 저장한 .html 파일을 올려주세요.
-                이미 등록된 링크는 자동으로 건너뜁니다 (한 번에 최대 300개).</span>
-            </div>
-            <div><button type="submit" class="hub-btn hub-btn--primary">가져오기 실행</button></div>
-          </form>
-
-          <form id="customAddForm" class="hub-form" th:action="@{/hub/me/custom-links}" method="post" hidden>
-            <div class="hub-form__row">
-              <div class="hub-field"><label for="newTitle">이름</label>
-                <input class="hub-input" type="text" id="newTitle" name="title" required /></div>
-              <div class="hub-field"><label for="newUrl">URL (http/https)</label>
-                <input class="hub-input" type="url" id="newUrl" name="url" placeholder="https://" required /></div>
-            </div>
-            <div class="hub-form__row">
-              <div class="hub-field"><label for="newCategory">카테고리 (선택)</label>
-                <input class="hub-input" type="text" id="newCategory" name="category" list="customCategories"
-                       placeholder="예) 업무, 개발" /></div>
-              <div class="hub-field"><label for="newMemo">메모 (선택)</label>
-                <input class="hub-input" type="text" id="newMemo" name="memo" /></div>
-            </div>
-            <div><button type="submit" class="hub-btn hub-btn--primary">추가</button></div>
-          </form>
-
-          <div class="hub-empty" th:if="${customLinks == null or #lists.isEmpty(customLinks)}">
-            <div class="hub-empty__text">자주 쓰는 개인 링크를 추가해보세요. [+ 링크 추가]로 시작합니다.</div>
-          </div>
-
-          <!--/* 카테고리 그룹. 각 그룹이 독립 재정렬 컨테이너(순서 이동은 같은 카테고리 안에서) */-->
-          <div th:if="${customLinkGroups != null and !customLinkGroups.isEmpty()}">
-            <div class="hub-catgroup" th:each="grp : ${customLinkGroups}" data-search-section>
-              <div class="hub-catgroup__head">
-                <h3 class="hub-catgroup__title" th:text="${grp.key}">카테고리</h3>
-                <span class="hub-catgroup__count" th:text="|${#lists.size(grp.value)}개|">0개</span>
-                <button type="button" class="hub-btn hub-btn--sm hub-openall" data-open-all
-                        th:if="${#lists.size(grp.value) > 1}">모두 열기</button>
-              </div>
-              <div class="hub-grid" data-reorder="custom" th:data-reorder-url="@{/hub/me/custom-links/reorder}">
-                <th:block th:each="link : ${grp.value}">
-                  <div class="hub-card hub-card--reorder"
-                       th:attr="data-search-name=|${link.title} ${link.url} ${link.memo == null ? '' : link.memo} ${link.category == null ? '' : link.category}|,data-reorder-id=${link.id}">
-                    <a class="hub-card__link" target="_blank" rel="noopener noreferrer"
-                       th:href="@{/hub/go/custom/{id}(id=${link.id})}" th:aria-label="|${link.title} 열기|"></a>
-                    <label class="hub-card__check">
-                      <input type="checkbox" th:data-sel-id="${link.id}" aria-label="선택" />
-                    </label>
-                    <span class="hub-card__move">
-                      <button type="button" class="hub-move" data-move="up" title="위로 이동" aria-label="위로 이동">▲</button>
-                      <button type="button" class="hub-move" data-move="down" title="아래로 이동" aria-label="아래로 이동">▼</button>
+            <!--/* 인기 + 최근: 2열 병렬. 둘 다 34px 컴팩트 행 */-->
+            <div class="hub-duo">
+              <section class="hub-sec" th:if="${!#lists.isEmpty(popularRows)}">
+                <div class="hub-sec__head">
+                  <svg class="hub-sec__icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1.5 4 5 4.5 5 8a5 5 0 0 1-10 0c0-2 1-3 2-4" /></svg>
+                  <span class="hub-sec__label">인기 링크</span>
+                  <span class="hub-sec__count">최근 30일</span>
+                  <span class="hub-sec__rule"></span>
+                </div>
+                <div class="lh-list">
+                  <a class="lh-row lh-row--compact lh-row--rank" th:each="row, it : ${popularRows}"
+                     th:classappend="|env-${row.env}|"
+                     th:href="${row.kind == 'raw'} ? ${row.url} : @{/hub/go/{kind}/{id}(kind=${row.kind},id=${row.id})}" target="_blank" rel="noopener noreferrer"
+                     th:title="${row.url}"
+                     th:data-name="${row.title}" th:data-host="${row.host}" th:data-env="${row.env}">
+                    <span class="lh-rank" th:text="${it.count}">1</span>
+                    <span class="lh-env" th:text="${row.envLabel}">운영</span>
+                    <span class="lh-main">
+                      <span class="lh-name" th:text="${row.title}">서비스명</span>
                     </span>
-                    <div class="hub-card__body">
-                      <div class="hub-card__top">
-                        <span class="hub-card__title" th:text="${link.title}">제목</span>
-                      </div>
-                      <span class="hub-card__desc" th:if="${link.memo != null and !#strings.isEmpty(link.memo)}"
-                            th:text="${link.memo}">메모</span>
-                      <span class="hub-card__url" th:text="${link.url}">https://example.com</span>
-                    </div>
-                    <button type="button" class="lh-edit" th:data-edit-toggle="${link.id}"
-                            th:aria-label="|${link.title} 수정|" title="수정">✎</button>
-                  </div>
-                  <div class="hub-edit hub-edit--panel" th:id="'edit-' + ${link.id}" hidden>
-                    <form class="hub-form" style="margin:0;" th:action="@{/hub/me/custom-links/{id}(id=${link.id})}" method="post">
-                      <div class="hub-form__row">
-                        <div class="hub-field"><label>이름</label>
-                          <input class="hub-input" type="text" name="title" required th:value="${link.title}" /></div>
-                        <div class="hub-field"><label>URL</label>
-                          <input class="hub-input" type="url" name="url" required th:value="${link.url}" /></div>
-                      </div>
-                      <div class="hub-form__row">
-                        <div class="hub-field"><label>카테고리</label>
-                          <input class="hub-input" type="text" name="category" list="customCategories" th:value="${link.category}" /></div>
-                        <div class="hub-field"><label>메모</label>
-                          <input class="hub-input" type="text" name="memo" th:value="${link.memo}" /></div>
-                      </div>
-                      <div class="hub-edit__actions">
-                        <button type="submit" class="hub-btn hub-btn--primary hub-btn--sm">저장</button>
-                      </div>
-                    </form>
-                    <form class="hub-inline-form" th:action="@{/hub/me/custom-links/{id}/delete(id=${link.id})}" method="post"
-                          onsubmit="return confirm('이 링크를 삭제할까요?');">
-                      <button type="submit" class="hub-btn hub-btn--sm hub-btn--danger">삭제</button>
-                    </form>
-                  </div>
-                </th:block>
+                    <span class="lh-meta" th:text="${row.host}">example.com</span>
+                  </a>
+                </div>
+              </section>
+
+              <!--/* 최근 사용: 로그인 + 클릭 이력이 있을 때만. 스냅샷 URL을 새 탭으로 바로 연다 */-->
+              <section class="hub-sec" th:if="${hubMember != null and !#lists.isEmpty(recentRows)}">
+                <div class="hub-sec__head">
+                  <svg class="hub-sec__icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                  <span class="hub-sec__label">최근 사용</span>
+                  <span class="hub-sec__count" th:text="${#lists.size(recentRows)}">0</span>
+                  <span class="hub-sec__rule"></span>
+                </div>
+                <div class="lh-list">
+                  <a class="lh-row lh-row--compact lh-row--recent" th:each="row : ${recentRows}"
+                     th:href="${row.url}" target="_blank" rel="noopener noreferrer"
+                     th:title="${row.url}">
+                    <span class="lh-main">
+                      <span class="lh-name" th:text="${row.title}">제목</span>
+                      <span class="lh-host" th:text="${row.host}">example.com</span>
+                    </span>
+                    <span class="lh-meta" th:text="${row.metaText}">시간</span>
+                  </a>
+                </div>
+              </section>
+            </div>
+
+            <!--/* 전체 분류 — 분류별 그룹. 팔레트 검색 인덱스도 이 행들에서 만든다 */-->
+            <section class="hub-sec" th:if="${!linkGroupRows.isEmpty()}">
+              <div class="hub-sec__head">
+                <svg class="hub-sec__icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>
+                <span class="hub-sec__label">전체 분류</span>
+                <span class="hub-sec__count" th:text="${linkGroupRows.size()}">0</span>
+                <span class="hub-sec__rule"></span>
               </div>
+
+              <div class="lh-group" th:each="grp : ${linkGroupRows}" th:id="'cat-' + ${grp.key}" data-filter-group>
+                <div class="lh-group__head">
+                  <span class="lh-group__dot" aria-hidden="true"
+                        th:style="|--c:${grp.value[0].catColor};--c-dark:${grp.value[0].catColorDark}|"></span>
+                  <span class="lh-group__name" th:text="${grp.key}">분류</span>
+                  <span class="lh-group__count" th:text="${#lists.size(grp.value)}">0</span>
+                  <button type="button" class="hub-sec__action lh-group__open" data-open-all
+                          th:if="${#lists.size(grp.value) > 1}">모두 열기</button>
+                </div>
+                <div class="lh-grid">
+                  <div class="lh-row lh-row--compact" th:each="row : ${grp.value}"
+                     th:classappend="|env-${row.env}|"
+                     data-filter-item data-palette-item
+                     th:data-name="${row.title}" th:data-host="${row.host}" th:data-cat="${grp.key}"
+                     th:data-env="${row.env}" th:data-envlabel="${row.envLabel}"
+                     th:data-url="${row.url}" th:data-open="${row.kind == 'raw'} ? ${row.url} : @{/hub/go/{kind}/{id}(kind=${row.kind},id=${row.id})}"
+                     th:data-color="${row.catColor}" th:data-colordark="${row.catColorDark}"
+                     th:data-short="${row.catShort}">
+                    <a class="lh-row__link"
+                       th:href="${row.kind == 'raw'} ? ${row.url} : @{/hub/go/{kind}/{id}(kind=${row.kind},id=${row.id})}"
+                       target="_blank" rel="noopener noreferrer"
+                       th:title="${row.url}" th:aria-label="|${row.title} 열기|"></a>
+                    <span class="lh-env" th:text="${row.envLabel}">운영</span>
+                    <span class="lh-badge" th:style="|--c:${row.catColor};--c-dark:${row.catColorDark}|"
+                          th:text="${row.catShort}">코어</span>
+                    <span class="lh-main">
+                      <span class="lh-name" th:text="${row.title}">서비스명</span>
+                    </span>
+                    <span class="lh-meta" th:text="${row.host}">example.com</span>
+                    <span class="lh-act" th:if="${hubMember != null}">
+                      <button type="button" class="lh-fav"
+                              th:classappend="${row.favorite} ? ' lh-fav--on' : ''"
+                              th:data-link-id="${row.id}"
+                              th:data-toggle-url="@{/hub/me/favorites/toggle}"
+                              th:data-login-url="@{/hub/login}"
+                              th:aria-pressed="${row.favorite}"
+                              aria-label="즐겨찾기 토글" title="즐겨찾기에 추가/해제">★</button>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <div class="hub-empty" th:if="${#lists.isEmpty(linkRows)}">
+              <div class="hub-empty__text">등록된 링크가 없습니다.</div>
+            </div>
+
+            <!--/* 필터가 전부 걸러냈을 때만 JS가 노출 */-->
+            <div class="hub-empty" id="hubNoResult" hidden>
+              <div class="hub-empty__text">조건에 맞는 링크가 없습니다.</div>
             </div>
           </div>
-        </section>
 
-        <!--/* 내 메모: 로그인 시에만. 내용이 있으면 펼친 채로 시작 */-->
-        <section class="hub-section" th:if="${hubMember != null}">
-          <details class="hub-memo-wrap" th:open="${memo != null and !#strings.isEmpty(memo)}">
-            <summary class="hub-memo-wrap__summary">
-              <span class="hub-section__title">내 메모</span>
-              <span class="hub-memo__status" data-memo-status role="status" aria-live="polite"></span>
-            </summary>
-            <div class="hub-memo">
-              <label class="hub-memo__label" for="hubMemo">나만 볼 수 있는 메모입니다.</label>
-              <textarea class="hub-memo__input" id="hubMemo" rows="4" maxlength="2000"
+          <!--/* 우측 개인 레일: 로그인 시에만. 예전 /hub/me 화면을 흡수한 영역 */-->
+          <aside class="hub-rail" th:if="${hubMember != null}">
+            <section class="hub-sec" id="customSection">
+              <div class="hub-sec__head">
+                <svg class="hub-sec__icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5" /></svg>
+                <span class="hub-sec__label">내 링크</span>
+                <span class="hub-sec__count" th:text="${customCount}">0</span>
+                <span class="hub-sec__rule"></span>
+                <div class="hub-head-actions">
+                  <button type="button" id="customSelectToggle" class="hub-btn hub-btn--sm"
+                          th:if="${customCount > 0}">선택</button>
+                  <button type="button" id="customImportToggle" class="hub-btn hub-btn--sm">가져오기</button>
+                  <button type="button" id="customAddToggle" class="hub-btn hub-btn--primary hub-btn--sm">추가</button>
+                </div>
+              </div>
+
+              <!--/* 카테고리 자동완성 목록 (기존 카테고리들, "기타" 제외) */-->
+              <datalist id="customCategories">
+                <option th:each="entry : ${customGroupRows}" th:if="${entry.key != '기타'}" th:value="${entry.key}"></option>
+              </datalist>
+
+              <!--/* 선택 삭제 바 — 선택 모드일 때만 노출 */-->
+              <div class="hub-selbar" id="customBulkBar" hidden>
+                <form th:action="@{/hub/me/custom-links/bulk-delete}" method="post" id="customBulkForm" class="hub-selbar__form">
+                  <input type="hidden" name="ids" id="customBulkIds" />
+                  <span class="hub-selbar__count"><b data-sel-count>0</b>개 선택됨</span>
+                  <button type="submit" class="hub-btn hub-btn--sm hub-btn--danger" data-sel-delete disabled>선택 삭제</button>
+                  <button type="button" class="hub-btn hub-btn--sm" id="customSelectCancel">취소</button>
+                </form>
+              </div>
+
+              <!--/* 브라우저 북마크 HTML 업로드 → 개인 링크 일괄 등록 */-->
+              <form id="customImportForm" class="hub-form" th:action="@{/hub/me/custom-links/import}"
+                    method="post" enctype="multipart/form-data" hidden>
+                <div class="hub-field">
+                  <label for="importFile">브라우저 북마크 HTML 파일</label>
+                  <input class="hub-input hub-input--file" type="file" id="importFile" name="file"
+                         accept=".html,.htm,text/html" required />
+                  <span class="hub-form__hint">크롬·엣지: 북마크 관리자 → 내보내기로 저장한 .html 파일을 올려주세요.
+                    이미 등록된 링크는 자동으로 건너뜁니다 (한 번에 최대 300개).</span>
+                </div>
+                <div><button type="submit" class="hub-btn hub-btn--primary hub-btn--sm">가져오기 실행</button></div>
+              </form>
+
+              <form id="customAddForm" class="hub-form" th:action="@{/hub/me/custom-links}" method="post" hidden>
+                <div class="hub-form__row">
+                  <div class="hub-field"><label for="newTitle">이름</label>
+                    <input class="hub-input" type="text" id="newTitle" name="title" required /></div>
+                  <div class="hub-field"><label for="newUrl">URL (http/https)</label>
+                    <input class="hub-input" type="url" id="newUrl" name="url" placeholder="https://" required /></div>
+                </div>
+                <div class="hub-form__row">
+                  <div class="hub-field"><label for="newCategory">분류 (선택)</label>
+                    <input class="hub-input" type="text" id="newCategory" name="category" list="customCategories"
+                           placeholder="예) 업무, 개발" /></div>
+                  <div class="hub-field"><label for="newMemo">메모 (선택)</label>
+                    <input class="hub-input" type="text" id="newMemo" name="memo" /></div>
+                </div>
+                <div><button type="submit" class="hub-btn hub-btn--primary hub-btn--sm">추가</button></div>
+              </form>
+
+              <div class="hub-empty" th:if="${customCount == 0}">
+                <div class="hub-empty__text">자주 쓰는 개인 링크를 추가해보세요. [추가]로 시작합니다.</div>
+              </div>
+
+              <!--/* 분류 그룹. 각 그룹이 독립 재정렬 컨테이너(순서 이동은 같은 분류 안에서) */-->
+              <div class="lh-group" th:each="grp : ${customGroupRows}" data-filter-group>
+                <div class="lh-group__head">
+                  <span class="lh-group__name" th:text="${grp.key}">분류</span>
+                  <span class="lh-group__count" th:text="${#lists.size(grp.value)}">0</span>
+                  <button type="button" class="hub-sec__action lh-group__open" data-open-all
+                          th:if="${#lists.size(grp.value) > 1}">모두 열기</button>
+                </div>
+                <div class="lh-list" data-reorder="custom" th:data-reorder-url="@{/hub/me/custom-links/reorder}">
+                  <th:block th:each="row : ${grp.value}">
+                    <div class="lh-row lh-row--mine"
+                       th:data-reorder-id="${row.id}"
+                       data-filter-item data-palette-item data-mine
+                       th:data-name="${row.title}" th:data-host="${row.host}" th:data-cat="${grp.key}"
+                       th:data-env="${row.env}" th:data-envlabel="${row.envLabel}"
+                       th:data-url="${row.url}" th:data-open="${row.kind == 'raw'} ? ${row.url} : @{/hub/go/{kind}/{id}(kind=${row.kind},id=${row.id})}"
+                       th:data-color="${row.catColor}" th:data-colordark="${row.catColorDark}"
+                       th:data-short="${row.catShort}">
+                      <a class="lh-row__link"
+                         th:href="@{/hub/go/{kind}/{id}(kind=${row.kind},id=${row.id})}"
+                         target="_blank" rel="noopener noreferrer"
+                         th:title="${row.url}" th:aria-label="|${row.title} 열기|"></a>
+                      <label class="lh-row__check">
+                        <input type="checkbox" th:data-sel-id="${row.id}" aria-label="선택" />
+                      </label>
+                      <span class="lh-badge" th:style="|--c:${row.catColor};--c-dark:${row.catColorDark}|"
+                            th:text="${row.catShort}">기타</span>
+                      <span class="lh-main">
+                        <span class="lh-name" th:text="${row.title}">제목</span>
+                        <span class="lh-host" th:text="${row.host}">example.com</span>
+                      </span>
+                      <span class="lh-acct" th:if="${row.hasAccountInfo}" title="계정정보가 메모에 있습니다">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
+                        <span>계정</span>
+                      </span>
+                      <span class="lh-act">
+                        <button type="button" data-move="up" title="위로 이동" aria-label="위로 이동">▲</button>
+                        <button type="button" data-move="down" title="아래로 이동" aria-label="아래로 이동">▼</button>
+                        <button type="button" class="lh-edit" th:data-edit-toggle="${row.id}"
+                                th:aria-label="|${row.title} 수정|" title="수정">✎</button>
+                      </span>
+                    </div>
+                    <div class="hub-edit" th:id="'edit-' + ${row.id}" hidden>
+                      <form class="hub-form" style="margin:0;" th:action="@{/hub/me/custom-links/{id}(id=${row.id})}" method="post">
+                        <div class="hub-form__row">
+                          <div class="hub-field"><label>이름</label>
+                            <input class="hub-input" type="text" name="title" required th:value="${row.title}" /></div>
+                          <div class="hub-field"><label>URL</label>
+                            <input class="hub-input" type="url" name="url" required th:value="${row.url}" /></div>
+                        </div>
+                        <div class="hub-form__row">
+                          <div class="hub-field"><label>분류</label>
+                            <input class="hub-input" type="text" name="category" list="customCategories" th:value="${row.category}" /></div>
+                          <div class="hub-field"><label>메모</label>
+                            <input class="hub-input" type="text" name="memo" th:value="${row.memo}" /></div>
+                        </div>
+                        <div class="hub-edit__actions">
+                          <button type="submit" class="hub-btn hub-btn--primary hub-btn--sm">저장</button>
+                        </div>
+                      </form>
+                      <form class="hub-inline-form" th:action="@{/hub/me/custom-links/{id}/delete(id=${row.id})}" method="post"
+                            onsubmit="return confirm('이 링크를 삭제할까요?');">
+                        <button type="submit" class="hub-btn hub-btn--sm hub-btn--danger">삭제</button>
+                      </form>
+                    </div>
+                  </th:block>
+                </div>
+              </div>
+            </section>
+
+            <!--/* 내 메모: 로그인 시에만 */-->
+            <section class="hub-memo-card">
+              <div class="hub-memo-card__head">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--fg3)"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /></svg>
+                <span class="hub-memo-card__title">내 메모</span>
+                <span class="hub-memo-card__note">나만 볼 수 있음</span>
+                <span class="hub-memo__status" data-memo-status role="status" aria-live="polite"></span>
+              </div>
+              <textarea class="hub-memo__input" id="hubMemo" rows="6" maxlength="2000"
+                        aria-label="내 메모"
                         placeholder="예) 월요일 배포 체크, VPN 재발급 신청하기"
                         th:text="${memo}"></textarea>
               <div class="hub-memo__foot">
@@ -255,80 +399,34 @@
                         th:data-save-url="@{/hub/me/memo}"
                         th:data-login-url="@{/hub/login}">저장</button>
               </div>
-            </div>
-          </details>
-        </section>
-
-        <!--/* 인기 링크: 전 직원 클릭 집계 TOP(최근 30일). 데이터 있을 때만 */-->
-        <section class="hub-section" data-search-section
-                 th:if="${popular != null and !#lists.isEmpty(popular)}">
-          <div class="hub-section__head">
-            <h2 class="hub-section__title">🔥 인기 링크
-              <span class="hub-section__count">최근 30일 많이 찾는 링크</span>
-            </h2>
-          </div>
-          <div class="hub-grid">
-            <div class="hub-card" th:each="link : ${popular}"
-                 th:attr="data-search-name=|${link.title} ${link.url}|">
-              <a class="hub-card__link" target="_blank" rel="noopener noreferrer"
-                 th:href="${hubMember != null} ? @{/hub/go/link/{id}(id=${link.id})} : ${link.url}"
-                 th:aria-label="|${link.title} 열기|"></a>
-              <div class="hub-card__body">
-                <div class="hub-card__top">
-                  <span class="hub-card__title" th:text="${link.title}">서비스명</span>
-                </div>
-                <span class="hub-card__url" th:text="${link.url}">https://example.com</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <div class="hub-empty" th:if="${links == null or #lists.isEmpty(links)}">
-          <div class="hub-empty__text">등록된 링크가 없습니다.</div>
-        </div>
-
-        <section class="hub-cat" data-search-section
-                 th:if="${linkGroups != null and !linkGroups.isEmpty()}" th:each="entry : ${linkGroups}"
-                 th:attr="data-cat-name=${entry.key}">
-          <div class="hub-cat__head" data-cat-toggle role="button" tabindex="0" aria-expanded="true"
-               th:aria-label="|${entry.key} 분류 접기·펼치기|">
-            <h2 class="hub-cat__title" th:text="${entry.key}">분류</h2>
-            <span class="hub-cat__count" th:text="|${#lists.size(entry.value)}개|">0개</span>
-            <svg class="hub-cat__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-                 aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-          </div>
-          <div class="hub-grid">
-            <div class="hub-card" th:each="link : ${entry.value}"
-                 th:attr="data-search-name=|${link.title} ${link.url} ${link.description == null ? '' : link.description}|">
-              <a class="hub-card__link" target="_blank" rel="noopener noreferrer"
-                 th:href="${hubMember != null} ? @{/hub/go/link/{id}(id=${link.id})} : ${link.url}"
-                 th:aria-label="|${link.title} 열기|"></a>
-              <div class="hub-card__body">
-                <div class="hub-card__top">
-                  <span class="hub-card__title" th:text="${link.title}">서비스명</span>
-                </div>
-                <span class="hub-card__desc" th:if="${link.description != null and !#strings.isEmpty(link.description)}" th:text="${link.description}">설명</span>
-                <span class="hub-card__url" th:text="${link.url}">https://example.com</span>
-              </div>
-              <button th:if="${hubMember != null}" type="button" class="lh-fav"
-                      th:classappend="${favoriteLinkIds.contains(link.id)} ? ' lh-fav--on' : ''"
-                      th:data-link-id="${link.id}"
-                      th:data-toggle-url="@{/hub/me/favorites/toggle}"
-                      th:data-login-url="@{/hub/login}"
-                      th:aria-pressed="${favoriteLinkIds.contains(link.id)}"
-                      aria-label="즐겨찾기 토글" title="즐겨찾기에 추가/해제">★</button>
-            </div>
-          </div>
-        </section>
-
-        <!--/* 검색이 전부 걸러냈을 때만 JS가 노출 */-->
-        <div class="hub-empty" id="hubNoResult" hidden>
-          <div class="hub-empty__text">검색 결과가 없습니다.</div>
+            </section>
+          </aside>
         </div>
       </div>
     </main>
   </div>
+
+  <!--/* 커맨드 팔레트 — 본문 행들을 인덱싱해 검색한다 */-->
+  <div class="lh-palette" id="hubPalette" hidden role="dialog" aria-modal="true" aria-label="링크 검색">
+    <div class="lh-palette__panel">
+      <div class="lh-palette__inputrow">
+        <svg class="lh-palette__icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+        <input class="lh-palette__input" id="paletteInput" type="text" autocomplete="off"
+               placeholder="링크 · 분류 · host 검색" aria-label="링크 검색" />
+        <span class="lh-palette__meta" data-palette-count>0개 결과</span>
+        <kbd class="hub-kbd">esc</kbd>
+      </div>
+      <div class="lh-palette__results" id="paletteResults"></div>
+      <div class="lh-palette__foot">
+        <span><kbd class="hub-kbd">↑</kbd><kbd class="hub-kbd">↓</kbd> 이동</span>
+        <span><kbd class="hub-kbd">↵</kbd> 열기</span>
+        <span><kbd class="hub-kbd">⌘</kbd><kbd class="hub-kbd">↵</kbd> 새 탭</span>
+        <span class="lh-palette__foot-end">개발·DEMO는 점선 + 라벨</span>
+      </div>
+    </div>
+  </div>
+
   <script th:src="@{/js/hub.js}"></script>
 </body>
 </html>

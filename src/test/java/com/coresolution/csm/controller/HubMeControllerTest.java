@@ -10,6 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.coresolution.csm.serivce.HubCustomLinkService;
 import com.coresolution.csm.serivce.HubMemberService;
+import com.coresolution.csm.serivce.HubMemoService;
 import com.coresolution.csm.serivce.HubRememberService;
 
 /**
@@ -24,9 +25,11 @@ class HubMeControllerTest {
     private HubMemberService hubMemberService;
     @Mock
     private HubRememberService hubRememberService;
+    @Mock
+    private HubMemoService hubMemoService;
 
     private HubMeController controller() {
-        return new HubMeController(hubCustomLinkService, hubMemberService, hubRememberService);
+        return new HubMeController(hubCustomLinkService, hubMemberService, hubRememberService, hubMemoService);
     }
 
     /** 예전 북마크가 깨지지 않도록 리다이렉트만 남긴다(화면은 사라졌다). */

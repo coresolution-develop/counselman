@@ -24,8 +24,10 @@ import com.coresolution.csm.serivce.HubMemoService;
 import com.coresolution.csm.serivce.HubNoticeService;
 import com.coresolution.csm.vo.CompanyLink;
 import com.coresolution.csm.vo.HubCustomLink;
+import com.coresolution.csm.vo.HubLinkView;
 import com.coresolution.csm.vo.HubMemberSession;
 import com.coresolution.csm.vo.Userdata;
+import com.coresolution.csm.web.HubLinkPresenter;
 import com.coresolution.csm.web.HubSessions;
 
 import jakarta.servlet.http.HttpSession;
@@ -41,40 +43,53 @@ public class CompanyLinkController {
     private final HubCustomLinkService hubCustomLinkService;
     private final HubHistoryService hubHistoryService;
     private final HubNoticeService hubNoticeService;
+    private final HubLinkPresenter hubLinkPresenter;
 
     @GetMapping("/links")
     public String links(Model model, HttpSession session) {
-        List<CompanyLink> links = companyLinkService.listActiveLinks();
-        model.addAttribute("links", links);
-        model.addAttribute("linkGroups", groupByCategory(links));
-        model.addAttribute("categories", companyLinkService.listCategories());
-        // 로그인 상태면 개인 페이지 진입을, 아니면 로그인 버튼을 상단바에 노출(공개 허브는 항상 접근 가능).
+        // 로그인 상태면 개인 영역(즐겨찾기·내 링크·메모)을, 아니면 공용 링크만 렌더한다.
         HubMemberSession hubMember = HubSessions.current(session);
+        boolean loggedIn = hubMember != null;
         model.addAttribute("hubMember", hubMember);
-        // 로그인 시에만 ★ 채움 표시용 즐겨찾기 link_id 집합 + 상단 "내 즐겨찾기" 섹션용 목록을 내려준다.
-        model.addAttribute("favoriteLinkIds", hubMember == null
-                ? java.util.Set.of()
-                : new java.util.HashSet<>(hubFavoriteService.listFavoriteLinkIds(hubMember.getId())));
-        model.addAttribute("favorites", hubMember == null
-                ? java.util.List.of()
-                : hubFavoriteService.listFavorites(hubMember.getId()));
+
+        java.util.Set<Long> favoriteIds = loggedIn
+                ? new java.util.HashSet<>(hubFavoriteService.listFavoriteLinkIds(hubMember.getId()))
+                : java.util.Set.of();
+
+        List<CompanyLink> links = companyLinkService.listActiveLinks();
+        List<HubLinkView> linkRows = hubLinkPresenter.publicLinks(links, favoriteIds, loggedIn);
+        model.addAttribute("linkRows", linkRows);
+        model.addAttribute("linkGroupRows", groupRowsByCategory(linkRows));
+        model.addAttribute("categoryNav", categoryNav(linkRows));
+
+        // 필터 칩 개수 — 환경별 집계는 링크 목록에서 바로 센다.
+        model.addAttribute("publicCount", linkRows.size());
+        model.addAttribute("prodCount", countEnv(linkRows, "prod"));
+        model.addAttribute("devCount", countEnv(linkRows, "dev") + countEnv(linkRows, "demo"));
+
+        model.addAttribute("favoriteRows", loggedIn
+                ? hubLinkPresenter.publicLinks(hubFavoriteService.listFavorites(hubMember.getId()), favoriteIds, true)
+                : java.util.List.of());
         // 로그인 시에만 개인 메모장을 노출한다(미로그인은 조회 자체를 하지 않는다).
-        model.addAttribute("memo", hubMember == null
-                ? ""
-                : hubMemoService.find(hubMember.getId()));
+        model.addAttribute("memo", loggedIn ? hubMemoService.find(hubMember.getId()) : "");
+
         // 개인 커스텀 링크. 예전 /hub/me를 이 페이지가 흡수했다(관리 폼도 여기서 렌더).
-        // 카테고리별 그룹으로 내려준다(미분류는 "기타"). 개수 표시용 flat 리스트도 함께 전달.
-        List<HubCustomLink> customLinks = hubMember == null
-                ? java.util.List.of()
-                : hubCustomLinkService.listOwn(hubMember.getId());
-        model.addAttribute("customLinks", customLinks);
-        model.addAttribute("customLinkGroups", groupCustomByCategory(customLinks));
-        // 최근 사용: 클릭 추적(hub_member_link_history)을 상단에 다시 노출한다(로그인 시에만).
-        model.addAttribute("recent", hubMember == null
-                ? java.util.List.of()
-                : hubHistoryService.listRecent(hubMember.getId()));
+        // 카테고리별 그룹으로 내려준다(미분류는 "기타"). 개수 표시용 합계도 함께 전달.
+        List<HubCustomLink> customLinks = loggedIn
+                ? hubCustomLinkService.listOwn(hubMember.getId())
+                : java.util.List.of();
+        List<HubLinkView> customRows = hubLinkPresenter.customLinks(customLinks);
+        model.addAttribute("customRows", customRows);
+        model.addAttribute("customGroupRows", groupRowsByCategory(customRows));
+        model.addAttribute("customCount", customRows.size());
+
+        // 최근 사용: 클릭 추적(hub_member_link_history) 기반(로그인 시에만).
+        model.addAttribute("recentRows", loggedIn
+                ? hubLinkPresenter.historyLinks(hubHistoryService.listRecent(hubMember.getId()))
+                : java.util.List.of());
         // 인기 링크: 전 직원 클릭 집계 TOP(최근 30일). 개인정보 없는 집계라 미로그인도 노출.
-        model.addAttribute("popular", hubHistoryService.listPopularPublic(6, 30));
+        model.addAttribute("popularRows",
+                hubLinkPresenter.publicLinks(hubHistoryService.listPopularPublic(6, 30), favoriteIds, loggedIn));
         // 관리자 공지 배너(활성일 때만 non-null).
         model.addAttribute("notice", hubNoticeService.findActive());
         return "design/company-links";
@@ -178,15 +193,34 @@ public class CompanyLinkController {
         return Map.of("links", companyLinkService.listActiveLinks());
     }
 
-    private Map<String, List<HubCustomLink>> groupCustomByCategory(List<HubCustomLink> links) {
-        Map<String, List<HubCustomLink>> groups = new LinkedHashMap<>();
-        for (HubCustomLink link : links) {
-            String category = link.getCategory() == null || link.getCategory().isBlank()
+    /** 화면용 행을 분류별로 묶는다. 미분류는 "기타"로 모은다(공용·개인 공통). */
+    private Map<String, List<HubLinkView>> groupRowsByCategory(List<HubLinkView> rows) {
+        Map<String, List<HubLinkView>> groups = new LinkedHashMap<>();
+        for (HubLinkView row : rows) {
+            String category = row.getCategory() == null || row.getCategory().isBlank()
                     ? "기타"
-                    : link.getCategory().trim();
-            groups.computeIfAbsent(category, key -> new java.util.ArrayList<>()).add(link);
+                    : row.getCategory().trim();
+            groups.computeIfAbsent(category, key -> new java.util.ArrayList<>()).add(row);
         }
         return groups;
+    }
+
+    /** 사이드바 분류 목록 — 이름·색·개수. 링크 목록 순서(분류 sort_order)를 그대로 따른다. */
+    private List<Map<String, Object>> categoryNav(List<HubLinkView> rows) {
+        List<Map<String, Object>> nav = new java.util.ArrayList<>();
+        for (Map.Entry<String, List<HubLinkView>> entry : groupRowsByCategory(rows).entrySet()) {
+            HubLinkPresenter.Category style = hubLinkPresenter.category(entry.getKey());
+            nav.add(Map.of(
+                    "name", entry.getKey(),
+                    "color", style.color(),
+                    "colorDark", style.colorDark(),
+                    "count", entry.getValue().size()));
+        }
+        return nav;
+    }
+
+    private long countEnv(List<HubLinkView> rows, String env) {
+        return rows.stream().filter(row -> env.equals(row.getEnv())).count();
     }
 
     private Map<String, List<CompanyLink>> groupByCategory(List<CompanyLink> links) {

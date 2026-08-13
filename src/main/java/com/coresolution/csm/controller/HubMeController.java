@@ -18,6 +18,7 @@ import com.coresolution.csm.web.HubIds;
 
 import com.coresolution.csm.serivce.HubCustomLinkService;
 import com.coresolution.csm.serivce.HubMemberService;
+import com.coresolution.csm.serivce.HubMemoService;
 import com.coresolution.csm.serivce.HubRememberService;
 import com.coresolution.csm.vo.HubMemberSession;
 import com.coresolution.csm.web.HubRememberCookies;
@@ -41,14 +42,17 @@ public class HubMeController {
     private final HubCustomLinkService hubCustomLinkService;
     private final HubMemberService hubMemberService;
     private final HubRememberService hubRememberService;
+    private final HubMemoService hubMemoService;
 
     public HubMeController(
             HubCustomLinkService hubCustomLinkService,
             HubMemberService hubMemberService,
-            HubRememberService hubRememberService) {
+            HubRememberService hubRememberService,
+            HubMemoService hubMemoService) {
         this.hubCustomLinkService = hubCustomLinkService;
         this.hubMemberService = hubMemberService;
         this.hubRememberService = hubRememberService;
+        this.hubMemoService = hubMemoService;
     }
 
     /**
@@ -188,6 +192,10 @@ public class HubMeController {
             return "redirect:/hub/login";
         }
         model.addAttribute("hubMember", member);
+        // 프로필 헤더의 "개인 링크 N개 · 메모 N자" 요약.
+        model.addAttribute("customCount", hubCustomLinkService.listOwn(member.getId()).size());
+        String memo = hubMemoService.find(member.getId());
+        model.addAttribute("memoLength", memo == null ? 0 : memo.length());
         return "hub/account";
     }
 

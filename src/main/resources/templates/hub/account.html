@@ -7,14 +7,15 @@
   <meta name="_csrf_header" th:content="${_csrf.headerName}" />
   <title>계정 설정 · 링크 허브</title>
   <link rel="stylesheet" th:href="@{/assets/css/hub.css}" />
-  <style>
-    .acc-panel { max-width: 520px; background: #fff; border: 1px solid var(--card-border);
-      border-radius: 14px; box-shadow: var(--card-shadow); padding: 20px; margin-bottom: 18px; }
-    .acc-panel__title { margin: 0 0 6px; font-size: 16px; font-weight: 800; color: var(--text-strong); }
-    .acc-panel__desc { margin: 0 0 16px; color: var(--text-muted); font-size: 13px; line-height: 1.5; }
-    .acc-field { margin-bottom: 14px; }
-    .acc-field label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: var(--text-body); }
-  </style>
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('hubTheme');
+        var dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+      } catch (e) { /* 저장소 접근 불가면 기본값(라이트) */ }
+    })();
+  </script>
 </head>
 <body class="hub-body">
   <div class="hub-layout">
@@ -22,39 +23,117 @@
 
     <main class="hub-content">
       <div class="hub-container">
-        <header class="hub-pagehead">
-          <h1 class="hub-pagehead__title">계정 설정</h1>
-          <p class="hub-pagehead__sub" th:text="${hubMember.email}">user@coresolution.kr</p>
+        <header class="acc-head">
+          <span class="acc-head__avatar" th:text="${#strings.substring(hubMember.name, 0, 1)}">이</span>
+          <div>
+            <div class="acc-head__name" th:text="${hubMember.name}">이수민</div>
+            <div class="acc-head__meta"
+                 th:text="|${hubMember.email} · ${hubMember.role} · 개인 링크 ${customCount}개 · 메모 ${memoLength}자|">
+              user@coresolution.kr · USER · 개인 링크 0개 · 메모 0자
+            </div>
+          </div>
+          <form th:action="@{/hub/logout}" method="post" class="hub-inline-form" style="margin-left:auto">
+            <button type="submit" class="hub-btn hub-btn--sm">로그아웃</button>
+          </form>
         </header>
 
         <div th:if="${accountMessage}" class="hub-alert hub-alert--ok" th:text="${accountMessage}"></div>
         <div th:if="${accountError}" class="hub-alert hub-alert--err" th:text="${accountError}"></div>
 
-        <section class="acc-panel">
-          <h2 class="acc-panel__title">비밀번호 변경</h2>
-          <form th:action="@{/hub/me/account/password}" method="post">
-            <div class="acc-field">
-              <label for="currentPassword">현재 비밀번호</label>
-              <input class="hub-input" type="password" id="currentPassword" name="currentPassword" autocomplete="current-password" required />
+        <div class="acc-grid">
+          <section class="acc-card">
+            <div class="acc-card__head">
+              <h2 class="acc-card__title">비밀번호 변경</h2>
             </div>
-            <div class="acc-field">
-              <label for="newPassword">새 비밀번호</label>
-              <input class="hub-input" type="password" id="newPassword" name="newPassword" autocomplete="new-password" required />
-            </div>
-            <button type="submit" class="hub-btn hub-btn--primary">변경하기</button>
-          </form>
-        </section>
+            <form th:action="@{/hub/me/account/password}" method="post">
+              <div class="auth-field">
+                <label for="currentPassword">현재 비밀번호</label>
+                <input class="hub-input" type="password" id="currentPassword" name="currentPassword"
+                       autocomplete="current-password" required />
+              </div>
+              <div class="auth-field">
+                <label for="newPassword">새 비밀번호</label>
+                <input class="hub-input" type="password" id="newPassword" name="newPassword"
+                       autocomplete="new-password" required />
+                <div class="hub-strength" data-strength-for="newPassword" style="margin-top:8px">
+                  <div class="hub-strength__bars" aria-hidden="true">
+                    <span class="hub-strength__bar"></span>
+                    <span class="hub-strength__bar"></span>
+                    <span class="hub-strength__bar"></span>
+                  </div>
+                  <span class="hub-strength__text" role="status" aria-live="polite"></span>
+                </div>
+                <p class="auth-rule">8자 이상, 영문·숫자 포함</p>
+              </div>
+              <div class="acc-card__foot">
+                <button type="submit" class="hub-btn hub-btn--primary">변경하기</button>
+              </div>
+            </form>
+          </section>
 
-        <section class="acc-panel">
-          <h2 class="acc-panel__title">기기 관리</h2>
-          <p class="acc-panel__desc">‘이 기기 기억하기’로 로그인한 다른 기기를 모두 로그아웃합니다. 분실·공용 단말에 로그인이 남아 있을 때 사용하세요. 현재 기기는 로그인 상태가 유지됩니다.</p>
-          <form th:action="@{/hub/me/account/logout-all}" method="post"
-                onsubmit="return confirm('다른 모든 기기에서 로그아웃할까요? 현재 기기는 유지됩니다.');">
-            <button type="submit" class="hub-btn">다른 모든 기기에서 로그아웃</button>
-          </form>
-        </section>
+          <section class="acc-card">
+            <div class="acc-card__head">
+              <h2 class="acc-card__title">기기 · 세션</h2>
+              <span class="acc-card__note">‘이 기기 기억하기’로 로그인한 기기</span>
+            </div>
+            <p class="acc-card__desc">
+              다른 기기에 로그인이 남아 있을 때 한 번에 정리합니다. 분실·공용 단말에서 사용하세요.
+              현재 기기는 로그인 상태가 유지됩니다.
+            </p>
+            <form th:action="@{/hub/me/account/logout-all}" method="post"
+                  onsubmit="return confirm('다른 모든 기기에서 로그아웃할까요? 현재 기기는 유지됩니다.');">
+              <button type="submit" class="hub-btn hub-btn--danger">다른 기기 모두 로그아웃</button>
+            </form>
+          </section>
+
+          <section class="acc-card acc-card--wide">
+            <div class="acc-card__head">
+              <h2 class="acc-card__title">테마</h2>
+            </div>
+            <p class="acc-card__desc">이 브라우저에만 저장됩니다. 시스템을 고르면 OS 설정을 따라갑니다.</p>
+            <div class="acc-seg" role="group" aria-label="테마 선택">
+              <button type="button" class="hub-density__btn" data-theme-set="system">시스템</button>
+              <button type="button" class="hub-density__btn" data-theme-set="light">라이트</button>
+              <button type="button" class="hub-density__btn" data-theme-set="dark">다크</button>
+            </div>
+          </section>
+        </div>
       </div>
     </main>
   </div>
+
+  <script th:src="@{/js/hub-strength.js}"></script>
+  <script>
+    (function () {
+      var buttons = [].slice.call(document.querySelectorAll('[data-theme-set]'));
+      if (!buttons.length) return;
+      var root = document.documentElement;
+
+      var read = function () {
+        try { return localStorage.getItem('hubTheme') || 'system'; } catch (e) { return 'system'; }
+      };
+      var apply = function (mode) {
+        var dark = mode === 'dark'
+          || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (dark) root.setAttribute('data-theme', 'dark');
+        else root.removeAttribute('data-theme');
+        buttons.forEach(function (btn) {
+          btn.classList.toggle('hub-density__btn--on', btn.dataset.themeSet === mode);
+        });
+      };
+
+      apply(read());
+      buttons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var mode = btn.dataset.themeSet;
+          try {
+            if (mode === 'system') localStorage.removeItem('hubTheme');
+            else localStorage.setItem('hubTheme', mode);
+          } catch (e) { /* 저장 실패해도 화면에는 반영한다 */ }
+          apply(mode);
+        });
+      });
+    })();
+  </script>
 </body>
 </html>
