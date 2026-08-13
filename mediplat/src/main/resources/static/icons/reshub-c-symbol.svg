@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="reshub-c symbol">
+<g transform="translate(256,256) scale(0.96) translate(-256,-256)"><clipPath id="shreshub-cs"><path d="M 256 96 L 404 148 V 262 C 404 336 340 390 256 416 C 172 390 108 336 108 262 V 148 Z"></path></clipPath>
+<path d="M 256 96 L 404 148 V 262 C 404 336 340 390 256 416 C 172 390 108 336 108 262 V 148 Z" fill="#0C4890"></path>
+<g clip-path="url(#shreshub-cs)"><path d="M 96 300 C 176 238 246 358 420 292 L 420 440 L 96 440 Z" fill="#2478C0"></path></g>
+<path d="M 152 238 H 208 L 236 184 L 284 294 L 308 238 H 360" fill="none" stroke="#FFFFFF" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"></path></g>
+</svg>

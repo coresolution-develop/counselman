@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="mediplat-c app icon">
+<clipPath id="rrmediplat-c"><path d="M 0 114 A 114 114 0 0 1 114 0 H 398 A 114 114 0 0 1 512 114 V 398 A 114 114 0 0 1 398 512 H 114 A 114 114 0 0 1 0 398 Z"></path></clipPath>
+<g clip-path="url(#rrmediplat-c)"><rect width="512" height="512" fill="#0C4890"></rect><path d="M 0 424 C 128 384 300 452 512 396 V 512 H 0 Z" fill="#2478C0"></path></g>
+<g transform="translate(256,256) scale(0.72) translate(-256,-256)"><rect x="96" y="326" width="320" height="90" rx="45" fill="#FFFFFF"></rect>
+<rect x="120" y="146" width="124" height="152" rx="40" fill="#FFFFFF"></rect>
+<circle cx="338" cy="224" r="74" fill="#B7D6F0"></circle></g>
+</svg>

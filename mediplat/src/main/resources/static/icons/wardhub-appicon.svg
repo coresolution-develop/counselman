@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="wardhub-bed app icon">
+<clipPath id="rrwardhub-bed"><path d="M 0 114 A 114 114 0 0 1 114 0 H 398 A 114 114 0 0 1 512 114 V 398 A 114 114 0 0 1 398 512 H 114 A 114 114 0 0 1 0 398 Z"></path></clipPath>
+<g clip-path="url(#rrwardhub-bed)"><rect width="512" height="512" fill="#0C4890"></rect><path d="M 0 424 C 128 384 300 452 512 396 V 512 H 0 Z" fill="#2478C0"></path></g>
+<g transform="translate(256,256) scale(0.72) translate(-256,-256)"><g transform="translate(0,-6) translate(256,256) scale(1) translate(-256,-256)"><rect x="96" y="152" width="76" height="204" rx="38" fill="#FFFFFF"></rect>
+<rect x="96" y="252" width="320" height="104" rx="52" fill="#FFFFFF"></rect>
+<circle cx="252" cy="196" r="54" fill="#B7D6F0" stroke="#0C4890" stroke-width="24"></circle></g></g>
+</svg>

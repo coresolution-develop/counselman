@@ -49,6 +49,30 @@ function AppIcon({ k, size = 22, color = '#fff' }) {
   }
 }
 
+/* ------------ Brand app icons (코어솔루션 아이콘 패밀리, /icons) ------------
+   브랜드 아이콘이 있는 서비스는 앱아이콘 SVG가 타일 자체를 대신한다.
+   (앱아이콘에 딥블루 배경과 라운드가 이미 포함돼 있어 타일 배경을 덮어쓴다) */
+const BRAND_APPICON = {
+  COUNSELMAN: '/icons/counselman-appicon.svg',
+  ROOM_BOARD: '/icons/wardhub-appicon.svg',
+};
+
+function ServiceIcon({ app, className, size, gradient }) {
+  const brand = BRAND_APPICON[app.serviceCode];
+  if (brand) {
+    return (
+      <div className={`${className} pv-icon--brand${app.active ? '' : ' pv-icon--muted'}`}>
+        <img className="pv-icon__brand-img" src={brand} alt="" />
+      </div>
+    );
+  }
+  return (
+    <div className={className} style={gradient ? { background: gradient } : undefined}>
+      <AppIcon k={app.iconKey} size={size} />
+    </div>
+  );
+}
+
 /* ------------ Misc icons ------------ */
 const PIcon = {
   Search: (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>,
@@ -61,13 +85,7 @@ const PIcon = {
 
 /* ------------ Brand mark ------------ */
 function PBrand({ size = 30 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-      <circle cx="24" cy="24" r="18" stroke="#1d4ed8" strokeWidth="3" />
-      <circle cx="18" cy="24" r="5" fill="#0b1f4a" />
-      <circle cx="32" cy="24" r="5" fill="#10b981" />
-    </svg>
-  );
+  return <img src="/icons/mediplat-b-symbol.svg" width={size} height={size} alt="MediPlat" />;
 }
 
 /* ============================================================== */
@@ -172,9 +190,8 @@ function VariantCards({ tweaks, onLaunch }) {
         <div className="pv-cards__grid">
           {APPS.filter(app => app.active).map(app => (
             <button key={app.id} className="pv-card" onClick={() => onLaunch(app)}>
-              <div className="pv-card__icon" style={{ background: `linear-gradient(135deg, ${a.mid}, ${a.to})` }}>
-                <AppIcon k={app.iconKey} size={22} />
-              </div>
+              <ServiceIcon app={app} className="pv-card__icon" size={22}
+                gradient={`linear-gradient(135deg, ${a.mid}, ${a.to})`} />
               <div className="pv-card__body">
                 <div className="pv-card__name">{app.name}</div>
                 <div className="pv-card__kr">{app.kr}</div>
@@ -202,9 +219,7 @@ function VariantCards({ tweaks, onLaunch }) {
         <div className="pv-cards__grid">
           {APPS.filter(app => !app.active).map(app => (
             <div key={app.id} className="pv-card pv-card--off">
-              <div className="pv-card__icon pv-card__icon--off">
-                <AppIcon k={app.iconKey} size={22} color="#fff" />
-              </div>
+              <ServiceIcon app={app} className="pv-card__icon pv-card__icon--off" size={22} />
               <div className="pv-card__body">
                 <div className="pv-card__name">{app.name}</div>
                 <div className="pv-card__kr">{app.kr}</div>
@@ -248,7 +263,7 @@ function VariantHero({ tweaks, onLaunch }) {
           <div className="pv-hero__feature-cta">바로 시작 <PIcon.Arrow width={14} height={14} /></div>
         </div>
         <div className="pv-hero__feature-right">
-          <div className="pv-hero__feature-icon"><AppIcon k={featured.iconKey} size={56} /></div>
+          <ServiceIcon app={featured} className="pv-hero__feature-icon" size={56} />
           <div className="pv-hero__feature-stats">
             <div><span>오늘 상담</span><strong>18</strong></div>
             <div><span>대기</span><strong>3</strong></div>
@@ -269,13 +284,10 @@ function VariantHero({ tweaks, onLaunch }) {
             disabled={!app.active}
             onClick={() => app.active && onLaunch(app)}
           >
-            <div className="pv-hero__card-icon" style={{
-              background: app.active
+            <ServiceIcon app={app} className="pv-hero__card-icon" size={20}
+              gradient={app.active
                 ? `linear-gradient(135deg, ${a.mid}, ${a.to})`
-                : 'linear-gradient(135deg, #94a3b8, #6c7d97)',
-            }}>
-              <AppIcon k={app.iconKey} size={20} />
-            </div>
+                : 'linear-gradient(135deg, #94a3b8, #6c7d97)'} />
             <div className="pv-hero__card-name">{app.name}</div>
             <div className="pv-hero__card-desc">{app.desc}</div>
             {!app.active && <div className="pv-hero__card-tag"><PIcon.Lock width={10} height={10} /> 준비중</div>}
@@ -1237,6 +1249,13 @@ body,
     display: none !important;
   }
 }
+
+/* ============== BRAND APP ICONS ============== */
+/* 앱아이콘 SVG가 배경·라운드를 이미 갖고 있어 타일 배경을 비운다.
+   라운드는 파일에 클리핑돼 있으므로 border-radius 를 덧대지 않는다. */
+.pv-icon--brand { background: none; overflow: hidden; }
+.pv-icon--brand .pv-icon__brand-img { width: 100%; height: 100%; display: block; }
+.pv-icon--muted .pv-icon__brand-img { filter: grayscale(1); opacity: 0.7; }
 `;
 
 /* ============================================================== */

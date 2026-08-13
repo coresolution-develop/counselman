@@ -50,3 +50,26 @@ MediPlat 은 기동할 때마다 이 계정을 생성/갱신합니다. `PLATFORM
 `COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET` 값은 동일해야 합니다.
 
 서비스 URL은 `mp_service_endpoint` 테이블에서 환경별(`LOCAL/DEV/PROD`)로 관리합니다.
+
+## 브랜드 아이콘
+
+코어솔루션 시스템 아이콘 패밀리는 `src/main/resources/static/icons/` 에 있습니다.
+파일 규칙·컬러 토큰·크기별 사용 가이드는 [`icons/README.md`](src/main/resources/static/icons/README.md) 참고.
+
+- **MediPlat 자체 마크**: `mediplat-b` 확정. 포털 헤더는 `mediplat-b-symbol.svg`,
+  파비콘/앱아이콘 PNG(`favicon*.png`, `favicon.ico`, `apple-touch-icon.png`,
+  `android-chrome-*.png`)는 이 마크에서 생성한 것입니다.
+- **서비스 카드 아이콘**: `portal-app.jsx` 의 `BRAND_APPICON` 이 `serviceCode` → 앱아이콘
+  경로를 매핑합니다. 매핑이 없는 서비스는 기존 라인 글리프(`AppIcon`)로 자동 폴백합니다.
+
+| serviceCode | 아이콘 |
+|---|---|
+| `COUNSELMAN` | `counselman-appicon.svg` |
+| `ROOM_BOARD` | `wardhub-appicon.svg` |
+| 그 외 | 라인 글리프 폴백 |
+
+`reshub-*` 는 아직 MediPlat 에 편입되지 않은 시스템이라 파일만 보관돼 있습니다.
+새 시스템을 붙일 때 `BRAND_APPICON` 에 한 줄 추가하면 카드에 반영됩니다.
+
+PNG 재생성이 필요하면 SVG 를 브라우저 렌더러로 래스터화하세요. ImageMagick 내장 SVG
+렌더러는 `stroke` 패스를 누락시켜 마크가 깨집니다.
