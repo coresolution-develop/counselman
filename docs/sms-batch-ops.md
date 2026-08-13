@@ -81,10 +81,36 @@ GROUP BY DATE_FORMAT(created_at, '%Y-%m')
 ORDER BY month DESC;
 ```
 
-### 단가 폴백 발생 관측
+### 단가 폴백 발생 관측 — 주기 점검 대상
 
 `inst_data_cs` 단가가 없거나 파싱 불가면 프로퍼티 기본값(960/3000/9000전)으로 폴백하고
-WARN 로그에 기관코드가 남는다. 로그 검색 키: `[sms-price]`
+WARN 로그에 기관코드가 남는다. **폴백은 돈이 걸린 경로이므로 조용히 지나가면 안 된다.**
+아래를 주기적으로(최소 주 1회, Phase 4 착수 전에는 매일) 확인한다.
+
+```bash
+# 개발서버: catalina.base=/usr/local/tomcat10, 실서버: /opt/csm-next/tomcat
+# 폴백 발생 전수
+grep -h '\[sms-price\]' $CATALINA_BASE/logs/catalina.out
+
+# 기관·사유별 발생 횟수 요약 (많을 때)
+grep -ho '\[sms-price\] inst=[A-Za-z0-9_]* type=[a-z]*' $CATALINA_BASE/logs/catalina.out \
+  | sort | uniq -c | sort -rn
+
+# 최근 것만
+grep '\[sms-price\]' $CATALINA_BASE/logs/catalina.out | tail -50
+```
+
+WARN 문구는 3종이며 전부 `inst=` 를 포함한다.
+
+| 문구 | 원인 |
+|---|---|
+| `price not configured, falling back to default` | 단가가 NULL 또는 빈 문자열 |
+| `invalid price '...', falling back to default` | 숫자로 파싱 불가 (예: `20원`) 또는 int 범위 초과 |
+| `negative price '...', falling back to default` | 음수 단가 |
+| `price lookup failed: ...` | `inst_data_cs` 조회 자체가 실패 |
+
+**한 건이라도 나오면 단가를 채우거나 고쳐야 한다.** 발송은 계속되지만 기관 계약 단가와
+다른 금액이 이력에 기록된다. 조치는 위의 "단가 공백 기관 점검" 쿼리 → `/csm/core/smssetting` 입력.
 
 ```sql
 -- 단가 데이터 정합 확인 (비숫자·NULL 검출)
@@ -180,6 +206,40 @@ WHERE table_schema = 'csm' AND table_type = 'BASE TABLE'
   AND table_collation <> 'utf8mb4_0900_ai_ci'
 GROUP BY table_collation;
 ```
+
+## Phase 4 착수 전 결정 사항 — 폴백 단가로 발송된 건의 사후 식별
+
+### 문제
+
+`transmission_history_<inst>.cost` 만 봐서는 **그 값이 기관 설정 단가인지 폴백 기본값인지
+구분되지 않는다.** 폴백 기본값(SMS 960전)과 실서버 계약 단가(9.6원 = 960전)가 같은 값이라
+더욱 그렇다. 로그 WARN 은 발생 사실만 알려줄 뿐 **이력 행과 이어지는 키가 없고**,
+로그는 로테이션으로 사라진다.
+
+Phase 4 에서 `cost` 가 차감 금액의 근거가 되면 다음이 불가능해진다.
+
+- 잘못된 단가로 차감된 건을 특정해 정산 보정하기
+- "이 기관이 이번 달 청구받은 금액이 계약 단가 기준인가" 감사
+
+**구분이 필요하다고 판단한다.** 단, 지금 구현하지 않고 Phase 4 착수 전에 결정한다.
+
+### 방안
+
+| 안 | 내용 | 장점 | 단점 |
+|---|---|---|---|
+| **A. 출처 플래그 컬럼** | `cost_source CHAR(1)` 추가 — `C`=기관 설정값, `F`=폴백 | 행 단위로 정확. 기존 컬럼 보강 패턴 그대로. 사후 조회·보정이 SQL 한 줄 | 컬럼 1개 증가 |
+| **B. 로그 대조** | WARN 발생 시각과 발송 시각을 수동 대조 | 코드 변경 없음 | 조인 키가 없어 정확한 특정 불가. 로그 로테이션 시 유실. **감사 근거로 못 쓴다** |
+| **C. 폴백 금지(fail-fast)** | 과금 대상(`billable='Y'`) 발송은 단가 미설정 시 발송 자체를 거부 | 잘못된 금액이 이력에 아예 안 남는다. 가장 강함 | 단가 설정 누락이 곧 문자 중단. 운영 부담이 큼 |
+
+### 권고
+
+**A + C 조합.** Phase 4 에서 지갑 차감이 붙으면 "얼마인지 모르는 채로 차감"은 성립하지
+않으므로, 과금 대상 발송은 C 로 막는 것이 원칙적으로 맞다. 다만 C 만으로는 Phase 4 이전에
+이미 쌓인 이력을 구분할 수 없으므로, A 를 **먼저** 넣어 두면 전환 시점에 소급 판정이 가능하다.
+OTP(`billable='N'`)는 cost=0 이므로 C 의 적용 대상이 아니다 — 단가 누락으로 비밀번호 재설정이
+막히면 안 된다.
+
+C 를 채택하면 "단가 공백 기관 점검" 쿼리가 0건인 것이 **배포 전 필수 게이트**가 된다.
 
 ## 완료 기록
 
