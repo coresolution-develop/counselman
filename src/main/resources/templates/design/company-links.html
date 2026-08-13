@@ -116,7 +116,7 @@
                         th:text="${row.catShort}">코어</span>
                   <span class="lh-main">
                     <span class="lh-name" th:text="${row.title}">서비스명</span>
-                    <span class="lh-host" th:text="${row.host}">example.com</span>
+                    <span class="lh-host" th:text="${row.url}">https://example.com</span>
                   </span>
                   <span class="lh-act">
                     <button type="button" data-move="up" title="위로 이동" aria-label="위로 이동">▲</button>
@@ -200,7 +200,7 @@
                           th:if="${#lists.size(grp.value) > 1}">모두 열기</button>
                 </div>
                 <div class="lh-grid">
-                  <div class="lh-row lh-row--compact" th:each="row : ${grp.value}"
+                  <div class="lh-row" th:each="row : ${grp.value}"
                      th:classappend="|env-${row.env}|"
                      data-filter-item data-palette-item
                      th:data-name="${row.title}" th:data-host="${row.host}" th:data-cat="${grp.key}"
@@ -217,9 +217,9 @@
                           th:text="${row.catShort}">코어</span>
                     <span class="lh-main">
                       <span class="lh-name" th:text="${row.title}">서비스명</span>
+                      <span class="lh-host" th:text="${row.url}">https://example.com</span>
                     </span>
                     <span class="lh-tail">
-                      <span class="lh-meta" th:text="${row.host}">example.com</span>
                       <span class="lh-act" th:if="${hubMember != null}">
                         <button type="button" class="lh-fav"
                                 th:classappend="${row.favorite} ? ' lh-fav--on' : ''"
