@@ -1,6 +1,7 @@
 package com.coresolution.csm.serivce;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.List;
@@ -336,7 +337,19 @@ public class SmsService {
         }
         if (priceStr != null && !priceStr.isBlank()) {
             try {
-                return new BigDecimal(priceStr.trim()).movePointRight(2).intValueExact();
+                // 원 → 전 변환 후 전 단위로 반올림한다(9.6원 = 960전).
+                // 전 미만 자릿수(예: "9.655")는 데이터 입력 오류지만, 기본 단가로 폴백하면
+                // 입력값과 무관한 금액이 청구되므로 HALF_UP 으로 반올림해 근사값을 유지한다.
+                int jeon = new BigDecimal(priceStr.trim())
+                        .movePointRight(2)
+                        .setScale(0, RoundingMode.HALF_UP)
+                        .intValueExact();
+                if (jeon < 0) {
+                    log.warn("[sms-price] inst={} type={} negative price '{}', falling back to default",
+                            inst, sendType, priceStr);
+                } else {
+                    return jeon;
+                }
             } catch (ArithmeticException | NumberFormatException e) {
                 log.warn("[sms-price] inst={} type={} invalid price '{}', falling back to default",
                         inst, sendType, priceStr);

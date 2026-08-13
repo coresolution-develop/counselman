@@ -96,6 +96,69 @@ WHERE sms_price IS NULL OR lms_price IS NULL OR mms_price IS NULL
    OR mms_price NOT REGEXP '^[0-9]+(\\.[0-9]+)?$';
 ```
 
+### 단가 공백 기관 점검 — Phase 4 차감 시작 전 필수
+
+아래 쿼리 결과가 **0건이 되어야 Phase 4 잔액 차감을 시작할 수 있다.** 단가가 비어 있으면
+프로퍼티 기본값으로 폴백해 발송은 되지만, 기관이 실제로 계약한 단가와 다른 금액이
+차감된다. (2026-08-12 dev 기준 HSFH·HSJH·TEST·SLOM 4개 기관이 공백)
+
+```sql
+SELECT id_col_03 AS inst, sms_price, lms_price, mms_price
+FROM csm.inst_data_cs
+WHERE sms_price IS NULL OR sms_price = ''
+   OR lms_price IS NULL OR lms_price = ''
+   OR mms_price IS NULL OR mms_price = '';
+```
+
+단가 입력은 `/csm/core/smssetting` (플랫폼 관리자 전용) 화면에서 기관별 또는 전 기관 일괄로 한다.
+
+### 단가 → 전(錢) 변환 규칙
+
+금액은 전 단위 정수로만 다룬다(double/float 미사용). `BigDecimal` 파싱 후
+`movePointRight(2)` → `setScale(0, RoundingMode.HALF_UP)` → `intValueExact()`.
+
+| 입력값 | 결과 | 비고 |
+|---|---|---|
+| `9.6` | 960전 | 실서버 SMS 단가 |
+| `9` | 900전 | |
+| `12` | 1200전 | |
+| `110` | 11000전 | |
+| `9.65` | 965전 | 전 단위까지 정확 |
+| `9.655` | 966전 | 전 미만은 HALF_UP 반올림 |
+| `""` / `NULL` / `20원` / 음수 | 폴백 + WARN | 프로퍼티 기본값 사용 |
+
+## 콜백 수동 검증 절차
+
+**개발서버에는 비즈뿌리오 실제 콜백이 오지 않는다** — 결과 리포트 URL이 등록되어 있지 않다
+(마지막 실제 콜백 2026-04-03). 따라서 콜백 처리 검증은 아래처럼 직접 주입해서 한다.
+코드 문제가 아니므로 개발서버에서 상태가 `SENT` 에 머물러 있어도 정상이다.
+
+```bash
+curl -i -X POST http://localhost:8080/csm/api/external/SMSRequest \
+  -H "Content-Type: application/json" \
+  -d '{"REFKEY":"MP-{INST}-{ID}","RESULT":"4100","PHONE":"01000000000",
+       "DEVICE":"SMS","MEDIA":"SMS","CMSGID":"test","MSGID":"test",
+       "UNIXTIME":"1755050000"}'
+```
+
+- `REFKEY` 는 검증 대상 이력 행의 값으로 교체한다 (예: `MP-FALH-63`).
+- **성공 코드는 `4100` 과 `6600` 두 가지다.** 그 외 값은 실패(`ERROR`)로 기록된다.
+- 기대 결과: `transmission_history_<inst>.status` 가 `DONE` 으로 갱신되고,
+  `sms_request_<inst>` 에 콜백 상세가 1행 기록된다.
+- 이 엔드포인트는 CSRF 예외 대상이라 토큰 없이 호출된다 (콜백 수신 전용).
+
+## 서버별 csm 위치
+
+혼선이 잦은 부분이라 명시한다. **포트만 보고 판단하지 말 것.**
+
+| 환경 | 포트 | catalina.base |
+|---|---|---|
+| 개발서버 | 8080 | `/usr/local/tomcat10` |
+| 실서버 | **18081** | `/opt/csm-next/tomcat` |
+
+- 개발서버 8084 는 csm 이 아닌 **별개 앱**이다.
+- 실서버 8084 는 **ResvHub** 다.
+
 ## 제거 판단용 로그 검색 키
 
 | 검색 키 | 의미 | 2주 무발생 시 |
@@ -120,6 +183,10 @@ GROUP BY table_collation;
 
 ## 완료 기록
 
+- **dev 검증 완료**: 2026-08-12. 스키마(컬럼 5종·collation 변환·집계 뷰) 반영 확인,
+  배치 발송(`MP-COHS-1`, `MP-FALH-63` → `SENT`, vendor_code=1000, message_key·batch_id 저장),
+  콜백 수동 주입 → `DONE` 갱신 및 `sms_request_FALH` 기록 확인. placeholder 오류 없음.
+  **실서버는 아직 구버전**(schema-bootstrap 로그 0건)이다.
 - **refkey 중복 검증**: 2026-08-12, 7개 기관 전부 0건 → `uk_th_refkey` UNIQUE 즉시 적용
 - **refkey 신규 형식**: `MP-{instCode}-{historyId}` (예: MP-COHS-123456). 구형식 콜백은
   폴백으로 처리 중
