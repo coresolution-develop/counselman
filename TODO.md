@@ -1,6 +1,6 @@
 # MediPlat 작업 현황
 
-> 최종 업데이트: 2026-08-09
+> 최종 업데이트: 2026-08-14
 
 ---
 
@@ -12,14 +12,23 @@
 
 > ✅ **P0-1 / P0-2 / P0-3 모두 2026-06-02 완료** — 상세는 아래 "완료된 작업" 참조.
 
-#### [P0-4] mediplat 설정 파일 하드코딩 시크릿 제거 — **미착수 / 최우선**
+#### [P0-4] mediplat 설정 파일 하드코딩 시크릿 제거 — **코드 완료(`b11efa2`, 08-11) / 후속 미완**
 - **문제**: [application.properties](mediplat/src/main/resources/application.properties)의 `${ENV:기본값}` 구조에서 기본값 자리에 실제 운영 DB 접속정보(13·15행), 개인정보 복호화 AES 키(21행), 부트스트랩 관리자 비밀번호(26행), SSO 공유 시크릿(33행)이 들어 있음
 - **위험**: 환경변수만 누락되면 조용히 실제 값으로 동작. 저장소 접근자 누구나 운영 DB 접속 가능. git 이력에도 잔존
-- **수정 방향**: 기본값 제거 → 미설정 시 **기동 실패**하도록 변경 (조용한 fallback이 더 위험)
-- **후속 필수**: 노출된 DB 비밀번호·AES 키 **로테이션**. AES 키 교체 시 기존 암호화 데이터 재암호화 계획 별도 수립 필요
-- **선행 확인**: 운영 서버에 해당 환경변수가 실제로 주입돼 있는지 먼저 검증 (없으면 기본값 제거 시 기동 실패)
-- **작업량**: 코드 30분 + 키 로테이션/재암호화는 별도 산정
+- ✅ **완료**: 기본값 전부 제거 → 미설정 시 기동 실패 (`b11efa2`, 2026-08-11)
+- ⚠️ **이 항목의 "선행 확인"을 건너뛰어 2026-08-13 운영 장애 발생 (mediplat 12.5시간 중단).**
+  `PLATFORM_ADMIN_PASSWORD` 미주입 상태로 신규 jar 배포 → `PlaceholderResolutionException` 크래시 루프.
+  경위·재발 방지는 [docs/prod-deploy-phase1b.md](docs/prod-deploy-phase1b.md) "장애 기록" 참조
+- **후속 미완 ①**: 노출된 DB 비밀번호·AES 키 **로테이션**. AES 키 교체 시 기존 암호화 데이터 재암호화 계획 별도 수립 필요
+- **후속 미완 ②**: `PLATFORM_ADMIN_PASSWORD` 정식 값 교체 (현재 임시값. 이 값은 기동 시마다 운영 관리자 비밀번호를 덮어씀)
+- **후속 미완 ③**: 배포 전 필수 env 대조를 절차로 강제 — 절차서 0-0 단계에 반영됨. 자동화는 미착수
 - **출처**: 2026-08-09 mediplat 점검 (상세: [docs/handoff-2026-08-09.md](docs/handoff-2026-08-09.md))
+
+#### [P0-6] 서비스 다운 알림 부재 — **미착수**
+- **문제**: 2026-08-13 mediplat 12.5시간 중단을 **사용자 신고로 발견**. 모니터링·알림 장치가 전혀 없음
+- **증폭 요인**: `Restart=always`라 크래시 루프 중 상태가 `failed`가 아니라 `activating (auto-restart)`로 보여 눈에 띄지 않음
+- **수정 방향**: `curl 18081` / `curl 18082` 주기 확인 후 실패 시 알림. systemd timer + 스크립트면 충분
+- **작업량**: 2~3시간
 
 #### [P0-5] mediplat CSRF 보호 도입 — **미착수**
 - **문제**: Spring Security 미도입(`spring-security-crypto`만 의존)이라 `SecurityFilterChain` 부재 → `_csrf`가 항상 null. 템플릿이 `th:if="${_csrf != null}"`로 방어적으로 짜여 있어 **조용히 무력화**됨
@@ -109,6 +118,45 @@
 ---
 
 ## ✅ 완료된 작업
+
+### 2026-08-13~14 Phase 1-B 문자 배치 발송 + 운영 장애 대응
+
+> 운영 절차서: [docs/prod-deploy-phase1b.md](docs/prod-deploy-phase1b.md) · 운영 쿼리: [docs/sms-batch-ops.md](docs/sms-batch-ops.md)
+
+#### Phase 1-B 문자 발송 서버 통합 — **완료 / 운영 반영(08-13 20:34)**
+- 배치 발송 API `POST /api/counsel/sms/batch` 신설. 두 live 화면(상담리스트·입원상담)을 단일 배치 요청으로 이관
+- 멱등 처리: `csm.sms_batch` 테이블(`inst_code`+`idem_key` UNIQUE)로 더블클릭·재시도 중복 발송 구조적 차단
+- 상태 체계 신설: `READY → SENT/FAILED/UNKNOWN → DONE/ERROR`. 타임아웃은 FAILED가 아닌 **UNKNOWN**(재시도·환불 금지)
+- refkey 재설계: `MP-{instCode}-{historyId}`. 콜백의 `substring(0,4)` 기관코드 가정 제거, 구형식은 폴백 유지
+- 메시지 타입 서버 확정(`SmsMessageTypeResolver`) — 클라이언트가 보낸 type을 신뢰하지 않음(요금 사기 벡터 차단)
+- 이력 확장: `cost`(전 단위 정수)·`billable`·`message_key`·`vendor_code`·`batch_id` + `refkey` UNIQUE
+- 단가 파싱: BigDecimal → `setScale(0, HALF_UP)` → 전 단위 정수. 음수·비숫자·NULL은 폴백+WARN
+- OTP 발송 이력 기록(`billable='N'`, `cost=0`, 본문 마스킹). 기존 `pwd-otp-` refkey는 콜백 매핑 100% 실패였음
+- 기관별 테이블 collation 통일 + 전 기관 집계 뷰 `v_transmission_history_all`
+- 예약발송 UI 숨김 (90일 실사용 0건, sendtime 형식 불일치로 미동작)
+- 커밋: `bdd77e0` `26eec18` `53d06a4` `eaf7a44` `db111ed` `cb5eb36` `7345595` `ee03b31`
+
+#### 콜백 라우팅 전환 — **완료(08-14 09:23)**
+- 문제: `/api/external/SMSRequest`가 httpd에서 AJP 8009(레거시 ROOT.war)로 가서 csm-next 수신 0건.
+  신규 `MP-` refkey를 레거시 파서가 못 읽어 결과 리포트 전량 유실될 상황이었음
+- 조치: `httpd.conf`의 `<VirtualHost *:443>`에 정확 경로 예외 2줄 추가(기존 규칙보다 위)
+- 검증: HTTPS로 빈 refkey 콜백 → csm-next 로그에 `callback ignored: empty refkey` 확인
+
+#### mediplat 12.5시간 중단 — **복구 완료 / 신버전 재배포 보류**
+- 원인: `PLATFORM_ADMIN_PASSWORD` 미주입 (`b11efa2`가 기본값 제거 → 신규 jar 배포 시 크래시 루프)
+- 08-13 20:34 배포 → 08-14 09:0x 롤백까지 포털·SSO 중단. csm은 전 구간 정상
+- 조치: env 추가 후 구버전(`bak-20260813-203439`)으로 복구. **신버전 jar 재배포는 미완**
+- 재발 방지: 절차서에 **0-0 필수 env 대조**, **2-E mediplat 헬스체크** 신설
+
+#### Phase 2 (콜백 엔드포인트 보호) — **조사 완료 / 구현 보류**
+- 상세·재개 방법: [docs/phase2-hold.md](docs/phase2-hold.md)
+- 콜백 발신 IP 실측 확보. Phase 3(지갑) 착수 전 필수
+
+#### Phase F (토스 심사용 정책 문서) — **F-1 조사 완료 / 문서 미작성**
+- 약관·개인정보처리방침·환불정책·사업자 footer **전부 없음**
+- 환자 건강정보(민감정보) 대량 처리 확인. 동의 절차·보유기간·파기 구현 전무
+- OpenAI(국외 이전)·NCP Clova로 건강정보 유출 경로 존재. OpenAI 사용량은 2.5개월 16건 $0.05로 미미
+- 법적 지위(처리자 vs 수탁자) 결정이 선행되어야 문서 작성 가능
 
 ### 2026-08-09 배포 파이프라인 정비 + 운영 장애 대응 + mediplat 점검
 
