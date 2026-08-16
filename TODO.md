@@ -24,12 +24,6 @@
 - **후속 미완 ③**: 배포 전 필수 env 대조를 절차로 강제 — 절차서 0-0 단계에 반영됨. 자동화는 미착수
 - **출처**: 2026-08-09 mediplat 점검 (상세: [docs/handoff-2026-08-09.md](docs/handoff-2026-08-09.md))
 
-#### [P0-6] 서비스 다운 알림 부재 — **미착수**
-- **문제**: 2026-08-13 mediplat 12.5시간 중단을 **사용자 신고로 발견**. 모니터링·알림 장치가 전혀 없음
-- **증폭 요인**: `Restart=always`라 크래시 루프 중 상태가 `failed`가 아니라 `activating (auto-restart)`로 보여 눈에 띄지 않음
-- **수정 방향**: `curl 18081` / `curl 18082` 주기 확인 후 실패 시 알림. systemd timer + 스크립트면 충분
-- **작업량**: 2~3시간
-
 #### [P0-5] mediplat CSRF 보호 도입 — **미착수**
 - **문제**: Spring Security 미도입(`spring-security-crypto`만 의존)이라 `SecurityFilterChain` 부재 → `_csrf`가 항상 null. 템플릿이 `th:if="${_csrf != null}"`로 방어적으로 짜여 있어 **조용히 무력화**됨
 - **영향**: `/admin/users`, `/admin/access`, `/admin/services`, `/admin/institutions`, `/fleet/admin/*`, `/seminar-room/*` 등 상태변경 POST 전부
@@ -42,6 +36,13 @@
 - **수정 방향**: 인증 직후 `session.invalidate()` → 새 세션에 사용자 심기 (CSM `MediplatSsoController`의 `request.changeSessionId()` 패턴 참고)
 - **확인 필요**: `LoginAuditSessionListener`가 세션 파기 이벤트를 듣고 있어 로그아웃 감사 로그 중복/오탐 여부 검증
 - **작업량**: 30분 + 검증
+
+#### [P0-7] 서비스 다운 알림 부재 — **미착수**
+- **문제**: 2026-08-13 mediplat 12.5시간 중단을 **사용자 신고로 발견**. 모니터링·알림 장치가 전혀 없음
+- **증폭 요인**: `Restart=always`라 크래시 루프 중 상태가 `failed`가 아니라 `activating (auto-restart)`로 보여 눈에 띄지 않음
+- **수정 방향**: `curl 18081` / `curl 18082` 주기 확인 후 실패 시 알림. systemd timer + 스크립트면 충분
+- **작업량**: 2~3시간
+- **출처**: 2026-08-13 mediplat 장애 (경위: [docs/prod-deploy-phase1b.md](docs/prod-deploy-phase1b.md) "장애 기록")
 
 ### ⚠️ P1 — 반복 버그 / 사용자 경험
 
