@@ -142,11 +142,16 @@
 - 조치: `httpd.conf`의 `<VirtualHost *:443>`에 정확 경로 예외 2줄 추가(기존 규칙보다 위)
 - 검증: HTTPS로 빈 refkey 콜백 → csm-next 로그에 `callback ignored: empty refkey` 확인
 
-#### mediplat 12.5시간 중단 — **복구 완료 / 신버전 재배포 보류**
+#### mediplat 12.5시간 중단 — **복구 + 신버전 재배포 완료(08-16 14:06)**
 - 원인: `PLATFORM_ADMIN_PASSWORD` 미주입 (`b11efa2`가 기본값 제거 → 신규 jar 배포 시 크래시 루프)
 - 08-13 20:34 배포 → 08-14 09:0x 롤백까지 포털·SSO 중단. csm은 전 구간 정상
-- 조치: env 추가 후 구버전(`bak-20260813-203439`)으로 복구. **신버전 jar 재배포는 미완**
+- 조치: env 추가 후 구버전(`bak-20260813-203439`)으로 복구
 - 재발 방지: 절차서에 **0-0 필수 env 대조**, **2-E mediplat 헬스체크** 신설
+- ✅ **신버전 재배포 완료 (08-16 14:06)** — 0-0 게이트가 `SPRING_DATASOURCE_URL`/`_USERNAME`/`_PASSWORD`,
+  `LOGIN_AES_KEY` **4개 추가 누락**을 사전에 잡아냈다. 그대로 배포했으면 같은 크래시 루프 재발.
+  중첩 폴백(`${MEDIPLAT_DATASOURCE_URL:${SPRING_DATASOURCE_URL}}`)은 바깥 변수가 있어도 안쪽이 평가된다.
+  같은 파일의 `MEDIPLAT_DATASOURCE_*`·`PLATFORM_COUNSELMAN_LOGIN_AES_KEY` 값을 폴백 이름으로 복제해 해결.
+  기동 4.2초, 60초 헬스체크 `302` 안정
 
 #### Phase 2 (콜백 엔드포인트 보호) — **조사 완료 / 구현 보류**
 - 상세·재개 방법: [docs/phase2-hold.md](docs/phase2-hold.md)
