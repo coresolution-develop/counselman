@@ -23,7 +23,9 @@
   --fg4: #5b6068;
   /* 목록 얼룩말 배경 + 좌측 분류 레일 — 행 경계를 hover 없이도 보이게 */
   --row-stripe: #f7f8f8;
-  --search-border: #8a9098;
+  /* 누를 수 있는 것(버튼·칩·인풋·셀렉트)의 경계선. 배경이 페이지와 같아 테두리가 유일한 단서라
+     WCAG 1.4.11의 3:1을 넘겨야 한다. --border(1.2:1)는 카드·구분선 같은 장식용으로 남긴다. */
+  --border-control: #8a9098;
   --brand: #5e6ad2;
   --brand-hover: #4f5bc4;
   --accent: #4a55b8;
@@ -83,7 +85,7 @@
   --fg3: #9298a1;
   --fg4: #8b9099;
   --row-stripe: rgba(255, 255, 255, 0.022);
-  --search-border: rgba(255, 255, 255, 0.26);
+  --border-control: rgba(255, 255, 255, 0.36);
   --brand-hover: #6d78dd;
   --accent: #7170ff;
   --accent-tint: rgba(255, 255, 255, 0.06);
@@ -248,7 +250,7 @@ body.hub-body {
 .hub-search {
   display: flex; align-items: center; gap: 11px;
   padding: 14px 16px; border-radius: 10px;
-  background: var(--bg); border: 1px solid var(--search-border);
+  background: var(--bg); border: 1px solid var(--border-control);
   box-shadow: var(--shadow-search); cursor: text; width: 100%; text-align: left;
   font: inherit; color: inherit;
 }
@@ -268,7 +270,7 @@ body.hub-body {
 /* ---- 필터 칩 + 밀도 ---------------------------------------------------- */
 .hub-filters { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .hub-chip {
-  padding: 5px 12px; border-radius: 9999px; border: 1px solid var(--border);
+  padding: 5px 12px; border-radius: 9999px; border: 1px solid var(--border-control);
   background: var(--bg); color: var(--fg2); font: inherit; font-size: 12px; cursor: pointer;
   transition: background .12s ease, color .12s ease, border-color .12s ease;
 }
@@ -279,7 +281,7 @@ body.hub-body {
 
 .hub-density {
   margin-left: auto; display: inline-flex; gap: 2px; padding: 2px;
-  background: var(--bg-surface); border: 1px solid var(--border); border-radius: 7px;
+  background: var(--bg-surface); border: 1px solid var(--border-control); border-radius: 7px;
 }
 .hub-density__btn {
   padding: 4px 11px; border: 0; border-radius: var(--radius-sm); background: transparent;
@@ -488,7 +490,7 @@ body.hub-body {
 .hub-memo__status { margin-left: auto; font-size: 11px; color: var(--fg3); }
 .hub-memo__input {
   width: 100%; min-height: 108px; padding: 10px 12px; resize: vertical;
-  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--bg); border: 1px solid var(--border-control); border-radius: var(--radius-md);
   color: var(--fg2); font-family: var(--font-mono); font-size: 11.5px; line-height: 1.75;
 }
 .hub-memo__input:focus { outline: none; border-color: var(--brand); }
@@ -550,7 +552,7 @@ body.hub-body {
 .hub-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   height: 30px; padding: 0 12px;
-  border: 1px solid var(--border); border-radius: var(--radius-md);
+  border: 1px solid var(--border-control); border-radius: var(--radius-md);
   background: var(--bg); color: var(--fg2);
   font: inherit; font-size: 12.5px; font-weight: 510; line-height: 1;
   cursor: pointer; text-decoration: none;
@@ -576,7 +578,7 @@ body.hub-body {
 .hub-field label, .hub-label { font-size: 12px; font-weight: 510; color: var(--fg2); }
 .hub-input {
   width: 100%; height: 38px; padding: 10px 12px;
-  border: 1px solid var(--border-strong); border-radius: var(--radius-md);
+  border: 1px solid var(--border-control); border-radius: var(--radius-md);
   background: var(--bg); color: var(--fg1); font: inherit; font-size: 13px;
 }
 .hub-input:focus { outline: none; border-color: var(--brand); }
@@ -613,7 +615,7 @@ body.hub-body {
 .adm-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .adm-toolbar .hub-input { width: 240px; height: 32px; font-size: 12.5px; }
 .adm-select {
-  height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-md);
+  height: 32px; padding: 0 10px; border: 1px solid var(--border-control); border-radius: var(--radius-md);
   background: var(--bg); color: var(--fg2); font: inherit; font-size: 12.5px;
 }
 
@@ -632,6 +634,8 @@ body.hub-body {
 .adm-tr--body:last-child { border-bottom: 0; }
 .adm-tr--body:hover { background: var(--bg-hover); }
 .adm-tr--body:hover .adm-rowact { opacity: 1; }
+/* 목록에서는 뱃지가 이름 뒤에 붙어 우측 정렬이지만, 여기서는 제 열을 가진 헤더 아래라 가운데 정렬 */
+.adm-tr .lh-badge { text-align: center; }
 .adm-cell { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 .adm-cell--name { color: var(--fg1); font-weight: 510; }
 .adm-cell--url { color: var(--fg3); font-family: var(--font-mono); font-size: 11.5px; }
@@ -713,7 +717,7 @@ body.hub-body {
 }
 .hub-textarea {
   width: 100%; min-height: 76px; padding: 10px 12px; resize: vertical;
-  border: 1px solid var(--border-strong); border-radius: var(--radius-md);
+  border: 1px solid var(--border-control); border-radius: var(--radius-md);
   background: var(--bg); color: var(--fg1); font: inherit; font-size: 13px; line-height: 1.6;
 }
 .hub-textarea:focus { outline: none; border-color: var(--brand); }
