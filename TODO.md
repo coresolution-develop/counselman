@@ -104,6 +104,7 @@
 - [ ] 기본 아바타 이미지 누락 — `/img/default-avatar.png` 추가
 - [ ] 챗봇 FAQ 검색 비로그인 접근 — 로그인 전 FAQ 패널 노출 검토
 - [ ] 좌측 네비게이션 스크롤 CSS 수정
+- [ ] 링크 허브 prod 배포 + 분류/환경 정리 SQL 실행 — dev만 반영됨. 상세는 완료 섹션 2026-08-16 항목
 
 **2026-08-09 mediplat 점검에서 나온 항목** (상세: [docs/handoff-2026-08-09.md](docs/handoff-2026-08-09.md))
 
@@ -118,6 +119,50 @@
 ---
 
 ## ✅ 완료된 작업
+
+### 2026-08-16 링크 허브 리디자인 (UI 전면 교체 + 환경·분류 컬럼)
+
+> 디자인 스펙: [docs/design/link-hub/README.md](docs/design/link-hub/README.md) · 남은 항목: [docs/design/link-hub/PHASE2.md](docs/design/link-hub/PHASE2.md)
+> 확인: https://dev.sosyge.net/csm/links · https://dev.sosyge.net/csm/admin/company-links
+
+#### 1단계 — 허브를 카드 갤러리에서 런처로 — **완료 / dev 반영**
+- 사이드바 232px + 상단바 + 검색 + 필터 칩 + 우측 개인 레일. 링크는 40px 컴팩트 행
+- 커맨드 팔레트(⌘/Ctrl+K) — 이름·분류·host 검색, `↑↓` 이동, `↵` 열기, `⌘↵` 새 탭
+- 운영/개발/DEMO를 **색 + 라벨 + 점선 테두리 3중 표시**. 색만으로 구분하지 않는다(개발서버 오인 클릭 방지)
+- 다크 모드 · 밀도(행/그리드) 토글. 첫 페인트 전에 적용해 깜빡임 없음
+- 로그인·회원가입 400px 중앙 단일 폼, 계정 설정 프로필 헤더 + 2열 카드(비밀번호 강도 표시)
+- **엔드포인트·필드명 무변경.** 즐겨찾기·개인 링크·메모·최근 사용·인기 링크·공지 배너·PWA 전부 유지
+- 행은 `div` + 전체 덮는 링크로 구성 — `<a>` 안에 `<button>`은 유효하지 않은 마크업이라 스크린리더가 깨진다
+- 커밋: `582764e` `81ad59d` `4168394`
+
+#### 2단계 — 운영자가 환경·분류 색을 직접 지정 — **완료 / dev 반영**
+- `company_link.env` + `company_link_category.color / color_dark / short_label` 추가.
+  `CompanyLinkService.ensureTable()`의 `ensureColumn`이 기동 시 처리하므로 **마이그레이션 스크립트 없음**
+- 값이 비면 예전처럼 이름·host로 자동 판정. 우선순위 **운영자 지정 → 핸드오프 기본표 → 이름 해시**
+- 링크 관리 화면을 탭 3개(링크 / 분류 순서 / 공지)로 재구성.
+  링크 추가는 우측 슬라이드 패널, 분류는 드래그 정렬, 공지는 실시간 배너 미리보기
+- 분류 색상은 10색 세트에서만 선택(색약 대응) + 서비스가 `#rrggbb` 형식 재검증(값이 `style` 속성에 들어감)
+- 커밋: `e4e7482` `c8e64db`
+
+#### 표시 버그 2건 — **완료 / dev 반영**
+- **host 대신 URL 전체가 노출** — `ocean_plt.cspay.co.kr`처럼 호스트명에 언더스코어가 있으면
+  `URI.getHost()`가 null을 반환해 폴백이 URL 전체를 내보냈다. 문자열에서 authority를 직접 파싱하도록 교체.
+  포트는 유지 — `:8210` / `:8220` / `:8230`으로만 갈리는 링크가 많다
+- **행 높이가 벌어지고 이름이 잘림** — 그리드는 4열인데 자식이 5개라 ★가 다음 줄로 밀렸다.
+  뒤쪽 요소를 `.lh-tail`로 묶어 열 수를 맞춤
+- 분류 목록은 최종적으로 **이름만** 표시(링크 55개 기준 URL이 이름 폭을 먹음). 전체 URL은 행 tooltip
+- 커밋: `51cf0c2` `bd8f0fe`
+
+#### 남은 것
+- [ ] **prod 배포 미완** — 지금까지 전부 dev. prod는 `prod` 브랜치 푸시 또는 workflow_dispatch로 별도 배포
+- [ ] **분류/환경 정리 SQL 실행 미완** — [scripts/hub-category-env-cleanup.sql](scripts/hub-category-env-cleanup.sql) (`9c0bf7e`).
+  `조이랜드 실서버`/`조이랜드 개발서버` → `조이랜드` + env, `ATS 군산 DEMO` → `ATS 군산` + env demo.
+  dev·prod DB 각각 실행 필요. 분류명은 화면을 보고 적은 것이라 2단계 확인 쿼리로 대조 후 실행
+- 기기·세션 목록은 `HubRememberService`에 조회 메서드가 없어 보류. 회원가입 소속 분류는 `hub_member` 컬럼 필요.
+  공지 강조는 안내/주의 2택 (디자인은 3택이나 `HubNoticeService`가 `info`/`warn`만 받음)
+- `links/` standalone 모듈(포트 8085)은 2026-06-23 스냅샷 그대로 — 이번 작업 미반영. 동기화 여부는 별도 판단
+- 폰트는 Inter(Google Fonts) 기준 디자인이나 사내망 CDN 접근을 고려해 **CDN 링크를 넣지 않음**.
+  설치돼 있으면 쓰고 없으면 시스템 폰트로 폴백
 
 ### 2026-08-13~14 Phase 1-B 문자 배치 발송 + 운영 장애 대응
 
@@ -427,6 +472,7 @@
 
 ### 링크 관리
 - [x] **분류 순서 편집 기능** — 링크 카테고리 정렬 순서 직접 수정 가능
+- [x] **허브 UI 전면 리디자인 + 환경·분류 컬럼** (2026-08-16) — 상세는 위 "완료된 작업" 최상단 항목 참고
 
 ### 챗봇 (`chat-page.html` + `ChatApiController.java`)
 - [x] 카카오 OAuth2 로그인 연동
