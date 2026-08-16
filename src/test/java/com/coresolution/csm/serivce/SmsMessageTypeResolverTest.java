@@ -52,6 +52,35 @@ class SmsMessageTypeResolverTest {
         assertThat(resolved.subject()).isEqualTo(msg.substring(0, 20));
     }
 
+    // ── 2026-08-14 회귀: 제목에 줄바꿈이 들어가면 비즈뿌리오가 9020으로 즉시 거부한다 ──
+
+    @Test
+    void subjectCollapsesLineBreaksAndTabs() {
+        assertThat(resolver.subjectFor("a\nb\tc  d")).isEqualTo("a b c d");
+        assertThat(resolver.subjectFor("a\r\nb")).isEqualTo("a b");
+    }
+
+    @Test
+    void subjectFromMultilineMessageHasNoLineBreak() {
+        // 실제 유실된 본문 형태: 짧은 인사말 + 줄바꿈으로 시작
+        String msg = "건강하세요~\n효사랑가족요양병원 입니다.\n필요서류 안내드립니다.\n" + "가".repeat(200);
+        SmsMessageTypeResolver.Resolved resolved = resolver.resolve(msg);
+
+        assertThat(resolved.type()).isEqualTo("lms");
+        assertThat(resolved.subject())
+                .doesNotContain("\n")
+                .doesNotContain("\r")
+                .doesNotContain("\t")
+                .hasSizeLessThanOrEqualTo(SmsMessageTypeResolver.LMS_SUBJECT_LENGTH)
+                .startsWith("건강하세요~ 효사랑");
+    }
+
+    @Test
+    void subjectHasNoTrailingSpaceWhenCutAtWordBoundary() {
+        String msg = "1234567890123456789 뒤에도 내용이 계속 이어집니다 " + "a".repeat(200);
+        assertThat(resolver.resolve(msg).subject()).doesNotEndWith(" ");
+    }
+
     @Test
     void overTwoThousandBytesIsRejected() {
         assertThatThrownBy(() -> resolver.resolve("a".repeat(2001)))

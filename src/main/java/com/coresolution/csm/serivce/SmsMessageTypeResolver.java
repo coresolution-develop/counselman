@@ -50,10 +50,20 @@ public class SmsMessageTypeResolver {
         return bytes;
     }
 
-    /** LMS subject 는 본문 앞 20자로 통일한다 (기존 consultation-list 동작 기준). */
+    /**
+     * LMS subject 는 본문 앞 20자로 통일하되 <b>반드시 한 줄로</b> 만든다.
+     *
+     * <p>제목에 줄바꿈이 들어가면 비즈뿌리오가 즉시 거부한다 — 접수는 {@code code=1000}으로
+     * 성공하고 0~1초 뒤 결과 리포트가 {@code 9020}으로 돌아온다. 화면에는 전송된 것처럼 보이지만
+     * 실제로는 발송되지 않는다.
+     *
+     * <p>2026-08-14 실제로 이 문제로 7건이 유실됐다. 본문 첫 줄이 짧은 인사말("건강하세요~\n…")이면
+     * 앞 20자에 줄바꿈이 포함되기 때문이다. 개행·탭을 공백으로 바꾸고 연속 공백을 접은 뒤 자른다.
+     */
     public String subjectFor(String message) {
-        return message.length() <= LMS_SUBJECT_LENGTH
-                ? message
-                : message.substring(0, LMS_SUBJECT_LENGTH);
+        String oneLine = message.replaceAll("[\\r\\n\\t]+", " ").replaceAll(" {2,}", " ").trim();
+        return oneLine.length() <= LMS_SUBJECT_LENGTH
+                ? oneLine
+                : oneLine.substring(0, LMS_SUBJECT_LENGTH).trim();
     }
 }

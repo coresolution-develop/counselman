@@ -153,6 +153,48 @@ WHERE sms_price IS NULL OR sms_price = ''
 | `9.655` | 966전 | 전 미만은 HALF_UP 반올림 |
 | `""` / `NULL` / `20원` / 음수 | 폴백 + WARN | 프로퍼티 기본값 사용 |
 
+## 벤더 결과코드 — 성공/실패 판정
+
+콜백의 `result` 코드로 최종 상태가 갈린다. **성공은 `4100`(SMS)·`6600`(LMS) 두 가지뿐**이고
+나머지는 전부 실패(`ERROR`)로 기록된다.
+
+FALH 기관 이력 2,533건 기준 실측 분포:
+
+| 코드 | 건수 | 의미 |
+|---|---|---|
+| `6600` | 2,480 | LMS 전달 성공 |
+| `4100` | 22 | SMS 전달 성공 |
+| `9020` | 7 | **LMS 제목에 줄바꿈 → 즉시 거부** (아래 참조) |
+| `6634` `6625` `6601` `6610` `6607` | 26 | 기타 실패 |
+
+### `9020` — 2026-08-14 발송 유실 (수정 완료)
+
+**증상**: 접수는 `code=1000 success`로 정상인데 **0~1초 만에** 결과 리포트가 `9020`으로 돌아온다.
+화면에는 "전송 완료"로 보이지만 실제로는 발송되지 않는다. `sms_request_<inst>`의 해당 행은
+`media`가 비어 있고 `device`에 요청 `type`(소문자 `lms`)이 그대로 들어온다 — 전달 단계까지 가지
+못한 **사전 거부**의 흔적이다.
+
+**원인**: `SmsMessageTypeResolver.subjectFor()`가 본문 앞 20자를 그대로 LMS 제목으로 썼다.
+본문이 짧은 인사말로 시작하면(`건강하세요~\n효사랑…`) **제목에 줄바꿈이 포함된다.**
+구 경로(inpatient 화면)는 제목을 아예 보내지 않아 2,480건이 무사했고, Phase 1-B 에서 제목을
+일원화하면서 드러났다.
+
+**판정 쿼리** — 실패 건의 앞 20자에 줄바꿈이 있는지 본다.
+
+```sql
+SELECT id, status,
+       REPLACE(LEFT(contents, 20), CHAR(10), '⏎') AS subject_20,
+       LOCATE(CHAR(10), LEFT(contents, 20)) > 0 AS has_newline
+FROM csm.transmission_history_<inst>
+WHERE status = 'ERROR' ORDER BY id DESC LIMIT 20;
+```
+
+**조치**: 제목을 한 줄로 정규화(개행·탭 → 공백, 연속 공백 접기)한 뒤 20자로 자른다.
+회귀 테스트 `SmsMessageTypeResolverTest.subjectFromMultilineMessageHasNoLineBreak`.
+
+> **`ERROR` 는 발송내역 기본 필터에서 제외된다**(`VISIBLE_STATUS_FILTER`). 즉 실패 건은 화면에
+> 보이지 않는다. 정기적으로 위 쿼리나 아래 D-3 으로 확인할 것.
+
 ## 콜백 수동 검증 절차
 
 **개발서버에는 비즈뿌리오 실제 콜백이 오지 않는다** — 결과 리포트 URL이 등록되어 있지 않다
