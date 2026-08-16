@@ -112,6 +112,9 @@
       const row = document.createElement('div');
       row.className = `lh-row lh-row--compact env-${item.env}` + (i === active ? ' lh-row--sel' : '');
       row.dataset.idx = String(i);
+      // 좌측 분류 레일이 --c를 읽는다 (뱃지와 같은 값)
+      row.style.setProperty('--c', item.color);
+      row.style.setProperty('--c-dark', item.colorDark);
 
       const env = document.createElement('span');
       env.className = 'lh-env';
@@ -260,6 +263,8 @@
     row.dataset.name = d.name || '';
     row.dataset.host = d.host || '';
     row.dataset.env = d.env || 'prod';
+    row.style.setProperty('--c', d.color || '');
+    row.style.setProperty('--c-dark', d.colordark || '');
 
     const link = document.createElement('a');
     link.className = 'lh-row__link';

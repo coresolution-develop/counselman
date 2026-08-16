@@ -109,6 +109,7 @@
               <div class="lh-grid" data-fav-grid data-reorder="favorites" th:data-reorder-url="@{/hub/me/favorites/reorder}">
                 <div class="lh-row" th:each="row : ${favoriteRows}"
                      th:classappend="|env-${row.env}|"
+                     th:style="|--c:${row.catColor};--c-dark:${row.catColorDark}|"
                      data-fav-row th:data-reorder-id="${row.id}"
                      th:data-name="${row.title}" th:data-host="${row.host}" th:data-env="${row.env}">
                   <a class="lh-row__link"
@@ -148,6 +149,7 @@
                 <div class="lh-list">
                   <a class="lh-row lh-row--compact lh-row--rank" th:each="row, it : ${popularRows}"
                      th:classappend="|env-${row.env}|"
+                     th:style="|--c:${row.catColor};--c-dark:${row.catColorDark}|"
                      th:href="${row.kind == 'raw'} ? ${row.url} : @{/hub/go/{kind}/{id}(kind=${row.kind},id=${row.id})}" target="_blank" rel="noopener noreferrer"
                      th:title="${row.url}"
                      th:data-name="${row.title}" th:data-host="${row.host}" th:data-env="${row.env}">
@@ -206,6 +208,7 @@
                 <div class="lh-grid">
                   <div class="lh-row lh-row--compact" th:each="row : ${grp.value}"
                      th:classappend="|env-${row.env}|"
+                     th:style="|--c:${row.catColor};--c-dark:${row.catColorDark}|"
                      data-filter-item data-palette-item
                      th:data-name="${row.title}" th:data-host="${row.host}" th:data-cat="${grp.key}"
                      th:data-env="${row.env}" th:data-envlabel="${row.envLabel}"
@@ -327,6 +330,7 @@
                 <div class="lh-list" data-reorder="custom" th:data-reorder-url="@{/hub/me/custom-links/reorder}">
                   <th:block th:each="row : ${grp.value}">
                     <div class="lh-row lh-row--mine"
+                       th:style="|--c:${row.catColor};--c-dark:${row.catColorDark}|"
                        th:data-reorder-id="${row.id}"
                        data-filter-item data-palette-item data-mine
                        th:data-name="${row.title}" th:data-host="${row.host}" th:data-cat="${grp.key}"

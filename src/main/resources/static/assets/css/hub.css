@@ -18,8 +18,12 @@
   /* 텍스트 · 브랜드 */
   --fg1: #08090a;
   --fg2: #4b4f57;
-  --fg3: #8a8f98;
+  /* host·개수·시각에 쓰는 회색. 예전 #8a8f98은 흰 배경에서 3.25:1로 WCAG AA(4.5:1) 미달이었다. */
+  --fg3: #6b7078;
   --fg4: #5b6068;
+  /* 목록 얼룩말 배경 + 좌측 분류 레일 — 행 경계를 hover 없이도 보이게 */
+  --row-stripe: #f7f8f8;
+  --search-border: #8a9098;
   --brand: #5e6ad2;
   --brand-hover: #4f5bc4;
   --accent: #4a55b8;
@@ -76,8 +80,10 @@
 
   --fg1: #f7f8f8;
   --fg2: #d0d6e0;
-  --fg3: #8a8f98;
-  --fg4: #62666d;
+  --fg3: #9298a1;
+  --fg4: #8b9099;
+  --row-stripe: rgba(255, 255, 255, 0.022);
+  --search-border: rgba(255, 255, 255, 0.26);
   --brand-hover: #6d78dd;
   --accent: #7170ff;
   --accent-tint: rgba(255, 255, 255, 0.06);
@@ -108,7 +114,7 @@ body.hub-body {
   color: var(--fg2);
   font-family: var(--font-sans);
   font-feature-settings: "cv01", "ss03";
-  font-size: 13px;
+  font-size: 13.5px;
 }
 
 /* ---- 셸 ---------------------------------------------------------------- */
@@ -241,16 +247,16 @@ body.hub-body {
 /* ---- 검색 (주인공) ----------------------------------------------------- */
 .hub-search {
   display: flex; align-items: center; gap: 11px;
-  padding: 13px 16px; border-radius: 10px;
-  background: var(--bg); border: 1px solid var(--border-strong);
+  padding: 14px 16px; border-radius: 10px;
+  background: var(--bg); border: 1px solid var(--search-border);
   box-shadow: var(--shadow-search); cursor: text; width: 100%; text-align: left;
   font: inherit; color: inherit;
 }
-.hub-search:hover { border-color: var(--fg3); }
+.hub-search:hover { border-color: var(--fg2); }
 .hub-search:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-.hub-search__icon { flex: 0 0 18px; color: var(--fg3); }
+.hub-search__icon { flex: 0 0 18px; color: var(--fg2); }
 .hub-search__ph { flex: 1; min-width: 0; font-size: 16px; color: var(--fg3); }
-.hub-search__hint { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--fg3); }
+.hub-search__hint { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg3); }
 
 .hub-kbd {
   display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px;
@@ -286,8 +292,8 @@ body.hub-body {
 .hub-sec { display: flex; flex-direction: column; gap: 8px; }
 .hub-sec__head { display: flex; align-items: center; gap: 8px; }
 .hub-sec__icon { flex: 0 0 13px; color: var(--fg3); }
-.hub-sec__label { font-size: 11px; font-weight: 590; letter-spacing: 0.08em; color: var(--fg2); }
-.hub-sec__count { font-size: 11px; color: var(--fg3); font-family: var(--font-mono); }
+.hub-sec__label { font-size: 11.5px; font-weight: 590; letter-spacing: 0.08em; color: var(--fg2); }
+.hub-sec__count { font-size: 11.5px; color: var(--fg3); font-family: var(--font-mono); }
 .hub-sec__rule { flex: 1; height: 1px; background: var(--line); }
 .hub-sec__action {
   border: 0; background: none; padding: 0; color: var(--fg3);
@@ -304,13 +310,34 @@ body.hub-body {
   gap: 2px 16px;
 }
 
+/* 열 순서는 [환경 · 이름/host · 분류 · 액션]. DOM 순서(환경 → 뱃지 → 이름 → 액션)는
+   그대로 두고 order로만 옮긴다 — 서버·JS 양쪽이 만드는 마크업을 건드리지 않기 위해서. */
+/* 이름 열은 내용 폭(auto)까지만 차지하고 남는 폭은 마지막 열이 먹는다. 1fr로 두면
+   와이드 모니터에서 분류 뱃지가 이름과 1000px 떨어져 어느 행 것인지 안 보인다. */
 .lh-row {
-  display: grid; grid-template-columns: 42px 26px minmax(0, 1fr) auto;
-  align-items: center; gap: 9px;
-  min-height: 40px; padding: 6px 9px;
-  border: 1px solid transparent; border-radius: var(--radius-md);
+  display: grid; grid-template-columns: 46px minmax(0, auto) auto minmax(0, 1fr);
+  align-items: center; gap: 10px;
+  min-height: 42px; padding: 6px 10px 6px 13px;
+  border: 1px solid transparent; border-radius: var(--radius-xs);
   text-decoration: none; color: inherit; position: relative;
 }
+.lh-row .lh-env { order: 1; }
+.lh-row .lh-main { order: 2; }
+.lh-row .lh-badge { order: 3; }
+.lh-row .lh-act,
+.lh-row .lh-tail,
+.lh-row .lh-meta { order: 4; justify-self: end; }
+
+/* 좌측 분류 레일. absolute라 grid 항목이 되지 않으므로 행 변형마다 열 수를 다시 셀 필요가 없다. */
+.lh-row::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--c, transparent); border-radius: 2px 0 0 2px;
+}
+:root[data-theme="dark"] .lh-row::before { background: var(--c-dark, transparent); }
+
+/* 얼룩말 — 개인 링크 목록은 행 사이에 수정 패널이 끼어 있어 nth-child가 어긋나므로 제외된다. */
+.lh-grid > .lh-row:nth-child(even),
+.lh-list > .lh-row:nth-child(even) { background: var(--row-stripe); }
 .lh-row:hover { background: var(--bg-hover); }
 /* 행 전체를 덮는 링크. <a> 안에 <button>을 넣으면 유효하지 않은 마크업이라
    링크를 깔고 액션 버튼을 그 위에 올린다. */
@@ -318,40 +345,57 @@ body.hub-body {
 .lh-row__link:focus-visible { outline: 2px solid var(--brand); outline-offset: -1px; }
 .lh-act, .lh-row__check { position: relative; z-index: 1; }
 
-.lh-env {
-  padding: 3px 0; border-radius: var(--radius-xs); text-align: center;
-  font-size: 10.5px; font-weight: 590; line-height: 1.35;
-}
-.env-prod .lh-env { color: var(--env-prod); background: var(--env-prod-tint); }
+/* 틴트 알약을 벗기고 글자만 남긴다 — 좌측에 레일이 생겨 배경까지 칠하면 시끄럽다.
+   "색상만으로 구분하지 않는다"는 라벨 텍스트 + 레일 패턴 + 점선 테두리가 계속 보장한다. */
+.lh-env { text-align: center; font-size: 11.5px; font-weight: 590; line-height: 1.35; }
+.env-prod .lh-env { color: var(--env-prod); }
 .env-dev { border: 1px dashed var(--env-dev-line); background: var(--env-dev-bg); }
-.env-dev .lh-env { color: var(--env-dev); background: var(--env-dev-tint); }
+.env-dev .lh-env { color: var(--env-dev); }
 .env-demo { border: 1px dashed var(--env-demo-line); background: var(--env-demo-bg); }
-.env-demo .lh-env { color: var(--env-demo); background: var(--env-demo-tint); }
+.env-demo .lh-env { color: var(--env-demo); }
+/* 개발·DEMO 레일은 빗금 — 색을 못 보는 사용자도 운영과 구분된다 */
+.env-dev.lh-row::before,
+.env-demo.lh-row::before { left: -1px; }
+.env-dev.lh-row::before {
+  background: repeating-linear-gradient(135deg, var(--env-dev-line) 0 3px, transparent 3px 6px);
+}
+.env-demo.lh-row::before {
+  background: repeating-linear-gradient(135deg, var(--env-demo-line) 0 3px, transparent 3px 6px);
+}
 
+/* 분류 뱃지는 행 끝으로. 레일이 색을 이미 들고 있어 사각 칩 대신 글자만 세운다. */
 .lh-badge {
-  width: 26px; height: 26px; border-radius: var(--radius-sm);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 590;
-  color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent);
+  min-width: 26px; text-align: right; font-size: 11.5px; font-weight: 590;
+  color: var(--c); white-space: nowrap;
 }
-:root[data-theme="dark"] .lh-badge {
-  color: var(--c-dark); background: color-mix(in srgb, var(--c-dark) 16%, transparent);
-}
+:root[data-theme="dark"] .lh-badge { color: var(--c-dark); }
 
 .lh-main { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .lh-name {
-  font-size: 14px; font-weight: 510; color: var(--fg1);
+  font-size: 15px; font-weight: 510; color: var(--fg1);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .lh-host {
-  font-size: 11.5px; color: var(--fg3); font-family: var(--font-mono);
+  font-size: 12px; color: var(--fg3); font-family: var(--font-mono);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* 개발·DEMO는 host까지 환경색으로 — 행을 스쳐 봐도 어느 서버인지 남는다 */
+.env-dev .lh-host { color: var(--env-dev); }
+.env-demo .lh-host { color: var(--env-demo); }
 
-/* 부수 액션은 hover/focus에서만 — 목록이 버튼으로 시끄러워지지 않게 */
-.lh-act { display: inline-flex; gap: 3px; opacity: 0; transition: opacity .12s ease; }
-.lh-row:hover .lh-act,
-.lh-row:focus-within .lh-act { opacity: 1; }
+/* ▲▼·수정은 hover/focus에서만. ★는 상시 노출하되 꺼진 별은 흐리게 둔다 —
+   숨겨두면 즐겨찾기 버튼이 있다는 것 자체를 모른다. */
+.lh-act { display: inline-flex; gap: 3px; }
+.lh-act > [data-move],
+.lh-act > .lh-edit { opacity: 0; transition: opacity .12s ease; }
+.lh-row:hover .lh-act > [data-move],
+.lh-row:hover .lh-act > .lh-edit,
+.lh-row:focus-within .lh-act > [data-move],
+.lh-row:focus-within .lh-act > .lh-edit { opacity: 1; }
+.lh-act > .lh-fav { opacity: .45; transition: opacity .12s ease; }
+.lh-act > .lh-fav--on,
+.lh-row:hover .lh-act > .lh-fav,
+.lh-row:focus-within .lh-act > .lh-fav { opacity: 1; }
 .lh-act button {
   width: 22px; height: 22px; padding: 0; border: 0; border-radius: var(--radius-xs);
   background: var(--bg-surface); color: var(--fg3);
@@ -372,15 +416,16 @@ body.hub-body {
 .lh-edit { background: var(--bg-surface); color: var(--fg3); }
 
 /* 컴팩트 행 — 인기 / 최근 / 분류 목록 */
-.lh-row--compact { min-height: 34px; padding: 4px 9px; }
-.lh-row--compact .lh-name { font-size: 13px; }
-.lh-row--rank { grid-template-columns: 16px 42px minmax(0, 1fr) minmax(0, auto); }
-.lh-rank { font-size: 11px; font-family: var(--font-mono); color: var(--fg3); text-align: center; }
-.lh-row--recent { grid-template-columns: minmax(0, 1fr) minmax(0, auto); }
+.lh-row--compact { min-height: 36px; padding: 4px 10px 4px 13px; }
+.lh-row--compact .lh-name { font-size: 14px; }
+.lh-row--rank { grid-template-columns: 16px 46px minmax(0, auto) minmax(0, 1fr); }
+.lh-row--rank .lh-rank { order: 0; }
+.lh-rank { font-size: 11.5px; font-family: var(--font-mono); color: var(--fg3); text-align: center; }
+.lh-row--recent { grid-template-columns: minmax(0, auto) minmax(0, 1fr); }
 
 /* host·시각 같은 우측 보조 텍스트. 줄바꿈시키면 행 높이가 들쭉날쭉해지므로 한 줄로 자른다. */
 .lh-meta {
-  font-size: 11px; font-family: var(--font-mono); color: var(--fg3);
+  font-size: 11.5px; font-family: var(--font-mono); color: var(--fg3);
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right;
 }
 
@@ -402,13 +447,20 @@ body.hub-body {
 
 /* ---- 분류 그룹 --------------------------------------------------------- */
 .lh-group { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
-.lh-group__head { display: flex; align-items: center; gap: 8px; padding: 0 9px; }
+.lh-group__head { display: flex; align-items: center; gap: 8px; padding: 0 9px 0 13px; }
 .lh-group__dot { width: 8px; height: 8px; border-radius: 2px; background: var(--c); flex: 0 0 8px; }
 :root[data-theme="dark"] .lh-group__dot { background: var(--c-dark); }
-.lh-group__name { font-size: 12px; font-weight: 510; color: var(--fg1); }
-.lh-group__count { font-size: 11px; color: var(--fg3); font-family: var(--font-mono); }
+.lh-group__name { font-size: 13px; font-weight: 510; color: var(--fg1); }
+.lh-group__count { font-size: 11.5px; color: var(--fg3); font-family: var(--font-mono); }
 .lh-group__open { margin-left: auto; }
 .lh-group__open.hub-sec__action { color: var(--accent); }
+
+/* 그룹 헤더가 이미 분류명을 말하므로 행마다 반복하지 않는다. 색은 좌측 레일이 계속 들고 있다.
+   (즐겨찾기·커맨드 팔레트는 분류가 섞이므로 뱃지를 그대로 둔다) */
+.lh-group .lh-row .lh-badge { display: none; }
+.lh-group .lh-row { grid-template-columns: 46px minmax(0, auto) minmax(0, 1fr); }
+.lh-group .lh-row--mine { grid-template-columns: minmax(0, auto) minmax(0, 1fr); }
+.is-selecting .lh-group .lh-row--mine { grid-template-columns: 18px minmax(0, auto) minmax(0, 1fr); }
 
 /* ---- 본문 2열: 공용 링크 + 개인 레일 ------------------------------------ */
 .hub-split { display: grid; grid-template-columns: minmax(0, 1fr) 372px; gap: 26px; align-items: start; }
@@ -418,11 +470,12 @@ body.hub-body {
 }
 .hub-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 
-/* 개인 링크 행은 환경 라벨 없이 뱃지 + 이름 */
-.lh-row--mine { grid-template-columns: 22px minmax(0, 1fr) minmax(0, auto); min-height: 36px; }
-.lh-row--mine .lh-badge { width: 22px; height: 22px; font-size: 9.5px; }
+/* 개인 링크 행은 환경 라벨 없이 이름 + 우측 분류 */
+.lh-row--mine { grid-template-columns: minmax(0, auto) auto minmax(0, 1fr); min-height: 38px; }
+.lh-row--mine .lh-badge { font-size: 11px; }
+.lh-row--mine .lh-row__check { order: 0; }
 /* 선택 모드에서는 체크박스가 grid 항목으로 들어오므로 열을 하나 더 준다 */
-.is-selecting .lh-row--mine { grid-template-columns: 18px 22px minmax(0, 1fr) minmax(0, auto); }
+.is-selecting .lh-row--mine { grid-template-columns: 18px minmax(0, auto) auto minmax(0, 1fr); }
 
 /* ---- 내 메모 ----------------------------------------------------------- */
 .hub-memo-card {
@@ -472,10 +525,10 @@ body.hub-body {
   padding: 10px 10px 4px; font-size: 10.5px; font-weight: 590;
   letter-spacing: 0.08em; color: var(--fg3);
 }
-.lh-palette__results .lh-row { padding: 8px 10px; }
+.lh-palette__results .lh-row { padding: 8px 10px 8px 13px; }
 .lh-row--sel, .lh-row--sel:hover { background: var(--accent-tint); }
 .lh-row--sel .lh-name { color: var(--accent-fg); }
-.lh-warn { font-size: 11px; flex: 0 0 auto; }
+.lh-warn { font-size: 11.5px; flex: 0 0 auto; order: 4; }
 .env-dev .lh-warn { color: var(--env-dev); }
 .env-demo .lh-warn { color: var(--env-demo); }
 .lh-palette__action {
@@ -808,12 +861,20 @@ body.hub-body {
   .hub-duo { grid-template-columns: minmax(0, 1fr); gap: 18px; }
 
   /* 터치 타깃 확보 — 액션을 상시 노출하고 행을 키운다 */
-  .lh-row { grid-template-columns: 42px minmax(0, 1fr); gap: 8px; min-height: 44px; }
+  .lh-row { grid-template-columns: 46px minmax(0, 1fr) auto; gap: 8px; min-height: 48px; }
+  .lh-row--compact { min-height: 46px; }
   .lh-row .lh-badge { display: none; }
-  .lh-act { opacity: 1; grid-column: 2; justify-content: flex-end; }
-  .lh-act button { width: 32px; height: 32px; }
-  .lh-row--rank { grid-template-columns: 16px minmax(0, 1fr); }
-  .lh-row--mine { grid-template-columns: minmax(0, 1fr); }
+  .lh-act > [data-move],
+  .lh-act > .lh-edit,
+  .lh-act > .lh-fav { opacity: 1; }
+  .lh-act button { width: 36px; height: 36px; }
+  .lh-name, .lh-row--compact .lh-name { font-size: 16px; }
+  .lh-host { font-size: 12.5px; }
+  .lh-row--rank { grid-template-columns: 16px 46px minmax(0, 1fr); }
+  .lh-row--rank .lh-meta { display: none; }
+  .lh-row--recent { grid-template-columns: minmax(0, 1fr) auto; }
+  .lh-row--mine { grid-template-columns: minmax(0, 1fr) auto; }
+  .is-selecting .lh-row--mine { grid-template-columns: 18px minmax(0, 1fr) auto; }
 }
 @media (max-width: 560px) {
   .hub-form__row { grid-template-columns: 1fr; }
