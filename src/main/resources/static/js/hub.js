@@ -286,8 +286,7 @@
     name.textContent = d.name || '';
     const host = document.createElement('span');
     host.className = 'lh-host';
-    // 목록과 같게 설정한 URL을 그대로 둘째 줄에 보여준다.
-    host.textContent = d.url || d.host || '';
+    host.textContent = d.host || '';
     main.append(name, host);
 
     const act = document.createElement('span');

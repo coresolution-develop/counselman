@@ -116,7 +116,7 @@
                         th:text="${row.catShort}">코어</span>
                   <span class="lh-main">
                     <span class="lh-name" th:text="${row.title}">서비스명</span>
-                    <span class="lh-host" th:text="${row.url}">https://example.com</span>
+                    <span class="lh-host" th:text="${row.host}">example.com</span>
                   </span>
                   <span class="lh-act">
                     <button type="button" data-move="up" title="위로 이동" aria-label="위로 이동">▲</button>
@@ -200,7 +200,7 @@
                           th:if="${#lists.size(grp.value) > 1}">모두 열기</button>
                 </div>
                 <div class="lh-grid">
-                  <div class="lh-row" th:each="row : ${grp.value}"
+                  <div class="lh-row lh-row--compact" th:each="row : ${grp.value}"
                      th:classappend="|env-${row.env}|"
                      data-filter-item data-palette-item
                      th:data-name="${row.title}" th:data-host="${row.host}" th:data-cat="${grp.key}"
@@ -215,9 +215,10 @@
                     <span class="lh-env" th:text="${row.envLabel}">운영</span>
                     <span class="lh-badge" th:style="|--c:${row.catColor};--c-dark:${row.catColorDark}|"
                           th:text="${row.catShort}">코어</span>
+                    <!--/* 목록에는 이름만. 링크가 55개까지 늘어나면 URL이 이름 폭을 먹고
+                           정작 구분에 필요한 뒷부분이 잘린다. 전체 URL은 행 tooltip으로 본다. */-->
                     <span class="lh-main">
                       <span class="lh-name" th:text="${row.title}">서비스명</span>
-                      <span class="lh-host" th:text="${row.url}">https://example.com</span>
                     </span>
                     <span class="lh-tail">
                       <span class="lh-act" th:if="${hubMember != null}">

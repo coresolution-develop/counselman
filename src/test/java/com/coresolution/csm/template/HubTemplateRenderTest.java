@@ -137,34 +137,36 @@ class HubTemplateRenderTest {
     }
 
     /**
-     * 공용 목록은 이름과 URL을 두 줄로 보여준다.
-     * host만으로는 포트·경로로만 갈리는 사내 링크를 구분할 수 없어 설정한 URL을 그대로 노출한다.
+     * 분류 목록은 이름만 보여주고 URL은 tooltip으로 넘긴다.
+     * 링크가 수십 개로 늘면 URL이 이름 폭을 먹어 이름이 두어 글자로 잘렸다.
      */
     @Test
-    void companyLinks_showsNameAndUrlOnTwoLines() {
+    void companyLinks_categoryRow_showsNameOnly_withUrlInTitle() {
         WebContext ctx = hubContext(new HubMemberSession(7L, "a@coresolution.kr", "이수민", "USER"));
-        putPublicLink(ctx, link(1L, "HARS", "https://hars-falh.sosyge.net/login/admin", "병원", null), true, false);
-
-        String html = engine.process("design/company-links", ctx);
-
-        assertThat(html).contains("title=\"https://hars-falh.sosyge.net/login/admin\"");
-        assertThat(html).contains(">https://hars-falh.sosyge.net/login/admin<");
-        assertThat(html).contains("lh-host");
-    }
-
-    /** 이름이 길어도 잘리지 않도록 URL은 우측 열이 아니라 이름 아래 줄에 있어야 한다. */
-    @Test
-    void companyLinks_urlIsInsideMainColumn_notTheTrailingCell() {
-        WebContext ctx = hubContext(new HubMemberSession(7L, "a@coresolution.kr", "이수민", "USER"));
-        putPublicLink(ctx, link(1L, "오션팔레트 군산 객실 점유 모니터",
+        putPublicLink(ctx, link(1L, "카바나 점유 현황",
                 "https://ocean_plt.cspay.co.kr:8210/occupancy-monitor?zoneId=1", "오션팔레트 군산", null), true, false);
 
         String html = engine.process("design/company-links", ctx);
 
-        int mainStart = html.indexOf("class=\"lh-main\"");
-        int urlAt = html.indexOf("ocean_plt.cspay.co.kr:8210/occupancy-monitor", mainStart);
-        int mainEnd = html.indexOf("</span>", html.indexOf("lh-host", mainStart));
-        assertThat(urlAt).isGreaterThan(mainStart).isLessThan(mainEnd);
+        assertThat(html).contains("title=\"https://ocean_plt.cspay.co.kr:8210/occupancy-monitor?zoneId=1\"");
+        assertThat(html).contains(">카바나 점유 현황<");
+        // 목록 텍스트로는 URL도 host도 렌더하지 않는다.
+        assertThat(html).doesNotContain(">https://ocean_plt.cspay.co.kr:8210/occupancy-monitor?zoneId=1<");
+        assertThat(html).doesNotContain(">ocean_plt.cspay.co.kr:8210<");
+    }
+
+    /** 즐겨찾기는 개수가 적어 세로 여유가 있으므로 이름 아래 host를 유지한다. */
+    @Test
+    void companyLinks_favoriteRow_keepsHostUnderTheName() {
+        WebContext ctx = hubContext(new HubMemberSession(7L, "a@coresolution.kr", "이수민", "USER"));
+        CompanyLink l = link(1L, "HARS", "https://hars-falh.sosyge.net/login/admin", "병원", null);
+        putPublicLink(ctx, l, true, true);
+        ctx.setVariable("favoriteRows", presenter.publicLinks(List.of(l), Set.of(1L), true));
+
+        String html = engine.process("design/company-links", ctx);
+
+        assertThat(html).contains("lh-host");
+        assertThat(html).contains(">hars-falh.sosyge.net<");
     }
 
     /** 개발 서버는 색만이 아니라 라벨 + 점선 테두리(env-dev 클래스)로도 구분돼야 한다. */
