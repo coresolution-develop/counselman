@@ -9,8 +9,8 @@
   "background_color": "#ffffff",
   "theme_color": "#2478C0",
   "icons": [
-    { "src": "icon/new/app-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icon/new/app-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
-    { "src": "icon/new/app-icon-1024.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" }
+    { "src": "icon/counselman/app-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon/counselman/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon/counselman/app-icon-1024.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" }
   ]
 }

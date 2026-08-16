@@ -119,8 +119,8 @@
 
     return `<aside class="sidebar${editMode ? ' sidebar--edit-mode' : ''}" aria-label="메인 내비게이션">
       <div class="sidebar__brand">
-        <div class="sidebar__logo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 4v16M4 12h16"/></svg>
+        <div class="sidebar__logo sidebar__logo--brand">
+          <img src="${path('/icon/counselman/counselman-appicon.svg')}" alt="CounselMan" width="32" height="32" />
         </div>
         <div class="sidebar__title">CounselMan</div>
       </div>

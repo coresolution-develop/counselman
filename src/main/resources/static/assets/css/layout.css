@@ -62,6 +62,14 @@
 }
 .sidebar__logo svg { width: 18px; height: 18px; }
 
+/* 브랜드 앱아이콘은 자체 라운드 배경(딥 블루)을 가지므로 타일 장식을 비운다 */
+.sidebar__logo--brand {
+  background: none;
+  box-shadow: none;
+  overflow: hidden;
+}
+.sidebar__logo--brand img { width: 32px; height: 32px; display: block; }
+
 .sidebar__title {
   font-weight: 700;
   font-size: 16px;
