@@ -44,6 +44,23 @@
 - **작업량**: 2~3시간
 - **출처**: 2026-08-13 mediplat 장애 (경위: [docs/prod-deploy-phase1b.md](docs/prod-deploy-phase1b.md) "장애 기록")
 
+#### [P0-8] LMS 제목 줄바꿈 수정 — 배포 완료 / **실사용 검증 대기**
+- **배포**: 2026-08-16 20:12 prod 반영(`d6b078c`). 기동·헬스체크 통과, 스키마 변경 없음
+- **미완**: 실제 발송으로 확인하지 못함. **월요일 업무 발송 후 아래로 판정**
+
+```sql
+-- ERROR 가 0건이면 수정 성공, 재발하면 원인 재조사
+SELECT inst_code, status, COUNT(*) AS cnt, MAX(created_at) AS latest
+FROM csm.v_transmission_history_all
+WHERE created_at >= '2026-08-16 20:12:00'
+GROUP BY inst_code, status ORDER BY inst_code, status;
+```
+
+- **유실분 재발송 안내 필요** — 효사랑가족요양병원(FALH), 2026-08-14 **7건 미발송**.
+  수신번호 `01092308193`(5회) · `01088290939` · `01027215687`.
+  화면에는 "전송 완료"로 보였으나 실제로는 나가지 않았다(`ERROR`는 발송내역 기본 필터에서 제외)
+- **경위·진단 쿼리**: [docs/sms-batch-ops.md](docs/sms-batch-ops.md) "벤더 결과코드" 절
+
 ### ⚠️ P1 — 반복 버그 / 사용자 경험
 
 #### [P1-1] 상담 통계 Alpine ECharts 간헐 충돌
