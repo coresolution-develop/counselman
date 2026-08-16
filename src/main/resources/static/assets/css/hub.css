@@ -274,10 +274,17 @@ body.hub-body {
   background: var(--bg); color: var(--fg2); font: inherit; font-size: 12px; cursor: pointer;
   transition: background .12s ease, color .12s ease, border-color .12s ease;
 }
-.hub-chip:hover { background: var(--bg-hover); }
+/* :not(.hub-chip--on)이 꼭 필요하다. `.hub-chip:hover`는 명시도 (0,2,0)이고
+   `.hub-chip--on`은 (0,1,0)이라, 순서와 무관하게 hover가 활성 칩의 배경을 덮어쓴다.
+   그러면 글자색은 --on의 var(--bg)로 남아 흰 글자 + 연회색 배경이 되어 읽을 수 없다. */
+.hub-chip:not(.hub-chip--on):hover { background: var(--bg-hover); }
 .hub-chip--on { background: var(--fg1); border-color: var(--fg1); color: var(--bg); }
+.hub-chip--on:hover { background: var(--fg2); border-color: var(--fg2); }
 .hub-chip--dev { border: 1px dashed var(--env-dev-line); color: var(--env-dev); }
-.hub-chip--dev.hub-chip--on { background: var(--env-dev); border-color: var(--env-dev); color: var(--bg); }
+/* 개발 칩은 활성일 때 이미 진한 앰버라, hover에서 색을 밝히면 흰 글자 대비가 3:1 아래로 떨어진다.
+   채우기를 그대로 두고 커서로만 알린다. */
+.hub-chip--dev.hub-chip--on,
+.hub-chip--dev.hub-chip--on:hover { background: var(--env-dev); border-color: var(--env-dev); color: var(--bg); }
 
 .hub-density {
   margin-left: auto; display: inline-flex; gap: 2px; padding: 2px;
@@ -608,7 +615,8 @@ body.hub-body {
   color: var(--fg3); font: inherit; font-size: 13px; font-weight: 510; cursor: pointer;
   margin-bottom: -1px;
 }
-.adm-tab:hover { color: var(--fg2); }
+/* 칩과 같은 이유로 :not(.adm-tab--on)이 필요하다. 없으면 활성 탭이 hover에서 --fg2로 흐려진다. */
+.adm-tab:not(.adm-tab--on):hover { color: var(--fg2); }
 .adm-tab--on { color: var(--fg1); border-bottom-color: var(--brand); }
 .adm-panel-tab[hidden] { display: none; }
 
