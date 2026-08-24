@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="formflow app icon">
+<clipPath id="rrformflow"><path d="M 0 114 A 114 114 0 0 1 114 0 H 398 A 114 114 0 0 1 512 114 V 398 A 114 114 0 0 1 398 512 H 114 A 114 114 0 0 1 0 398 Z"></path></clipPath>
+<g clip-path="url(#rrformflow)"><rect width="512" height="512" fill="#0C4890"></rect><path d="M 0 424 C 128 384 300 452 512 396 V 512 H 0 Z" fill="#2478C0"></path></g>
+<g transform="translate(256,256) scale(0.72) translate(-256,-256)"><g transform="translate(256,256) scale(0.98) translate(-256,-256)"><rect x="107" y="117" width="299" height="64" rx="32" fill="#B7D6F0"></rect>
+<rect x="107" y="224" width="181" height="64" rx="32" fill="#B7D6F0"></rect>
+<path d="M 139 363 H 267 C 325 363 347 320 347 267" fill="none" stroke="#FFFFFF" stroke-width="64" stroke-linecap="round"></path></g></g>
+</svg>

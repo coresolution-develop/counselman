@@ -11,8 +11,10 @@
 | `{key}-lockup.svg` | 가로 락업 | 투명, 워드마크 아웃라인 패스 포함 |
 | `{key}-favicon.svg` | 16px 전용 | 투명, 부재 축소·굵기 증가 |
 
-key: `counselman`, `wardhub`, `reshub-i`, `reshub-c`, `reshub-b`
+key: `counselman`, `wardhub`, `reshub-i`, `reshub-c`, `reshub-b`, `formflow`
+신규 편입: `formflow` (FormFlow · 심볼·앱아이콘·파비콘, 락업은 워드마크 소스 대기)
 MediPlat 방향안: `mediplat-a`, `mediplat-b`, `mediplat-c` (심볼·앱아이콘만, 방향 확정 대기)
+`_before-formflow-appicon.svg` 는 정규화 전 원본입니다.
 `_archive-wardhub-grid-*` 는 채택되지 않은 이전 격자안입니다.
 
 ## 사용 가이드
