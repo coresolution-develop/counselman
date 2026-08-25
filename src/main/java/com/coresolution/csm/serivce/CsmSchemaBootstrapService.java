@@ -184,7 +184,7 @@ public class CsmSchemaBootstrapService {
                     failed_count   INT          NOT NULL DEFAULT 0,
                     unknown_count  INT          NOT NULL DEFAULT 0,
                     unit_cost      INT          NOT NULL,
-                    total_cost     INT          NOT NULL DEFAULT 0,
+                    total_cost     BIGINT       NOT NULL DEFAULT 0,
                     billable       CHAR(1)      NOT NULL DEFAULT 'Y',
                     created_by     VARCHAR(100),
                     created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -192,6 +192,34 @@ public class CsmSchemaBootstrapService {
                     KEY ix_batch_inst (inst_code, created_at)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
                 """);
+        ensureSmsBatchColumnTypes();
+    }
+
+    /**
+     * 이미 만들어진 sms_batch 의 total_cost 를 INT → BIGINT 로 넓힌다.
+     *
+     * <p>CREATE TABLE IF NOT EXISTS 는 기존 테이블의 컬럼 타입을 바꾸지 않으므로
+     * 운영 DB 에는 이 보정이 따로 필요하다. 다른 스키마 보정과 같은 방식으로
+     * INFORMATION_SCHEMA 로 먼저 확인하고, 필요한 경우에만 ALTER 한다.
+     *
+     * <p>MySQL 의 INT → BIGINT 확대는 값 손실이 없고 온라인(INPLACE) 으로 처리되므로
+     * 무중단이다. 값을 좁히는 방향이 아니라 넓히는 방향이라 롤백도 안전하다.
+     */
+    private void ensureSmsBatchColumnTypes() {
+        try {
+            String dataType = jdbcTemplate.queryForObject("""
+                    SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = 'csm' AND TABLE_NAME = 'sms_batch' AND COLUMN_NAME = 'total_cost'
+                    """, String.class);
+            if (dataType != null && "int".equalsIgnoreCase(dataType)) {
+                jdbcTemplate.execute(
+                        "ALTER TABLE csm.sms_batch MODIFY COLUMN total_cost BIGINT NOT NULL DEFAULT 0");
+                log.info("[schema-bootstrap] sms_batch.total_cost widened INT -> BIGINT");
+            }
+        } catch (Exception e) {
+            // 다른 스키마 보정과 같은 원칙 — 실패가 기동을 막지 않는다.
+            log.warn("[schema-bootstrap] sms_batch.total_cost widening skipped: {}", e.toString());
+        }
     }
 
     private void ensureChatInstTokenTable() {

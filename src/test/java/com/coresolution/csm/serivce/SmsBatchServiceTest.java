@@ -131,7 +131,7 @@ class SmsBatchServiceTest {
                 any(), any(), any());
         // UNKNOWN 은 환불 금지 원칙 — total_cost 에 포함되어야 한다
         verify(jdbcTemplate).update(contains("UPDATE csm.sms_batch"),
-                eq(0), eq(0), eq(1), eq(960), anyString());
+                eq(0), eq(0), eq(1), eq(960L), anyString());
     }
 
     @Test
@@ -182,5 +182,47 @@ class SmsBatchServiceTest {
                 "hello", List.of("01012345678"), null);
 
         assertThat(outcome.success()).isEqualTo(1);
+    }
+
+    /**
+     * total_cost 오버플로 회귀 방지 (CSM-1).
+     *
+     * <p>int 로 계산하면 단가 × 건수가 2,147,483,647전을 넘는 순간 음수가 된다.
+     * 여기서는 단가를 크게 잡아 적은 건수로 경계를 넘긴다 — 실제 사고 경로도
+     * 대량 발송이 아니라 단가 입력 오류 쪽이 가깝다(단가 화면에 자릿수 검증이 없다).
+     */
+    @Test
+    void totalCostDoesNotOverflowWithLargeUnitCost() throws Exception {
+        // 5,000,000전(50,000원) × 500건 = 2,500,000,000전. int 상한을 넘는다.
+        when(smsService.unitCostJeon(eq(INST), anyString())).thenReturn(5_000_000);
+        when(gateway.send(any())).thenReturn(acceptOk());
+
+        List<String> recipients = new java.util.ArrayList<>();
+        for (int i = 0; i < 500; i++) {
+            recipients.add(String.format("010%08d", i));
+        }
+
+        SmsBatchService.BatchOutcome outcome = service.send(INST, "tester", "idem-1", "021234567",
+                "hello", recipients, null);
+
+        assertThat(outcome.success()).isEqualTo(500);
+        // int 였다면 -1,794,967,296 이 기록됐을 자리다.
+        verify(jdbcTemplate).update(contains("UPDATE csm.sms_batch"),
+                eq(500), eq(0), eq(0), eq(2_500_000_000L), anyString());
+    }
+
+    @Test
+    void totalCostStaysCorrectAtIntBoundary() throws Exception {
+        // 정확히 int 상한을 1전 넘기는 조합: 2,147,483,647 + 1
+        when(smsService.unitCostJeon(eq(INST), anyString())).thenReturn(1_073_741_824); // 2^30
+        when(gateway.send(any())).thenReturn(acceptOk());
+
+        SmsBatchService.BatchOutcome outcome = service.send(INST, "tester", "idem-1", "021234567",
+                "hello", List.of("01012345678", "01012345679"), null);
+
+        assertThat(outcome.success()).isEqualTo(2);
+        // 2^30 × 2 = 2^31 = 2,147,483,648. int 로는 정확히 Integer.MIN_VALUE 가 된다.
+        verify(jdbcTemplate).update(contains("UPDATE csm.sms_batch"),
+                eq(2), eq(0), eq(0), eq(2_147_483_648L), anyString());
     }
 }

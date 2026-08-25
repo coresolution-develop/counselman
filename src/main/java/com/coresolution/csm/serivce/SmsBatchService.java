@@ -175,7 +175,19 @@ public class SmsBatchService {
         }
 
         // total_cost 는 Phase 4 차감 금액의 근거다. UNKNOWN 은 환불 금지 원칙이므로 포함한다.
-        int totalCost = unitCost * (success + unknown);
+        //
+        // long 인 이유: int 로 계산하면 unit_cost × 건수가 2,147,483,647전을 넘는 순간
+        // 조용히 음수가 된다. 현재 max-recipients=500 에서는 단가가 4,294,967전(42,949원)을
+        // 넘어야 도달하므로 정상 운영에서는 닿지 않지만, 두 경로로 실현될 수 있다.
+        //   ① CSM_SMS_BATCH_MAX_RECIPIENTS 를 올리는 경우
+        //      — 대량 발송 방향이라 가정이 아니라 예정된 변경에 가깝다.
+        //        상향 시 주의사항은 application.properties 의 max-recipients 주석 참조.
+        //   ② 단가 입력 오류 (단가 화면에 자릿수 검증이 없다)
+        //      — CSM-2 에서 단가 설정 화면·API 가 제거되고 마스터가 플랫폼으로 넘어가면
+        //        이 경로는 닫힌다. 그때는 CSM-3 의 단가 수신 검증이 방어선이 된다.
+        // 캐스트를 왼쪽 피연산자에 붙여야 한다 — (long)(a * b) 는 이미 넘친 값을 넓히는 것이라
+        // 아무 것도 고치지 못한다.
+        long totalCost = (long) unitCost * (success + unknown);
         try {
             jdbcTemplate.update("""
                     UPDATE csm.sms_batch
