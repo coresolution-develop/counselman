@@ -62,7 +62,7 @@ jobs:
           GH_TOKEN: ${{ secrets.PLATFORM_REPO_TOKEN }}
         run: |
           mkdir -p /tmp/platform
-          for f in pricing-vectors.json inst-code-vectors.json vectors.sha256; do
+          for f in pricing-vectors.json inst-code-vectors.json usage-event-vectors.json vectors.sha256; do
             gh api \
               -H "Accept: application/vnd.github.raw" \
               "repos/coresolution-develop/MediCast/contents/packages/shared/$f" \
@@ -73,7 +73,7 @@ jobs:
         if: steps.token.outputs.present == 'true'
         run: |
           fail=0
-          for f in pricing-vectors.json inst-code-vectors.json; do
+          for f in pricing-vectors.json inst-code-vectors.json usage-event-vectors.json; do
             if diff -q "/tmp/platform/$f" "src/test/resources/$f" > /dev/null; then
               echo "OK  $f"
             else
@@ -91,7 +91,7 @@ jobs:
 
           # 해시 파일도 본다. **파일은 같은데 해시만 다른 경우**를 잡는다 —
           # 그러면 한쪽 CI 만 빨개져서 원인을 엉뚱한 데서 찾게 된다.
-          for f in pricing-vectors.json inst-code-vectors.json; do
+          for f in pricing-vectors.json inst-code-vectors.json usage-event-vectors.json; do
             a=$(grep " $f\$" /tmp/platform/vectors.sha256 | awk '{print $1}')
             b=$(grep " $f\$" src/test/resources/vectors.sha256 | awk '{print $1}')
             if [ "$a" != "$b" ]; then
