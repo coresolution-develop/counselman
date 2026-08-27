@@ -955,6 +955,7 @@ public class PageController {
         model.addAttribute("list", list);
         model.addAttribute("instCount",
                 list.stream().filter(i -> i != null && !"core".equalsIgnoreCase(i.getId_col_03())).count());
+        model.addAttribute("priceStatus", buildPriceStatusView(list));
         return "csm/core/admin/smssetting";
     }
 
@@ -1547,25 +1548,37 @@ public class PageController {
         }
     }
 
+    /**
+     * ⛔ <b>단가 수정은 폐지됐다 (CSM-2).</b> 단가 마스터는 MediCast 로 넘어갔다 (ADR-003).
+     *
+     * <p>── 왜 매핑을 남겨 두나 ──
+     * 지우면 404 가 되고, 예전 탭·북마크에서 호출한 사람은 <b>"경로가 없다"</b> 만 보게 된다.
+     * 왜 안 되는지 알 수 없다. 410 Gone 은 <b>"있었지만 없앴다"</b> 는 뜻이라 정확하다.
+     *
+     * <p>── 왜 화면만 막지 않았나 ──
+     * 버튼만 없애고 이 엔드포인트를 두면 <b>막았다고 믿는데 안 막힌 상태</b>가 된다.
+     * "비상시 API 직접 호출로 대응" 도 성립하지 않는다 — 고쳐도 <b>다음 폴링(5분)이
+     * 덮어쓴다</b>. 비상 절차는 {@code docs/prod-deploy-checklist.md} §9.5 에 따로 있다.
+     *
+     * <p>── 없어지는 경로 중 하나는 특히 위험했다 ──
+     * {@code corePriceInsertAll} 은 <b>{@code WHERE} 절이 없는 UPDATE</b> 였다.
+     * "전체 단가 등록" 모달에서 한 번 저장하면 <b>모든 병원의 단가가 한꺼번에</b> 바뀐다.
+     * 실수 한 번의 영향 범위가 전 기관이었다.
+     */
     @PostMapping("core/smssetting/priceInsert")
     @ResponseBody
-    public Map<String, Object> coreSmsPriceInsert(HttpSession session, @RequestBody Instdata id) {
+    public ResponseEntity<Map<String, Object>> coreSmsPriceInsert(HttpSession session,
+            @RequestBody(required = false) Instdata id) {
         String inst = ensureInst(session);
         if (!isCoreInst(inst)) {
-            return Map.of("result", "0", "message", "권한 없음");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("result", "0", "message", "권한 없음"));
         }
-        String id03 = id.getId_col_03();
-        String sms = id.getSms_price();
-        String lms = id.getLms_price();
-        String mms = id.getMms_price();
-
-        int result;
-        if ("all".equalsIgnoreCase(id03)) {
-            result = cs.corePriceInsertAll(sms, lms, mms);
-        } else {
-            result = cs.corePriceInsert(id03, sms, lms, mms);
-        }
-        return Map.of("result", result > 0 ? "1" : "0");
+        log.warn("[core/smssetting/priceInsert] 폐지된 단가 수정 호출 inst={} target={}",
+                inst, id == null ? "(none)" : id.getId_col_03());
+        return ResponseEntity.status(HttpStatus.GONE).body(Map.of(
+                "result", "0",
+                "message", "단가는 MediCast 에서 관리합니다. 이 화면에서는 수정할 수 없습니다."));
     }
 
     @GetMapping("core/setting/maincategory/{templateIdx}")

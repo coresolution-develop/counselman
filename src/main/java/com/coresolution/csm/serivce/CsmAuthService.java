@@ -1065,13 +1065,7 @@ public class CsmAuthService {
         log.info("[schema-bootstrap] recreated v_transmission_history_all with {} institutions", valid.size());
     }
 
-    public int corePriceInsertAll(String smsPrice, String lmsPrice, String mmsPrice) {
-        return cs.corePriceInsertAll(smsPrice, lmsPrice, mmsPrice);
-    }
-
-    public int corePriceInsert(String idCol03, String smsPrice, String lmsPrice, String mmsPrice) {
-        return cs.corePriceInsert(idCol03, smsPrice, lmsPrice, mmsPrice);
-    }
+    // ⛔ corePriceInsert / corePriceInsertAll 은 CSM-2 에서 제거했다 — CsmMapper 주석 참조.
 
     public List<Map<String, Object>> coreTemplateMainSelect(int templateIdx) {
         return cs.coreTemplateMainSelect(templateIdx);

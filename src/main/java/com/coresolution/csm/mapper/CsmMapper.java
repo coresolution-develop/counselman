@@ -342,22 +342,13 @@ public interface CsmMapper {
       """)
   int coreTemplateDelete(@Param("idx") int idx);
 
-  @Update("""
-      UPDATE csm.inst_data_cs
-      SET sms_price = #{sms_price},
-          lms_price = #{lms_price},
-          mms_price = #{mms_price}
-      """)
-  int corePriceInsertAll(@Param("sms_price") String smsPrice, @Param("lms_price") String lmsPrice, @Param("mms_price") String mmsPrice);
-
-  @Update("""
-      UPDATE csm.inst_data_cs
-      SET sms_price = #{sms_price},
-          lms_price = #{lms_price},
-          mms_price = #{mms_price}
-      WHERE id_col_03 = #{id_col_03}
-      """)
-  int corePriceInsert(@Param("id_col_03") String idCol03, @Param("sms_price") String smsPrice, @Param("lms_price") String lmsPrice, @Param("mms_price") String mmsPrice);
+  // ⛔ corePriceInsert / corePriceInsertAll 은 CSM-2 에서 제거했다.
+  //    단가 마스터는 MediCast 로 넘어갔다 (ADR-003). csm 에서 단가를 쓰는 경로는
+  //    `PlatformPriceCache.store()` 하나뿐이다.
+  //
+  //    corePriceInsertAll 은 **WHERE 절이 없는 UPDATE** 였다 —
+  //    "전체 단가 등록" 을 한 번 저장하면 모든 병원 단가가 한꺼번에 바뀌었다.
+  //    되돌릴 방법도 없었다 (이전 값을 남기지 않는다).
 
   @Select("""
       SELECT idx, template_idx, main_col_01, turn

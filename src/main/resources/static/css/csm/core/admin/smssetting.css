@@ -258,3 +258,40 @@ select {
 .bill-contents-header idv {
 	padding: 15px;
 }
+/* ── 단가 출처 안내 (CSM-2) ─────────────────────────────────
+   단가 마스터가 MediCast 로 넘어가면서 이 화면은 읽기 전용이 됐다.
+   "왜 수정 버튼이 없나" 를 화면에서 바로 알 수 있어야 한다. */
+.price-source-notice {
+	margin: 0 0 12px;
+	padding: 12px 16px;
+	border: 1px solid #d6dae1;
+	border-left: 3px solid #2f6feb;   /* Signal Blue */
+	border-radius: 6px;
+	background: #f5f7fa;
+	color: #333b47;
+	font-size: 14px;
+	line-height: 1.5;
+}
+
+.price-received__age {
+	margin-left: 6px;
+	color: #6b7280;                    /* Muted Gray */
+	font-size: 13px;
+}
+
+/* 수신이 낡았다 = 낡은 단가로 청구되고 있을 수 있다.
+   색만으로 구분하지 않는다 — 경고 기호(⚠)를 같이 넣는다 (WCAG 1.4.1). */
+.price-received.is-stale {
+	color: #a13d00;                    /* Alert Amber Dark */
+	font-weight: 600;
+}
+.price-received.is-stale .price-received__age {
+	color: #a13d00;
+}
+
+@media (max-width: 768px) {
+	.price-source-notice {
+		font-size: 13px;
+		padding: 10px 12px;
+	}
+}
