@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "description": "inst_code 정규화 규칙의 단일 진실. csm 의 CsmSchemaBootstrapService.normalizeInstCode 와 동일해야 한다. 규칙이 갈리면 같은 기관이 서로 다른 Company 로 갈라진다.",
+  "rule": "trim → 빈 값이면 null → 'core'(대소문자 무관)는 소문자 'core' 로 고정 → 나머지는 전부 대문자",
+  "normalizeInstCode": [
+    { "id": "I01", "note": "일반 코드는 대문자로", "input": "abc", "expect": "ABC" },
+    { "id": "I02", "note": "이미 대문자면 그대로", "input": "ABC", "expect": "ABC" },
+    { "id": "I03", "note": "대소문자 혼합도 대문자로 수렴", "input": "aBc", "expect": "ABC" },
+    { "id": "I04", "note": "core 는 소문자 유지 — csm 의 유일한 예외", "input": "core", "expect": "core" },
+    { "id": "I05", "note": "CORE 도 소문자 core 로 수렴", "input": "CORE", "expect": "core" },
+    { "id": "I06", "note": "Core 도 마찬가지", "input": "Core", "expect": "core" },
+    { "id": "I07", "note": "앞뒤 공백 제거", "input": "  abc  ", "expect": "ABC" },
+    { "id": "I08", "note": "공백 제거 후 core 판정", "input": "  CORE  ", "expect": "core" },
+    { "id": "I09", "note": "빈 문자열은 null", "input": "", "expect": null },
+    { "id": "I10", "note": "공백만 있으면 null", "input": "   ", "expect": null },
+    { "id": "I11", "note": "null 입력은 null", "input": null, "expect": null },
+    { "id": "I12", "note": "숫자·언더스코어 포함 코드", "input": "inst_01", "expect": "INST_01" },
+    { "id": "I13", "note": "core 를 포함하지만 core 가 아닌 코드", "input": "coreman", "expect": "COREMAN" }
+  ]
+}

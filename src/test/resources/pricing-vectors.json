@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "description": "단가 파싱·합계 계산 규칙의 단일 진실. 이 리포와 csm 이 동일 케이스를 검증한다. 수정 시 양쪽 리포를 함께 고치고 vectors.sha256 을 갱신해야 CI 가 통과한다.",
+  "unit": "jeon (1/100 KRW)",
+  "parseUnitPrice": [
+    {
+      "id": "P01",
+      "note": "원 단위 소수 1자리 — 전 단위로 손실 없이 변환",
+      "input": "9.6",
+      "expect": { "ok": true, "jeon": 960 }
+    },
+    {
+      "id": "P02",
+      "note": "유효 소수 3자리 — 전 미만 자릿수라 거부한다. csm 의 HALF_UP 근사는 폐기했다",
+      "input": "9.655",
+      "expect": { "ok": false, "reason": "TOO_MANY_DECIMALS" }
+    },
+    {
+      "id": "P03",
+      "note": "음수 단가",
+      "input": "-1",
+      "expect": { "ok": false, "reason": "NEGATIVE" }
+    },
+    {
+      "id": "P04",
+      "note": "빈 문자열",
+      "input": "",
+      "expect": { "ok": false, "reason": "EMPTY" }
+    },
+    {
+      "id": "P05",
+      "note": "미설정(null)",
+      "input": null,
+      "expect": { "ok": false, "reason": "EMPTY" }
+    },
+    {
+      "id": "P06",
+      "note": "숫자가 아닌 값",
+      "input": "abc",
+      "expect": { "ok": false, "reason": "NOT_NUMERIC" }
+    },
+    {
+      "id": "P07",
+      "note": "신규 판매가 SMS",
+      "input": "10",
+      "expect": { "ok": true, "jeon": 1000 }
+    },
+    {
+      "id": "P08",
+      "note": "신규 판매가 LMS",
+      "input": "28",
+      "expect": { "ok": true, "jeon": 2800 }
+    },
+    {
+      "id": "P09",
+      "note": "신규 판매가 MMS",
+      "input": "70",
+      "expect": { "ok": true, "jeon": 7000 }
+    },
+    {
+      "id": "P10",
+      "note": "후행 0 은 유효 자릿수가 아니다",
+      "input": "9.60",
+      "expect": { "ok": true, "jeon": 960 }
+    },
+    {
+      "id": "P11",
+      "note": "후행 0 이 3자리 이상이어도 손실이 없으면 통과",
+      "input": "9.6000",
+      "expect": { "ok": true, "jeon": 960 }
+    },
+    {
+      "id": "P12",
+      "note": "0원 단가 — 무료 발송 정책용으로 허용",
+      "input": "0",
+      "expect": { "ok": true, "jeon": 0 }
+    },
+    {
+      "id": "P13",
+      "note": "앞뒤 공백은 제거",
+      "input": "  9.6  ",
+      "expect": { "ok": true, "jeon": 960 }
+    },
+    {
+      "id": "P14",
+      "note": "지수 표기는 거부한다. 단가 입력에 쓸 이유가 없고 파서마다 해석이 갈린다",
+      "input": "1e2",
+      "expect": { "ok": false, "reason": "NOT_NUMERIC" }
+    },
+    {
+      "id": "P15",
+      "note": "csm 폴백 단가 SMS (9.6원)",
+      "input": "9.60",
+      "expect": { "ok": true, "jeon": 960 }
+    },
+    {
+      "id": "P16",
+      "note": "소수점만 있고 정수부가 없는 형태",
+      "input": ".5",
+      "expect": { "ok": true, "jeon": 50 }
+    },
+    {
+      "id": "P17",
+      "note": "명시적 양수 부호는 거부 — 입력 폼에서 나올 이유가 없다",
+      "input": "+9.6",
+      "expect": { "ok": false, "reason": "NOT_NUMERIC" }
+    },
+    {
+      "id": "P18",
+      "note": "천단위 구분자 거부",
+      "input": "1,000",
+      "expect": { "ok": false, "reason": "NOT_NUMERIC" }
+    },
+    {
+      "id": "P19",
+      "note": "단가 상한 — PriceItem.unitCostJeon 은 Int 컬럼이라 2147483647전(=21,474,836.47원)까지다",
+      "input": "21474836.47",
+      "expect": { "ok": true, "jeon": 2147483647 }
+    },
+    {
+      "id": "P20",
+      "note": "상한 초과는 거부. 사일런트 절단이나 오버플로를 만들지 않는다",
+      "input": "21474836.48",
+      "expect": { "ok": false, "reason": "TOO_LARGE" }
+    }
+  ],
+  "computeTotal": [
+    {
+      "id": "T01",
+      "note": "합계는 단가 × 건수. 재반올림하지 않는다",
+      "unitJeon": 960,
+      "count": 1000,
+      "expectTotalJeon": "960000"
+    },
+    {
+      "id": "T02",
+      "note": "0건 잡 — 차감 금액 0",
+      "unitJeon": 960,
+      "count": 0,
+      "expectTotalJeon": "0"
+    },
+    {
+      "id": "T03",
+      "note": "csm 의 int 상한(2147483647전)을 넘는 경계. long/BIGINT 로 수정되어야 통과한다",
+      "unitJeon": 960,
+      "count": 2236963,
+      "expectTotalJeon": "2147484480"
+    },
+    {
+      "id": "T04",
+      "note": "MMS 100만건 — int 로는 오버플로",
+      "unitJeon": 7000,
+      "count": 1000000,
+      "expectTotalJeon": "7000000000"
+    },
+    {
+      "id": "T05",
+      "note": "무료 단가",
+      "unitJeon": 0,
+      "count": 1000,
+      "expectTotalJeon": "0"
+    },
+    {
+      "id": "T06",
+      "note": "int 상한 직전 — 경계 아래쪽",
+      "unitJeon": 960,
+      "count": 2236962,
+      "expectTotalJeon": "2147483520"
+    }
+  ]
+}

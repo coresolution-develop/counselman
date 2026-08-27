@@ -1,0 +1,106 @@
+# 야간 교차 검증 — 플랫폼(MediCast) 원본과 csm 사본을 실제로 비교한다.
+#
+# ── 왜 별도 워크플로인가 ──
+# csm 빌드는 플랫폼 리포에 전혀 의존하지 않아야 한다 (submodule 금지, 빌드 시 네트워크 금지).
+# 플랫폼이 깨져도 csm 은 빌드·배포돼야 한다.
+#
+# 해시 트립와이어는 "한쪽만 고치면 그쪽 CI 가 깨진다" 까지만 보장한다.
+# **양쪽 해시를 각각 따로 고치면 둘 다 통과한다.** 그 구멍을 메우려고
+# 하루 한 번, 빌드 경로 밖에서 실제 파일을 비교한다.
+#
+# 플랫폼 리포에도 같은 방향의 워크플로가 있다 (vectors-cross-check.yml).
+# **둘 중 하나만 돌아도 불일치는 잡힌다.** 양쪽에 둔 것은 어느 쪽 리포를 보든
+# 드러나게 하려는 것이다.
+#
+# 필요 시크릿:
+#   PLATFORM_REPO_TOKEN — sms-platform 리포 contents:read (private 이라 필요)
+name: 벡터 교차 검증 (야간)
+
+on:
+  schedule:
+    # 매일 18:30 UTC = KST 03:30.
+    # 플랫폼 쪽(03:00)보다 30분 늦게 돌린다 — 같은 시각에 돌면 한쪽이 갱신 중일 때
+    # 다른 쪽이 읽어 **없는 불일치를 보고**할 수 있다.
+    - cron: '30 18 * * *'
+  workflow_dispatch:
+
+jobs:
+  cross-check:
+    name: 벡터 교차 검증
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 토큰이 없으면 이 잡은 아무것도 하지 않는다.
+      #
+      # **실패로 두지 않는 이유:** 매일 빨간 표시가 뜨면 곧 아무도 안 본다.
+      # 그러면 진짜 불일치가 같은 빨간색에 묻힌다 (CLAUDE.md §3.2).
+      #
+      # **조용히 통과시키지도 않는다:** 아래 warning 과 요약이 "검증되지 않았다" 를
+      # 명시한다. 통과와 미실행은 구분되어야 한다.
+      - name: 토큰 유무 확인
+        id: token
+        run: |
+          if [ -n "${{ secrets.PLATFORM_REPO_TOKEN }}" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=벡터 교차 검증 미실행::PLATFORM_REPO_TOKEN 이 없어 sms-platform 원본과 대조하지 않았습니다. 양쪽 해시를 각각 고치면 둘 다 통과하는 구멍이 열려 있습니다."
+            {
+              echo "## ⚠️ 벡터 교차 검증 미실행"
+              echo
+              echo "\`PLATFORM_REPO_TOKEN\` 시크릿이 없어 **대조하지 않았습니다.**"
+              echo "이 잡의 초록색은 \"일치한다\" 가 아니라 \"확인하지 않았다\" 입니다."
+              echo
+              echo "등록하면 자동으로 켜집니다: Settings → Secrets → Actions"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: 플랫폼 원본 내려받기
+        if: steps.token.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PLATFORM_REPO_TOKEN }}
+        run: |
+          mkdir -p /tmp/platform
+          for f in pricing-vectors.json inst-code-vectors.json vectors.sha256; do
+            gh api \
+              -H "Accept: application/vnd.github.raw" \
+              "repos/coresolution-develop/MediCast/contents/packages/shared/$f" \
+              > "/tmp/platform/$f"
+          done
+
+      - name: 사본과 원본 비교
+        if: steps.token.outputs.present == 'true'
+        run: |
+          fail=0
+          for f in pricing-vectors.json inst-code-vectors.json; do
+            if diff -q "/tmp/platform/$f" "src/test/resources/$f" > /dev/null; then
+              echo "OK  $f"
+            else
+              fail=1
+              echo "::error title=벡터 불일치::$f 가 플랫폼 원본과 다릅니다."
+              {
+                echo "## ❌ \`$f\` 불일치"
+                echo
+                echo '```diff'
+                diff "/tmp/platform/$f" "src/test/resources/$f" || true
+                echo '```'
+              } >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+          # 해시 파일도 본다. **파일은 같은데 해시만 다른 경우**를 잡는다 —
+          # 그러면 한쪽 CI 만 빨개져서 원인을 엉뚱한 데서 찾게 된다.
+          for f in pricing-vectors.json inst-code-vectors.json; do
+            a=$(grep " $f\$" /tmp/platform/vectors.sha256 | awk '{print $1}')
+            b=$(grep " $f\$" src/test/resources/vectors.sha256 | awk '{print $1}')
+            if [ "$a" != "$b" ]; then
+              fail=1
+              echo "::error title=해시 불일치::$f 의 기록된 해시가 다릅니다 (플랫폼 $a / csm $b)."
+            fi
+          done
+
+          if [ "$fail" -eq 0 ]; then
+            echo "## ✅ 벡터 2종이 플랫폼 원본과 일치합니다" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$fail"
