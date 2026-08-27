@@ -107,6 +107,15 @@ public class SmsUsageOutboxService {
      * <p>── {@code priceVersion} 이 null 일 수 있다 ──
      * 오류가 아니다. <b>플랫폼 단가를 못 받은 채로 발송했다</b>는 정보다.
      * 플랫폼은 "적용됐다고 믿었는데 아니었다" 를 여기서 안다.
+     *
+     * <p>── ⚠️ {@code totalCostJeon} 은 <b>문자열</b>이다 (재론 금지) ──
+     * 숫자로 보내면 JS 의 {@code JSON.parse} 가 안전 정수 범위(2^53-1) 밖에서
+     * <b>값을 조용히 바꾼다.</b> 그 시점에는 이미 손쓸 수 없다 — 플랫폼이 받아 봐야
+     * 틀린 금액을 저장하는 것이고, 그건 요금 분쟁이다.
+     *
+     * <p>실제로 여기서 숫자로 보내고 있었고 플랫폼은 문자열만 받았다.
+     * <b>모든 이벤트가 400 이었고 4xx 는 영구 실패라 그 사용량은 영영 안 들어갔을 것이다.</b>
+     * 배포 직전에 잡았다. 계약은 {@code usage-event-vectors.json} 이 정한다.
      */
     Map<String, Object> buildPayload(Map<String, Object> row) {
         java.util.LinkedHashMap<String, Object> p = new java.util.LinkedHashMap<>();
@@ -118,7 +127,8 @@ public class SmsUsageOutboxService {
         p.put("failedCount", intOf(row.get("failed_count")));
         p.put("unknownCount", intOf(row.get("unknown_count")));
         p.put("unitCostJeon", intOf(row.get("unit_cost")));
-        p.put("totalCostJeon", longOf(row.get("total_cost")));
+        // 문자열이다. 위 주석 참조 — 숫자로 바꾸면 큰 금액이 조용히 틀어진다.
+        p.put("totalCostJeon", String.valueOf(longOf(row.get("total_cost"))));
         p.put("billable", "Y".equalsIgnoreCase(String.valueOf(row.get("billable"))));
         p.put("priceVersion", row.get("price_version"));
         p.put("countBasis", COUNT_BASIS_ACCEPTED);
