@@ -41,7 +41,8 @@ class SmsBatchServiceTest {
         ReflectionTestUtils.setField(service, "sendDelayMs", 0L);
 
         when(smsService.isRegisteredSenderNumber(eq(INST), anyString())).thenReturn(true);
-        when(smsService.unitCostJeon(eq(INST), anyString())).thenReturn(960);
+        when(smsService.unitPrice(eq(INST), anyString()))
+                .thenReturn(new SmsService.UnitPrice(960, 7));
         AtomicLong idSeq = new AtomicLong(100);
         when(smsService.insertHistoryReady(eq(INST), anyString(), anyString(), anyString(),
                 anyString(), any(), anyString(), anyString()))
@@ -194,7 +195,8 @@ class SmsBatchServiceTest {
     @Test
     void totalCostDoesNotOverflowWithLargeUnitCost() throws Exception {
         // 5,000,000전(50,000원) × 500건 = 2,500,000,000전. int 상한을 넘는다.
-        when(smsService.unitCostJeon(eq(INST), anyString())).thenReturn(5_000_000);
+        when(smsService.unitPrice(eq(INST), anyString()))
+                .thenReturn(new SmsService.UnitPrice(5_000_000, 7));
         when(gateway.send(any())).thenReturn(acceptOk());
 
         List<String> recipients = new java.util.ArrayList<>();
@@ -214,7 +216,8 @@ class SmsBatchServiceTest {
     @Test
     void totalCostStaysCorrectAtIntBoundary() throws Exception {
         // 정확히 int 상한을 1전 넘기는 조합: 2,147,483,647 + 1
-        when(smsService.unitCostJeon(eq(INST), anyString())).thenReturn(1_073_741_824); // 2^30
+        when(smsService.unitPrice(eq(INST), anyString()))
+                .thenReturn(new SmsService.UnitPrice(1_073_741_824, 7)); // 2^30
         when(gateway.send(any())).thenReturn(acceptOk());
 
         SmsBatchService.BatchOutcome outcome = service.send(INST, "tester", "idem-1", "021234567",

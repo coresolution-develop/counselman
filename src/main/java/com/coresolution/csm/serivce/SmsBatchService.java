@@ -42,6 +42,13 @@ public class SmsBatchService {
     private final ExternalSmsGatewayService gateway;
     private final JdbcTemplate jdbcTemplate;
 
+    /**
+     * 사용량 outbox (CSM-4). {@code required = false} — 없어도 발송은 그대로 동작한다.
+     * 기존 발송 경로가 이 빈에 의존하지 않는다는 것을 타입으로 못박는다.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private SmsUsageOutboxService usageOutbox;
+
     @Value("${csm.sms.batch.max-recipients:500}")
     private int maxRecipients;
 
@@ -124,17 +131,20 @@ public class SmsBatchService {
                     inst, clientType, resolved.type(), resolved.bytes());
         }
 
-        int unitCost = smsService.unitCostJeon(inst, resolved.type());
+        // 단가와 **그 단가의 버전**을 한 번에 가져온다 (CSM-4).
+        // 따로 조회하면 그 사이 폴링이 값을 바꿔 과금 버전과 회신 버전이 갈린다.
+        SmsService.UnitPrice price = smsService.unitPrice(inst, resolved.type());
+        int unitCost = price.jeon();
         String batchId = UUID.randomUUID().toString();
 
         try {
             jdbcTemplate.update("""
                     INSERT INTO csm.sms_batch
-                        (batch_id, inst_code, idem_key, from_phone, send_type, total_count, unit_cost, billable, created_by)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, 'Y', ?)
+                        (batch_id, inst_code, idem_key, from_phone, send_type, total_count, unit_cost, billable, created_by, price_version)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'Y', ?, ?)
                     """,
                     batchId, inst, idem, fromDigits, resolved.type(),
-                    normalized.size() + invalid.size(), unitCost, createdBy);
+                    normalized.size() + invalid.size(), unitCost, createdBy, price.version());
         } catch (DuplicateKeyException e) {
             // 같은 idemKey 의 배치가 이미 처리됨(더블클릭·네트워크 재시도) — 재발송하지 않고 기존 결과를 반환한다.
             log.info("[sms-batch] duplicate idemKey inst={} idemKey={} — returning existing batch", inst, idem);
@@ -196,6 +206,16 @@ public class SmsBatchService {
                     """, success, failed, unknown, totalCost, batchId);
         } catch (Exception e) {
             log.error("[sms-batch] batch summary update fail inst={} batchId={}", inst, batchId, e);
+        }
+
+        // ── 사용량 이벤트 적재 (CSM-4) ──
+        //
+        // **발송 경로를 무르게 하지 않는다.** 집계 UPDATE 와 트랜잭션으로 묶지 않았고,
+        // 여기서 실패해도 발송은 그대로 성공으로 끝난다.
+        // sms_batch 가 진실이고 outbox 는 파생이다 — 누락은 스캐너가 복구한다.
+        // 근거는 SmsUsageOutboxService 클래스 주석에 있다.
+        if (usageOutbox != null) {
+            usageOutbox.enqueueQuietly(batchId);
         }
 
         return new BatchOutcome(batchId, results.size(), success, failed, unknown, results, false);
