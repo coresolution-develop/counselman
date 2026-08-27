@@ -193,11 +193,390 @@ GROUP BY inst_code, status ORDER BY inst_code, status;
 - refkey 재설계: `MP-{instCode}-{historyId}`. 콜백의 `substring(0,4)` 기관코드 가정 제거, 구형식은 폴백 유지
 - 메시지 타입 서버 확정(`SmsMessageTypeResolver`) — 클라이언트가 보낸 type을 신뢰하지 않음(요금 사기 벡터 차단)
 - 이력 확장: `cost`(전 단위 정수)·`billable`·`message_key`·`vendor_code`·`batch_id` + `refkey` UNIQUE
-- 단가 파싱: BigDecimal → `setScale(0, HALF_UP)` → 전 단위 정수. 음수·비숫자·NULL은 폴백+WARN
+- 단가 파싱: BigDecimal → 전 단위 정수. 음수·비숫자·NULL은 폴백+WARN
+  - **CSM-3에서 HALF_UP 근사를 제거했다.** 소수 3자리(전 미만)는 반올림하지 않고 거부한다 —
+    근사하면 고객이 입력한 값과 실제 차감액이 갈리고, 그건 표시 버그가 아니라 요금 분쟁이다
+  - 폴백 3단계: `platform_price_cache` → `inst_data_cs` → 프로퍼티
+  - ⚠️ **배포 순서 제약**: `CSM_PRICE_PLATFORM_BASE_URL` 은 **맨 마지막에 주입한다.**
+    csm 배포(URL 미설정) → 플랫폼 단가 시드 대조 → 그 다음 URL 주입.
+    `PlatformPriceCache.store()` 가 `inst_data_cs` 를 **덮어쓰므로**, 플랫폼에 잘못된 단가가
+    있는 상태로 켜면 1단계와 **2단계 폴백이 동시에 오염**된다. URL 을 다시 빼도 2단계에 남는다.
+    절차: [docs/prod-deploy-checklist.md](docs/prod-deploy-checklist.md) §9 · 코드: `PlatformPricePoller` 클래스 주석
 - OTP 발송 이력 기록(`billable='N'`, `cost=0`, 본문 마스킹). 기존 `pwd-otp-` refkey는 콜백 매핑 100% 실패였음
 - 기관별 테이블 collation 통일 + 전 기관 집계 뷰 `v_transmission_history_all`
 - 예약발송 UI 숨김 (90일 실사용 0건, sendtime 형식 불일치로 미동작)
 - 커밋: `bdd77e0` `26eec18` `53d06a4` `eaf7a44` `db111ed` `cb5eb36` `7345595` `ee03b31`
+
+#### CSM-3 `/rate` 화면 금액 전 단위 전환 — **완료(08-26)**
+- `/rate` 두 곳(`ratePage`, 월별 사용량 조회)의 `double` 곱셈을 전 단위 정수로 교체.
+  모델에는 `BigDecimal` 을 넣는다 (`JeonFormat.toWonDecimal`)
+- **화면은 바뀌지 않는다.** 운영 단가(9.6/30/90) 33개 조합을 실제 템플릿으로 렌더해 대조 — 전부 동일
+- 소수 단가에서는 실제로 갈린다: SMS 8.7원 × 12,345건 = **107,401.5원**.
+  전 단위 → `107,402원`, double(`107,401.4999...`) → `107,401원`
+- 검증: [RateTemplateRenderTest](src/test/java/com/coresolution/csm/template/RateTemplateRenderTest.java)
+  — 모델 값이 아니라 **렌더된 HTML** 을 본다. double 로 되돌리면 2건이 실패하는 것으로 가드 확인
+
+#### CSM-3 단가 파서가 플랫폼과 갈려 있던 것 — **수정 완료(08-26)**
+- 플랫폼 벡터 P01~P20 을 csm 파서에 대조해 **3건 분기 발견**. 전부 csm 만 통과시키던 값이다
+  | 입력 | 플랫폼 | csm (수정 전) | 영향 |
+  |---|---|---|---|
+  | `1e2` | `NOT_NUMERIC` 거부 | **10,000전(100원) 통과** | 같은 문자열이 두 시스템에서 다른 단가 |
+  | `+9.6` | `NOT_NUMERIC` 거부 | **960전 통과** | 위와 같음 |
+  | `21474836.48` | `TOO_LARGE` 거부 | **2,147,483,648전 통과** | 플랫폼 `Int` 컬럼 상한 초과 |
+- 원인: `new BigDecimal(String)` 의 예외에만 의존했다. 자바는 지수 표기·양수 부호를 받아들인다
+- 수정: `JeonFormat.parseWonToJeon` 에 플랫폼과 **같은 정규식**(`^-?(\d+(\.\d*)?|\.\d+)$`)과 상한 검사 추가
+- **파서를 한 곳으로 모았다.** `SmsService.parseUnitPriceJeon` 이 같은 규칙을 따로 구현하고 있었다 —
+  청구 경로라 더 중요했다. 이제 `JeonFormat` 에 위임한다
+- 검증: [JeonFormatRoundTripTest](src/test/java/com/coresolution/csm/util/JeonFormatRoundTripTest.java)
+  — 왕복(`parseWonToJeon(toWon(x)) == x`) 0~100,000전 전수 + 벡터 P01~P20 대조.
+  **왕복만으로는 못 잡았다. 벡터 대조가 잡았다**
+
+#### CSM-4 사용량 outbox — **완료(08-27)**
+- **C안**: outbox INSERT 를 발송 경로에 붙이되 트랜잭션으로 묶지 않고, 누락은 스캐너가 복구
+- ⚠️ **플랫폼 스펙의 전제가 csm 에 없었다.** §9.2 초안은 `sms_batch UPDATE` 와 outbox INSERT 를
+  같은 트랜잭션으로 묶는 그림이었는데, **csm 에는 발송 트랜잭션이 없다** —
+  비즈뿌리오 호출을 트랜잭션 밖에 두기로 한 의도적 결정이고, 집계 UPDATE 조차 best-effort 다.
+  없는 트랜잭션을 만들면 운영 발송 경로의 동작이 바뀐다 → 플랫폼 CLAUDE.md §9.2 를 실제 구조로 고쳤다
+- `sms_batch` = 진실 / `sms_usage_outbox` = 파생. 누락은 막는 대신 **복구 가능**하게 만든다
+- 스캐너는 `source='SCAN'` 으로 기록 — **자주 잡히면 그 자체가 신호다** (발송 경로 적재가 실패 중)
+- 스캔 지연 10분: `max-recipients(500) × send-delay(100ms) = 50초` + 건당 응답 1초 ≈ 9분.
+  **가장 느린 배치보다 길어야** 진행 중인 배치를 누락으로 오인하지 않는다.
+  `CSM_SMS_BATCH_MAX_RECIPIENTS` 를 올리면 같이 올린다
+- 스케줄러(1분): 전송 + 누락 복구 + **하트비트**. 0건 처리·실패·영구실패를 각각 센다 —
+  죽은 것과 보낼 게 없는 것이 로그에서 똑같이 조용하기 때문
+- 4xx = 영구 실패(재시도 안 함, `failed_reason` 에 사유). 5xx·네트워크 = 백오프 1→2→4→…→60분
+- payload 는 **적재 시점에 통째 저장**. 전송 시 다시 만들면 보내려던 것과 보낸 것이 갈린다
+
+##### `sms_batch.price_version` 고스트 — CSM-4 에서 닫았다
+- CSM-3 이 컬럼을 추가하고 주석에 "사용량 이벤트로 회신된다" 고 적었는데
+  **채우는 코드가 없어 항상 NULL 이었다** (`SEAL_IMAGE_GRACE_DAYS` 와 같은 종류)
+- 별도 티켓으로 빼지 않았다 — 고스트를 남긴 채 티켓을 늘리면 같은 일이 반복된다
+- `SmsService.unitPrice()` 가 단가와 버전을 **한 자리에서** 돌려준다. 새 조회를 추가하지 않았다 —
+  따로 조회하면 그 사이 폴링이 값을 바꿔 **과금 버전과 회신 버전이 갈린다**
+- 2단계 폴백의 버전은 `price()` 의 **같은 SELECT** 에 컬럼 하나를 더한 것이다
+- **버전 `null` 은 정상 값**이다 — 플랫폼 단가를 못 받고 발송했다는 정보다.
+  `0`/`-1` 로 채우면 "못 받았다" 와 "0번 버전" 이 섞인다
+- 기존 발송이 그대로인지 `SmsServicePriceTest` 로 고정 (금액 한 전도 안 달라진다)
+
+##### 검증 — 설계 시 정한 7항목 + 가드 무력화
+| 테스트 | 건수 |
+|---|---|
+| [SmsUsageOutboxIntegrationTest](src/test/java/com/coresolution/csm/integration/SmsUsageOutboxIntegrationTest.java) | 12 — 멱등·payload 고정·접수기준·billable·버전·스캐너·발송 보호 |
+| [SmsUsageSenderIntegrationTest](src/test/java/com/coresolution/csm/integration/SmsUsageSenderIntegrationTest.java) | 13 — **실제 HTTP 서버**로 4xx/5xx 분기·백오프·하트비트 |
+| [SmsUsageSenderBackoffTest](src/test/java/com/coresolution/csm/serivce/SmsUsageSenderBackoffTest.java) | 6 — 경계와 오버플로 |
+
+가드 무력화 결과: 4xx→재시도 **4건**, payload 재생성 **1건**, 스캔 지연 0 **1건**,
+enqueue 예외 전파 **1건** 이 문다.
+
+##### 플랫폼 쪽 후속
+- 플랫폼 `CLAUDE.md` §9.2 를 실제 구조로 재작성 (트랜잭션 → 진실/파생 + 스캐너)
+- **"csm 의 건수는 접수 시점 값" 을 §9.2 에 명시** — 사후 대사의 근거가 된다
+- `PLAT-3` 신규: 사용량 화면에 접수 기준 표시 (Phase 8 에서 판단)
+
+#### CSM-7 `contextLoads` 실패 — **완료(08-27)**
+
+##### 원인이 두 번 바뀌어 있었다
+| 날짜 | 일 |
+|---|---|
+| 2026-05-08 | 체크리스트에 기록: "OAuth2 빈 없음" |
+| 2026-05-20 | `ce39394` OAuth2 설정 공통 이동 — **그 원인은 해소됨** |
+| 2026-06-17 | `4a46c6e` `@Tag("integration")` → **CI 게이트에서 제외** |
+| 2026-08-11 | `b11efa2` 평문 시크릿 제거 → `SPRING_DATASOURCE_URL` 필수 env 화 — **새 원인** |
+| 2026-08-27 | 실행해서 확인. **나부터 옛 문서를 인용해 OAuth2 라고 보고했다가 정정** |
+
+- ⚠️ **게이트에서 뺀 2개월 사이 08-13 mediplat 12.5시간 중단이 났다** —
+  `PlaceholderResolutionException` 크래시 루프였고, **컨텍스트 테스트가 돌았으면 잡혔을 종류**다
+- 교훈은 플랫폼 `CLAUDE.md` §3.2 뒤에 기록 ("게이트에서 뺀 테스트는 실패 중이 아니라 상태 불명이 된다")
+
+##### 빈 배선 확인 — **정상이었다**
+CSM-2/3/4 로 추가한 빈 6개가 전부 배선되고 `@Autowired(required=false)` 두 자리도 채워진다.
+**배포 불가 상태가 아니었다.** 다만 그때까지 아무도 확인한 적이 없었다.
+
+##### C안: 테스트를 둘로 나눴다
+| 테스트 | 어디서 도나 | 검증 | **검증 안 함** |
+|---|---|---|---|
+| [ContextWiringTest](src/test/java/com/coresolution/csm/ContextWiringTest.java) | **CI 게이트** (태그 없음) | 플레이스홀더·빈 배선·`@Scheduled`·스캔 범위 | **매퍼 SQL 문법**, 스키마 부트스트랩, JDBC 세션, 실제 연결 |
+| [CsmApplicationTests](src/test/java/com/coresolution/csm/CsmApplicationTests.java) | 로컬 (컨테이너 필요) | 위 전부 + DB 연결·DDL·매퍼 SQL | — |
+
+- **프로파일을 새로 만들지 않았다.** `application-test.properties` 를 두면 컨텍스트는 쉽게 뜨지만
+  **운영이 읽는 `application-dev.properties` 를 안 읽게 되어** 이 테스트의 존재 이유가 사라진다
+- DataSource 는 **연결하지 않는 스텁**을 넣는다. 없애면 `JdbcTemplate` 을 쓰는 빈이 여럿이라
+  컨텍스트가 통째로 안 뜨고, 검증할 것이 남지 않는다
+- **두 테스트가 같은 프로파일·같은 properties 를 읽는지 서로 확인한다** — 갈리면 한쪽만 통과한다
+- 실행: `./scripts/run-context-test.sh` (필수 env 를 스크립트가 채운다)
+- 가드 무력화: 필수 env 제거 **7건**, 없는 프로퍼티 참조 **7건**, `@Scheduled` 표현식 파손 **7건**,
+  프로파일 불일치 **1건** 이 문다
+
+##### 이번에 드러난 사실
+- **dev 프로파일 필수 env 12개**가 코드로 고정됐다 (`ContextWiringTest` 의 `@TestPropertySource`).
+  새 필수 env 가 생기면 이 테스트가 먼저 터진다. 배포 절차서 §3 대조표와 같이 봐야 한다
+- `sms.bizppurio.account:` 처럼 **바깥에 기본값이 있어도 안쪽 `${BIZPPURIO_DEV_ACCOUNT}` 가 평가**된다
+  — 08-16 재배포 때 잡았던 중첩 폴백과 같은 구조
+- ⚠️ **JPA 의존성이 죽어 있다** — `spring-boot-starter-data-jpa` 는 있는데
+  `@Entity`·`JpaRepository`·`EntityManager` 사용처가 **0건**이다. 제거하면 기동이 빨라지고
+  자동설정 제외 목록도 줄지만, 이번 범위 밖이라 손대지 않았다
+
+##### ⚠️ mediplat 은 그대로다 (확인만, 손대지 않음)
+- **mediplat 에는 `@SpringBootTest` 가 하나도 없다.** 테스트 9개가 전부 단위 테스트다
+- 즉 "컨텍스트가 뜨는가" 를 보는 테스트가 **있어 본 적이 없다**. csm 은 있었다가 빠진 것이고
+- **08-13 장애는 mediplat 에서 났다.** 지금도 방어는 절차서 0-0 단계(사람이 하는 env 대조)뿐이다
+- csm 만 고치면 같은 장애가 mediplat 에서 반복될 수 있다 → 티켓 등록 여부 확인 필요
+
+#### 필수 env ↔ 배포 절차서 §3 대조 — **완료(08-27). 누락 2건 발견**
+
+| | 결과 |
+|---|---|
+| csm prod 필수 env | 9개 |
+| 절차서 §3 에 **없던 것** | ⚠️ **`KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`** |
+
+##### ⚠️ 정정 — 내 앞선 주장이 부정확했다
+"필수 env 12개가 코드로 고정됐다" 고 했는데 **`ContextWiringTest` 는 `@Value` 플레이스홀더만 잡는다.**
+
+| 바인딩 | env 가 없으면 |
+|---|---|
+| `@Value("${X}")` | **던진다.** 기동 실패 |
+| `@ConfigurationProperties` | **조용히 `"${X}"` 문자열을 넣는다.** 기동 성공 |
+
+실측: `KAKAO_CLIENT_ID` 없이 컨텍스트가 떴고 `ClientRegistration.clientId` 가
+문자열 `"${KAKAO_CLIENT_ID}"` 였다. `spring.mail.password` 도 같았다.
+
+**즉 "기동됐다" 는 "설정이 다 들어왔다" 를 뜻하지 않는다.**
+카카오 로그인은 배포 후 **사용자가 눌러 봐야** 깨진 것을 안다.
+
+##### 조치
+- `ContextWiringTest.해석되지_않은_플레이스홀더가_남지_않는다()` 신설 —
+  해석된 값에 `${` 가 남으면 실패. `KAKAO_CLIENT_ID` 를 빼면 문다
+- `application.properties` 의 **틀린 주석 정정** ("미설정 시 기동 실패" → 기동은 된다)
+- 절차서 §3 에 두 env 추가 + **§3.1 "이 표가 완전한지 확인하는 방법"** 신설
+  (테스트 + prod 프로파일용 grep 한 줄. 손으로 관리하면 또 빠진다)
+
+#### CSM-6 기관 동기화 통지 — **완료(08-27)**
+
+##### ⚠️ 설계 중 티켓 전제가 바뀌었다
+티켓은 "통지를 붙인다" 였는데, 확인해 보니 **`use_yn` 변경은 애초에 반영되지 않고 있었다.**
+
+`refreshFromPlatform()` 이 도는 시점이 둘뿐이었다:
+- 기동 시(`@PostConstruct`)
+- SSO 진입 시 — 그것도 `resolveInst()` 나 `loadUserInfo()` 가 **실패했을 때만**
+
+아는 기관·아는 사용자로 들어오면 refresh 가 안 돈다. ⇒ **비활성화는 재시작 전까지 반영 안 됨.**
+통지 코드만 붙였으면 **통지할 것이 없었다.**
+
+##### 구현 (B안)
+- `refreshFromPlatform()` 을 **10분 주기**로 실행 (`@Scheduled`).
+  `initialDelay` 를 주기와 같게 둬 **기동 직후 한 번 더 도는 낭비를 없앴다**
+- 변경 감지: `upsertCoreInstitution` 이 `InstChange` 를 돌려준다.
+  **새 조회를 만들지 않았다** — 기존 `SELECT COUNT(*)` 를 값 조회로 바꿨을 뿐.
+  따로 조회하면 실제 반영과 통지 내용이 갈릴 수 있다
+- 통지 타입 셋: `CREATED` / `USE_YN_CHANGED` / `RENAMED`.
+  둘이 같이 바뀌면 **`USE_YN_CHANGED` 를 먼저** — 통지 한 건에 운영상 더 중요한 사실을 싣는다
+- `inst_sync_outbox` 신설. PK `(inst_code, change_type)` — **10분마다 도는 경로라
+  같은 변경을 반복 적재하면 큐가 같은 통지로 찬다**
+- 스케줄러는 `SmsUsageSender` 공유(백오프·4xx·하트비트가 자동으로 같아진다), **테이블만 분리**
+- 기동 보호: `enqueueQuietly` 가 전부 삼킨다. `@PostConstruct` 경로라 던지면 **기동이 실패한다**
+
+##### 뷰 재생성 — 확인 결과와 정정
+- ⚠️ **제 설계 문장이 틀렸다.** "뷰 재생성은 매번 `DROP/CREATE`" 라고 적었는데
+  실제로는 **`CREATE OR REPLACE VIEW`** 다. MySQL 8 에서 실측 확인 —
+  **원자적 교체라 "뷰가 없는 순간" 은 생기지 않는다**
+- 남는 위험은 **배타적 메타데이터 락 경합**뿐이다. 10분마다 돌면 상시가 된다
+- 조치: **기관 목록이 바뀔 때만 다시 만든다.** 뷰 정의는 목록만의 함수라 같으면 SQL 도 같다.
+  목록이 같아도 **뷰 존재는 확인**한다 — 수동 DROP 후 영영 복구 안 되는 것을 막는다
+- **`refreshFromPlatform` 이 매번 전부 보강하는 성질은 그대로 유지**했다 (C안을 안 택한 이유)
+
+##### MediPlat 변경 — **불필요**
+`mp_institution` 은 **csm DB 안에 있고**(`MEDIPLAT_DATASOURCE_URL="${SPRING_DATASOURCE_URL}"`),
+MediPlat 이 쓰고 csm 이 읽는 같은 테이블이다. **통지는 csm 안에서 끝난다.**
+
+##### 검증
+| 테스트 | 건수 |
+|---|---|
+| [InstChangeDetectionTest](src/test/java/com/coresolution/csm/serivce/InstChangeDetectionTest.java) | 9 — **변경 없으면 통지 없음**, 세 타입, 우선순위, 경계 |
+| [InstSyncIntegrationTest](src/test/java/com/coresolution/csm/integration/InstSyncIntegrationTest.java) | 10 — 실제 MySQL. 반복 적재, `sent_at` 재개, 기동 보호 |
+
+가드 무력화: 변경 판정 제거 **2건**, `sent_at` 초기화 제거 **1건**, 예외 전파 **1건** 이 문다.
+
+##### 플랫폼 쪽 후속
+- `CLAUDE.md` **§9.3** 신설 — 엔드포인트·payload·멱등,
+  그리고 **`active:false` 시 데이터 흐름은 유지하고 표시만 바꾼다**는 판단과 근거
+  (재활성화 구간 / 지연 이벤트)
+- **`PLAT-4`** 신규 티켓. **엔드포인트가 없어도 csm 은 막히지 않는다** —
+  404 를 영구 실패로 닫고, 생기면 다음 변경부터 나간다.
+  다만 그 사이 변경은 안 들어오므로 **구현 후 기관 목록 수동 대조**가 필요하다
+
+#### [CSM-9] 수신번호 표기 규칙이 두 시스템에서 갈린다 — **미착수 / 등록만**
+
+> **나중에 터질 게 확실한 종류다.** 플랫폼 수신거부 구현 **전에는** 방향을 정해야 한다.
+
+- **csm**: `r.replaceAll("[^0-9]", "")` + 길이 8~15 검사가 전부
+  ([SmsBatchService.java:98](src/main/java/com/coresolution/csm/serivce/SmsBatchService.java#L98)).
+  E.164 정규화 없음, `+82` 변환 없음, 선행 0 처리 없음
+- **플랫폼**: E.164 정규화 + blind index(AES-256-GCM + HMAC-SHA256)
+- ⇒ **같은 번호가 두 시스템에서 다른 값으로 저장된다.**
+  `01012345678` 이 csm 에는 그대로, 플랫폼에는 `+821012345678` 의 해시로 들어간다
+- **수신거부·통계·대사 어디서든 갈린다.** 특히 두 시스템이 **같은 비즈뿌리오 계정**을 쓰므로
+  플랫폼이 수신거부를 구현하면 **csm 이 보낸 번호는 그 대조를 통과하지 못한다**
+
+##### 해결 방향 두 갈래 — 어느 쪽이든 범위가 크다
+| | 내용 | 부담 |
+|---|---|---|
+| A | **csm 을 플랫폼 규칙으로 맞춘다** | 기존 `transmission_history_*` 의 저장된 번호를 어떻게 할지 결정해야 한다. 마이그레이션 범위가 크다 |
+| B | **플랫폼이 csm 표기도 받아들인다** | 플랫폼이 정규화 전 표기를 함께 보관해야 한다. blind index 의 전제("표기가 달라도 같은 값으로 모인다")가 흔들린다 |
+
+- CSM-5 에서 `phone-vectors` 를 복사하지 않은 이유이기도 하다 — csm 에 대응 규칙이 없다
+- **착수 시점은 별도로 정한다. 지금은 등록만 한다**
+
+#### [MP-1] mediplat 컨텍스트 테스트 — **미착수 / 등록만**
+- **mediplat 에는 `@SpringBootTest` 가 하나도 없다.** 테스트 9개 전부 단위 테스트다
+- **2026-08-13 12.5시간 중단이 mediplat 에서 났다** —
+  `PLATFORM_ADMIN_PASSWORD` 미주입 → `PlaceholderResolutionException` 크래시 루프.
+  **컨텍스트 테스트가 CI 에서 돌았으면 잡혔을 종류다**
+- 지금 방어는 절차서 0-0 단계(사람이 하는 env 대조)뿐이다. csm 만 고치면 반복된다
+- **csm `ContextWiringTest` 와 같은 방식으로 만들 수 있다** —
+  스텁 DataSource + 운영 프로파일 유지 + 미해결 플레이스홀더 검사.
+  [ContextWiringTest](src/test/java/com/coresolution/csm/ContextWiringTest.java) 를 그대로 참고
+- **착수 시점은 별도로 정한다. 지금은 등록만 한다**
+
+#### [CSM-8] 죽은 JPA 의존성 제거 — **미착수 / 등록만**
+- `spring-boot-starter-data-jpa` 가 있는데 `@Entity`·`JpaRepository`·`EntityManager` 사용처가 **0건**
+- 제거하면 기동이 빨라지고 `ContextWiringTest` 의 자동설정 제외 목록도 줄어든다
+  (지금 `HibernateJpaAutoConfiguration`·`JpaRepositoriesAutoConfiguration` 을 빼고 있다)
+- **지금 건드릴 이유가 없다.** 의존성 제거는 회귀 범위가 넓고 급하지 않다
+
+#### CSM-5 벡터 CI — **완료(08-27)**
+- 사본: `src/test/resources/` 에 `pricing-vectors.json` · `inst-code-vectors.json` · `vectors.sha256`
+- **`pricing` + `inst-code` 둘만 복사했다.** `phone`·`ad-rules`·`ledger`·`settlement` 는
+  csm 에 대응 코드가 없다 — 사본만 두면 **"벡터 대조" 라는 이름의 CI 가 아무 규칙도 대조하지 않게 된다**
+- 테스트: [PricingVectorsTest](src/test/java/com/coresolution/csm/vectors/PricingVectorsTest.java) ·
+  [InstCodeVectorsTest](src/test/java/com/coresolution/csm/vectors/InstCodeVectorsTest.java)
+  — **파일을 직접 읽어** 돌린다. 케이스가 늘면 자동으로 같이 돈다
+- 손으로 옮겨 뒀던 P01~P20 · I01~I13 **전사본 제거**. 지우기 전 대조 결과 **20/20 · 13/13 일치**했지만
+  **운이 좋았던 것이지 보장이 아니었다** — 갈렸는지 확인할 장치가 없었다
+- CI: 벡터 잡을 **별도 스텝**으로 분리 (다른 실패에 묻히면 안 된다).
+  `ContextWiringTest` 처럼 태그를 안 붙여 게이트에 자동 포함
+- 야간 교차 검증 [vectors-cross-check.yml](.github/workflows/vectors-cross-check.yml) 신설.
+  **KST 03:30** — 플랫폼(03:00)보다 30분 늦게 돌려 갱신 중인 파일을 읽는 것을 피한다.
+  `PLATFORM_REPO_TOKEN` 없으면 **실패가 아니라 warning + 요약**으로 미실행을 알린다
+- **파일은 같은데 해시만 다른 경우**도 잡는다 — 그러면 한쪽 CI 만 빨개져 원인을 엉뚱한 데서 찾게 된다
+
+##### ⚠️ 경로가 어긋나 있었다 (착수 중 발견)
+- 처음에 `src/test/resources/vectors/` 하위에 뒀는데, **플랫폼 워크플로는
+  `counselman/src/test/resources/$file` 을 본다.** 그대로 뒀으면 야간 검증이
+  "사본이 없다" 로 **매일 빨개졌을 것**이고, 그러면 곧 아무도 안 본다
+- 경로를 맞추고 `플랫폼_워크플로가_찾는_경로에_있다()` 로 고정. 옮기면 문다
+
+##### phone 벡터를 복사하지 않은 근거 (실측)
+- csm 수신번호 처리는 `r.replaceAll("[^0-9]","")` + 길이 8~15 검사가 전부다.
+  **E.164 정규화 없음, `+82` 변환 없음, blind index 없음, 수신거부 대조 없음**
+- `maskPhoneNumber` 는 정규식 치환 하나(`010-1234-5678` → `010-****-5678`)로
+  하이픈이 없으면 아무것도 안 한다 — 플랫폼 마스킹 규칙과 다른 물건이다
+- ⚠️ **남는 위험**: 두 시스템이 같은 비즈뿌리오 계정을 쓰는데 번호 표기 규칙이 다르다.
+  플랫폼이 수신거부를 구현하면 **csm 이 보낸 번호는 그 대조를 통과하지 못한다**.
+  CSM-5 범위 밖 — 별도 판단 필요
+
+#### 남은 CSM 티켓 순서 — **확정(08-27)**
+1. **CSM-4** 사용량 outbox — 착수 전 설계 승인 필수.
+   운영 중인 발송 경로를 건드리므로 영향 범위를 먼저 확인한다
+2. **CSM-7** `contextLoads` 실패 해결 — **CSM-5 의 선행 조건**
+3. **CSM-5** 벡터 CI
+
+> CSM-5 의 원래 근거가 "전체 테스트가 상시 빨간 상태면 CI 게이트가 의미를 잃는다" 였다.
+> 지금 `-PexcludeIntegration` 없이 돌리면 `CsmApplicationTests.contextLoads` 가 실패한다.
+> **빨간 상태에 게이트를 얹으면 게이트가 아니라 소음이 된다.** CSM-7 이 먼저다.
+
+#### CSM-2 단가 화면 읽기 전용화 — **완료(08-27)**
+- **막는 대상은 사내 운영자다.** `/core/smssetting` 은 `isCoreInst` 전용이고,
+  병원 계정(`/rate`)은 원래 단가를 수정할 수 없었다 — 병원 화면은 바뀌는 것이 없다
+- 화면: 단가등록·단가수정 버튼과 모달 2개 제거. **단가 표시는 유지** (숨기면 지금 얼마로
+  나가는지 csm 에서 못 본다). 편집 전용 JS(`core-smssetting.js`)는 고아가 되어 삭제
+- 서버: `POST core/smssetting/priceInsert` → **410 Gone** + 안내 문구.
+  매핑은 남긴다 — 404 면 예전 탭·북마크가 "경로 없음" 만 보고 이유를 알 수 없다
+- **쓰기 경로를 통째로 제거**: `corePriceInsert` / `corePriceInsertAll` (매퍼·서비스).
+  `corePriceInsertAll` 은 **`WHERE` 절이 없는 UPDATE** 였다 — 한 번 저장하면 전 병원 단가가
+  바뀌고 이전 값을 남기지 않아 되돌릴 수 없었다. **이번에 없어지는 것이 맞다**
+- 배너 + 기관별 "단가 수신" 열(적용 버전 · 경과 시간). 15분 넘으면 `⚠` 로 구분
+- 검증
+  | 테스트 | 무엇을 |
+  |---|---|
+  | [PriceInsertGoneTest](src/test/java/com/coresolution/csm/controller/PriceInsertGoneTest.java) | **실제 HTTP 요청**이 410 인가. `all` 일괄 변경도. 권한 없으면 403 이 앞선다 |
+  | [SmsSettingTemplateRenderTest](src/test/java/com/coresolution/csm/template/SmsSettingTemplateRenderTest.java) | **렌더된 HTML** 에 편집 UI 자국이 없는가 |
+  | [PriceSourcePresenterTest](src/test/java/com/coresolution/csm/web/PriceSourcePresenterTest.java) | 낡음 판정 경계·문구 |
+- **화면과 서버를 둘 다 막았다.** 화면만 막으면 "막았다고 믿는데 안 막힌 상태" 가 된다
+- 가드 무력화 확인: 410 → 200 되돌리면 3건, 배너 제거 1건, stale 표시 제거 2건이 문다
+- 사내 운영자 안내: [docs/ops-price-management.md](docs/ops-price-management.md)
+
+##### 임계값 15분 — 플랫폼 PLAT-1 과 같은 근거
+- 처음 24시간을 제안했다가 바꿨다. 폴링 주기(5분)의 **288배**라 사실상 아무것도 안 잡는다
+- 플랫폼 PLAT-1 의 `PRICE_POLL_STALE_MINUTES` 기본 15분 = 폴링 주기의 3배.
+  **같은 값·같은 근거**를 쓴다 (`CSM_PRICE_STALE_MINUTES`). 두 화면이 같은 상황을 다르게 말하면 안 된다
+- 재는 것은 조금 다르다: 플랫폼 = "csm 이 조회한 시각", csm = "단가를 수신한 시각".
+  차이는 **폴링은 왔는데 값이 거부된 경우**뿐이고, 그때 플랫폼은 거부 회신으로 `불일치` 를 띄운다
+- 방향이 안전하다: csm 시각은 플랫폼보다 **같거나 더 오래됐다**. 절대 더 최신일 수 없다 →
+  "플랫폼은 끊김인데 csm 은 정상" 은 나올 수 없다
+
+##### ⚠️ 릴리즈 노트 — 게시할 내용이 사실상 없다
+- `/rate` 전 단위 전환: 병원 화면 **표시값 동일** (33개 조합 렌더 대조)
+- 단가 화면 제거: **사내 운영자 대상** — 병원 계정에는 변화 없음
+- → `core_update` 게시 여부는 배포 시점에 다시 판단한다. 사내 안내는 위 문서로 대체
+
+#### CSM-3 / CSM-2 배포 묶음 — **B안 확정(08-26)**
+- **배포 2회 / 공지 1회.** 1차는 CSM-3 코드만 `CSM_PRICE_PLATFORM_BASE_URL` **미설정**으로 →
+  단가 동작이 배포 전과 동일하므로 공지할 것이 없다.
+  2차에서 CSM-2 + URL 주입 → **그때 한 번 공지**
+- ⛔ **CSM-2 화면 변경을 1차 배포본에 담지 않는다.** URL 로 끄는 것이 요점인데
+  화면 변경은 URL 과 무관하게 바로 보인다. 담으면 "배포했지만 아무것도 안 변한다" 가 깨지고
+  중간 상태("고쳐도 5분 뒤 되돌아감")가 운영자에게 노출된다. **재시작 1회 추가는 감수한다**
+- 근거: 병원 담당자에게 큰 변화는 "요금 계산 개선"이 아니라 **"단가를 여기서 못 고치게 된다"** 이고,
+  그건 CSM-2 가 들어가야 완성된다
+- 절차: [docs/prod-deploy-checklist.md](docs/prod-deploy-checklist.md) §9.0
+
+#### CSM-3 단가 폴백 3단계 — **실제 MySQL 로 검증 완료(08-26)**
+- [PlatformPriceFallbackIntegrationTest](src/test/java/com/coresolution/csm/integration/PlatformPriceFallbackIntegrationTest.java)
+  — 테스트 전용 컨테이너(3309). `@Tag("integration")` 이라 CI 는 `-PexcludeIntegration` 으로 뺀다
+- 각 단계를 **서로 다른 값**으로 구분해 어느 쪽을 읽었는지 확정: 1단계 777전 / 2단계 1,234전 / 3단계 960전
+- **재시작 생존이 핵심이다.** 단가 저장 → `inst_data_cs` 를 비움 → 모든 객체를 새로 만듦 →
+  여전히 812전. 2단계를 비우지 않으면 캐시가 죽어도 티가 안 난다
+- **가드 확인: 캐시를 메모리로 되돌리면 4건이 문다**
+  | 테스트 | 메모리 캐시일 때 |
+  |---|---|
+  | `재시작을_넘겨_캐시_단가가_유지된다` | 812전 → **960전(3단계 폴백)** |
+  | `재시작을_넘겨_적용_버전이_유지된다` | 버전 회신이 **empty** — 플랫폼이 적용 여부를 알 수 없다 |
+  | `일단계_캐시가_있으면_캐시를_쓴다` | DB 행을 못 본다 |
+  | `캐시_값이_DB_행으로_남는다` | 행 자체가 없다 |
+- 미러링이 `inst_data_cs` 를 덮어쓰는 것도 테스트로 고정 — **배포 순서 제약의 근거**
+- 검증 중 `PlatformPriceCache` 클래스 주석의 "조용히 떨어진다" 가 부정확한 것을 발견해 정정.
+  `PLATFORM_CACHE_EMPTY` WARN 은 실제로 뜬다. 다만 "한 번도 못 받았다" 와 구분되지 않고
+  시간당 1회로 억제된다 — **로그는 신호일 뿐 방어가 아니고, 그동안 돈은 계속 움직인다**
+
+#### ⚠️ 미해결 — `/rate` 페이지 안에서 반올림 규칙이 두 갈래 (기존 동작)
+- 대부분의 금액: 템플릿 `#numbers.formatDecimal` → **HALF_EVEN** (`DecimalFormat` 기본값)
+- 월별 표의 **합계** 열: 컨트롤러가 미리 포맷 → **HALF_UP** (원래 `Math.round`)
+- `268.5원` 이면 한 화면에 `268` 과 `269` 가 같이 보인다.
+  현재 단가에서는 `.5` 가 안 나와 드러나지 않지만 **소수 단가가 들어오면 드러난다**
+- 이번 수정 범위 밖이라 동작을 유지했다. `합계_열과_나머지_열의_반올림_규칙이_다르다()` 로 현 상태를 고정해 둠
+
+#### ⚠️ 미해결 — 원 단위 반올림 vs 실제 청구액 (별도 티켓)
+- 화면은 원 단위로 반올림해 보여주는데 차감은 전 단위로 한다. 누적되면 화면 합계와 청구액이 갈린다
+- 범위: `/rate`, 월별 집계, 청구서, 플랫폼 관리자 화면 — **네 곳을 같은 규칙으로** 정해야 한다
+- 어느 쪽으로 통일할지(전 단위 표시 vs 원 단위 청구)는 요금 정책 판단이라 별도 결정 필요
+
+##### 근거 ① — 한 페이지 안에서 이미 규칙이 두 갈래다 (실측)
+| 자리 | 경로 | 반올림 |
+|---|---|---|
+| `/rate` 대부분의 금액 | 템플릿 `#numbers.formatDecimal` | **HALF_EVEN** (`DecimalFormat` 기본값) |
+| `/rate` 월별 표 **합계** 열 | 컨트롤러가 미리 포맷 (원래 `Math.round`) | **HALF_UP** |
+
+`268.5원`(MMS 89.5원 × 3건)이면 **한 화면에 `268` 과 `269` 가 같이 보인다.**
+`RateTemplateRenderTest.합계_열과_나머지_열의_반올림_규칙이_다르다()` 가 이 상태를 고정해 뒀다 —
+티켓 처리 시 이 테스트가 같이 바뀌어야 한다.
+
+현재 단가(9.6/30/90)에서는 `.5` 조합이 안 나와 드러나지 않는다. **소수 단가가 들어오면 드러난다.**
+즉 이건 가정이 아니라 **재현 가능한 실제 사례**이고, 표기 규칙을 통일해야 하는 근거다.
+
+##### 근거 ② — 반올림 방향을 아무도 명시한 적이 없다
+`Math.round` 는 HALF_UP 이고 `DecimalFormat` 기본은 HALF_EVEN 이다. 둘 다 **언어 기본값을
+그대로 쓴 결과**지 요금 정책으로 정한 것이 아니다. 통일할 때 **어느 쪽으로 할지 명시**해야 한다.
+
 
 #### 콜백 라우팅 전환 — **완료(08-14 09:23)**
 - 문제: `/api/external/SMSRequest`가 httpd에서 AJP 8009(레거시 ROOT.war)로 가서 csm-next 수신 0건.

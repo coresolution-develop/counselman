@@ -71,7 +71,37 @@ export PLATFORM_COUNSELMAN_LOGIN_AES_KEY="${LOGIN_AES_KEY}"
 export BIZPPURIO_PROD_ACCOUNT='<운영 Bizppurio account>'
 export BIZPPURIO_PROD_USERNAME='<운영 Bizppurio username>'
 export BIZPPURIO_PROD_PASSWORD='<운영 Bizppurio password>'
+
+# ⚠️ 아래 둘은 2026-08-27 대조에서 **이 표에 빠져 있던 것**이다.
+#    미설정이어도 **기동은 된다** — @ConfigurationProperties 는 미해결 플레이스홀더를
+#    조용히 문자열로 남긴다. clientId 가 "${KAKAO_CLIENT_ID}" 인 채로 뜨고,
+#    **사용자가 카카오 로그인을 눌러야** 깨진 것이 드러난다.
+export KAKAO_CLIENT_ID='<카카오 앱 REST API 키>'
+export KAKAO_CLIENT_SECRET='<카카오 앱 client secret>'
 ```
+
+### 3.1 이 표가 완전한지 확인하는 방법
+
+손으로 관리하면 또 빠진다. **코드가 목록을 들고 있게** 했다.
+
+```bash
+./gradlew test --tests '*ContextWiringTest' --console=plain
+```
+
+`ContextWiringTest` 는 dev 프로파일로 컨텍스트를 띄우고 **해석되지 않은 플레이스홀더가
+남았는지** 검사한다. 새 필수 env 가 생기면 이 테스트가 먼저 터진다.
+
+⚠️ **다만 dev 프로파일 기준이다.** prod 전용 값(`BIZPPURIO_PROD_*`)은 프로파일이
+달라 이 테스트가 직접 확인하지 못한다. prod 프로파일의 필수 env 는 아래로 뽑는다.
+
+```bash
+grep -hoE '\$\{[A-Z0-9_]+\}' \
+  src/main/resources/application.properties \
+  src/main/resources/application-prod.properties \
+  | tr -d '${}' | sort -u
+```
+
+기본값이 있는 것(`${X:기본값}`)은 위 정규식에 안 걸린다 — **걸리는 것이 곧 필수**다.
 
 ## 4. 사전 점검 명령
 
@@ -330,3 +360,258 @@ WantedBy=multi-user.target
 3. 기존 운영 롤백 방법 확보
 4. 배포 창구 시간 확정
 5. 시연 계정/기관/권한 최종 확인
+
+---
+
+## 9. CSM-3 단가 연동 배포 순서
+
+작성일: 2026-08-26
+
+csm 단가를 플랫폼(MediCast)이 배포하는 구조로 바꾸면서 **순서 제약**이 생겼다.
+코드 주석에도 같은 내용이 있다 — `PlatformPricePoller` 클래스 주석.
+
+### 9.0 배포 묶음 — CSM-3 은 **연동을 끈 채로 먼저** 나간다 (확정 2026-08-26)
+
+CSM-3(단가 pull)과 CSM-2(단가 화면 읽기 전용화)는 **공지는 한 번**, **배포는 두 번**으로 간다.
+
+| | 배포 | 운영자가 보는 변화 | 공지 |
+|---|---|---|---|
+| 1차 | **CSM-3 코드만.** `CSM_PRICE_PLATFORM_BASE_URL` 미설정 | **없음** — 단가 동작이 배포 전과 동일 | 안 함 |
+| 2차 | CSM-2 코드 + 1차에서 뺀 URL 주입 | 단가 화면이 읽기 전용이 된다 | **여기서 한 번** |
+
+**왜 나누나.** 배포를 나눠야 문제 시 원인이 분리된다. 그리고 1차는
+`@Autowired(required = false)` + URL 미설정 덕에 **기존 경로 그대로 동작**하므로
+공지할 것이 없다 (`PlatformPriceFallbackIntegrationTest.캐시_빈이_없어도_기존_경로로_동작한다`).
+
+**왜 공지는 한 번인가.** 1차와 2차 사이에 CSM-3 만 켜면 *"단가를 고쳐도 5분 뒤 되돌아가는"*
+중간 상태가 생긴다. 그걸 공지하면 곧 무의미해질 설명을 운영자에게 시키는 것이다.
+병원 담당자에게 중요한 변화는 "요금 계산 개선"이 아니라 **"단가를 여기서 못 고치게 된다"** 이고,
+그건 CSM-2 가 들어가야 완성된다.
+
+> ⛔ **CSM-2 의 화면 변경을 1차 배포본에 담지 않는다.**
+> URL 로 끄는 것이 이 방식의 요점인데, **화면 변경은 URL 과 무관하게 바로 보인다.**
+> 담으면 "배포했지만 아무것도 안 변한다" 가 성립하지 않고 중간 상태가 그대로 노출된다.
+> 재시작이 한 번 더 드는 것은 감수한다.
+
+아래 9.1~9.6 의 "순서" 는 **2차 배포(URL 주입)** 시점에 적용된다.
+
+### 9.1 왜 순서가 중요한가
+
+단가는 3단계로 폴백한다.
+
+| 단계 | 출처 | 오염 가능성 |
+|---|---|---|
+| 1 | `csm.platform_price_cache` | 플랫폼이 덮어씀 |
+| 2 | `csm.inst_data_cs` | **플랫폼이 덮어씀** ← 여기가 함정 |
+| 3 | `application.properties` 폴백값 | 안전 |
+
+`PlatformPriceCache.store()` 는 캐시 테이블뿐 아니라 **기존 `inst_data_cs` 컬럼도
+덮어쓴다** (기존 화면·조회가 그 컬럼을 읽기 때문이다).
+
+즉 **플랫폼에 잘못된 단가가 있는 상태로 연동을 켜면 1단계와 2단계가 동시에 오염된다.**
+연동을 다시 꺼도 2단계에 잘못된 값이 남아 그대로 청구된다. 되돌리려면 두 곳을 다 고쳐야 한다.
+
+### 9.2 순서
+
+| 순서 | 작업 | 성공 판정 |
+|---|---|---|
+| 1 | **csm 배포** (`CSM_PRICE_PLATFORM_BASE_URL` **미설정**) | 기동 로그에 `PLATFORM_CACHE_DISABLED` DEBUG 만. WARN 없음 |
+| 2 | `/rate` 화면 확인 | 배포 전과 **금액이 동일** (전 단위 수정은 표시를 바꾸지 않는다) |
+| 3 | **플랫폼 단가 API 가동 + 기관별 단가 시드** | 아래 9.3 대조 |
+| 4 | csm 에 `CSM_PRICE_PLATFORM_BASE_URL`·`CSM_PRICE_PLATFORM_API_KEY` 주입 후 재시작 | 30초 뒤 첫 폴링. 로그에 실패 WARN 없음 |
+| 5 | 폴링 반영 확인 | 아래 9.4 |
+
+### 9.3 3단계 — 연동을 켜기 전에 반드시 대조
+
+플랫폼 API 를 **직접 호출해서** 기관코드와 금액을 눈으로 본다.
+csm 을 붙이기 전에 하는 것이 요점이다 — 붙인 뒤에는 이미 덮어쓴 뒤다.
+
+`PlatformPriceClient.fetch()` 가 실제로 부르는 것과 같은 요청이다.
+
+```bash
+curl -s -H "X-Internal-Api-Key: $CSM_PRICE_PLATFORM_API_KEY" -H "Accept: application/json" \
+  "$CSM_PRICE_PLATFORM_BASE_URL/internal/prices?instCode=COHS" | python3 -m json.tool
+```
+
+확인 항목:
+
+- `instCode` 가 **대문자 정규형**인가 (`COHS`, `hsop_0001` 같은 값이 아님)
+- `unitCostJeon` 이 **전 단위 정수**인가 — `960` 이지 `9.6` 이 아니다
+- 운영 기준값과 같은가: SMS `960` / LMS `3000` / MMS `9000`
+- 기관이 **빠짐없이** 나오는가 — 빠진 기관은 2단계 폴백으로 남는다(정상)
+
+하나라도 어긋나면 **4단계로 넘어가지 않는다.** 플랫폼에서 먼저 고친다.
+
+### 9.4 5단계 — 반영 확인
+
+```sql
+SELECT inst_code, channel, unit_cost_jeon, price_version, received_at
+  FROM csm.platform_price_cache ORDER BY inst_code, channel;
+```
+
+```sql
+-- 미러가 같은 값인지. 두 결과의 금액이 달라야 할 이유가 없다.
+SELECT id_col_03, sms_price, lms_price, mms_price, sms_price_version
+  FROM csm.inst_data_cs ORDER BY id_col_03;
+```
+
+- `received_at` 이 **방금 시각**이면 폴링이 도는 것이다
+- `sms_price` 는 **원 단위 문자열**이다 (`9.6`). 전 단위 `960` 이 들어가 있으면 미러가 잘못된 것이다
+- `/rate` 화면 금액이 1단계에서 본 값과 **같아야** 한다
+
+### 9.5 비상 절차 — 플랫폼이 잘못된 단가를 배포했을 때
+
+**CSM-2 이후 csm 화면에서는 단가를 고칠 수 없다.** 편집 UI 도 없고
+`POST /core/smssetting/priceInsert` 는 410 을 돌려준다. 그래서 이 절차가 유일한 수동 경로다.
+
+#### 9.5.0 먼저 확인 — 정말 비상인가
+
+| 상황 | 조치 |
+|---|---|
+| 폴링이 실패만 함 (플랫폼 응답 없음) | **그대로 둔다.** 이전 단가로 발송이 계속된다. 설계된 동작이다 |
+| 플랫폼 단가가 틀렸는데 **플랫폼이 살아 있음** | **9.5.1 만 한다.** 5분 뒤 자동 정정된다. 아래 SQL 은 쓰지 않는다 |
+| 플랫폼 단가가 틀렸는데 **플랫폼이 죽었음** | 9.5.1 이 불가능하다. 9.5.2 로 간다 |
+
+> ⚠️ **플랫폼이 살아 있으면 SQL 을 만지지 않는다.** 고쳐 봐야 다음 폴링(5분)이 덮어쓰고,
+> 그 사이 무엇이 진짜 값인지 아무도 모르는 구간이 생긴다.
+
+#### 9.5.1 정상 경로 — 플랫폼에서 고친다
+
+MediCast 관리자 화면에서 단가를 수정한다. csm 은 최대 5분 뒤 자동 반영한다.
+
+확인:
+
+```sql
+SELECT inst_code, channel, unit_cost_jeon, price_version, received_at
+  FROM csm.platform_price_cache
+ WHERE inst_code = 'COHS'
+ ORDER BY channel;
+```
+
+`received_at` 이 갱신되고 `unit_cost_jeon` 이 고친 값이면 끝이다.
+`/core/smssetting` 화면의 "단가 수신" 열에서도 확인된다.
+
+#### 9.5.2 비상 경로 — 플랫폼이 죽었을 때
+
+> ⛔ **순서를 지킨다.** 틀리면 재시작 후 폴링이 다시 덮어쓴다.
+> **URL 제거 → 재시작 → SQL 수정** 이다. SQL 을 먼저 고치면 안 된다.
+
+**1단계. 연동을 끈다** (아직 재시작하지 않는다)
+
+운영 환경 파일에서 아래를 지우거나 빈 값으로 둔다.
+
+```bash
+CSM_PRICE_PLATFORM_BASE_URL=
+```
+
+**2단계. csm 을 재시작한다**
+
+```bash
+sudo systemctl restart csm    # 환경에 맞게
+```
+
+기동 로그 확인 — 폴링이 멈춘 것을 눈으로 본다.
+
+```bash
+journalctl -u csm --since '2 min ago' | grep -i 'price-poll'
+# 아무것도 안 나오면 정상이다. 폴러가 조용히 쉰다.
+```
+
+**3단계. 오염된 두 곳을 모두 고친다**
+
+폴백은 3단계인데 **플랫폼이 1단계와 2단계를 모두 덮어쓴다.**
+`PlatformPriceCache.store()` 가 `platform_price_cache` 와 `inst_data_cs` 를 같이 쓰기 때문이다.
+**URL 을 지우는 것만으로는 2단계에 잘못된 값이 남아 그대로 청구된다.**
+
+먼저 **지금 값을 본다.** 되돌릴 목표값을 모르면 고칠 수 없다.
+
+```sql
+-- ① 1단계 (캐시). 전 단위 정수다.
+SELECT inst_code, channel, unit_cost_jeon, price_version, received_at
+  FROM csm.platform_price_cache
+ ORDER BY inst_code, channel;
+
+-- ② 2단계 (미러). 원 단위 문자열이다. 9.6 이지 960 이 아니다.
+SELECT id_col_03, sms_price, lms_price, mms_price, sms_price_version
+  FROM csm.inst_data_cs
+ ORDER BY id_col_03;
+```
+
+**백업을 먼저 뜬다.** 되돌릴 방법 없이 UPDATE 하지 않는다.
+
+```sql
+CREATE TABLE csm.inst_data_cs_bak_20260827 AS SELECT * FROM csm.inst_data_cs;
+CREATE TABLE csm.platform_price_cache_bak_20260827 AS SELECT * FROM csm.platform_price_cache;
+```
+
+**1단계(캐시)를 비운다.** 고치는 것보다 비우는 것이 낫다 —
+비면 폴백이 2단계로 내려가고, 진실이 한 곳(2단계)만 남는다.
+
+```sql
+DELETE FROM csm.platform_price_cache WHERE inst_code = 'COHS';
+-- 전 기관이면 WHERE 를 빼되, 반드시 위 SELECT 로 대상을 먼저 확인할 것
+```
+
+**2단계(미러)를 올바른 값으로 되돌린다.** **원 단위 문자열**이다.
+
+```sql
+UPDATE csm.inst_data_cs
+   SET sms_price = '9.6',
+       lms_price = '30',
+       mms_price = '90',
+       sms_price_version = NULL
+ WHERE id_col_03 = 'COHS';
+```
+
+> `sms_price_version = NULL` 로 두는 이유: 이 값은 "플랫폼에서 받은 버전" 이라는 뜻이다.
+> 손으로 고친 값에 버전을 남겨 두면 **플랫폼이 배포한 값으로 오인**된다.
+
+**4단계. 확인한다**
+
+```sql
+SELECT id_col_03, sms_price, lms_price, mms_price, sms_price_version
+  FROM csm.inst_data_cs ORDER BY id_col_03;
+
+SELECT COUNT(*) FROM csm.platform_price_cache;   -- 비웠으면 0
+```
+
+`/rate` 화면(기관 로그인)에서 금액이 의도한 값인지 본다.
+`/core/smssetting` 은 전 기관 "수신 이력 없음" 으로 나온다 — 연동을 껐으니 맞다.
+
+**5단계. 발송으로 최종 확인**
+
+단가는 발송 시점에 결정된다. 문자 1건을 보내고 이력의 `cost` 를 본다.
+
+```sql
+SELECT refkey, message_type, cost, billable, reg_date
+  FROM csm.transmission_history_COHS
+ ORDER BY reg_date DESC LIMIT 3;
+```
+
+`cost` 는 **전 단위 정수**다. SMS 1건이면 `960` 이어야 한다 (`9.6` 이 아니다).
+
+#### 9.5.3 복구 — 연동을 다시 켠다
+
+플랫폼이 살아나고 **단가가 올바른 것을 9.3 대조로 확인한 뒤에** 켠다.
+
+1. 플랫폼에서 단가 확인 (§9.3 의 `curl`)
+2. `CSM_PRICE_PLATFORM_BASE_URL` 복원
+3. csm 재시작 → 30초 뒤 첫 폴링
+4. §9.4 로 반영 확인
+
+> 켜는 순간 폴링이 `inst_data_cs` 를 **다시 덮어쓴다.** 그래서 2번 전에 1번이 필수다.
+
+#### 9.5.4 백업 테이블 정리
+
+복구 확인 후 지운다. 남겨 두면 다음 사고 때 어느 것이 언제 것인지 헷갈린다.
+
+```sql
+DROP TABLE csm.inst_data_cs_bak_20260827;
+DROP TABLE csm.platform_price_cache_bak_20260827;
+```
+
+### 9.6 중단 기준
+
+- 9.3 대조에서 기관코드가 소문자·혼합 표기로 나옴
+- 9.3 에서 금액이 전 단위가 아니라 원 단위로 옴
+- 4단계 후 `/rate` 금액이 1단계와 다름
