@@ -62,3 +62,10 @@ mediplat/mediplat/data/
 __pycache__/
 *.pyc
 *.pyo
+
+### Claude Code 워크트리 ###
+### `git worktree` 로 만들어진 실제 체크아웃이다 (브랜치 `claude/*`).
+### 저장소 안에 있지만 내용은 이 저장소의 커밋으로 이미 추적된다 — 커밋할 것이 없다.
+### 실수로 스테이징하면 전체 소스 사본 + build/ 산출물이 통째로 들어간다 (현재 2.5GB).
+### 정리는 `git worktree remove` 로 한다. 디렉터리를 직접 지우면 .git/worktrees 에 메타가 남는다.
+.claude/worktrees/
