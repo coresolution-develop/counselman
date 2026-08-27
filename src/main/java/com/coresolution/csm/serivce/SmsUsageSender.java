@@ -40,6 +40,12 @@ public class SmsUsageSender {
     private static final int MAX_BACKOFF_MINUTES = 60;
 
     private final SmsUsageOutboxService outbox;
+
+    /**
+     * 기관 통지 (CSM-6). {@code required = false} — 없어도 사용량 전송은 그대로 돈다.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private InstSyncOutboxService instSyncOutbox;
     private final PlatformUsageClient client;
     private final JdbcTemplate jdbcTemplate;
 
@@ -93,6 +99,11 @@ public class SmsUsageSender {
             }
 
             outbox.recoverMissing(recoverDelayMinutes, batchSize);
+
+            // ── 기관 통지 (CSM-6) ──
+            // **같은 스케줄러 안에서 돈다.** 백오프·4xx 규칙·하트비트가 자동으로 같아진다.
+            // 테이블만 나눴다 — payload 모양과 엔드포인트가 다르기 때문이다.
+            sent += drainInstSync();
         } catch (Exception e) {
             // 스케줄러가 예외로 죽으면 다음 실행이 안 온다. 반드시 삼킨다.
             error = e.toString();
@@ -100,6 +111,56 @@ public class SmsUsageSender {
         }
 
         writeHeartbeat(sent, failed, permanent, error);
+    }
+
+    /**
+     * 기관 변경 통지를 보낸다.
+     *
+     * <p>사용량과 <b>같은 실패 규칙</b>을 쓴다 — 4xx 는 영구 실패, 5xx·네트워크는 백오프.
+     * 플랫폼에 엔드포인트가 아직 없으면 404 가 오고 <b>영구 실패로 닫힌다.</b>
+     * 그게 맞다 — 없는 경로를 무한 재시도하면 큐가 막힌다.
+     * 엔드포인트가 생긴 뒤에는 다음 변경부터 나간다 ({@code failed_reason} 이 초기화된다).
+     *
+     * @return 보낸 건수
+     */
+    private int drainInstSync() {
+        if (instSyncOutbox == null) {
+            return 0;
+        }
+
+        int sent = 0;
+        for (Map<String, Object> row : jdbcTemplate.queryForList("""
+                SELECT inst_code, change_type, payload, attempts
+                FROM csm.inst_sync_outbox
+                WHERE sent_at IS NULL
+                  AND failed_reason IS NULL
+                  AND (next_retry_at IS NULL OR next_retry_at <= NOW())
+                ORDER BY created_at
+                LIMIT ?
+                """, batchSize)) {
+            String inst = String.valueOf(row.get("inst_code"));
+            String type = String.valueOf(row.get("change_type"));
+            PlatformUsageClient.Result result =
+                    client.sendTo("/internal/institutions", String.valueOf(row.get("payload")));
+
+            if (result.ok()) {
+                jdbcTemplate.update("UPDATE csm.inst_sync_outbox SET sent_at = NOW(), "
+                        + "attempts = attempts + 1 WHERE inst_code = ? AND change_type = ?", inst, type);
+                sent++;
+            } else if (result.permanent()) {
+                jdbcTemplate.update("UPDATE csm.inst_sync_outbox SET failed_reason = ?, "
+                        + "attempts = attempts + 1 WHERE inst_code = ? AND change_type = ?",
+                        result.reason(), inst, type);
+                log.warn("[inst-sync] 영구 실패 inst={} type={} — 재시도하지 않습니다. 사유: {}",
+                        inst, type, result.reason());
+            } else {
+                int minutes = backoffMinutes(intOf(row.get("attempts")));
+                jdbcTemplate.update("UPDATE csm.inst_sync_outbox SET attempts = attempts + 1, "
+                        + "next_retry_at = NOW() + INTERVAL ? MINUTE "
+                        + "WHERE inst_code = ? AND change_type = ?", minutes, inst, type);
+            }
+        }
+        return sent;
     }
 
     /**

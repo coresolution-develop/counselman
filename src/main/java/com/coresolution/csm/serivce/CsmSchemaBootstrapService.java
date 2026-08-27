@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -30,6 +31,13 @@ public class CsmSchemaBootstrapService {
     private final MediplatRoleMapper mediplatRoleMapper;
     private final ChatTokenService chatTokenService;
 
+    /**
+     * 기관 변경 통지 (CSM-6). {@code required = false} — 없어도 동기화는 그대로 동작한다.
+     * 기동 경로에 붙는 코드라 <b>의존성이 늘어난 만큼 기동이 깨질 자리도 는다.</b>
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private InstSyncOutboxService instSyncOutbox;
+
     public CsmSchemaBootstrapService(JdbcTemplate jdbcTemplate,
                                      CsmAuthService csmAuthService,
                                      PlatformTransactionManager transactionManager,
@@ -45,6 +53,77 @@ public class CsmSchemaBootstrapService {
     @PostConstruct
     public void bootstrapOnStartup() {
         refreshFromPlatform();
+    }
+
+    /**
+     * 주기적 재동기화 (CSM-6).
+     *
+     * <p>── 왜 필요한가 ──
+     * 예전에는 <b>기동 시</b>와 <b>SSO 진입 시</b>(그것도 {@code resolveInst} 나
+     * {@code loadUserInfo} 가 <b>실패했을 때만</b>)에만 돌았다. 그래서
+     * <b>{@code use_yn} 변경이 영영 반영되지 않았다</b> — 기관도 사용자도 이미 알고 있으면
+     * refresh 가 안 돌고, 재시작해야 반영됐다.
+     *
+     * <p>── 왜 10분인가 ──
+     * 이 함수는 기관마다 DDL 보강 + 사용자 동기화를 하고, 마지막에 전 기관 UNION 뷰를
+     * 다시 만든다. 대부분 no-op 이지만 <b>공짜는 아니다.</b>
+     * 1분은 과하고, 1시간은 비활성화가 늦게 반영된다.
+     * <b>기관 수가 늘면 재검토해야 한다</b> — 지금은 6곳이라 부담이 없다.
+     *
+     * <p>── 기동 직후 한 번 더 돌지 않는다 ──
+     * {@code initialDelay} 를 주기와 같게 둔다. {@code @PostConstruct} 가 이미 돌렸으므로
+     * 곧바로 또 도는 것은 낭비다.
+     */
+    @Scheduled(fixedDelayString = "${csm.inst-sync.interval-ms:600000}",
+            initialDelayString = "${csm.inst-sync.initial-delay-ms:600000}")
+    public void refreshOnSchedule() {
+        refreshFromPlatform();
+    }
+
+    /** 마지막으로 뷰를 만들 때 쓴 기관 목록. 같으면 다시 만들지 않는다. */
+    private volatile List<String> lastViewInsts = null;
+
+    /**
+     * 전 기관 UNION 뷰를 <b>필요할 때만</b> 다시 만든다 (CSM-6).
+     *
+     * <p>── 왜 건너뛰나 ──
+     * 뷰 정의는 <b>기관 목록만의 함수</b>다 (컬럼 목록은 상수). 목록이 같으면
+     * 만들어지는 SQL 도 글자 그대로 같다 — 다시 만들 이유가 없다.
+     *
+     * <p>10분마다 도는 상황에서는 이게 중요하다. {@code CREATE OR REPLACE VIEW} 는
+     * <b>원자적이라 "뷰가 없는 순간" 은 생기지 않지만</b>(MySQL 8 에서 실측 확인),
+     * 배타적 메타데이터 락을 잡으므로 <b>그 뷰를 읽는 긴 쿼리와 경합</b>할 수 있다.
+     * 상시 반복할 이유가 없는 작업이다.
+     *
+     * <p>── 그래도 존재는 확인한다 ──
+     * 목록이 같아도 <b>뷰가 사라졌을 수 있다</b> (수동 DROP, 복구 작업 등).
+     * 목록 비교만으로 건너뛰면 그때 영영 복구되지 않는다.
+     * 존재 확인은 {@code information_schema} 조회 한 번이라 싸다.
+     */
+    private void recreateHistoryViewIfNeeded(List<String> historyReadyInsts) {
+        List<String> current = historyReadyInsts == null ? List.of() : List.copyOf(historyReadyInsts);
+
+        if (current.equals(lastViewInsts) && viewExists("v_transmission_history_all")) {
+            log.debug("[schema-bootstrap] v_transmission_history_all unchanged ({}개) — 재생성 생략",
+                    current.size());
+            return;
+        }
+
+        csmAuthService.recreateTransmissionHistoryAllView(current);
+        lastViewInsts = current;
+    }
+
+    private boolean viewExists(String viewName) {
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.VIEWS"
+                            + " WHERE TABLE_SCHEMA = \'csm\' AND TABLE_NAME = ?",
+                    Integer.class, viewName);
+            return count != null && count > 0;
+        } catch (Exception e) {
+            // 확인할 수 없으면 만드는 쪽으로 간다. 없는 것보다 낫다.
+            return false;
+        }
     }
 
     public synchronized void refreshFromPlatform() {
@@ -74,18 +153,27 @@ public class CsmSchemaBootstrapService {
                     ensureTransmissionHistoryColumns(instCode);
                     historyReadyInsts.add(instCode.replaceAll("[^a-zA-Z0-9_]", "_"));
                     ensureRoleIconColumn(instCode);
-                    transactionTemplate.executeWithoutResult(status -> {
-                        upsertCoreInstitution(instCode, instName, useYn);
+                    InstChange change = transactionTemplate.execute(status -> {
+                        InstChange c = upsertCoreInstitution(instCode, instName, useYn);
                         syncUsersFromPlatform(instCode, instName);
+                        return c;
                     });
                     chatTokenService.getOrCreateToken(instCode);
+
+                    // ── 플랫폼 통지 (CSM-6) ──
+                    // **트랜잭션 밖이다.** 통지 적재가 실패해도 기관 반영은 그대로 남는다.
+                    // 기동 시에도 도는 경로라 여기서 던지면 **기동이 실패한다.**
+                    // 근거는 InstSyncOutboxService 클래스 주석에 있다.
+                    if (change != null && instSyncOutbox != null) {
+                        instSyncOutbox.enqueueQuietly(change);
+                    }
                 } catch (Exception e) {
                     log.warn("[schema-bootstrap] inst={} skipped: {}", instCode, e.toString());
                 }
             }
             try {
                 // 컬럼·collation 보강이 끝난 기관만 포함한다. 실패가 기동을 막으면 안 된다.
-                csmAuthService.recreateTransmissionHistoryAllView(historyReadyInsts);
+                recreateHistoryViewIfNeeded(historyReadyInsts);
             } catch (Exception e) {
                 log.warn("[schema-bootstrap] v_transmission_history_all recreate failed: {}", e.toString());
             }
@@ -537,27 +625,64 @@ public class CsmSchemaBootstrapService {
         }
     }
 
-    private void upsertCoreInstitution(String instCode, String instName, String useYn) {
-        Integer count = jdbcTemplate.queryForObject("""
-                SELECT COUNT(*)
+    /**
+     * 기관 정보를 반영하고 <b>무엇이 바뀌었는지</b> 돌려준다 (CSM-6).
+     *
+     * <p>── 새 조회를 만들지 않았다 ──
+     * 예전에는 {@code SELECT COUNT(*)} 로 존재만 봤다. 그 자리를 <b>값 조회로 바꿨을 뿐</b>이다.
+     * 따로 조회하면 그 사이 값이 바뀌어 <b>실제 반영과 통지 내용이 갈릴 수 있다.</b>
+     *
+     * @return 통지할 변경. 바뀐 것이 없으면 {@code null}
+     */
+    private InstChange upsertCoreInstitution(String instCode, String instName, String useYn) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList("""
+                SELECT id_col_02, id_col_04
                 FROM csm.inst_data_cs
                 WHERE LOWER(id_col_03) = LOWER(?)
-                """, Integer.class, instCode);
-        if (count != null && count > 0) {
+                """, instCode);
+        int count = rows.size();
+        String prevName = count > 0 ? Objects.toString(rows.get(0).get("id_col_02"), null) : null;
+        String prevUseYn = count > 0 ? Objects.toString(rows.get(0).get("id_col_04"), null) : null;
+
+        if (count > 0) {
+            // **id_col_03 도 정규화값으로 갱신한다.** 예전에는 이 컬럼을 건드리지
+            // 않아, LOWER() 비교로 소문자 행을 찾아 갱신하면서 코드는 소문자로
+            // 남았다. 그 소문자를 migrateLocalInstitutions() 가 읽어 소문자
+            // 테이블을 만드는 되먹임 고리였다.
             jdbcTemplate.update("""
                     UPDATE csm.inst_data_cs
                     SET id_col_02 = ?,
+                        id_col_03 = ?,
                         id_col_04 = ?,
                         id_col_05 = COALESCE(id_col_05, '')
                     WHERE LOWER(id_col_03) = LOWER(?)
-                    """, instName, useYn, instCode);
-            return;
+                    """, instName, instCode, useYn, instCode);
+
+            // **바뀐 것이 없으면 통지하지 않는다.** 10분마다 6건씩 나가면
+            // 진짜 변경이 그 안에 묻힌다. use_yn 을 이름보다 먼저 본다 —
+            // 둘이 같이 바뀌면 운영에 더 중요한 쪽을 알린다.
+            if (!Objects.equals(prevUseYn, useYn)) {
+                return new InstChange(instCode, instName, useYn, "USE_YN_CHANGED");
+            }
+            if (!Objects.equals(prevName, instName)) {
+                return new InstChange(instCode, instName, useYn, "RENAMED");
+            }
+            return null;
         }
         jdbcTemplate.update("""
                 INSERT INTO csm.inst_data_cs
                 (id_col_02, id_col_03, id_col_04, id_col_05, id_col_06, id_col_07, id_col_08, id_col_09)
                 VALUES (?, ?, ?, ?, '', '', '', '')
                 """, instName, instCode, useYn, "synced from mediplat");
+        return new InstChange(instCode, instName, useYn, "CREATED");
+    }
+
+    /**
+     * 플랫폼에 알릴 기관 변경 (CSM-6).
+     *
+     * @param changeType {@code CREATED} / {@code USE_YN_CHANGED} / {@code RENAMED}
+     */
+    public record InstChange(String instCode, String instName, String useYn, String changeType) {
     }
 
     private void syncUsersFromPlatform(String instCode, String instName) {
