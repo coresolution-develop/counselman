@@ -94,16 +94,47 @@ class SmsServicePriceTest {
     // ── 반올림 규칙 ──────────────────────────────────────────────
 
     @Test
-    void subJeonPrecisionRoundsHalfUp() {
-        // 전 미만 자릿수는 폴백이 아니라 HALF_UP 반올림으로 근사값을 유지한다
+    void subJeonPrecisionIsRejected() {
+        // **CSM-3 에서 HALF_UP 근사를 제거했다.**
+        //
+        // 9.655 원은 965.5전인데 전 미만은 표현할 수 없다. 예전에는 966전으로
+        // 반올림했지만, 그러면 고객이 입력한 값과 실제 차감액이 갈린다 —
+        // 그건 표시 버그가 아니라 요금 분쟁이다.
+        //
+        // 이제 거부하고 폴백 단가를 쓴다. 플랫폼 parseUnitPrice() 와 같은
+        // 규칙이다 (pricing-vectors.json 의 P02).
         givenPrice("9.655", "30", "90");
-        assertThat(service.unitCostJeon(INST, "sms")).isEqualTo(966);
+        assertThat(service.unitCostJeon(INST, "sms")).isEqualTo(960); // 폴백
+        assertThat(warnedWithInstCode()).isTrue();
     }
 
     @Test
-    void subJeonPrecisionRoundsDownBelowHalf() {
+    void subJeonPrecisionIsRejectedBelowHalfToo() {
+        // 반올림 방향과 무관하다. 전 미만 자릿수가 있으면 무조건 거부한다.
         givenPrice("9.654", "30", "90");
+        assertThat(service.unitCostJeon(INST, "sms")).isEqualTo(960); // 폴백
+    }
+
+    @Test
+    void twoDecimalPlacesAreAccepted() {
+        // 소수 2자리까지는 전 단위로 정확히 표현된다.
+        givenPrice("9.65", "30", "90");
         assertThat(service.unitCostJeon(INST, "sms")).isEqualTo(965);
+    }
+
+    @Test
+    void trailingZerosDoNotCountAsPrecision() {
+        // "9.60" 은 소수 2자리지만 유효 자릿수는 1이다 — 통과해야 한다.
+        // 플랫폼 벡터 P10 과 같은 케이스.
+        givenPrice("9.60", "30", "90");
+        assertThat(service.unitCostJeon(INST, "sms")).isEqualTo(960);
+    }
+
+    @Test
+    void manyTrailingZerosStillPass() {
+        // "9.6000" 도 손실이 없으므로 통과한다 (벡터 P11).
+        givenPrice("9.6000", "30", "90");
+        assertThat(service.unitCostJeon(INST, "sms")).isEqualTo(960);
     }
 
     // ── 폴백 경로 ────────────────────────────────────────────────
@@ -158,5 +189,86 @@ class SmsServicePriceTest {
         givenPrice("9.6", "30", "90");
         service.unitCostJeon(INST, "sms");
         assertThat(warnedWithInstCode()).isFalse();
+    }
+
+    // ── CSM-4: 단가와 버전을 같은 자리에서 꺼낸다 ────────────────
+
+    /**
+     * ⭐ <b>기존 발송이 그대로 동작한다.</b>
+     *
+     * <p>{@code unitCostJeon} 은 CSM-4 에서 {@code unitPrice} 로 위임하게 바뀌었다.
+     * 발송 경로가 쓰는 값이므로 <b>금액이 한 전도 달라지면 안 된다.</b>
+     */
+    @Test
+    void CSM4_이후에도_단가는_그대로다() {
+        stubPrice("9.6", "30", "90");
+
+        assertThat(service.unitCostJeon(INST, "sms")).isEqualTo(960);
+        assertThat(service.unitCostJeon(INST, "lms")).isEqualTo(3000);
+        assertThat(service.unitCostJeon(INST, "mms")).isEqualTo(9000);
+    }
+
+    /** {@code unitPrice} 의 금액이 {@code unitCostJeon} 과 같아야 한다 — 두 경로가 갈리면 안 된다. */
+    @Test
+    void unitPrice_금액이_unitCostJeon_과_같다() {
+        stubPrice("12.34", "30", "90");
+
+        for (String type : new String[] { "sms", "lms", "mms" }) {
+            assertThat(service.unitPrice(INST, type).jeon())
+                    .as(type)
+                    .isEqualTo(service.unitCostJeon(INST, type));
+        }
+    }
+
+    /**
+     * 2단계 폴백에서는 미러된 버전이 따라온다.
+     *
+     * <p>이 값이 사용량 이벤트로 회신된다 — 플랫폼이 "적용됐다고 믿은 버전" 과
+     * 실제 과금 버전을 대조하는 근거다.
+     */
+    @Test
+    void 이단계_폴백은_미러된_버전을_함께_돌려준다() {
+        stubPrice("9.6", "30", "90", 11);
+
+        assertThat(service.unitPrice(INST, "sms").version()).isEqualTo(11);
+    }
+
+    /**
+     * ⭐ 3단계 폴백은 버전이 {@code null} 이다.
+     *
+     * <p>오류가 아니라 <b>플랫폼 단가를 못 받고 발송했다</b>는 정보다.
+     * 0 이나 -1 로 채우면 "못 받았다" 와 "0번 버전" 이 섞인다.
+     */
+    @Test
+    void 삼단계_폴백은_버전이_없다() {
+        stubPrice(null, null, null);
+
+        var price = service.unitPrice(INST, "sms");
+        assertThat(price.jeon()).isEqualTo(960);
+        assertThat(price.version()).isNull();
+    }
+
+    /** 미러 버전이 없는 기존 기관(연동 전 설정값)도 버전 없이 정상 동작한다. */
+    @Test
+    void 미러_버전이_없어도_단가는_나온다() {
+        stubPrice("9.6", "30", "90", null);
+
+        var price = service.unitPrice(INST, "sms");
+        assertThat(price.jeon()).isEqualTo(960);
+        assertThat(price.version()).isNull();
+    }
+
+    private void stubPrice(String sms, String lms, String mms) {
+        stubPrice(sms, lms, mms, null);
+    }
+
+    private void stubPrice(String sms, String lms, String mms, Integer version) {
+        Instdata d = new Instdata();
+        d.setId_col_03(INST);
+        d.setSms_price(sms);
+        d.setLms_price(lms);
+        d.setMms_price(mms);
+        d.setSms_price_version(version);
+        doReturn(List.of(d)).when(service).price(INST);
     }
 }

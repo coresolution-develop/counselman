@@ -11,6 +11,14 @@ public class Instdata {
     private String id_col_08;
     private String id_col_09;
     private String sms_price;
+
+    /**
+     * 이 기관에 적용된 플랫폼 단가 버전 (CSM-3 이 미러링한다).
+     *
+     * <p>{@code null} 이면 플랫폼 단가가 아니다 — 연동 전에 설정된 값이거나 미설정이다.
+     * 채널별이 아니라 <b>기관 단위</b>다. 폴링이 세 채널을 같은 버전으로 저장한다.
+     */
+    private Integer sms_price_version;
     private String lms_price;
     private String mms_price;
 
@@ -88,6 +96,14 @@ public class Instdata {
 
     public String getSms_price() {
         return sms_price;
+    }
+
+    public Integer getSms_price_version() {
+        return sms_price_version;
+    }
+
+    public void setSms_price_version(Integer sms_price_version) {
+        this.sms_price_version = sms_price_version;
     }
 
     public void setSms_price(String sms_price) {

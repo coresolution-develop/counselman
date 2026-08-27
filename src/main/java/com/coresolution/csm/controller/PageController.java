@@ -14,6 +14,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.math.BigDecimal;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -93,6 +94,10 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import com.coresolution.csm.config.InstDetails;
 import com.coresolution.csm.serivce.CounselListService;
 import com.coresolution.csm.serivce.CsmAuthService;
+import com.coresolution.csm.serivce.CsmSchemaBootstrapService;
+import com.coresolution.csm.serivce.PlatformPriceCache;
+import com.coresolution.csm.web.PriceSourcePresenter;
+import com.coresolution.csm.util.JeonFormat;
 import com.coresolution.csm.serivce.PermissionResolver;
 import com.coresolution.csm.serivce.RoomBoardService;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -162,6 +167,26 @@ public class PageController {
     private CsmEmailService emailService;
     @Autowired
     private SmsService ss;
+
+    /**
+     * 단가 수신 상태 표시용 (CSM-2).
+     *
+     * <p>{@code required = false} — CSM-3 미배포·미설정에서는 빈이 없다.
+     * 그때 화면은 전 기관 "수신 이력 없음" 으로 나온다. 기능이 꺼진 상태를
+     * 화면이 그대로 말하는 것이라 맞다.
+     */
+    @Autowired(required = false)
+    private PlatformPriceCache platformPriceCache;
+
+    /**
+     * 단가 수신이 낡았다고 판정하는 기준(분).
+     *
+     * <p>플랫폼 PLAT-1 의 {@code PRICE_POLL_STALE_MINUTES} 와 <b>같은 값</b>을 쓴다.
+     * 근거는 {@link PriceSourcePresenter} 클래스 주석에 있다.
+     */
+    @Value("${csm.sms.price.stale-minutes:15}")
+    private int priceStaleMinutes;
+
     @Autowired
     private ExternalSmsGatewayService externalSmsGatewayService;
     @Autowired
@@ -1248,6 +1273,15 @@ public class PageController {
         if (!isCoreInst(inst)) {
             return Map.of("result", "0", "msg", "권한 없음");
         }
+        // **형식 검증은 INSERT 앞이다.** 코드가 테이블 이름에 박히므로
+        // 등록 후에는 사실상 바꿀 수 없다 — 입력 시점이 유일한 방어선이다.
+        try {
+            String validated = CsmSchemaBootstrapService.requireValidInstCode(id.getId_col_03());
+            id.setId_col_03(validated);
+        } catch (CsmSchemaBootstrapService.InvalidInstCodeException e) {
+            return Map.of("result", "0", "msg", e.getMessage());
+        }
+
         int result = cs.coreInstInsert(id);
         if (result > 0 && id != null && id.getId_col_03() != null && !id.getId_col_03().isBlank()) {
             try {
@@ -3660,17 +3694,34 @@ public class PageController {
         List<Map<String, Object>> monthlyUsage = ss.getMonthlyUsage(inst);
         Instdata price = iddata.isEmpty() ? new Instdata() : iddata.get(0);
 
-        double smsPrice = parseDouble(price.getSms_price());
-        double lmsPrice = parseDouble(price.getLms_price());
-        double mmsPrice = parseDouble(price.getMms_price());
+        // ── 금액은 전(錢) 단위 정수로 계산한다 ──
+        //
+        // 예전에는 double 로 곱했다. 9.6 은 double 로 정확히 표현되지 않아
+        // (9.5999999999999996447...) 3건이면 28.799999999999997 이 된다.
+        //
+        // **템플릿이 소수점 0자리로 반올림하므로 지금은 화면 결과가 같다.**
+        // 그건 보장이 아니라 우연이다 — 정확한 값이 반올림 경계(.5)에 걸리고
+        // double 이 그 아래로 떨어지면 표시가 갈린다. 단가가 바뀌면 나타난다.
+        // 볼륨 할인(8.7·29.9 등)이 배포되면 LMS·MMS 에서도 같은 오차가 난다.
+        long smsUnitJeon = unitJeonOrZero(price.getSms_price());
+        long lmsUnitJeon = unitJeonOrZero(price.getLms_price());
+        long mmsUnitJeon = unitJeonOrZero(price.getMms_price());
         int smsCount = usage.getOrDefault("sms", 0);
         int lmsCount = usage.getOrDefault("lms", 0);
         int mmsCount = usage.getOrDefault("mms", 0);
 
-        double smsTotal = smsCount * smsPrice;
-        double lmsTotal = lmsCount * lmsPrice;
-        double mmsTotal = mmsCount * mmsPrice;
-        double total = smsTotal + lmsTotal + mmsTotal;
+        long smsTotalJeon = JeonFormat.multiply(smsUnitJeon, smsCount);
+        long lmsTotalJeon = JeonFormat.multiply(lmsUnitJeon, lmsCount);
+        long mmsTotalJeon = JeonFormat.multiply(mmsUnitJeon, mmsCount);
+        long totalJeon = smsTotalJeon + lmsTotalJeon + mmsTotalJeon;
+
+        BigDecimal smsPrice = JeonFormat.toWonDecimal(smsUnitJeon);
+        BigDecimal lmsPrice = JeonFormat.toWonDecimal(lmsUnitJeon);
+        BigDecimal mmsPrice = JeonFormat.toWonDecimal(mmsUnitJeon);
+        BigDecimal smsTotal = JeonFormat.toWonDecimal(smsTotalJeon);
+        BigDecimal lmsTotal = JeonFormat.toWonDecimal(lmsTotalJeon);
+        BigDecimal mmsTotal = JeonFormat.toWonDecimal(mmsTotalJeon);
+        BigDecimal total = JeonFormat.toWonDecimal(totalJeon);
 
         Map<String, Integer> thisMonthUsage = ss.getSendTypeUsageByMonth(inst, LocalDate.now());
         Map<String, Integer> lastMonthUsage = ss.getSendTypeUsageByMonth(inst, LocalDate.now().minusMonths(1));
@@ -3680,11 +3731,17 @@ public class PageController {
         int smsThisMonth = thisMonthUsage.getOrDefault("sms", 0);
         int lmsThisMonth = thisMonthUsage.getOrDefault("lms", 0);
         int mmsThisMonth = thisMonthUsage.getOrDefault("mms", 0);
-        double smsTotalThisMonth = smsThisMonth * smsPrice;
-        double lmsTotalThisMonth = lmsThisMonth * lmsPrice;
-        double mmsTotalThisMonth = mmsThisMonth * mmsPrice;
-        double thisMonthTotal = smsTotalThisMonth + lmsTotalThisMonth + mmsTotalThisMonth;
-        List<Map<String, Object>> monthlyBilling = buildMonthlyBillingRows(monthlyUsage, smsPrice, lmsPrice, mmsPrice);
+        long smsThisMonthJeon = JeonFormat.multiply(smsUnitJeon, smsThisMonth);
+        long lmsThisMonthJeon = JeonFormat.multiply(lmsUnitJeon, lmsThisMonth);
+        long mmsThisMonthJeon = JeonFormat.multiply(mmsUnitJeon, mmsThisMonth);
+        long thisMonthTotalJeon = smsThisMonthJeon + lmsThisMonthJeon + mmsThisMonthJeon;
+
+        BigDecimal smsTotalThisMonth = JeonFormat.toWonDecimal(smsThisMonthJeon);
+        BigDecimal lmsTotalThisMonth = JeonFormat.toWonDecimal(lmsThisMonthJeon);
+        BigDecimal mmsTotalThisMonth = JeonFormat.toWonDecimal(mmsThisMonthJeon);
+        BigDecimal thisMonthTotal = JeonFormat.toWonDecimal(thisMonthTotalJeon);
+        List<Map<String, Object>> monthlyBilling =
+                buildMonthlyBillingRows(monthlyUsage, smsUnitJeon, lmsUnitJeon, mmsUnitJeon);
 
         model.addAttribute("thisMonthUsage", thisMonthUsage);
         model.addAttribute("lastMonthUsage", lastMonthUsage);
@@ -3729,26 +3786,29 @@ public class PageController {
             List<Map<String, Object>> monthlyList = ss.getMonthlyUsage(inst);
             List<Instdata> prices = ss.price(inst);
             Instdata price = prices.isEmpty() ? new Instdata() : prices.get(0);
-            double smsPrice = parseDouble(price.getSms_price());
-            double lmsPrice = parseDouble(price.getLms_price());
-            double mmsPrice = parseDouble(price.getMms_price());
+            // 전 단위 정수로 계산한다. double 은 소수 단가에서 오차가 난다.
+            long smsUnitJeon = unitJeonOrZero(price.getSms_price());
+            long lmsUnitJeon = unitJeonOrZero(price.getLms_price());
+            long mmsUnitJeon = unitJeonOrZero(price.getMms_price());
 
             for (Map<String, Object> m : monthlyList) {
                 String ym = String.valueOf(m.get("month"));
                 int sms = ((Number) m.getOrDefault("sms", 0)).intValue();
                 int lms = ((Number) m.getOrDefault("lms", 0)).intValue();
                 int mms = ((Number) m.getOrDefault("mms", 0)).intValue();
-                double total = sms * smsPrice + lms * lmsPrice + mms * mmsPrice;
+                long totalJeon = JeonFormat.multiply(smsUnitJeon, sms)
+                        + JeonFormat.multiply(lmsUnitJeon, lms)
+                        + JeonFormat.multiply(mmsUnitJeon, mms);
 
                 Map<String, Object> monthData = new HashMap<>();
                 monthData.put("month", ym);
                 monthData.put("sms", sms);
                 monthData.put("lms", lms);
                 monthData.put("mms", mms);
-                monthData.put("smsPrice", smsPrice);
-                monthData.put("lmsPrice", lmsPrice);
-                monthData.put("mmsPrice", mmsPrice);
-                monthData.put("total", total);
+                monthData.put("smsPrice", JeonFormat.toWonDecimal(smsUnitJeon));
+                monthData.put("lmsPrice", JeonFormat.toWonDecimal(lmsUnitJeon));
+                monthData.put("mmsPrice", JeonFormat.toWonDecimal(mmsUnitJeon));
+                monthData.put("total", JeonFormat.toWonDecimal(totalJeon));
                 resultList.add(monthData);
             }
             return resultList;
@@ -3756,24 +3816,26 @@ public class PageController {
 
         List<Instdata> prices = ss.price(inst);
         Instdata price = prices.isEmpty() ? new Instdata() : prices.get(0);
-        double smsPrice = parseDouble(price.getSms_price());
-        double lmsPrice = parseDouble(price.getLms_price());
-        double mmsPrice = parseDouble(price.getMms_price());
+        long smsUnitJeon = unitJeonOrZero(price.getSms_price());
+        long lmsUnitJeon = unitJeonOrZero(price.getLms_price());
+        long mmsUnitJeon = unitJeonOrZero(price.getMms_price());
         Map<String, Integer> usage = ss.getSendTypeUsageByMonth(inst, LocalDate.parse(month + "-01"));
         int sms = usage.getOrDefault("sms", 0);
         int lms = usage.getOrDefault("lms", 0);
         int mms = usage.getOrDefault("mms", 0);
-        double total = sms * smsPrice + lms * lmsPrice + mms * mmsPrice;
+        long totalJeon = JeonFormat.multiply(smsUnitJeon, sms)
+                + JeonFormat.multiply(lmsUnitJeon, lms)
+                + JeonFormat.multiply(mmsUnitJeon, mms);
 
         Map<String, Object> result = new HashMap<>();
         result.put("month", month);
         result.put("sms", sms);
         result.put("lms", lms);
         result.put("mms", mms);
-        result.put("smsPrice", smsPrice);
-        result.put("lmsPrice", lmsPrice);
-        result.put("mmsPrice", mmsPrice);
-        result.put("total", total);
+        result.put("smsPrice", JeonFormat.toWonDecimal(smsUnitJeon));
+        result.put("lmsPrice", JeonFormat.toWonDecimal(lmsUnitJeon));
+        result.put("mmsPrice", JeonFormat.toWonDecimal(mmsUnitJeon));
+        result.put("total", JeonFormat.toWonDecimal(totalJeon));
         return result;
     }
 
@@ -7168,11 +7230,17 @@ public class PageController {
         return cri;
     }
 
+    /**
+     * 월별 청구 행. <b>단가를 전(錢) 단위로 받는다.</b>
+     *
+     * <p>double 로 곱하면 소수 단가에서 오차가 난다 (8.7 × 50 = 434.99999999999994).
+     * 지금은 템플릿이 반올림해 화면 결과가 같지만 <b>보장이 아니라 우연이다.</b>
+     */
     private List<Map<String, Object>> buildMonthlyBillingRows(
             List<Map<String, Object>> monthlyUsage,
-            double smsPrice,
-            double lmsPrice,
-            double mmsPrice) {
+            long smsUnitJeon,
+            long lmsUnitJeon,
+            long mmsUnitJeon) {
         if (monthlyUsage == null || monthlyUsage.isEmpty()) {
             return Collections.emptyList();
         }
@@ -7182,27 +7250,65 @@ public class PageController {
             int sms = numberToInt(row.get("sms"));
             int lms = numberToInt(row.get("lms"));
             int mms = numberToInt(row.get("mms"));
-            double smsTotal = sms * smsPrice;
-            double lmsTotal = lms * lmsPrice;
-            double mmsTotal = mms * mmsPrice;
-            double total = smsTotal + lmsTotal + mmsTotal;
+            long smsTotalJeon = JeonFormat.multiply(smsUnitJeon, sms);
+            long lmsTotalJeon = JeonFormat.multiply(lmsUnitJeon, lms);
+            long mmsTotalJeon = JeonFormat.multiply(mmsUnitJeon, mms);
+            long totalJeon = smsTotalJeon + lmsTotalJeon + mmsTotalJeon;
 
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("month", Objects.toString(row.get("month"), ""));
             out.put("sms", sms);
             out.put("lms", lms);
             out.put("mms", mms);
-            out.put("smsPrice", smsPrice);
-            out.put("lmsPrice", lmsPrice);
-            out.put("mmsPrice", mmsPrice);
-            out.put("smsTotal", smsTotal);
-            out.put("lmsTotal", lmsTotal);
-            out.put("mmsTotal", mmsTotal);
-            out.put("total", total);
-            out.put("totalText", won.format(Math.round(total)) + "원");
+            out.put("smsPrice", JeonFormat.toWonDecimal(smsUnitJeon));
+            out.put("lmsPrice", JeonFormat.toWonDecimal(lmsUnitJeon));
+            out.put("mmsPrice", JeonFormat.toWonDecimal(mmsUnitJeon));
+            out.put("smsTotal", JeonFormat.toWonDecimal(smsTotalJeon));
+            out.put("lmsTotal", JeonFormat.toWonDecimal(lmsTotalJeon));
+            out.put("mmsTotal", JeonFormat.toWonDecimal(mmsTotalJeon));
+            out.put("total", JeonFormat.toWonDecimal(totalJeon));
+            // 표시는 그대로 원 단위 반올림이다 (기존 화면과 같게 유지).
+            // 전 단위 정확도로 보여줄지는 별도 판단이다.
+            out.put("totalText",
+                    won.format(JeonFormat.toWonDecimal(totalJeon)
+                            .setScale(0, java.math.RoundingMode.HALF_UP)) + "원");
             rows.add(out);
         }
         return rows;
+    }
+
+    /**
+     * 단가 문자열 → 전. 파싱 실패·미설정이면 {@code 0}.
+     *
+     * <p>기존 {@code parseDouble()} 과 같은 동작이다 — 미설정 기관의 화면은
+     * 계속 0원으로 보인다. <b>화면 금액을 바꾸지 않는다.</b>
+     */
+    private long unitJeonOrZero(String won) {
+        Long jeon = JeonFormat.parseWonToJeon(won);
+        return jeon == null ? 0L : jeon;
+    }
+
+    /**
+     * 기관별 단가 수신 상태를 화면용으로 만든다 (CSM-2).
+     *
+     * <p>목록에 있는 <b>모든</b> 기관에 대해 항목을 만든다. 캐시에 없는 기관도
+     * "수신 이력 없음" 으로 나와야 한다 — 행이 통째로 비면 그 기관만 화면이 달라져
+     * <b>왜 다른지</b> 를 운영자가 추측하게 된다.
+     */
+    private Map<String, PriceSourcePresenter.View> buildPriceStatusView(List<Instdata> list) {
+        Map<String, PlatformPriceCache.InstPriceStatus> raw =
+                platformPriceCache == null ? Map.of() : platformPriceCache.statuses();
+        Instant now = Instant.now();
+
+        Map<String, PriceSourcePresenter.View> out = new LinkedHashMap<>();
+        for (Instdata inst : list) {
+            if (inst == null || inst.getId_col_03() == null) {
+                continue;
+            }
+            String code = inst.getId_col_03();
+            out.put(code, PriceSourcePresenter.of(raw.get(code), priceStaleMinutes, now));
+        }
+        return out;
     }
 
     private int numberToInt(Object value) {

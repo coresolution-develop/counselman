@@ -1,7 +1,5 @@
 package com.coresolution.csm.serivce;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.List;
@@ -19,6 +17,7 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 
 import com.coresolution.csm.mapper.SmsMapper;
+import com.coresolution.csm.util.JeonFormat;
 import com.coresolution.csm.vo.Criteria;
 import com.coresolution.csm.vo.Instdata;
 import com.coresolution.csm.vo.SmsTemplate;
@@ -56,6 +55,20 @@ public class SmsService {
     private SmsMapper mapper;
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    /**
+     * 플랫폼 단가 캐시 (폴백 1단계).
+     *
+     * <p>{@code required = false} 인 이유: CSM-3 이전 배포나 테스트에서는 빈이
+     * 없을 수 있다. 없으면 폴백이 2단계부터 시작한다 — <b>기존 동작 그대로다.</b>
+     */
+    @Autowired(required = false)
+    private PlatformPriceCache platformPriceCache;
+
+    /** 폴백 사유별 마지막 로그 시각. 발송마다 찍히는 것을 막는다. */
+    private final java.util.Map<String, Long> priceFallbackLoggedAt =
+            new java.util.concurrent.ConcurrentHashMap<>();
+    private static final long PRICE_FALLBACK_LOG_INTERVAL_MS = 10 * 60 * 1000L;
 
     /** 단가 폴백 (전 단위). inst_data_cs 값이 없거나 파싱 불가일 때만 사용한다. */
     @Value("${csm.sms.price-fallback.sms-jeon:960}")
@@ -205,7 +218,9 @@ public class SmsService {
     }
 
     public List<Instdata> price(String inst) {
-        String sql = "SELECT id_col_02, id_col_03, sms_price, lms_price, mms_price FROM csm.inst_data_cs WHERE id_col_03 = ?";
+        // sms_price_version 은 CSM-4 가 쓴다 — **같은 조회에서** 꺼내야 단가와 버전이 안 갈린다.
+        String sql = "SELECT id_col_02, id_col_03, sms_price, lms_price, mms_price, sms_price_version"
+                + " FROM csm.inst_data_cs WHERE id_col_03 = ?";
         return jdbcTemplate.query(sql, (rs, rowNum) -> {
             Instdata d = new Instdata();
             d.setId_col_02(rs.getString("id_col_02"));
@@ -213,6 +228,7 @@ public class SmsService {
             d.setSms_price(rs.getString("sms_price"));
             d.setLms_price(rs.getString("lms_price"));
             d.setMms_price(rs.getString("mms_price"));
+            d.setSms_price_version((Integer) rs.getObject("sms_price_version"));
             return d;
         }, inst);
     }
@@ -316,16 +332,82 @@ public class SmsService {
     }
 
     /**
-     * 발송 시점 단가(전 단위). 금액 계산에 double/float 를 쓰지 않는다 — BigDecimal 파싱 후
-     * 전(錢) 단위 정수로 변환한다 (9.6원 → 960전).
-     * inst_data_cs 값이 없거나 숫자가 아니면 프로퍼티 폴백을 쓰고, 관측을 위해 기관코드를 담아 WARN 을 남긴다.
+     * 발송 시점 단가(전 단위).
+     *
+     * <p>── 폴백 3단계 ──
+     * 플랫폼이 죽어도 발송이 멈추면 안 된다. 위에서부터 순서대로 찾는다.
+     *
+     * <pre>
+     *   1. platform_price_cache   플랫폼에서 받은 last-known-good (DB 에 영속)
+     *   2. inst_data_cs           기존 값
+     *   3. 프로퍼티 폴백           마지막 방어선
+     * </pre>
+     *
+     * <p>단계가 셋인 이유: "방금 받은 값" 과 last-known-good 을 따로 세지 않는다.
+     * 폴링이 받는 즉시 캐시에 쓰므로 <b>조회 시점에는 같은 곳</b>이다.
+     * 메모리 캐시를 하나 더 두면 재시작 때 두 값이 갈리는 경로만 생긴다.
+     *
+     * <p>1번이 <b>메모리가 아니라 DB</b> 인 것이 핵심이다. 메모리면 재시작 직후
+     * 비어 있고, 그때 플랫폼이 죽어 있으면 조용히 2번으로 떨어진다.
+     * 발송은 계속되므로 그 상태가 며칠 이어져도 아무도 모른다.
+     *
+     * <p>── 소수 3자리는 거부한다 ──
+     * 전(錢) 미만 자릿수는 표현할 수 없다. 예전에는 HALF_UP 으로 근사했지만
+     * <b>고객이 보는 금액과 실제 차감액이 달라진다.</b> 플랫폼의
+     * {@code parseUnitPrice()} 와 같은 규칙으로 거부하고 폴백한다.
      */
     public int unitCostJeon(String inst, String sendType) {
+        return unitPrice(inst, sendType).jeon();
+    }
+
+    /**
+     * 단가와 <b>그 단가가 어느 버전에서 왔는지</b>를 함께 돌려준다 (CSM-4).
+     *
+     * <p>── 왜 같이 돌려주나 ──
+     * 사용량 이벤트가 "이 배치를 어느 버전으로 과금했는지" 를 회신해야 한다.
+     * <b>단가를 정한 자리에서 같이 꺼내지 않으면</b> 나중에 다시 조회하게 되고,
+     * 그 사이 폴링이 값을 바꾸면 <b>과금한 버전과 회신한 버전이 갈린다.</b>
+     *
+     * <p>{@link UnitPrice#version()} 이 {@code null} 인 것은 오류가 아니다 —
+     * <b>플랫폼 단가를 못 받은 채로 발송했다</b>는 정보다 (3단계 폴백).
+     * 플랫폼은 그걸 보고 "적용됐다고 믿었는데 아니었다" 를 알 수 있다.
+     */
+    public UnitPrice unitPrice(String inst, String sendType) {
+        // ── 1단계: 플랫폼 캐시 (last-known-good) ──
+        //
+        // **두 상황을 구분해서 남긴다.** 로그에서 같아 보이면 진단이 안 된다.
+        //   빈 없음        CSM-3 미배포 또는 설정 미완 → 기존 동작 그대로
+        //   빈 있고 값 없음  플랫폼에서 한 번도 못 받았다 → 폴링을 확인해야 한다
+        if (platformPriceCache == null) {
+            // **경고하지 않는다.** 빈이 없다는 건 플랫폼 연동을 아직 켜지 않았다는
+            // 뜻이고, 그건 정상 상태다. 여기서 WARN 을 내면 연동 전까지 발송마다
+            // 경고가 쌓이고, 그러면 진짜 경고가 묻힌다 (§3.2 와 같은 판단).
+            if (log.isDebugEnabled()) {
+                log.debug("[sms-price] inst={} type={} PLATFORM_CACHE_DISABLED — 기존 경로로 동작합니다.",
+                        inst, sendType);
+            }
+        } else {
+            var cached = platformPriceCache.find(inst, sendType);
+            if (cached.isPresent()) {
+                return new UnitPrice(cached.get().unitCostJeon(), cached.get().priceVersion());
+            }
+            // 빈이 있는데 값이 없다 = 폴링이 한 번도 성공하지 못했다.
+            // **이건 정상이 아니다.** 위(빈 없음)와 구분해서 남긴다.
+            logPriceFallbackOnce(inst, sendType, "PLATFORM_CACHE_EMPTY",
+                    "플랫폼 단가를 아직 한 번도 받지 못했습니다. 폴링 상태를 확인하세요.");
+        }
+
+        // ── 2단계: inst_data_cs ──
+        //
+        // 버전은 **같은 SELECT 에서** 꺼낸다. 따로 조회하면 그 사이 폴링이 값을 바꿔
+        // 단가와 버전이 갈릴 수 있다.
         String priceStr = null;
+        Integer mirroredVersion = null;
         try {
             List<Instdata> rows = price(inst);
             if (!rows.isEmpty()) {
                 Instdata d = rows.get(0);
+                mirroredVersion = d.getSms_price_version();
                 priceStr = switch (sendType) {
                     case "lms" -> d.getLms_price();
                     case "mms" -> d.getMms_price();
@@ -335,33 +417,81 @@ public class SmsService {
         } catch (Exception e) {
             log.warn("[sms-price] inst={} price lookup failed: {}", inst, e.toString());
         }
+
         if (priceStr != null && !priceStr.isBlank()) {
-            try {
-                // 원 → 전 변환 후 전 단위로 반올림한다(9.6원 = 960전).
-                // 전 미만 자릿수(예: "9.655")는 데이터 입력 오류지만, 기본 단가로 폴백하면
-                // 입력값과 무관한 금액이 청구되므로 HALF_UP 으로 반올림해 근사값을 유지한다.
-                int jeon = new BigDecimal(priceStr.trim())
-                        .movePointRight(2)
-                        .setScale(0, RoundingMode.HALF_UP)
-                        .intValueExact();
-                if (jeon < 0) {
-                    log.warn("[sms-price] inst={} type={} negative price '{}', falling back to default",
-                            inst, sendType, priceStr);
-                } else {
-                    return jeon;
-                }
-            } catch (ArithmeticException | NumberFormatException e) {
-                log.warn("[sms-price] inst={} type={} invalid price '{}', falling back to default",
-                        inst, sendType, priceStr);
+            Integer parsed = parseUnitPriceJeon(inst, sendType, priceStr);
+            if (parsed != null) {
+                return new UnitPrice(parsed, mirroredVersion);
             }
         } else {
             log.warn("[sms-price] inst={} type={} price not configured, falling back to default", inst, sendType);
         }
-        return switch (sendType) {
+
+        // ── 3단계: 프로퍼티 폴백 ──
+        // 버전은 null 이다. **플랫폼 단가를 못 받고 발송했다**는 뜻이라 그 자체가 정보다.
+        int jeon = switch (sendType) {
             case "lms" -> fallbackLmsJeon;
             case "mms" -> fallbackMmsJeon;
             default -> fallbackSmsJeon;
         };
+        return new UnitPrice(jeon, null);
+    }
+
+    /**
+     * 단가(전)와 그 출처 버전.
+     *
+     * @param version 플랫폼이 배포한 단가 버전. {@code null} 이면 <b>플랫폼 단가가 아니다</b>
+     *                (프로퍼티 폴백 또는 플랫폼 연동 전에 설정된 값)
+     */
+    public record UnitPrice(int jeon, Integer version) {
+    }
+
+
+    /**
+     * 폴백 사유를 남기되 <b>발송마다 찍지 않는다.</b>
+     *
+     * <p>발송 한 건마다 WARN 이 나오면 대량 발송 시 로그가 그것으로 가득 찬다.
+     * 같은 (기관·채널·사유) 조합은 {@code PRICE_FALLBACK_LOG_INTERVAL} 마다 한 번만 남긴다.
+     * §3.2 노란색 판단과 같은 계열 — <b>항상 켜져 있는 경고는 곧 아무도 안 본다.</b>
+     */
+    private void logPriceFallbackOnce(String inst, String sendType, String reason, String message) {
+        String key = inst + "|" + sendType + "|" + reason;
+        long now = System.currentTimeMillis();
+        Long last = priceFallbackLoggedAt.get(key);
+        if (last != null && now - last < PRICE_FALLBACK_LOG_INTERVAL_MS) {
+            return;
+        }
+        priceFallbackLoggedAt.put(key, now);
+        log.warn("[sms-price] inst={} type={} {} — {}", inst, sendType, reason, message);
+    }
+
+    /**
+     * 원 문자열 → 전 단위 정수. 실패하면 null 을 돌려 호출부가 폴백하게 한다.
+     *
+     * <p><b>소수 3자리 이상은 거부한다.</b> 9.655원은 965.5전인데 전 미만은
+     * 표현할 수 없다. 반올림하면 고객이 입력한 값과 실제 차감액이 갈린다 —
+     * 그건 표시 버그가 아니라 요금 분쟁이다.
+     */
+    /**
+     * 원 단위 문자열 → 전. 거부하면 {@code null} 이고 호출부가 폴백으로 넘어간다.
+     *
+     * <p><b>규칙은 {@link JeonFormat#parseWonToJeon} 하나뿐이다.</b> 예전에는 여기에
+     * 같은 규칙을 따로 구현해 뒀는데, 플랫폼 벡터로 대조해 보니 갈라져 있었다 —
+     * {@code "1e2"} 를 플랫폼은 거부하는데 여기서는 <b>100원(10,000전)으로 통과</b>시켰다.
+     * 청구 경로라 같은 문자열이 두 시스템에서 다른 금액이 되는 상황이었다.
+     *
+     * <p>거부 사유별 문구는 없앴다. 운영자가 고쳐야 하는 것은 <b>거부된 값 자체</b>이고,
+     * 그 값은 로그에 그대로 남는다.
+     */
+    private Integer parseUnitPriceJeon(String inst, String sendType, String priceStr) {
+        Long jeon = JeonFormat.parseWonToJeon(priceStr);
+        if (jeon == null) {
+            log.warn("[sms-price] inst={} type={} 단가 '{}' 를 거부했습니다 — 폴백 단가를 씁니다."
+                    + " (허용: 0 이상, 소수 2자리까지, 지수 표기·부호·구분자 불가)",
+                    inst, sendType, priceStr);
+            return null;
+        }
+        return jeon.intValue();
     }
 
     /** 배치에 속한 이력 행 조회 (멱등 재요청 시 기존 결과 반환용). */

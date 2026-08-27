@@ -193,6 +193,93 @@ public class CsmSchemaBootstrapService {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
                 """);
         ensureSmsBatchColumnTypes();
+        ensurePlatformPriceCacheTable();
+        ensurePriceVersionColumns();
+        ensureSmsUsageOutboxTable();
+        ensureInstSyncOutboxTable();
+    }
+
+    /**
+     * 기관 변경 통지 outbox (CSM-6).
+     *
+     * <p>── PK 가 {@code (inst_code, change_type)} 인 이유 ──
+     * 이 경로는 <b>10분마다 돈다.</b> 같은 변경을 반복 적재하면 큐가 같은 통지로 찬다.
+     * 아직 못 보낸 같은 변경이 있으면 <b>행 하나로 유지하고 내용만 갱신</b>한다.
+     *
+     * <p>{@code sent_at} 이 찍힌 뒤 같은 기관이 <b>다시</b> 바뀌면?
+     * {@code ON DUPLICATE KEY UPDATE} 가 {@code attempts}·{@code next_retry_at}·
+     * {@code failed_reason} 을 초기화하지만 <b>{@code sent_at} 은 건드리지 않는다</b> —
+     * 그러면 다시 안 나간다. 그래서 적재 시 {@code sent_at} 도 함께 지운다
+     * ({@code InstSyncOutboxService.enqueue} 참조).
+     */
+    private void ensureInstSyncOutboxTable() {
+        try {
+            jdbcTemplate.execute("""
+                    CREATE TABLE IF NOT EXISTS csm.inst_sync_outbox (
+                        inst_code     VARCHAR(50)  NOT NULL,
+                        change_type   VARCHAR(20)  NOT NULL,
+                        payload       JSON         NOT NULL,
+                        attempts      INT          NOT NULL DEFAULT 0,
+                        next_retry_at DATETIME     NULL,
+                        sent_at       DATETIME     NULL,
+                        failed_reason VARCHAR(500) NULL,
+                        created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (inst_code, change_type),
+                        KEY ix_inst_sync_pending (sent_at, next_retry_at)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+                    """);
+        } catch (Exception e) {
+            log.warn("[schema-bootstrap] inst_sync_outbox create skipped: {}", e.toString());
+        }
+    }
+
+    /**
+     * 사용량 이벤트 outbox (CSM-4).
+     *
+     * <p>── {@code batch_id} 가 PK 인 이유 ──
+     * 플랫폼 멱등키가 {@code (companyId, batchId)} 다. csm 쪽에서도 <b>배치당 1건</b>이
+     * 구조적으로 보장돼야 한다. 누락 복구 스캐너가 중복 INSERT 를 시도해도 여기서 막힌다.
+     *
+     * <p>── {@code payload} 를 통째로 저장하는 이유 ──
+     * 전송 시점에 {@code sms_batch} 를 다시 읽으면 그 사이 바뀐 값이 나갈 수 있다.
+     * <b>보내려던 것과 보낸 것이 같아야 한다.</b>
+     *
+     * <p>── {@code source} ──
+     * {@code SEND} 는 발송 직후 정상 경로, {@code SCAN} 은 누락 복구 스캐너가 만든 것이다.
+     * <b>스캐너가 자주 잡으면 그 자체가 신호다</b> — 발송 경로의 outbox INSERT 가
+     * 계속 실패하고 있다는 뜻이다. 구분해 두지 않으면 그걸 알 수 없다.
+     */
+    private void ensureSmsUsageOutboxTable() {
+        try {
+            jdbcTemplate.execute("""
+                    CREATE TABLE IF NOT EXISTS csm.sms_usage_outbox (
+                        batch_id      VARCHAR(64)  NOT NULL PRIMARY KEY,
+                        inst_code     VARCHAR(50)  NOT NULL,
+                        payload       JSON         NOT NULL,
+                        source        VARCHAR(10)  NOT NULL DEFAULT 'SEND',
+                        attempts      INT          NOT NULL DEFAULT 0,
+                        next_retry_at DATETIME     NULL,
+                        sent_at       DATETIME     NULL,
+                        failed_reason VARCHAR(500) NULL,
+                        created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        KEY ix_usage_pending (sent_at, next_retry_at)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+                    """);
+            // 하트비트는 한 행만 갱신한다 (id=1). 이력이 필요한 값이 아니라
+            // **"마지막으로 언제 돌았나"** 만 알면 되는 값이다.
+            jdbcTemplate.execute("""
+                    CREATE TABLE IF NOT EXISTS csm.sms_usage_heartbeat (
+                        id              TINYINT      NOT NULL PRIMARY KEY,
+                        ran_at          DATETIME     NOT NULL,
+                        sent_count      INT          NOT NULL DEFAULT 0,
+                        failed_count    INT          NOT NULL DEFAULT 0,
+                        permanent_count INT          NOT NULL DEFAULT 0,
+                        last_error      VARCHAR(500) NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+                    """);
+        } catch (Exception e) {
+            log.warn("[schema-bootstrap] sms_usage_outbox create skipped: {}", e.toString());
+        }
     }
 
     /**
@@ -205,6 +292,59 @@ public class CsmSchemaBootstrapService {
      * <p>MySQL 의 INT → BIGINT 확대는 값 손실이 없고 온라인(INPLACE) 으로 처리되므로
      * 무중단이다. 값을 좁히는 방향이 아니라 넓히는 방향이라 롤백도 안전하다.
      */
+    /**
+     * 플랫폼이 배포한 단가의 last-known-good 보관소.
+     *
+     * <p><b>메모리가 아니라 DB 에 둔다.</b> 재시작 직후 플랫폼이 죽어 있으면
+     * 메모리 캐시는 비어 있고, 폴백이 조용히 한 단계 아래로 떨어진다.
+     * 그 상태가 지속돼도 아무도 모른다 — 발송은 계속되기 때문이다.
+     */
+    private void ensurePlatformPriceCacheTable() {
+        try {
+            jdbcTemplate.execute("""
+                    CREATE TABLE IF NOT EXISTS csm.platform_price_cache (
+                        inst_code     VARCHAR(50)  NOT NULL,
+                        channel       VARCHAR(10)  NOT NULL,
+                        unit_cost_jeon INT         NOT NULL,
+                        price_version INT          NOT NULL,
+                        received_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (inst_code, channel)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+                    """);
+        } catch (Exception e) {
+            log.warn("[schema-bootstrap] platform_price_cache create skipped: {}", e.toString());
+        }
+    }
+
+    /**
+     * 단가 버전 컬럼.
+     *
+     * <p>{@code inst_data_cs.sms_price_version} 은 그 기관에 적용된 버전이고,
+     * {@code sms_batch.price_version} 은 <b>그 배치를 어느 버전으로 과금했는지</b>다.
+     * 후자가 사용량 이벤트(CSM-4)로 플랫폼에 회신된다 — 플랫폼이 "적용됐다" 고
+     * 믿는 버전과 실제 과금 버전이 다르면 그 자리에서 드러난다.
+     */
+    private void ensurePriceVersionColumns() {
+        addColumnIfMissing("inst_data_cs", "sms_price_version", "INT NULL");
+        addColumnIfMissing("sms_batch", "price_version", "INT NULL");
+    }
+
+    private void addColumnIfMissing(String table, String column, String definition) {
+        try {
+            Integer count = jdbcTemplate.queryForObject("""
+                    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = 'csm' AND TABLE_NAME = ? AND COLUMN_NAME = ?
+                    """, Integer.class, table, column);
+            if (count != null && count == 0) {
+                jdbcTemplate.execute(
+                        "ALTER TABLE csm." + table + " ADD COLUMN " + column + " " + definition);
+                log.info("[schema-bootstrap] {}.{} added", table, column);
+            }
+        } catch (Exception e) {
+            log.warn("[schema-bootstrap] {}.{} add skipped: {}", table, column, e.toString());
+        }
+    }
+
     private void ensureSmsBatchColumnTypes() {
         try {
             String dataType = jdbcTemplate.queryForObject("""
@@ -380,7 +520,14 @@ public class CsmSchemaBootstrapService {
             for (String instCode : instCodes) {
                 if (instCode == null || instCode.isBlank()) continue;
                 try {
-                    csmAuthService.createCoreInstSchemaTables(instCode.trim());
+                    // **정규화한 값으로 만든다.** 원본을 그대로 넘기면 소문자 코드가
+                    // 소문자 테이블을 만들고, 동기화가 만든 대문자 테이블과 갈라진다.
+                    // 실제로 hsop_0001 에서 약 30쌍이 그렇게 생겼다.
+                    String normalized = normalizeInstCode(instCode);
+                    if (normalized == null) {
+                        continue;
+                    }
+                    csmAuthService.createCoreInstSchemaTables(normalized);
                 } catch (Exception e) {
                     log.warn("[schema-migrate-local] inst={} skipped: {}", instCode, e.toString());
                 }
@@ -579,7 +726,87 @@ public class CsmSchemaBootstrapService {
         return normalized;
     }
 
-    private String normalizeInstCode(String instCode) {
+    /**
+     * 허용하는 기관코드 형식.
+     *
+     * <p><b>대문자 영문 2~10자만 받는다.</b> 소문자·숫자·언더스코어는 거부한다.
+     * {@code core} 만 예약어로 따로 허용한다.
+     *
+     * <p>── 왜 이렇게 좁히나 ──
+     * 코드가 <b>테이블 이름에 그대로 박힌다</b> ({@code transmission_history_<inst>}).
+     * 등록하고 나면 사실상 바꿀 수 없으므로 <b>입력 시점이 유일한 방어선</b>이다.
+     *
+     * <p>실제로 {@code hsop_0001} 이 검증 없이 들어와 테이블이 두 표기로 갈라졌다
+     * (약 30쌍). 살아 있는 기관에서 같은 일이 나면 데이터가 두 곳으로 나뉜다.
+     *
+     * <p>길이 상한이 10인 이유: MySQL 식별자는 64자다. 가장 긴 접두사가
+     * {@code room_board_room_master_history_} (31자)라 여유를 둔다.
+     */
+    private static final java.util.regex.Pattern INST_CODE_PATTERN =
+            java.util.regex.Pattern.compile("^[A-Z]{2,10}$");
+
+    /** 기관코드 형식 오류. 등록을 거부할 때 쓴다. */
+    public static class InvalidInstCodeException extends IllegalArgumentException {
+        public InvalidInstCodeException(String message) {
+            super(message);
+        }
+    }
+
+    /**
+     * 기관코드가 허용 형식인지 확인한다. 아니면 던진다.
+     *
+     * <p><b>정규화로 통과시키지 않는다.</b> 소문자를 대문자로 바꿔 받아 주면
+     * 형식이 계속 다양해지고, 그 값이 테이블 이름에 박힌 뒤에는 되돌릴 수 없다.
+     */
+    public static String requireValidInstCode(String raw) {
+        // ── 순서가 규칙이다 ──
+        //   1. 형식 확인   ^[A-Z]{2,10}$
+        //   2. 정규화      normalizeInstCode()
+        //   3. 충돌 확인   정규화 결과가 예약어·기존 값과 겹치는가
+        //
+        // **1번만 하면 'CORE' 가 통과한다.** 형식은 유효한 대문자 4자인데
+        // 정규화하면 'core' 가 되어 최고관리자 기관과 겹친다.
+        // 등록은 CORE 로 되고 읽을 때는 core 가 되어 두 기관이 하나로 취급된다.
+        //
+        // 형식 검증과 정규화가 따로 있으면 **정규화 후 충돌까지 봐야 한다.**
+        String trimmed = raw == null ? "" : raw.trim();
+
+        if (CORE_INST_CODE.equals(trimmed)) {
+            return CORE_INST_CODE;
+        }
+
+        // 'CORE' · 'Core' 는 형식상 유효한 대문자지만 **등록하면 안 된다.**
+        // normalizeInstCode() 가 'core' 로 바꾸므로 최고관리자 기관과 충돌한다 —
+        // 등록은 CORE 로 되고 읽을 때는 core 가 되어 두 기관이 겹친다.
+        if (CORE_INST_CODE.equalsIgnoreCase(trimmed)) {
+            throw new InvalidInstCodeException(
+                    "'" + trimmed + "' 는 사용할 수 없습니다. 'core' 는 최고관리자 기관 예약어이며 "
+                            + "소문자로만 씁니다 — 다른 표기로 등록하면 같은 기관으로 취급되어 충돌합니다.");
+        }
+
+        if (!INST_CODE_PATTERN.matcher(trimmed).matches()) {
+            throw new InvalidInstCodeException(
+                    "기관코드 형식이 올바르지 않습니다: '" + trimmed + "'\n"
+                            + "  허용: 대문자 영문 2~10자 (예: COHS, FALH)\n"
+                            + "  거부: 소문자, 숫자, 언더스코어, 하이픈, 공백\n"
+                            + "  ※ 코드는 테이블 이름에 사용되어 등록 후 변경할 수 없습니다.");
+        }
+        return trimmed;
+    }
+
+    /** core 기관 코드. 소문자로 고정된 유일한 예외다. */
+    public static final String CORE_INST_CODE = "core";
+
+    /**
+     * 기관코드 정규화. <b>플랫폼 {@code normalizeInstCode()} 와 같은 규칙이어야 한다.</b>
+     *
+     * <p>규칙이 갈라지면 같은 기관이 두 시스템에서 다른 코드가 되고,
+     * 단가·사용량이 서로 다른 기관에 붙는다. 벡터 사본(CSM-5)으로 두 구현을 대조한다.
+     *
+     * <p>이것은 <b>정규화</b>이고 {@code safeInst()} 는 <b>SQL injection 검증</b>이다.
+     * 용도가 다르다 — 테이블 이름 조립에는 원본을, 플랫폼과 주고받는 키에는 정규화값을 쓴다.
+     */
+    public static String normalizeInstCode(String instCode) {
         if (!StringUtils.hasText(instCode)) {
             return null;
         }
