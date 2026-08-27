@@ -37,7 +37,29 @@ jobs:
             ~/.gradle/wrapper
           key: gradle-${{ hashFiles('**/*.gradle', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-
+      # ── 벡터 잡을 따로 띄운다 (CSM-5) ──
+      #
+      # 금액·기관코드 규칙이 플랫폼과 갈리면 청구가 엉킨다. 그 실패가 다른 테스트
+      # 실패에 묻히면 안 되므로 **이름이 붙은 별도 스텝**으로 먼저 돌린다.
+      # (플랫폼 CLAUDE.md §3.2 "CI 잡 분리")
+      #
+      # 이 스텝이 빨간데 아래 게이트가 초록일 수는 없다 -- 같은 테스트가 두 번 돈다.
+      # 중복은 의도된 것이다: **어디서 깨졌는지가 실행 목록에서 바로 보여야 한다.**
+      - name: Vector check (pricing / inst-code shared with the platform)
+        run: ./gradlew test --tests '*VectorsTest' --console=plain
+
       - name: Test gate (abort prod deploy if red)
+        # -PexcludeIntegration drops @Tag("integration") tests, which need a live DB.
+        #
+        # ContextWiringTest is deliberately NOT tagged: it boots the full Spring
+        # context with a stub DataSource, so it runs here. That is the point --
+        # CsmApplicationTests (DB-backed) was excluded in 2026-06 and nobody looked
+        # at it for two months, during which its failure cause changed twice and the
+        # 2026-08-13 mediplat outage (missing env -> PlaceholderResolutionException
+        # crash loop) shipped. ContextWiringTest catches that class of failure here.
+        #
+        # If you ever tag ContextWiringTest as integration, this gate stops checking
+        # whether the app can start at all.
         run: ./gradlew test --console=plain -PexcludeIntegration
       - name: Build PROD packages
         run: ./gradlew packageProdDeploy --console=plain
