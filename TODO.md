@@ -1,6 +1,6 @@
 # MediPlat 작업 현황
 
-> 최종 업데이트: 2026-08-14
+> 최종 업데이트: 2026-08-28
 
 ---
 
@@ -96,6 +96,23 @@ GROUP BY inst_code, status ORDER BY inst_code, status;
 - **확인 필요**: 어떤 화면의 추천기사인지, 현재 정렬/가중치 기준, 원하는 변경 방향
 - **작업량**: 미정 (스코프 확정 후 산정)
 
+#### [P1-6] `/core/smssetting` 열 밀림 + 단가 `null` 노출 — **미착수 / 2026-08-28 dev 검증에서 발견**
+- **증상**: 기관명 아래에 `y`/`n`(상태)이 붙고, 단가가 "단가 수신" 열에, 수신 상태가 "상태" 열에 나온다.
+  헤더와 행이 한 칸씩 어긋난 것처럼 보인다
+- **원인**: [admin.css:389](src/main/resources/static/css/csm/core/admin/admin.css#L389) 의
+  `.grid-header4, .grid-row4` 가 **3열**(`1fr 500px 250px`)이다. CSM-2 가 "단가 수신" 열을 추가해
+  4열이 됐는데 **헤더에만** 인라인으로 `180px 1fr 1fr 1fr` 을 줬다
+  ([smssetting.html:40](src/main/resources/templates/csm/core/admin/smssetting.html#L40)).
+  행은 3열 그대로라 넷째 셀이 다음 줄로 밀린다
+- 같은 파일에서 **테두리는 이미 4열 기준으로 고쳐져 있다**(`div:nth-child(3)`). 그리드 정의만 빠졌다
+- **수정 방향**: `smssetting.css` 에 `.sms-history-grid4 .grid-header4, .grid-body4 .grid-row4 { grid-template-columns: 180px 1fr 1fr 1fr; }`
+  추가 + 템플릿 인라인 `style` 제거(정의가 두 곳에 갈리면 또 어긋난다).
+  이 CSS 는 smssetting 화면에서만 로드되므로 다른 admin 화면에 영향 없다
+- **같이**: 단가 미설정 기관이 `null / null / null` 로 보인다 → `미설정` 표기로.
+  동작은 정상이다(3단계 폴백으로 계산된다). 운영자 화면에 `null` 이 보이는 것이 문제
+- **작업량**: 30분
+- ⚠️ **prod 배포 전에 고치는 것이 낫다.** 지금 고치면 prod 에는 처음부터 정상인 채로 나간다
+
 ### 🧹 P2 — 정리성 (방금 작업 연장선)
 
 #### [P2-1] 옛 페이지 redirect 정리
@@ -123,6 +140,8 @@ GROUP BY inst_code, status ORDER BY inst_code, status;
 - [ ] 챗봇 FAQ 검색 비로그인 접근 — 로그인 전 FAQ 패널 노출 검토
 - [ ] 좌측 네비게이션 스크롤 CSS 수정
 - [ ] 링크 허브 prod 배포 + 분류/환경 정리 SQL 실행 — dev만 반영됨. 상세는 완료 섹션 2026-08-16 항목
+- [ ] dev `catalina.out` 로테이션 없음 — 2026-08-28 실측 **718MB**. DEBUG 로 계속 쌓인다.
+      언젠가 dev 디스크가 찬다. logrotate 또는 로그 레벨 조정 필요 (prod 도 같은 구조인지 확인)
 
 **2026-08-09 mediplat 점검에서 나온 항목** (상세: [docs/handoff-2026-08-09.md](docs/handoff-2026-08-09.md))
 
@@ -137,6 +156,44 @@ GROUP BY inst_code, status ORDER BY inst_code, status;
 ---
 
 ## ✅ 완료된 작업
+
+### 2026-08-28 CSM-2..7 **dev 배포 검증** (코드 변경 없음)
+
+> 배포 자체는 08-27 23:20 에 이미 끝나 있었다 — `dev` push 는 GitHub Actions 가 자동 배포한다.
+> 이 세션은 **그것이 실제로 반영·동작하는지 확인**한 것이다.
+
+| 단계 | 결과 |
+|---|---|
+| war 반영·reload | ✅ 23:20:44 복사 → 23:20:53 explode → 23:21 컨텍스트 기동. 23:20 대 에러 0건 |
+| 새 테이블 4개 | ✅ `platform_price_cache` · `sms_usage_outbox` · `sms_usage_heartbeat` · `inst_sync_outbox` |
+| 필수 env | ✅ **새로 필요한 env 없음.** CSM-3/4/6 프로퍼티는 전부 기본값이 있다 |
+| 연동 OFF 확인 | ✅ `CSM_PRICE_PLATFORM_BASE_URL` 미설정, `[price-poll]` 로그 0건 |
+| outbox 적재 | ✅ 2기관(FALH·COHS) 발송 → `source=SEND`, `sent_at=NULL`, `attempts=0` |
+
+#### `totalCostJeon` 문자열 계약 — **실물로 확인됐다**
+- payload 실측: `"totalCostJeon": "900"` — **따옴표 있는 문자열**
+- 숫자로 나갔으면 플랫폼이 전량 400 이고 **4xx 는 영구 실패**라 그 사용량은 영영 안 들어갔다.
+  `c09bae0` 이 배포 직전에 잡은 것이 맞았다는 확인이다
+- `priceVersion: null` 도 정상이다 — 연동 OFF 라 플랫폼 단가를 못 받고 발송했다는 정보다
+- `unitCostJeon: 900` 은 **2단계 폴백**(`inst_data_cs`)에서 온 값이다. `priceVersion=null` 이 그 증거
+
+#### 알아 둘 것 — 지금 비어 있는 것이 정상인 자리
+- **`sms_usage_heartbeat` 는 비어 있다.** 연동이 꺼져 있으면 스케줄러가 하트비트를 쓰기 **전에**
+  조기 리턴한다 ([SmsUsageSender.java:73](src/main/java/com/coresolution/csm/serivce/SmsUsageSender.java#L73)).
+  나중에 이걸 보고 "스케줄러가 죽었나" 로 오해하지 말 것. 같은 이유로 **누락 복구 스캐너도 지금은 안 돈다**
+- 포털에 "문자" 카드가 없는 것도 정상이다 — 별도 `sms/` 앱은 08-11 에 동결했고 dev DB 행도 지웠다
+  ([sms-portal-restore-checklist.md](docs/sms-portal-restore-checklist.md) §3-A).
+  **outbox 에 적재되는 경로는 csm 의 `POST /api/counsel/sms/batch` 하나뿐**이고,
+  이를 호출하는 화면은 상담리스트(`/counsel/list`) · 입원상담(`/counsel/inpatient`) 둘이다
+
+#### 남은 것
+- [ ] **단가 연동 2차 (URL 주입) 미착수** — MediCast **dev** 의 `base-url` / API 키를 몰라 중단했다.
+      켜기 전에 §9.3 `curl` 대조가 **필수**다. 켜는 순간 `inst_data_cs`(2단계 폴백)까지 덮어써서,
+      잘못된 값이 들어오면 URL 을 다시 빼도 오염이 남는다.
+      절차: [docs/prod-deploy-checklist.md](docs/prod-deploy-checklist.md) §9.2~9.4
+- [ ] **prod 미배포 19커밋** — 08-16 링크 허브부터 CSM-2..7 까지 전부
+- [ ] P1-6 (`/core/smssetting` 열 밀림 + `null` 표기) — **prod 배포 전에 고치는 것이 낫다**
+- 상세: [docs/handoff-2026-08-28.md](docs/handoff-2026-08-28.md)
 
 ### 2026-08-16 링크 허브 리디자인 (UI 전면 교체 + 환경·분류 컬럼)
 
