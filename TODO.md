@@ -96,22 +96,7 @@ GROUP BY inst_code, status ORDER BY inst_code, status;
 - **확인 필요**: 어떤 화면의 추천기사인지, 현재 정렬/가중치 기준, 원하는 변경 방향
 - **작업량**: 미정 (스코프 확정 후 산정)
 
-#### [P1-6] `/core/smssetting` 열 밀림 + 단가 `null` 노출 — **미착수 / 2026-08-28 dev 검증에서 발견**
-- **증상**: 기관명 아래에 `y`/`n`(상태)이 붙고, 단가가 "단가 수신" 열에, 수신 상태가 "상태" 열에 나온다.
-  헤더와 행이 한 칸씩 어긋난 것처럼 보인다
-- **원인**: [admin.css:389](src/main/resources/static/css/csm/core/admin/admin.css#L389) 의
-  `.grid-header4, .grid-row4` 가 **3열**(`1fr 500px 250px`)이다. CSM-2 가 "단가 수신" 열을 추가해
-  4열이 됐는데 **헤더에만** 인라인으로 `180px 1fr 1fr 1fr` 을 줬다
-  ([smssetting.html:40](src/main/resources/templates/csm/core/admin/smssetting.html#L40)).
-  행은 3열 그대로라 넷째 셀이 다음 줄로 밀린다
-- 같은 파일에서 **테두리는 이미 4열 기준으로 고쳐져 있다**(`div:nth-child(3)`). 그리드 정의만 빠졌다
-- **수정 방향**: `smssetting.css` 에 `.sms-history-grid4 .grid-header4, .grid-body4 .grid-row4 { grid-template-columns: 180px 1fr 1fr 1fr; }`
-  추가 + 템플릿 인라인 `style` 제거(정의가 두 곳에 갈리면 또 어긋난다).
-  이 CSS 는 smssetting 화면에서만 로드되므로 다른 admin 화면에 영향 없다
-- **같이**: 단가 미설정 기관이 `null / null / null` 로 보인다 → `미설정` 표기로.
-  동작은 정상이다(3단계 폴백으로 계산된다). 운영자 화면에 `null` 이 보이는 것이 문제
-- **작업량**: 30분
-- ⚠️ **prod 배포 전에 고치는 것이 낫다.** 지금 고치면 prod 에는 처음부터 정상인 채로 나간다
+> ✅ **P1-6 은 2026-08-28 완료** — 상세는 아래 "완료된 작업" 참조.
 
 ### 🧹 P2 — 정리성 (방금 작업 연장선)
 
@@ -157,6 +142,33 @@ GROUP BY inst_code, status ORDER BY inst_code, status;
 
 ## ✅ 완료된 작업
 
+### 2026-08-28 [P1-6] `/core/smssetting` 열 밀림 + 단가 `null` 표기 — **완료 / 미배포**
+
+- **증상**: 기관명 아래에 상태값이 붙고, 단가가 "단가 수신" 열에 나오는 등 헤더와 행이 한 칸씩 어긋나 보였다
+- **원인**: [admin.css:389](src/main/resources/static/css/csm/core/admin/admin.css#L389) 의
+  `.grid-header4, .grid-row4` 가 **3열**(`1fr 500px 250px`)인데 CSM-2 가 "단가 수신" 열을 더해
+  셀이 4개가 됐다. **헤더에만** 인라인 `style` 로 4열을 줘서 행만 넷째 셀이 다음 줄로 밀렸다
+- **수정**: 열 정의를 `smssetting.css` **한 곳**으로 모으고 템플릿 인라인 `style` 제거.
+  이 CSS 는 smssetting 화면에서만 로드되므로 다른 admin 화면에 영향 없다
+  - 기관이 없을 때의 안내 행(`grid-row4--empty`)은 셀이 하나뿐이라 1열로 따로 둔다 —
+    안 그러면 4열의 첫 180px 안에서 접힌다
+- **`null / null / null` → `미설정`**: 필드별로 판정한다. `9.6 / 미설정 / 미설정` 처럼
+  **있는 값은 그대로 보인다**. 빈칸으로 두지 않았다 — "0원" 과 "못 받았다" 가 구분되지 않는다
+- 동작은 원래 정상이었다(3단계 폴백으로 계산돼 발송된다). 운영자 화면 표기만의 문제다
+
+##### ⚠️ 셀 수만 세는 테스트로는 이 버그를 못 잡는다
+깨진 상태에서도 **헤더·행 모두 셀은 4개**였다. 갈린 것은 **CSS 열 수와 셀 수**다.
+그래서 [SmsSettingTemplateRenderTest](src/test/java/com/coresolution/csm/template/SmsSettingTemplateRenderTest.java)
+가 렌더된 HTML 과 `smssetting.css` 를 **같이** 읽어 대조한다 (4건 추가, 총 13건).
+
+가드 무력화: CSS 열 정의 제거 **1건**, 헤더 인라인 `style` 복원 **1건**,
+`null` 처리 되돌림 **2건** 이 문다.
+
+- **동일 패턴 확인**: `setting.html` · `categorysetting.html` 도 같은 클래스를 쓰지만
+  셀이 3개라 admin.css 3열과 맞는다. **열이 늘어난 화면은 여기 하나뿐**이다
+- 전체 게이트 통과: `./gradlew test -PexcludeIntegration` → **415건 / 실패 0**
+- ⚠️ **아직 dev 에도 안 올라갔다.** push 하면 자동 배포된다
+
 ### 2026-08-28 CSM-2..7 **dev 배포 검증** (코드 변경 없음)
 
 > 배포 자체는 08-27 23:20 에 이미 끝나 있었다 — `dev` push 는 GitHub Actions 가 자동 배포한다.
@@ -191,8 +203,8 @@ GROUP BY inst_code, status ORDER BY inst_code, status;
       켜기 전에 §9.3 `curl` 대조가 **필수**다. 켜는 순간 `inst_data_cs`(2단계 폴백)까지 덮어써서,
       잘못된 값이 들어오면 URL 을 다시 빼도 오염이 남는다.
       절차: [docs/prod-deploy-checklist.md](docs/prod-deploy-checklist.md) §9.2~9.4
-- [ ] **prod 미배포 19커밋** — 08-16 링크 허브부터 CSM-2..7 까지 전부
-- [ ] P1-6 (`/core/smssetting` 열 밀림 + `null` 표기) — **prod 배포 전에 고치는 것이 낫다**
+- [ ] **prod 미배포 20커밋** — 08-16 링크 허브부터 CSM-2..7 까지 전부
+- ✅ P1-6 (`/core/smssetting` 열 밀림 + `null` 표기) — **완료(08-28).** prod 에는 처음부터 정상으로 나간다
 - 상세: [docs/handoff-2026-08-28.md](docs/handoff-2026-08-28.md)
 
 ### 2026-08-16 링크 허브 리디자인 (UI 전면 교체 + 환경·분류 컬럼)
