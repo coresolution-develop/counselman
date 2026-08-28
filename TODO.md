@@ -203,7 +203,11 @@ GROUP BY inst_code, status ORDER BY inst_code, status;
       켜기 전에 §9.3 `curl` 대조가 **필수**다. 켜는 순간 `inst_data_cs`(2단계 폴백)까지 덮어써서,
       잘못된 값이 들어오면 URL 을 다시 빼도 오염이 남는다.
       절차: [docs/prod-deploy-checklist.md](docs/prod-deploy-checklist.md) §9.2~9.4
-- [ ] **prod 미배포 20커밋** — 08-16 링크 허브부터 CSM-2..7 까지 전부
+- [ ] **prod 미배포 22커밋** — 08-16 링크 허브부터 CSM-2..7 까지 전부.
+      **로컬 `prod` 브랜치 fast-forward merge 완료 / push 대기** (08-28, 사무실 밖이라 SSH 불가).
+      복귀 후 `git push origin prod` 부터 재개.
+      런북: [docs/prod-deploy-2026-08-28.md](docs/prod-deploy-2026-08-28.md)
+      — 공지 없음 / URL 미주입 / 배포 1회 확정, 사전점검 진행 상황, 배포 후 확인·롤백 포인터
 - ✅ P1-6 (`/core/smssetting` 열 밀림 + `null` 표기) — **완료(08-28).** prod 에는 처음부터 정상으로 나간다
 - 상세: [docs/handoff-2026-08-28.md](docs/handoff-2026-08-28.md)
 
