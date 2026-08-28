@@ -2,11 +2,19 @@ package com.coresolution.csm.template;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -41,6 +49,9 @@ import com.coresolution.csm.web.PriceSourcePresenter;
 class SmsSettingTemplateRenderTest {
 
     private static final String TEMPLATE = "csm/core/admin/smssetting";
+    /** 이 화면에서만 로드되는 CSS. 열 정의는 여기 한 곳에 둔다. */
+    private static final Path SMSSETTING_CSS =
+            Path.of("src/main/resources/static/css/csm/core/admin/smssetting.css");
     private static final Instant NOW = Instant.parse("2026-08-27T09:00:00Z");
     private static final int STALE_MINUTES = 15;
 
@@ -165,6 +176,77 @@ class SmsSettingTemplateRenderTest {
                 .contains("⚠");
     }
 
+    // ── 표가 어긋나지 않는다 (P1-6) ──────────────────────────
+
+    /**
+     * ⭐ <b>CSS 의 열 수와 렌더된 셀 수가 같아야 한다.</b>
+     *
+     * <p>CSM-2 가 "단가 수신" 열을 더해 셀이 4개가 됐는데 {@code admin.css} 의
+     * {@code .grid-header4, .grid-row4} 는 3열({@code 1fr 500px 250px}) 그대로였다.
+     * 헤더에만 인라인 style 로 4열을 줘서 <b>행만 넷째 셀이 다음 줄로 밀렸고</b>,
+     * 화면에는 기관명 아래에 상태값이 붙어 보였다.
+     *
+     * <p>⚠ <b>셀 수만 세면 이 버그를 못 잡는다</b> — 깨진 상태에서도 헤더·행 모두
+     * 셀은 4개였다. 갈린 것은 <b>CSS 열 수와 셀 수</b>다. 그래서 CSS 를 같이 읽는다.
+     */
+    @Test
+    void CSS_열_수와_렌더된_셀_수가_같다() {
+        String html = render();
+
+        int headerCells = cellCount(html, "grid-header4");
+        int rowCells = cellCount(html, "grid-row4");
+
+        assertThat(headerCells).as("헤더 셀 수").isEqualTo(4);
+        assertThat(rowCells).as("행 셀 수").isEqualTo(headerCells);
+
+        assertThat(cssColumnCount(".grid-header4"))
+                .as("헤더 열 정의가 셀 수와 갈리면 셀이 다음 줄로 밀린다")
+                .isEqualTo(headerCells);
+        assertThat(cssColumnCount(".grid-row4"))
+                .as("행 열 정의가 셀 수와 갈리면 셀이 다음 줄로 밀린다")
+                .isEqualTo(rowCells);
+    }
+
+    /**
+     * 열 정의가 <b>두 곳으로 갈리지 않는다.</b>
+     *
+     * <p>인라인 {@code style} 은 헤더에만 걸린다. 정의가 CSS 와 템플릿에 나뉘면
+     * 한쪽만 고쳐지고 또 어긋난다. 정의는 {@code smssetting.css} 한 곳에 둔다.
+     */
+    @Test
+    void 열_정의를_인라인_style_로_두지_않는다() {
+        assertThat(render()).doesNotContain("grid-template-columns");
+    }
+
+    // ── 단가 표기 (P1-6) ─────────────────────────────────────
+
+    /**
+     * 단가가 없는 기관이 {@code null / null / null} 로 보이면 안 된다.
+     *
+     * <p>동작은 정상이다 — 폴백 3단계로 계산돼 발송된다. 운영자 화면에 `null` 이
+     * 보이는 것이 문제다. <b>값이 비었다는 사실 자체는 그대로 알려야 한다</b> —
+     * 빈칸으로 두면 "0원" 인지 "못 받았다" 인지 구분이 안 된다.
+     */
+    @Test
+    void 단가가_없으면_null_이_아니라_미설정으로_보인다() {
+        String html = render(ctx -> ctx.setVariable(
+                "list", List.of(inst("COHS", "통합테스트병원", null, null, null))));
+
+        assertThat(html).contains("미설정 / 미설정 / 미설정");
+        assertThat(html)
+                .as("`null` 이 화면에 그대로 나오면 안 된다")
+                .doesNotContain("null / null / null");
+    }
+
+    /** 일부만 비는 경우도 있다. 있는 값은 그대로 보여야 한다. */
+    @Test
+    void 일부_단가만_비면_그_자리만_미설정이다() {
+        String html = render(ctx -> ctx.setVariable(
+                "list", List.of(inst("COHS", "통합테스트병원", "9.6", "", null))));
+
+        assertThat(html).contains("9.6 / 미설정 / 미설정");
+    }
+
     /** 수신 이력이 없는 기관도 행이 나온다. 빈칸이면 운영자가 이유를 추측하게 된다. */
     @Test
     void 수신_이력이_없어도_행이_나온다() {
@@ -189,6 +271,79 @@ class SmsSettingTemplateRenderTest {
     }
 
     // ── 도우미 ────────────────────────────────────────────────
+
+    /**
+     * {@code selector} 에 이 화면에서 <b>마지막으로 적용되는</b> 열 정의의 트랙 수.
+     *
+     * <p>{@code smssetting.css} 는 {@code admin.css} 뒤에 로드되므로 여기 정의가 이긴다.
+     * 규칙이 없으면 {@code -1} 을 돌려준다 — {@code admin.css} 의 3열로 돌아갔다는 뜻이고,
+     * 그건 P1-6 이 재발한 상태다.
+     */
+    private int cssColumnCount(String selector) {
+        String css;
+        try {
+            css = Files.readString(SMSSETTING_CSS, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        // 주석 안에도 셀렉터·쉼표·중괄호가 나온다. 먼저 걷어내지 않으면 그걸 규칙으로 읽는다.
+        css = css.replaceAll("(?s)/\\*.*?\\*/", "");
+
+        int tracks = -1;
+        for (String rule : css.split("\\}")) {
+            int brace = rule.indexOf('{');
+            if (brace < 0) {
+                continue;
+            }
+            boolean applies = Arrays.stream(rule.substring(0, brace).split(","))
+                    .map(String::trim)
+                    .anyMatch(selector::equals);   // `.grid-row4.grid-row4--empty` 는 제외된다
+            if (!applies) {
+                continue;
+            }
+            Matcher m = Pattern.compile("grid-template-columns\\s*:([^;}]+)").matcher(rule.substring(brace));
+            while (m.find()) {
+                tracks = m.group(1).trim().split("\\s+").length;
+            }
+        }
+        return tracks;
+    }
+
+    /**
+     * {@code cssClass} 를 가진 <b>첫 컨테이너의 직계 자식 {@code <div>} 수</b>를 센다.
+     *
+     * <p>열 수는 CSS 가 정하지만 <b>셀 수는 렌더된 HTML 이 정한다.</b> 둘이 갈리는 것이
+     * P1-6 이었으므로 여기서는 렌더 결과의 셀 수를 본다.
+     */
+    private int cellCount(String html, String cssClass) {
+        int marker = html.indexOf(cssClass);
+        assertThat(marker).as("%s 가 렌더되지 않았다", cssClass).isNotNegative();
+
+        int depth = 0;
+        int cells = 0;
+        int i = html.lastIndexOf("<div", marker);
+        while (i >= 0) {
+            int open = html.indexOf("<div", i);
+            int close = html.indexOf("</div>", i);
+            if (close < 0) {
+                break;
+            }
+            if (open >= 0 && open < close) {
+                depth++;
+                if (depth == 2) {   // 1 = 컨테이너, 2 = 셀
+                    cells++;
+                }
+                i = open + "<div".length();
+            } else {
+                depth--;
+                if (depth == 0) {   // 컨테이너가 닫혔다
+                    break;
+                }
+                i = close + "</div>".length();
+            }
+        }
+        return cells;
+    }
 
     private PriceSourcePresenter.View status(Duration ago, Integer version) {
         return PriceSourcePresenter.of(

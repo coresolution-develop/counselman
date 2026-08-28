@@ -37,7 +37,8 @@
             단가는 <strong>MediCast</strong> 에서 관리합니다. 이 화면에서는 수정할 수 없습니다.
           </div>
           <div class="sms-history-grid4">
-            <div class="grid-header4" style="grid-template-columns: 180px 1fr 1fr 1fr;">
+            <!-- 열 정의는 smssetting.css 에 있다. 여기 인라인으로 주면 행과 갈린다 (P1-6). -->
+            <div class="grid-header4">
               <div>기관명</div>
               <div>단가(SMS/LMS/MMS)</div>
               <div>단가 수신</div>
@@ -45,7 +46,7 @@
             </div>
           </div>
           <div class="grid-body4">
-            <div class="grid-row4" th:if="${#lists.isEmpty(list)}">
+            <div class="grid-row4 grid-row4--empty" th:if="${#lists.isEmpty(list)}">
               <div>기관이 없습니다.</div>
             </div>
             <div class="grid-row4"
@@ -54,7 +55,10 @@
                  th:with="ps=${priceStatus != null ? priceStatus.get(l.id_col_03) : null}"
                  th:attr="data-inst-code=${l.id_col_03}">
               <div th:text="${l.id_col_02}"></div>
-              <div th:text="|${l.sms_price} / ${l.lms_price} / ${l.mms_price}|"></div>
+              <!-- 단가가 비면 화면에 `null` 이 그대로 나온다. 동작은 정상이고(폴백으로 계산된다)
+                   운영자에게 보이는 표기만의 문제다. 값이 없다는 사실은 그대로 알려야 한다. -->
+              <div th:with="u='미설정'"
+                   th:text="|${#strings.isEmpty(l.sms_price) ? u : l.sms_price} / ${#strings.isEmpty(l.lms_price) ? u : l.lms_price} / ${#strings.isEmpty(l.mms_price) ? u : l.mms_price}|"></div>
               <div class="price-received"
                    th:classappend="${ps != null and ps.stale} ? ' is-stale' : ''"
                    th:title="${ps != null} ? ${ps.detail} : ''">

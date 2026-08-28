@@ -150,6 +150,20 @@
 .custom-radio:hover img {
     opacity: 1; /* Make the icon visible */
 }
+/* ── 단가 표는 4열이다 (CSM-2) ────────────────────────────────
+   admin.css 의 `.grid-header4, .grid-row4` 는 3열(`1fr 500px 250px`)이다.
+   CSM-2 가 "단가 수신" 열을 더해 4열이 됐으므로 이 화면에서만 다시 정의한다.
+   ⚠ 정의는 **여기 한 곳**에만 둔다. 헤더에만 인라인 style 로 주면
+   행은 3열로 남아 넷째 셀이 다음 줄로 밀린다 (P1-6 이 그 상태였다).
+   이 파일은 smssetting 화면에서만 로드되므로 다른 admin 화면에 영향 없다. */
+.grid-header4,
+.grid-row4 {
+	grid-template-columns: 180px 1fr 1fr 1fr;
+}
+/* 기관이 없을 때의 안내 행은 셀이 하나뿐이다. 4열을 그대로 두면 180px 안에서 접힌다. */
+.grid-row4.grid-row4--empty {
+	grid-template-columns: 1fr;
+}
 .grid-row4:last-child {
 	border: none;
 }
