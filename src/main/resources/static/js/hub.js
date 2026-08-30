@@ -58,6 +58,9 @@
     const matches = (item, filter) => {
       if (filter === 'all') return true;
       if (filter === 'mine') return item.hasAttribute('data-mine');
+      // 분류 칩. 값이 분류명 자체라 접두사로 구분한다 — 분류명에 ':'가 들어가도
+      // split이 아니라 slice(4)라 이름이 잘리지 않는다.
+      if (filter.startsWith('cat:')) return item.dataset.cat === filter.slice(4);
       // "개발" 칩은 DEMO까지 함께 걸러준다 — 둘 다 운영이 아닌 서버라는 점이 핵심이다.
       if (filter === 'dev') return item.dataset.env === 'dev' || item.dataset.env === 'demo';
       return item.dataset.env === filter;

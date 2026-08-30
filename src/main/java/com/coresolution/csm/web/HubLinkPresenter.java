@@ -1,5 +1,8 @@
 package com.coresolution.csm.web;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -155,12 +158,44 @@ public class HubLinkPresenter {
         if (items == null) return out;
         for (HubHistoryView item : items) {
             HubLinkView view = base(item.getTitle(), item.getUrl(), null, Map.of());
-            view.setMetaText(item.getAccessedAt());
+            // 목록에는 상대 시간("3분 전"), 정확한 시각은 tooltip 으로 남긴다.
+            // 초 단위 절대 시각은 사람이 읽는 정보가 아니고 폭만 두 배로 먹는다.
+            view.setMetaText(relativeTime(item.getAccessedAt()));
+            view.setMetaTitle(item.getAccessedAt());
             // 스냅샷 URL을 그대로 연다 — 이력에서 다시 이력을 남길 이유가 없다.
             view.setKind("raw");
             out.add(view);
         }
         return out;
+    }
+
+    private static final DateTimeFormatter ACCESSED_AT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    /**
+     * {@code yyyy-MM-dd HH:mm:ss} → "방금 / N분 전 / N시간 전 / N일 전 / M월 D일".
+     *
+     * <p>7일이 넘으면 상대 표기가 오히려 안 읽히므로("9일 전") 날짜로 떨어뜨린다.
+     * 파싱에 실패하면 원본 문자열을 그대로 돌려준다 — 표시용 값 때문에 화면이 죽으면 안 된다.
+     */
+    String relativeTime(String accessedAt) {
+        if (accessedAt == null || accessedAt.isBlank()) return "";
+        LocalDateTime at;
+        try {
+            at = LocalDateTime.parse(accessedAt.trim(), ACCESSED_AT);
+        } catch (Exception e) {
+            return accessedAt;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        // 서버 시계가 뒤로 흐르거나 미래 기록이 섞여도 "-3분 전"이 나오지 않게 0으로 눕힌다.
+        long minutes = Math.max(0, Duration.between(at, now).toMinutes());
+        if (minutes < 1) return "방금";
+        if (minutes < 60) return minutes + "분 전";
+        long hours = minutes / 60;
+        if (hours < 24) return hours + "시간 전";
+        long days = hours / 24;
+        if (days < 7) return days + "일 전";
+        return at.getMonthValue() + "월 " + at.getDayOfMonth() + "일";
     }
 
     // ── 분류 ─────────────────────────────────────────────────────────────

@@ -48,4 +48,6 @@ public class HubLinkView {
 
     /** 최근 사용 시각 또는 인기 링크 클릭수 등 행 우측 보조 텍스트. */
     private String metaText;
+    /** metaText 가 요약값일 때(예: "3분 전") 원본을 담는 tooltip. 없으면 null. */
+    private String metaTitle;
 }

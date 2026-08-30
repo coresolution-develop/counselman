@@ -240,7 +240,7 @@ body.hub-body {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .hub-notice__close {
-  flex: 0 0 auto; width: 22px; height: 22px; padding: 0; border: 0; border-radius: var(--radius-xs);
+  flex: 0 0 auto; width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--radius-xs);
   background: transparent; color: inherit; cursor: pointer; opacity: .6;
   display: grid; place-items: center;
 }
@@ -285,6 +285,16 @@ body.hub-body {
    채우기를 그대로 두고 커서로만 알린다. */
 .hub-chip--dev.hub-chip--on,
 .hub-chip--dev.hub-chip--on:hover { background: var(--env-dev); border-color: var(--env-dev); color: var(--bg); }
+
+/* 분류 칩. 색 점은 사이드바에서 쓰던 분류 색을 그대로 이어받는다 — 목록을 걷어냈어도
+   분류↔색 대응은 화면에서 끊기지 않는다. */
+.hub-chip--cat { display: inline-flex; align-items: center; gap: 6px; }
+.hub-chip__dot { flex: 0 0 7px; width: 7px; height: 7px; border-radius: 2px; background: var(--c); }
+:root[data-theme="dark"] .hub-chip__dot { background: var(--c-dark); }
+/* 개수는 이름보다 한 단계 흐리게. 활성 칩은 배경이 --fg1 이라 --fg3 을 그대로 두면
+   어두운 배경 위 회색이 되어 안 읽힌다 — 라벨과 같은 색으로 되돌린다. */
+.hub-chip__n { color: var(--fg3); font-variant-numeric: tabular-nums; }
+.hub-chip--on .hub-chip__n { color: var(--bg); }
 
 .hub-density {
   margin-left: auto; display: inline-flex; gap: 2px; padding: 2px;
@@ -392,6 +402,19 @@ body.hub-body {
 .env-dev .lh-host { color: var(--env-dev); }
 .env-demo .lh-host { color: var(--env-demo); }
 
+/* 즐겨찾기만 한 줄 행으로. 42px → 34px, 화면 최상단을 가장 많이 먹는 자리다.
+   이미 아는 링크라 host 까지 늘 보일 필요가 없다. 전체 URL 은 행 tooltip 에 남아 있다.
+
+   🔴 **host 를 접고 이름에 폭을 전부 준다. 둘을 한 줄에 나란히 놓지 말 것** —
+      즐겨찾기는 3열이라 카드가 ~390px 다. 이름과 host 가 그 폭을 나눠 가지면 **둘 다** 잘려
+      `CORE-STA…` `core-stay.spop…` 이 된다. 한 번 그렇게 넣었다가 되돌렸다.
+      높이를 줄이려다 이름을 못 읽게 만들면 목적을 잃는다.
+
+   ⚠️ 개발·DEMO 구분은 host 가 아니라 환경 라벨(운영/개발)과 점선 테두리·레일 빗금이 한다.
+      `조이랜드 관리자 사이트`(개발) / `조이랜드 관리자사이트`(운영)가 라벨로 갈린다. */
+.lh-grid[data-fav-grid] > .lh-row { min-height: 34px; padding-top: 3px; padding-bottom: 3px; }
+.lh-grid[data-fav-grid] .lh-host { display: none; }
+
 /* ▲▼·수정은 hover/focus에서만. ★는 상시 노출하되 꺼진 별은 흐리게 둔다 —
    숨겨두면 즐겨찾기 버튼이 있다는 것 자체를 모른다. */
 .lh-act { display: inline-flex; gap: 3px; }
@@ -405,8 +428,10 @@ body.hub-body {
 .lh-act > .lh-fav--on,
 .lh-row:hover .lh-act > .lh-fav,
 .lh-row:focus-within .lh-act > .lh-fav { opacity: 1; }
+/* 24px 는 WCAG 2.2 AA 최소 포인터 타깃(2.5.8)이다. 글리프는 font-size 가 정하므로
+   이 값을 줄이면 시각 크기는 그대로인 채 타깃만 기준 아래로 떨어진다 — 줄이지 말 것. */
 .lh-act button {
-  width: 22px; height: 22px; padding: 0; border: 0; border-radius: var(--radius-xs);
+  width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--radius-xs);
   background: var(--bg-surface); color: var(--fg3);
   font-size: 10px; line-height: 1; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
@@ -430,7 +455,9 @@ body.hub-body {
 .lh-row--rank { grid-template-columns: 16px 46px minmax(0, auto) minmax(0, 1fr); }
 .lh-row--rank .lh-rank { order: 0; }
 .lh-rank { font-size: 11.5px; font-family: var(--font-mono); color: var(--fg3); text-align: center; }
-.lh-row--recent { grid-template-columns: minmax(0, auto) minmax(0, 1fr); }
+/* 최근 사용은 좁은 우측 레일에 산다. 이름이 남는 폭을 갖고 시각은 제 폭만 쓴다 —
+   반대로 두면(1fr을 시각에) 이름이 먼저 잘리고 오른쪽에 빈 공간이 생긴다. */
+.lh-row--recent { grid-template-columns: minmax(0, 1fr) auto; }
 
 /* host·시각 같은 우측 보조 텍스트. 줄바꿈시키면 행 높이가 들쭉날쭉해지므로 한 줄로 자른다. */
 .lh-meta {
@@ -450,9 +477,6 @@ body.hub-body {
   padding: 2px 6px; border-radius: var(--radius-xs);
   background: var(--bg-surface); color: var(--fg3); font-size: 10px;
 }
-
-/* ---- 2열 배치 (인기 + 최근) -------------------------------------------- */
-.hub-duo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 26px; }
 
 /* ---- 분류 그룹 --------------------------------------------------------- */
 .lh-group { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
@@ -652,8 +676,9 @@ body.hub-body {
 .adm-order { font-family: var(--font-mono); font-size: 11px; color: var(--fg3); }
 .adm-rowact { display: inline-flex; gap: 3px; opacity: 0; transition: opacity .12s ease; }
 .adm-tr--body:focus-within .adm-rowact { opacity: 1; }
+/* 24px — .lh-act button 과 같은 이유(WCAG 2.2 AA 2.5.8). */
 .adm-rowact button {
-  width: 22px; height: 22px; padding: 0; border: 0; border-radius: var(--radius-xs);
+  width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--radius-xs);
   background: var(--bg-surface); color: var(--fg3); font-size: 11px; line-height: 1; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
 }
@@ -663,6 +688,9 @@ body.hub-body {
 .adm-editrow[hidden] { display: none; }
 
 /* 우측 슬라이드 패널 (링크 추가 · 분류 편집) */
+/* 드로어가 열려 있는 동안 <html> 에 붙는다(hub-admin.js). 뒤 페이지 스크롤 잠금. */
+.hub-noscroll { overflow: hidden; }
+
 .adm-drawer {
   position: fixed; inset: 0; z-index: 50; display: flex; justify-content: flex-end;
   background: rgba(11, 12, 13, 0.3);
@@ -738,6 +766,18 @@ body.hub-body {
 @media (max-width: 900px) {
   .adm-tr { grid-template-columns: 42px minmax(0, 1fr) 96px; }
   .adm-tr .adm-cell--url, .adm-tr .adm-cell--cat, .adm-tr .lh-badge { display: none; }
+}
+
+/* hover 가 없는 기기(터치)에서는 hover 로 꺼내던 것을 상시 노출한다.
+   :focus-within 이 있긴 하나 탭으로 포커스를 옮겨야 나오므로 터치 사용자에게는 없는 것과 같다.
+
+   ⚠️ 폭(max-width)이 아니라 **포인터 성격**으로 가른다. 예전에는 max-width: 900px 에서만
+      .adm-rowact 를 열어줘서, 900px 이상 터치 기기(태블릿 가로·터치 노트북)에서는 링크 관리의
+      수정·삭제 버튼에 닿을 방법이 없었다. 폭과 입력 방식은 다른 축이다. */
+@media (hover: none) {
+  .lh-act > [data-move],
+  .lh-act > .lh-edit,
+  .lh-act > .lh-fav,
   .adm-rowact { opacity: 1; }
 }
 
@@ -870,7 +910,6 @@ body.hub-body {
   .hub-topbar { padding: 0 16px; }
   .hub-main { padding: 16px 16px 32px; }
   .hub-container { padding: 20px 16px 36px; }
-  .hub-duo { grid-template-columns: minmax(0, 1fr); gap: 18px; }
 
   /* 터치 타깃 확보 — 액션을 상시 노출하고 행을 키운다 */
   .lh-row { grid-template-columns: 46px minmax(0, 1fr) auto; gap: 8px; min-height: 48px; }

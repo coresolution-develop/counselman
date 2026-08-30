@@ -64,7 +64,16 @@ public class CompanyLinkController {
         List<HubLinkView> linkRows = hubLinkPresenter.publicLinks(links, favoriteIds, loggedIn, styles);
         model.addAttribute("linkRows", linkRows);
         model.addAttribute("linkGroupRows", groupRowsByCategory(linkRows));
-        model.addAttribute("categoryNav", categoryNav(linkRows, styles));
+        // 🔴 **허브에는 categoryNav 를 내리지 않는다 — 사이드바 분류 목록을 끄기 위한 것이다.**
+        //    본문 「전체 분류」가 같은 12개를 이름·색·개수까지 그대로 다시 그리고 있었다.
+        //    본문 쪽은 링크 57개를 담은 실제 목록이라 지울 수 없으므로, 중복인 사이드바를 끈다.
+        //    (shell.html 은 categoryNav 가 있을 때만 그 블록을 렌더한다 — 템플릿은 안 건드린다.)
+        //
+        // ⚠️ 링크 관리 화면(admin)에서는 계속 내린다. 그쪽 본문은 분류 없는 평평한 표라
+        //    사이드바 목록이 유일한 분류 인덱스이고, 중복이 아니다.
+        //
+        // ⚠️ 사이드바 항목은 본문 그룹으로 점프하는 앵커(`#cat-{name}`)였다. 그 이동 수단이
+        //    사라지므로, 되돌릴 때는 이 한 줄만 살리면 된다.
 
         // 필터 칩 개수 — 환경별 집계는 링크 목록에서 바로 센다.
         model.addAttribute("publicCount", linkRows.size());

@@ -72,9 +72,20 @@
   document.querySelectorAll('[data-drawer-open]').forEach((btn) => {
     const drawer = document.getElementById(btn.dataset.drawerOpen);
     if (!drawer) return;
-    const close = () => { drawer.hidden = true; btn.focus(); };
+    // 열려 있는 동안 뒤 페이지 스크롤을 잠근다.
+    //
+    // ⚠️ 단순한 모달 예절이 아니다. 드로어는 position:fixed 라 문서와 함께 스크롤되지 않는데,
+    //    브라우저는 required 검증에 걸린 입력을 "화면 안으로 스크롤한 뒤" 말풍선을 붙인다.
+    //    뒤 페이지가 스크롤된 상태면 그 좌표 계산이 어긋나 말풍선이 엉뚱한 자리(화면 좌상단 등)에
+    //    뜬다 — 링크가 57개라 목록은 늘 스크롤돼 있다. 잠그면 어긋날 스크롤 자체가 없어진다.
+    const close = () => {
+      drawer.hidden = true;
+      document.documentElement.classList.remove('hub-noscroll');
+      btn.focus();
+    };
     btn.addEventListener('click', () => {
       drawer.hidden = false;
+      document.documentElement.classList.add('hub-noscroll');
       drawer.querySelector('input')?.focus();
     });
     drawer.addEventListener('click', (e) => { if (e.target === drawer) close(); });

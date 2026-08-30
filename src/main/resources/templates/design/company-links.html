@@ -82,10 +82,19 @@
         </button>
 
         <div class="hub-filters">
-          <button type="button" class="hub-chip hub-chip--on" data-filter="all">전체</button>
-          <button type="button" class="hub-chip" data-filter="prod">운영 <span th:text="${prodCount}">0</span></button>
-          <button type="button" class="hub-chip hub-chip--dev" data-filter="dev">개발 <span th:text="${devCount}">0</span></button>
-          <button type="button" class="hub-chip" data-filter="mine" th:if="${hubMember != null}">개인 링크 <span th:text="${customCount}">0</span></button>
+          <!--/* 분류 칩 — 사이드바 분류 목록을 걷어낸 자리를 대신한다(CompanyLinkController 참고).
+                 순서·색은 linkGroupRows 를 그대로 따르므로 본문 「전체 분류」 그룹과 어긋나지 않는다.
+                 환경(운영/개발) 칩은 여기서 뺐다. 환경은 행마다 라벨·점선·레일이 이미 들고 있고,
+                 12개 분류까지 함께 세우면 칩 줄이 세 줄이 된다. */-->
+          <button type="button" class="hub-chip hub-chip--on" data-filter="all">전체 <span class="hub-chip__n" th:text="${publicCount}">0</span></button>
+          <button type="button" class="hub-chip hub-chip--cat" th:each="grp : ${linkGroupRows}"
+                  th:data-filter="'cat:' + ${grp.key}"
+                  th:style="|--c:${grp.value[0].catColor};--c-dark:${grp.value[0].catColorDark}|"
+                  th:aria-label="|${grp.key} 분류만 보기|">
+            <span class="hub-chip__dot" aria-hidden="true"></span>
+            <span th:text="${grp.key}">분류</span>
+            <span class="hub-chip__n" th:text="${#lists.size(grp.value)}">0</span>
+          </button>
           <div class="hub-density" role="group" aria-label="목록 밀도">
             <button type="button" class="hub-density__btn hub-density__btn--on" data-density="list">행</button>
             <button type="button" class="hub-density__btn" data-density="grid">그리드</button>
@@ -135,56 +144,6 @@
                 </div>
               </div>
             </section>
-
-            <!--/* 인기 + 최근: 2열 병렬. 둘 다 34px 컴팩트 행 */-->
-            <div class="hub-duo">
-              <section class="hub-sec" th:if="${!#lists.isEmpty(popularRows)}">
-                <div class="hub-sec__head">
-                  <svg class="hub-sec__icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                       stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1.5 4 5 4.5 5 8a5 5 0 0 1-10 0c0-2 1-3 2-4" /></svg>
-                  <span class="hub-sec__label">인기 링크</span>
-                  <span class="hub-sec__count">최근 30일</span>
-                  <span class="hub-sec__rule"></span>
-                </div>
-                <div class="lh-list">
-                  <a class="lh-row lh-row--compact lh-row--rank" th:each="row, it : ${popularRows}"
-                     th:classappend="|env-${row.env}|"
-                     th:style="|--c:${row.catColor};--c-dark:${row.catColorDark}|"
-                     th:href="${row.kind == 'raw'} ? ${row.url} : @{/hub/go/{kind}/{id}(kind=${row.kind},id=${row.id})}" target="_blank" rel="noopener noreferrer"
-                     th:title="${row.url}"
-                     th:data-name="${row.title}" th:data-host="${row.host}" th:data-env="${row.env}">
-                    <span class="lh-rank" th:text="${it.count}">1</span>
-                    <span class="lh-env" th:text="${row.envLabel}">운영</span>
-                    <span class="lh-main">
-                      <span class="lh-name" th:text="${row.title}">서비스명</span>
-                    </span>
-                    <span class="lh-meta" th:text="${row.host}">example.com</span>
-                  </a>
-                </div>
-              </section>
-
-              <!--/* 최근 사용: 로그인 + 클릭 이력이 있을 때만. 스냅샷 URL을 새 탭으로 바로 연다 */-->
-              <section class="hub-sec" th:if="${hubMember != null and !#lists.isEmpty(recentRows)}">
-                <div class="hub-sec__head">
-                  <svg class="hub-sec__icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                       stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-                  <span class="hub-sec__label">최근 사용</span>
-                  <span class="hub-sec__count" th:text="${#lists.size(recentRows)}">0</span>
-                  <span class="hub-sec__rule"></span>
-                </div>
-                <div class="lh-list">
-                  <a class="lh-row lh-row--compact lh-row--recent" th:each="row : ${recentRows}"
-                     th:href="${row.url}" target="_blank" rel="noopener noreferrer"
-                     th:title="${row.url}">
-                    <span class="lh-main">
-                      <span class="lh-name" th:text="${row.title}">제목</span>
-                      <span class="lh-host" th:text="${row.host}">example.com</span>
-                    </span>
-                    <span class="lh-meta" th:text="${row.metaText}">시간</span>
-                  </a>
-                </div>
-              </section>
-            </div>
 
             <!--/* 전체 분류 — 분류별 그룹. 팔레트 검색 인덱스도 이 행들에서 만든다 */-->
             <section class="hub-sec" th:if="${!linkGroupRows.isEmpty()}">
@@ -251,6 +210,34 @@
             <div class="hub-empty" id="hubNoResult" hidden>
               <div class="hub-empty__text">조건에 맞는 링크가 없습니다.</div>
             </div>
+
+            <!--/* 인기 링크 — 본문 맨 아래. 내가 고른 것(즐겨찾기)도 찾는 것(분류)도 아닌
+                   "남들이 많이 쓰는 것"이라 먼저 눈에 들어올 이유가 없다.
+                   분류 칩으로 걸러도 이 목록은 남는다 — data-filter-item 이 아니다(즐겨찾기와 같다). */-->
+            <section class="hub-sec" th:if="${!#lists.isEmpty(popularRows)}">
+              <div class="hub-sec__head">
+                <svg class="hub-sec__icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1.5 4 5 4.5 5 8a5 5 0 0 1-10 0c0-2 1-3 2-4" /></svg>
+                <span class="hub-sec__label">인기 링크</span>
+                <span class="hub-sec__count">최근 30일</span>
+                <span class="hub-sec__rule"></span>
+              </div>
+              <div class="lh-list">
+                <a class="lh-row lh-row--compact lh-row--rank" th:each="row, it : ${popularRows}"
+                   th:classappend="|env-${row.env}|"
+                   th:style="|--c:${row.catColor};--c-dark:${row.catColorDark}|"
+                   th:href="${row.kind == 'raw'} ? ${row.url} : @{/hub/go/{kind}/{id}(kind=${row.kind},id=${row.id})}" target="_blank" rel="noopener noreferrer"
+                   th:title="${row.url}"
+                   th:data-name="${row.title}" th:data-host="${row.host}" th:data-env="${row.env}">
+                  <span class="lh-rank" th:text="${it.count}">1</span>
+                  <span class="lh-env" th:text="${row.envLabel}">운영</span>
+                  <span class="lh-main">
+                    <span class="lh-name" th:text="${row.title}">서비스명</span>
+                  </span>
+                  <span class="lh-meta" th:text="${row.host}">example.com</span>
+                </a>
+              </div>
+            </section>
           </div>
 
           <!--/* 우측 개인 레일: 로그인 시에만. 예전 /hub/me 화면을 흡수한 영역 */-->
@@ -390,6 +377,30 @@
                     </div>
                   </th:block>
                 </div>
+              </div>
+            </section>
+
+            <!--/* 최근 사용 — 개인 데이터라 우측 개인 레일에 둔다(내 링크 아래, 내 메모 위).
+                   스냅샷 URL을 새 탭으로 바로 연다: 이력에서 다시 이력을 남길 이유가 없다.
+                   시각은 상대 표기("3분 전")이고 정확한 시각은 metaTitle tooltip 이다. */-->
+            <section class="hub-sec" th:if="${!#lists.isEmpty(recentRows)}">
+              <div class="hub-sec__head">
+                <svg class="hub-sec__icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                <span class="hub-sec__label">최근 사용</span>
+                <span class="hub-sec__count" th:text="${#lists.size(recentRows)}">0</span>
+                <span class="hub-sec__rule"></span>
+              </div>
+              <div class="lh-list">
+                <a class="lh-row lh-row--compact lh-row--recent" th:each="row : ${recentRows}"
+                   th:href="${row.url}" target="_blank" rel="noopener noreferrer"
+                   th:title="${row.url}">
+                  <span class="lh-main">
+                    <span class="lh-name" th:text="${row.title}">제목</span>
+                    <span class="lh-host" th:text="${row.host}">example.com</span>
+                  </span>
+                  <span class="lh-meta" th:text="${row.metaText}" th:title="${row.metaTitle}">시간</span>
+                </a>
               </div>
             </section>
 

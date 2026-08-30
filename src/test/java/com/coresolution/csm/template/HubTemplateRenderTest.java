@@ -155,9 +155,16 @@ class HubTemplateRenderTest {
         assertThat(html).doesNotContain(">ocean_plt.cspay.co.kr:8210<");
     }
 
-    /** 즐겨찾기는 개수가 적어 세로 여유가 있으므로 이름 아래 host를 유지한다. */
+    /**
+     * 즐겨찾기 행에 host 를 **마크업으로는** 계속 넣는다.
+     *
+     * <p>⚠️ 화면에는 보이지 않는다 — `hub.css` 의 `.lh-grid[data-fav-grid] .lh-host { display:none }`
+     * 가 접는다. 즐겨찾기는 3열이라 이름과 host 를 한 줄에 같이 놓으면 둘 다 잘리기 때문이다.
+     * 마크업에 남겨두는 이유는 행/그리드 밀도 전환과 커맨드 팔레트 색인이 이 값을 읽기 때문이고,
+     * 그래서 이 테스트는 CSS 와 무관하게 계속 유효하다. **host 를 템플릿에서 지우지 말 것.**
+     */
     @Test
-    void companyLinks_favoriteRow_keepsHostUnderTheName() {
+    void companyLinks_favoriteRow_keepsHostInMarkup() {
         WebContext ctx = hubContext(new HubMemberSession(7L, "a@coresolution.kr", "이수민", "USER"));
         CompanyLink l = link(1L, "HARS", "https://hars-falh.sosyge.net/login/admin", "병원", null);
         putPublicLink(ctx, l, true, true);
