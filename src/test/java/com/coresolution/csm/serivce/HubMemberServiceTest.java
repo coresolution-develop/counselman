@@ -175,6 +175,102 @@ class HubMemberServiceTest {
         assertThat(new BCryptPasswordEncoder().matches("brandNew9", hash.getValue())).isTrue();
     }
 
+    // ── 비밀번호 찾기 (이메일 + 이름 + 가입코드) ────────────────────────────
+
+    @Test
+    void verifyForReset_rejectsWrongSignupCode() {
+        // 가입코드가 실제 방어선이다. 이메일·이름이 맞아도 코드가 틀리면 통과하지 못한다.
+        assertThatThrownBy(() -> service.verifyForReset("a@coresolution.kr", "홍길동", "wrong"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("가입코드");
+    }
+
+    @Test
+    void verifyForReset_rejectsWrongName() {
+        stubFindByEmail("a@coresolution.kr",
+                java.util.List.of(member("a@coresolution.kr", "password123", "ACTIVE")));
+        assertThatThrownBy(() -> service.verifyForReset("a@coresolution.kr", "김철수", "core"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void verifyForReset_hidesWhetherTheEmailExists() {
+        // 없는 계정과 이름 불일치가 **같은 문구**여야 한다.
+        // 갈리면 어떤 이메일이 가입돼 있는지 알려주는 셈이다(회원 열거).
+        stubFindByEmail("known@coresolution.kr",
+                java.util.List.of(member("known@coresolution.kr", "password123", "ACTIVE")));
+        stubFindByEmail("ghost@coresolution.kr", java.util.List.of());
+
+        String wrongName = catchMessage(() -> service.verifyForReset("known@coresolution.kr", "김철수", "core"));
+        String noAccount = catchMessage(() -> service.verifyForReset("ghost@coresolution.kr", "홍길동", "core"));
+
+        assertThat(wrongName).isNotNull().isEqualTo(noAccount);
+    }
+
+    @Test
+    void verifyForReset_rejectsDisabledAccount() {
+        stubFindByEmail("a@coresolution.kr",
+                java.util.List.of(member("a@coresolution.kr", "password123", "DISABLED")));
+        assertThatThrownBy(() -> service.verifyForReset("a@coresolution.kr", "홍길동", "core"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void verifyForReset_succeeds_andNormalizesInput() {
+        stubFindByEmail("a@coresolution.kr",
+                java.util.List.of(member("a@coresolution.kr", "password123", "ACTIVE")));
+        assertThat(service.verifyForReset("  A@Coresolution.KR ", "  홍길동 ", "core")).isEqualTo(7L);
+    }
+
+    @Test
+    void resetPassword_storesBcryptHash_withoutAskingCurrentPassword() {
+        stubFindById(7L, java.util.List.of(member("a@coresolution.kr", "password123", "ACTIVE")));
+
+        service.resetPassword(7L, "newpassword456");
+
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object> hash = ArgumentCaptor.forClass(Object.class);
+        verify(jdbcTemplate).update(sql.capture(), hash.capture(), eq(7L));
+        assertThat(sql.getValue()).contains("UPDATE csm.hub_member SET password");
+        assertThat(hash.getValue().toString()).startsWith("$2");
+        assertThat(hash.getValue().toString()).isNotEqualTo("newpassword456");
+    }
+
+    @Test
+    void resetPassword_rejectsBlankPassword() {
+        stubFindById(7L, java.util.List.of(member("a@coresolution.kr", "password123", "ACTIVE")));
+        assertThatThrownBy(() -> service.resetPassword(7L, "   "))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(jdbcTemplate, never()).update(contains("SET password"), any(), any());
+    }
+
+    /**
+     * <b>비밀번호에 길이·문자 종류 제한을 두지 않는다 (2026-08-30 결정).</b>
+     *
+     * <p>{@code PASSWORD_MIN_LENGTH = 1} 은 실수가 아니라 결정이다. 빈 값만 막는다.
+     * 사내 전용 링크 허브라 계정 탈취의 실익이 작고, 규칙을 걸면 사람들이 규칙에 맞춘
+     * 뻔한 비밀번호를 만든다는 판단이다.
+     *
+     * <p>⚠️ <b>이 테스트가 깨졌다면 누군가 최소 길이를 올린 것이다.</b> 되돌리기 전에
+     * 결정이 바뀐 것인지 먼저 확인할 것 — 바뀌었다면 회원가입 · 계정설정 화면의
+     * "8자 이상, 영문·숫자 포함" 문구도 함께 손봐야 한다(지금은 그 두 화면만 그 문구가 남아 있다).
+     */
+    @Test
+    void resetPassword_hasNoLengthRequirement_byDecision() {
+        stubFindById(7L, java.util.List.of(member("a@coresolution.kr", "password123", "ACTIVE")));
+        service.resetPassword(7L, "a");
+        verify(jdbcTemplate).update(contains("SET password"), any(), eq(7L));
+    }
+
+    private String catchMessage(Runnable action) {
+        try {
+            action.run();
+            return null;
+        } catch (IllegalArgumentException e) {
+            return e.getMessage();
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private void stubFindByEmail(String email, java.util.List<HubMember> rows) {
         when(jdbcTemplate.query(anyString(), any(RowMapper.class), eq(email))).thenReturn(rows);

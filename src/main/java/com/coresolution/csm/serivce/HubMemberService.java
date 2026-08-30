@@ -107,6 +107,60 @@ public class HubMemberService {
     }
 
     /**
+     * 비밀번호 찾기 1단계 — 이메일 + 이름 (+ 가입코드) 대조. 일치하면 회원 id를 돌려준다.
+     *
+     * <p>🔴 <b>이 확인은 약하다.</b> 사내 이메일은 규칙이 뻔하고 이름도 공개 정보라, 둘 다
+     * <i>아는</i> 사람이 아니라 둘 다 <i>추측할 수 있는</i> 사람이면 통과한다. 그래서 가입과
+     * <b>같은 가입코드 게이트</b>를 태운다 — 사내 사람만이라는 전제를 실제로 지키는 것은 이쪽이다.
+     * 가입코드를 안 쓰는 배포에서는 {@code validateSignupCode} 가 통과시키므로 이메일+이름만 본다.
+     *
+     * <p>⚠️ 실패 사유를 나누지 않는다. "이름이 틀렸다"고 알려주면 그 이메일이 가입돼 있다는
+     * 사실을 알려주는 것과 같다(회원 열거).
+     */
+    public long verifyForReset(String email, String name, String signupCodeInput) {
+        ensureTables();
+        validateSignupCode(signupCodeInput);
+
+        String normalizedEmail = normalizeEmail(email);
+        String normalizedName = name == null ? "" : name.trim();
+        IllegalArgumentException mismatch =
+                new IllegalArgumentException("이메일 또는 이름이 일치하지 않습니다.");
+
+        if (normalizedEmail == null || normalizedName.isEmpty()) {
+            throw mismatch;
+        }
+        HubMember member = findByEmail(normalizedEmail);
+        if (member == null
+                || !STATUS_ACTIVE.equalsIgnoreCase(member.getStatus())
+                || !normalizedName.equals(member.getName() == null ? "" : member.getName().trim())) {
+            throw mismatch;
+        }
+        return member.getId();
+    }
+
+    /**
+     * 비밀번호 찾기 2단계 — 현재 비밀번호 없이 교체한다.
+     *
+     * <p>🔴 <b>본인 확인을 하지 않는다.</b> {@link #verifyForReset} 를 통과한 직후에만 불러야 하며,
+     * 그 보장은 컨트롤러의 세션 마커가 한다. 다른 경로에서 이 메서드를 부르면 인증 없는
+     * 비밀번호 교체가 된다.
+     */
+    @Transactional
+    public void resetPassword(long memberId, String newPassword) {
+        ensureTables();
+        if (memberId <= 0) {
+            throw new IllegalArgumentException("잘못된 요청입니다.");
+        }
+        if (findById(memberId) == null) {
+            throw new IllegalArgumentException("계정을 찾을 수 없습니다.");
+        }
+        validatePassword(newPassword);
+        jdbcTemplate.update(
+                "UPDATE csm.hub_member SET password = ? WHERE id = ?",
+                passwordEncoder.encode(newPassword.trim()), memberId);
+    }
+
+    /**
      * 비밀번호 변경: 현재 비밀번호를 BCrypt로 확인한 뒤에만 새 비밀번호로 교체한다.
      * 현재 비번 불일치/계정 없음은 IllegalArgumentException.
      */
