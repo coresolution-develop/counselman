@@ -125,17 +125,43 @@ staging 적재 확인 후 수동으로 적용해 즉시 검증하는 것을 강�
 > 키는 존재하는데 그 값이 미해석 `${ENV_VAR}` 이면 그대로
 > `PlaceholderResolutionException` 이다. 2026-08-13 mediplat 이 정확히 이걸로 죽었다.
 
-**기본값이 없어 누락 시 크래시하는 변수 (2026-08-14 기준)**
+**기본값이 없어 누락 시 크래시하는 변수 (2026-08-30 정정)**
 
-| mediplat (6) | csm (14) |
+⚠️ **prod 프로필이 실제로 요구하는 것만 적는다.** 예전 표는 csm 을 **14개**로 적었는데,
+`application*.properties` 를 전부 글롭해 **dev/local 프로필 전용 변수까지 섞인 목록**이었다.
+그대로 대조하면 정상 서버에서도 `0` 이 6개 나와 배포가 멈춘다 (2026-08-30 실제 발생).
+
+| mediplat (6) | csm prod (9) |
 |---|---|
-| `COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET`<br>`LOGIN_AES_KEY`<br>`PLATFORM_ADMIN_PASSWORD`<br>`SPRING_DATASOURCE_PASSWORD`<br>`SPRING_DATASOURCE_URL`<br>`SPRING_DATASOURCE_USERNAME` | `BIZPPURIO_DEV_ACCOUNT` / `_PASSWORD` / `_USERNAME`<br>`BIZPPURIO_PROD_ACCOUNT` / `_PASSWORD` / `_USERNAME`<br>`COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET`<br>`KAKAO_CLIENT_ID` / `KAKAO_CLIENT_SECRET`<br>`LOGIN_AES_KEY`<br>`SPRING_DATASOURCE_PASSWORD` / `_URL` / `_USERNAME`<br>`SPRING_MAIL_PASSWORD` |
+| `COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET`<br>`LOGIN_AES_KEY`<br>`PLATFORM_ADMIN_PASSWORD`<br>`SPRING_DATASOURCE_PASSWORD`<br>`SPRING_DATASOURCE_URL`<br>`SPRING_DATASOURCE_USERNAME` | `BIZPPURIO_PROD_ACCOUNT` / `_PASSWORD` / `_USERNAME`<br>`KAKAO_CLIENT_ID` / `KAKAO_CLIENT_SECRET`<br>`LOGIN_AES_KEY`<br>`SPRING_DATASOURCE_PASSWORD` / `_URL` / `_USERNAME` |
 
-**목록은 배포마다 다시 뽑는다.** 새 커밋이 필수 변수를 추가했을 수 있다 (로컬 저장소에서 실행):
+**목록에서 빠진 것들 — 왜 필요 없는가**
+
+| 변수 | 이유 |
+|---|---|
+| `BIZPPURIO_DEV_*` (3) | `application-dev.properties` 전용. prod 프로필은 로드하지 않는다 |
+| `SPRING_MAIL_PASSWORD` | base 파일에 `${SPRING_MAIL_PASSWORD:}` **기본값이 있다**. 없어도 기동한다 |
+| `COUNSELMAN_MEDIPLAT_SSO_SHARED_SECRET` | csm 쪽은 dev/local 프로필에서만 선언된다 (mediplat 에는 여전히 필수) |
+
+> **`KAKAO_CLIENT_ID` / `KAKAO_CLIENT_SECRET` 주의**: 목록에는 있지만 **없어도 기동한다.**
+> `@ConfigurationProperties` 바인딩이라 미해결 플레이스홀더를 문자열로 조용히 남긴다
+> ([application.properties:63](../src/main/resources/application.properties#L63)).
+> 깨진 것은 사용자가 카카오 로그인을 눌러야 드러난다. **2026-08-30 prod 실측: 둘 다 미설정.**
+
+**목록은 배포마다 다시 뽑는다.** 새 커밋이 필수 변수를 추가했을 수 있다 (로컬 저장소에서 실행).
+**프로필별로 따로 뽑을 것** — 글롭하면 위의 오진이 재발한다:
 
 ```bash
-echo "--- mediplat ---"; grep -ohE '\$\{[A-Z][A-Z0-9_]*\}' mediplat/src/main/resources/application*.properties | tr -d '${}' | sort -u
-echo "--- csm ---";      grep -ohE '\$\{[A-Z][A-Z0-9_]*\}' src/main/resources/application*.properties     | tr -d '${}' | sort -u
+echo "--- mediplat ---"; grep -ohE '\$\{[A-Z][A-Z0-9_]*\}' mediplat/src/main/resources/application.properties | tr -d '${}' | sort -u
+echo "--- csm prod ---"; grep -ohE '\$\{[A-Z][A-Z0-9_]*\}' src/main/resources/application.properties src/main/resources/application-prod.properties | tr -d '${}' | sort -u
+```
+
+**신규 요구 env 가 생겼는지 대조** (현재 prod 배포본과 비교. 출력이 비면 추가할 env 가 없다):
+
+```bash
+git show origin/prod~1:src/main/resources/application.properties > /tmp/o.txt 2>/dev/null
+diff <(cat /tmp/o.txt | grep -ohE '\$\{[A-Z][A-Z0-9_]*\}' | tr -d '${}' | sort -u) \
+     <(grep -ohE '\$\{[A-Z][A-Z0-9_]*\}' src/main/resources/application.properties | tr -d '${}' | sort -u)
 ```
 
 **서버에서 대조** (mediplat 예시. csm 은 `/opt/csm-next/env/csm-next.env` 등 해당 파일로 교체):

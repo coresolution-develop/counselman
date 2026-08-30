@@ -1,6 +1,6 @@
 # MediPlat 작업 현황
 
-> 최종 업데이트: 2026-08-28
+> 최종 업데이트: 2026-08-30
 
 ---
 
@@ -96,7 +96,21 @@ GROUP BY inst_code, status ORDER BY inst_code, status;
 - **확인 필요**: 어떤 화면의 추천기사인지, 현재 정렬/가중치 기준, 원하는 변경 방향
 - **작업량**: 미정 (스코프 확정 후 산정)
 
-> ✅ **P1-6 은 2026-08-28 완료** — 상세는 아래 "완료된 작업" 참조.
+> ✅ **P1-6 은 2026-08-28 완료 / 2026-08-30 prod 배포** — 상세는 아래 "완료된 작업" 참조.
+
+#### [P1-7] prod 카카오 로그인 깨져 있음 — **2026-08-30 실측 확인 / 미착수**
+- **증상**: prod 에 `KAKAO_CLIENT_ID` / `KAKAO_CLIENT_SECRET` 이 **미설정**이다
+  (2026-08-30 `csm-next.env` 대조에서 둘 다 `0`)
+- **왜 아무도 몰랐나**: `@ConfigurationProperties`(OAuth2ClientProperties) 바인딩이라
+  **미해결 플레이스홀더를 문자열로 조용히 남기고 기동한다.** `@Value` 와 달리 던지지 않는다.
+  `clientId` 에 `"${KAKAO_CLIENT_ID}"` 가 그대로 들어간 채 떠 있다
+  ([application.properties:63](src/main/resources/application.properties#L63))
+- **드러나는 시점**: 챗봇 사용자가 **카카오 로그인 버튼을 눌러야** 실패한다
+- **선행 확인 필요**: prod 에서 카카오 로그인을 **실제로 쓰는 기관이 있는지**.
+  안 쓰면 우선순위가 내려가고, 쓰면 즉시 조치 대상이다
+- **조치**: 카카오 콘솔에서 값 확보 → `csm-next.env` 주입 → `systemctl restart csm-next`.
+  redirect URI 가 콘솔에 등록돼 있는지도 같이 확인
+- **최소 08-27 부터 이 상태다** (그날 dev 에서 처음 실측됨)
 
 ### 🧹 P2 — 정리성 (방금 작업 연장선)
 
@@ -124,9 +138,17 @@ GROUP BY inst_code, status ORDER BY inst_code, status;
 - [ ] 기본 아바타 이미지 누락 — `/img/default-avatar.png` 추가
 - [ ] 챗봇 FAQ 검색 비로그인 접근 — 로그인 전 FAQ 패널 노출 검토
 - [ ] 좌측 네비게이션 스크롤 CSS 수정
-- [ ] 링크 허브 prod 배포 + 분류/환경 정리 SQL 실행 — dev만 반영됨. 상세는 완료 섹션 2026-08-16 항목
+- [x] ~~링크 허브 prod 배포~~ — **2026-08-30 완료**. `/csm/links` 200 확인
+- [ ] 링크 허브 분류/환경 정리 SQL 실행 — [scripts/hub-category-env-cleanup.sql](scripts/hub-category-env-cleanup.sql).
+      **코드 배포로는 반영되지 않는다. dev·prod 양쪽 다 미실행.**
+      분류명은 화면을 보고 적은 것이라 스크립트 안의 2단계 확인 쿼리로 대조한 뒤 실행할 것
 - [ ] dev `catalina.out` 로테이션 없음 — 2026-08-28 실측 **718MB**. DEBUG 로 계속 쌓인다.
       언젠가 dev 디스크가 찬다. logrotate 또는 로그 레벨 조정 필요 (prod 도 같은 구조인지 확인)
+- [ ] `deploy-nightly.sh` 서버본 ↔ 저장소본 드리프트 — 2026-08-30 실측 md5 불일치
+      (서버 `75d06d14…` / 저장소 `89f1d13c…`, 줄 번호 3줄 밀림).
+      경로는 `/etc/default/csm-next-deploy` 가 덮으므로 동작에 지장은 없으나,
+      **절차서 §2-C-2 의 마커 처리 분석이 저장소본 기준**이라 서버 실제 동작과 어긋날 수 있다.
+      두 파일을 대조해 한쪽으로 맞출 것
 
 **2026-08-09 mediplat 점검에서 나온 항목** (상세: [docs/handoff-2026-08-09.md](docs/handoff-2026-08-09.md))
 
@@ -142,7 +164,41 @@ GROUP BY inst_code, status ORDER BY inst_code, status;
 
 ## ✅ 완료된 작업
 
-### 2026-08-28 [P1-6] `/core/smssetting` 열 밀림 + 단가 `null` 표기 — **완료 / 미배포**
+### 2026-08-30 prod 배포 (링크 허브 ~ CSM-2..7, 22커밋) — **완료**
+
+08-28 에 push 직전까지 갔다가 prod SSH 미접속으로 멈춰 있던 것을 재개해 완료했다.
+전체 기록은 [docs/prod-deploy-2026-08-28.md](docs/prod-deploy-2026-08-28.md).
+
+| | |
+|---|---|
+| 배포 시각 | 2026-08-30 **22:53** (수동 적용, 02:30 타이머 미사용) |
+| 범위 | `d6b078c → 95185e1` · 22커밋 / 70파일 |
+| 스키마 | 신규 테이블 4개 + `sms_batch.total_cost` INT → **BIGINT** |
+| 백업 | `/opt/csm-next/backup/csm-20260830-222312.sql` (107M) |
+| 공지 | **안 함** (런북 확정) |
+
+**사용자에게 보이는 변화**: `/csm/links` 링크 허브 UI 전면 교체(prod 최초),
+`/core/smssetting` 읽기 전용화 + 열 밀림 수정(사내 운영자 한정).
+
+#### 이번 배포에서 절차서가 틀렸던 것 2가지 (정정 완료)
+
+1. **§0-0 필수 env 표가 csm 을 14개로 적고 있었다** — `application*.properties` 를 글롭해
+   dev/local 프로필 전용 변수가 섞인 목록이었다. 정상 서버에서 `0` 이 **6개** 나와 배포가
+   멈췄다. **prod 프로필 실제 필수는 9개.** 08-27 에 이미 "csm prod 필수 env 9개" 로
+   확인해 놓고도 절차서에 반영하지 않은 것이 원인이다 → phase1b §0-0 정정
+2. **§2-C 가 엉뚱한 env 파일을 보라고 했다** — 실제 유닛이 읽는 것은
+   `/etc/default/csm-next-deploy` 다. `EnvironmentFile=-` 의 `-` 때문에 파일이 없어도
+   조용히 개발서버 기본값으로 돈다. **`journalctl` 의 `no marker (<경로>)` 로그로 판정하는 것이
+   가장 확실하다** → 런북에 반영
+
+#### 부수적으로 확인된 것
+
+- prod 카카오 로그인 미설정 → **P1-7 로 등록**
+- `deploy-nightly.sh` 서버본/저장소본 md5 불일치 → **P3 로 등록**
+- `pre-push` 훅이 prod push 를 막는다(로컬 전용). 의도된 안전장치이므로
+  **의도적 배포일 때만** `--no-verify` 로 우회할 것
+
+### 2026-08-28 [P1-6] `/core/smssetting` 열 밀림 + 단가 `null` 표기 — **완료 / 2026-08-30 prod 배포**
 
 - **증상**: 기관명 아래에 상태값이 붙고, 단가가 "단가 수신" 열에 나오는 등 헤더와 행이 한 칸씩 어긋나 보였다
 - **원인**: [admin.css:389](src/main/resources/static/css/csm/core/admin/admin.css#L389) 의
