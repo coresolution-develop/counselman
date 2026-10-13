@@ -2825,6 +2825,22 @@ function inpatientForm() {
         row('상담결과', this.meta.result), row('입실예정일', this.meta.admitDate), row('입실호실', this.meta.admitRoom),
         row('비고', this.meta.note),
       ].join('');
+      const self = this;
+      const itemRows = this.dynamicItems.map(function(item) {
+        const picked = (item.values || []).map(function(value) {
+          const extras = [];
+          if (self.hasControl(value, 'select') && value.selected) extras.push(value.selected);
+          if (self.hasControl(value, 'text') && value.text) extras.push(value.text);
+          const toggle = self.hasControl(value, 'checkbox') || self.hasControl(value, 'radio');
+          if (toggle && !value.checked) return '';
+          if (!toggle && extras.length === 0) return '';
+          return extras.length ? (value.name || '') + ': ' + extras.join(' / ') : (value.name || '');
+        }).filter(Boolean);
+        return row(item.name, picked.join(', '));
+      }).join('');
+      const itemSection = itemRows
+        ? '<section class="journal-section"><h2 class="section-title">3. 상담항목</h2><table class="kv-table"><tbody>' + itemRows + '</tbody></table></section>'
+        : '';
       const bodyHtml = '<div class="journal-doc">'
         + '<header class="journal-header">'
         + '<div><h1 style="margin:0;font-size:22px">입원상담 상담일지</h1><p style="margin:4px 0 0;font-size:11px;color:#475569">INPATIENT COUNSELING REPORT</p></div>'
@@ -2832,7 +2848,8 @@ function inpatientForm() {
         + '</header>'
         + '<section class="journal-section"><h2 class="section-title">1. 기본정보</h2><table class="kv-table"><tbody>' + patientRows + '</tbody></table></section>'
         + '<section class="journal-section"><h2 class="section-title">2. 상담정보</h2><table class="kv-table"><tbody>' + counselRows + '</tbody></table></section>'
-        + '<section class="journal-section"><h2 class="section-title">3. 보호자 정보</h2><table class="list-table"><thead><tr><th>보호자명</th><th>관계</th><th>연락처</th></tr></thead><tbody>' + guardianRows + '</tbody></table></section>'
+        + itemSection
+        + '<section class="journal-section"><h2 class="section-title">' + (itemSection ? '4' : '3') + '. 보호자 정보</h2><table class="list-table"><thead><tr><th>보호자명</th><th>관계</th><th>연락처</th></tr></thead><tbody>' + guardianRows + '</tbody></table></section>'
         + '<footer class="journal-sign"><div class="sign-box"><span>상담자</span><strong>' + esc(this.meta.counselor) + '</strong></div><div class="sign-box"><span>확인자</span><strong></strong></div></footer>'
         + '</div>';
       const css = '*{box-sizing:border-box}body{margin:0;padding:0;background:#eef2f7;font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;color:#1f2937}'
