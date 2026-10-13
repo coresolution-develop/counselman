@@ -56,6 +56,54 @@ import lombok.RequiredArgsConstructor;
 public class CsmAuthService {
     private static final Logger log = LoggerFactory.getLogger(CsmAuthService.class);
     private static final String PLATFORM_INTEGRATION_ROOMBOARD_CSM_LINK = "ROOMBOARD_CSM_LINK";
+    /**
+     * Column comments of counsel_data_{inst}. The list-settings popup reads the label
+     * from information_schema.columns.column_comment, so a column without a comment is
+     * shown as its raw name (cs_col_01 ...).
+     */
+    private static final Map<String, String> COUNSEL_DATA_COLUMN_COMMENTS = Map.ofEntries(
+            Map.entry("cs_col_01", "환자명"),
+            Map.entry("cs_col_02", "환자성별"),
+            Map.entry("cs_col_03", "생년월일"),
+            Map.entry("cs_col_04", "나이(만)"),
+            Map.entry("cs_col_05", "보험종류"),
+            Map.entry("cs_col_06", "실손보험"),
+            Map.entry("cs_col_07", "현위치"),
+            Map.entry("cs_col_08", "상담유입경로"),
+            Map.entry("cs_col_09", "잠재고객"),
+            Map.entry("cs_col_10", "BC"),
+            Map.entry("cs_col_11", "현상태"),
+            Map.entry("cs_col_12", "환자치료요구사항"),
+            Map.entry("cs_col_13", "보호자명"),
+            Map.entry("cs_col_14", "관계"),
+            Map.entry("cs_col_15", "보호자전화번호"),
+            Map.entry("cs_col_16", "상담일"),
+            Map.entry("cs_col_17", "상담자"),
+            Map.entry("cs_col_18", "상담방법"),
+            Map.entry("cs_col_19", "상담결과"),
+            Map.entry("cs_col_20", "결과사유"),
+            Map.entry("cs_col_21", "입원예정일자"),
+            Map.entry("cs_col_22", "입원비"),
+            Map.entry("cs_col_23", "간병비"),
+            Map.entry("cs_col_24", "상급병실비"),
+            Map.entry("cs_col_25", "기타비용"),
+            Map.entry("cs_col_26", "1일간병"),
+            Map.entry("cs_col_27", "간병구분"),
+            Map.entry("cs_col_28", "행위료"),
+            Map.entry("cs_col_29", "한방협진"),
+            Map.entry("cs_col_30", "욕창유무"),
+            Map.entry("cs_col_31", "합계"),
+            Map.entry("cs_col_32", "상담내용"),
+            Map.entry("cs_col_33", "소속기관코드"),
+            Map.entry("cs_col_34", "소속기관명"),
+            Map.entry("cs_col_35", "보이기=y/감추기=n"),
+            Map.entry("cs_col_36", "최종수정"),
+            Map.entry("cs_col_37", "결정일"),
+            Map.entry("cs_col_38", "병실호수"),
+            Map.entry("cs_col_39", "앰블여부"),
+            Map.entry("cs_col_40", "차트번호"),
+            Map.entry("cs_col_41", "주치의"),
+            Map.entry("cs_col_42", "예상환자분류군"));
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
@@ -552,6 +600,7 @@ public class CsmAuthService {
         }
         ensureAdmissionPledgeTable(safe);
         ensureCounselDataEntryColumns(safe);
+        ensureCounselDataColumnComments(safe);
         ensureCounselGuardianColumns(safe);
         ensureRoleTables(safe);
         ensureFaqTable(safe);
@@ -726,6 +775,62 @@ public class CsmAuthService {
         ensureTableColumn("csm", "counsel_data_" + safe + "_entries", "field_type",
                 "ALTER TABLE csm.counsel_data_" + safe + "_entries ADD COLUMN field_type varchar(30) default null");
         ensureBinaryHashColumn("csm", "counsel_data_" + safe, "cs_col_01_hash");
+    }
+
+    /**
+     * Backfill missing column comments on counsel_data_{inst}. Only columns whose
+     * comment is empty are touched, and the existing type, charset/collation,
+     * nullability and default are kept as-is. Idempotent. Package-private for
+     * regression testing.
+     */
+    void ensureCounselDataColumnComments(String safe) {
+        String tableName = "counsel_data_" + safe;
+        try {
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                    "SELECT column_name, column_type, is_nullable, column_default, character_set_name, collation_name "
+                            + "FROM information_schema.columns "
+                            + "WHERE table_schema = 'csm' AND table_name = ? AND column_name LIKE 'cs\\_col\\_%' "
+                            + "AND (column_comment IS NULL OR column_comment = '')",
+                    tableName);
+            List<String> modifies = new ArrayList<>();
+            for (Map<String, Object> row : rows) {
+                String columnName = String.valueOf(row.get("column_name")).toLowerCase();
+                String comment = COUNSEL_DATA_COLUMN_COMMENTS.get(columnName);
+                if (comment == null) {
+                    continue;
+                }
+                StringBuilder def = new StringBuilder("MODIFY COLUMN `").append(columnName).append("` ")
+                        .append(row.get("column_type"));
+                if (row.get("character_set_name") != null && row.get("collation_name") != null) {
+                    def.append(" CHARACTER SET ").append(row.get("character_set_name"))
+                            .append(" COLLATE ").append(row.get("collation_name"));
+                }
+                boolean nullable = "YES".equalsIgnoreCase(String.valueOf(row.get("is_nullable")));
+                def.append(nullable ? " NULL" : " NOT NULL");
+                Object defaultValue = row.get("column_default");
+                if (defaultValue != null && !"NULL".equalsIgnoreCase(String.valueOf(defaultValue))) {
+                    def.append(" DEFAULT ").append(quoteSqlLiteral(String.valueOf(defaultValue)));
+                } else if (nullable) {
+                    def.append(" DEFAULT NULL");
+                }
+                def.append(" COMMENT ").append(quoteSqlLiteral(comment));
+                modifies.add(def.toString());
+            }
+            if (!modifies.isEmpty()) {
+                jdbcTemplate.execute("ALTER TABLE csm." + tableName + " " + String.join(", ", modifies));
+                log.info("[schema] backfilled {} column comments on {}", modifies.size(), tableName);
+            }
+        } catch (Exception e) {
+            log.warn("[schema] ensure column comments fail table={}, err={}", tableName, e.toString());
+        }
+    }
+
+    private static String quoteSqlLiteral(String value) {
+        String unquoted = value;
+        if (unquoted.length() >= 2 && unquoted.startsWith("'") && unquoted.endsWith("'")) {
+            unquoted = unquoted.substring(1, unquoted.length() - 1).replace("''", "'");
+        }
+        return "'" + unquoted.replace("\\", "\\\\").replace("'", "''") + "'";
     }
 
     private void ensureCounselGuardianColumns(String safe) {
