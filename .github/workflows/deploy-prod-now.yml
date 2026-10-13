@@ -2,7 +2,7 @@ name: Deploy PROD now (manual)
 
 # Emergency path: apply the artifacts already staged by "Deploy PROD" right away
 # instead of waiting for the next deploy-nightly window (02:30 / 12:30 / 14:30 KST).
-# It only runs the same deploy-nightly.service the timer runs, on the prod
+# It only runs the same deploy unit the timer runs, on the prod
 # self-hosted runner, so the deploy steps themselves are unchanged.
 # Causes a short downtime (csm-next restart). Run it only after "Deploy PROD"
 # has staged the artifacts.
@@ -32,13 +32,33 @@ jobs:
             echo "::error::$STAGING/deploy.ok not found - nothing staged (run Deploy PROD first, or it was already applied)"
             exit 1
           fi
-      - name: Run deploy-nightly.service now
+      - name: Find the deploy unit used by the timer
+        id: unit
+        run: |
+          # The unit name differs from the docs, so find the service whose
+          # ExecStart runs deploy-nightly.sh instead of hard-coding it.
+          UNIT=""
+          for u in $(systemctl list-unit-files --type=service --no-legend | awk '{print $1}'); do
+            if systemctl cat "$u" 2>/dev/null | grep -q 'deploy-nightly.sh'; then UNIT="$u"; break; fi
+          done
+          systemctl list-timers --all --no-pager | grep -i deploy || true
+          if [ -z "$UNIT" ]; then
+            echo "::error::no systemd service runs deploy-nightly.sh"
+            exit 1
+          fi
+          echo "deploy unit: $UNIT"
+          systemctl cat "$UNIT"
+          echo "name=$UNIT" >> "$GITHUB_OUTPUT"
+      - name: Run the deploy unit now
         run: |
           if [ "$(id -u)" = "0" ]; then SUDO=""; else SUDO="sudo -n"; fi
-          $SUDO systemctl start deploy-nightly.service
+          $SUDO systemctl start "${{ steps.unit.outputs.name }}"
       - name: Show deploy result
         if: always()
         run: |
           if [ "$(id -u)" = "0" ]; then SUDO=""; else SUDO="sudo -n"; fi
-          $SUDO journalctl -u deploy-nightly.service -n 40 --no-pager || true
+          if [ -n "${{ steps.unit.outputs.name }}" ]; then
+            $SUDO journalctl -u "${{ steps.unit.outputs.name }}" --since "-15 min" -n 60 --no-pager || true
+          fi
+          ls -l /opt/csm-next/deploy/staging || true
           systemctl is-active csm-next
