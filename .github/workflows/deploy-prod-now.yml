@@ -1,0 +1,44 @@
+name: Deploy PROD now (manual)
+
+# Emergency path: apply the artifacts already staged by "Deploy PROD" right away
+# instead of waiting for the next deploy-nightly window (02:30 / 12:30 / 14:30 KST).
+# It only runs the same deploy-nightly.service the timer runs, on the prod
+# self-hosted runner, so the deploy steps themselves are unchanged.
+# Causes a short downtime (csm-next restart). Run it only after "Deploy PROD"
+# has staged the artifacts.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DEPLOY to restart prod now (short downtime)'
+        required: true
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy-now:
+    if: ${{ inputs.confirm == 'DEPLOY' }}
+    runs-on: [self-hosted, prod]
+    environment: prod
+    steps:
+      - name: Check staged artifacts
+        run: |
+          STAGING=/opt/csm-next/deploy/staging
+          ls -l "$STAGING"
+          if [ ! -f "$STAGING/deploy.ok" ]; then
+            echo "::error::$STAGING/deploy.ok not found - nothing staged (run Deploy PROD first, or it was already applied)"
+            exit 1
+          fi
+      - name: Run deploy-nightly.service now
+        run: |
+          if [ "$(id -u)" = "0" ]; then SUDO=""; else SUDO="sudo -n"; fi
+          $SUDO systemctl start deploy-nightly.service
+      - name: Show deploy result
+        if: always()
+        run: |
+          if [ "$(id -u)" = "0" ]; then SUDO=""; else SUDO="sudo -n"; fi
+          $SUDO journalctl -u deploy-nightly.service -n 40 --no-pager || true
+          systemctl is-active csm-next
