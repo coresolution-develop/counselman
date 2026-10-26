@@ -74,6 +74,24 @@ function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return n
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
 
+// Hospitals that moved to moduplat log in there (moduplat bridge). Asks this server only — it asks moduplat.
+// Short timeout and fail open: any problem keeps the old login.
+function checkLoginRoute(code) {
+  const init = window.__MP_LOGIN__ || {};
+  if (!code || init.routeBypass) return Promise.resolve(null);
+  const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = setTimeout(() => ctrl && ctrl.abort(), 2000);
+  return fetch((init.routeUrl || '/login/route') + '?inst=' + encodeURIComponent(code), {
+    credentials: 'same-origin',
+    headers: { Accept: 'application/json' },
+    signal: ctrl ? ctrl.signal : undefined,
+  })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((b) => (b && typeof b.url === 'string' ? b.url : null))
+    .catch(() => null)
+    .finally(() => clearTimeout(timer));
+}
+
 function LoginForm({ tweaks }) {
   const init = window.__MP_LOGIN__ || {};
   const savedRemember = lsGet(LS_REMEMBER) !== 'false';
@@ -86,9 +104,23 @@ function LoginForm({ tweaks }) {
   const [state, setState] = React.useState(init.error ? 'error' : 'idle');
   const [errorMsg, setErrorMsg] = React.useState(init.error || '');
   const [touched, setTouched] = React.useState(false);
+  // moduplat login address for this institution (set when the code was checked) — shown, then followed
+  const [movedTo, setMovedTo] = React.useState(null);
+
+  function moveTo(url) {
+    setMovedTo(url);
+    setTimeout(() => window.location.assign(url), 2500);
+  }
+
+  function checkOrg() {
+    const code = orgCode.trim();
+    if (!code || movedTo) return;
+    checkLoginRoute(code).then((url) => url && moveTo(url));
+  }
 
   function submit(e) {
     e.preventDefault();
+    if (movedTo) return window.location.assign(movedTo);
     setTouched(true);
     if (!userId || !pw) {
       setState('error');
@@ -106,10 +138,18 @@ function LoginForm({ tweaks }) {
     }
     setState('loading');
     setErrorMsg('');
-    document.getElementById('mp-ic').value = orgCode;
-    document.getElementById('mp-un').value = userId;
-    document.getElementById('mp-pw').value = pw;
-    document.getElementById('mp-login-form').submit();
+    // Ask once more before sending the password (the code may have been typed without leaving the field)
+    checkLoginRoute(orgCode.trim()).then((url) => {
+      if (url) {
+        setState('idle');
+        return moveTo(url);
+      }
+      document.getElementById('mp-ic').value = orgCode;
+      document.getElementById('mp-un').value = userId;
+      document.getElementById('mp-pw').value = pw;
+      document.getElementById('mp-legacy').value = (window.__MP_LOGIN__ || {}).routeBypass ? '1' : '';
+      document.getElementById('mp-login-form').submit();
+    });
   }
 
   const accent = ACCENTS[tweaks.accent] || ACCENTS.blue;
@@ -126,7 +166,18 @@ function LoginForm({ tweaks }) {
         placeholder="falh"
         invalid={touched && !orgCode}
         accent={accent}
+        onBlur={checkOrg}
       />
+      {movedTo && (
+        <div className="lf__error" role="status" style={{ background: '#eff6ff', color: '#1e3a8a', borderColor: '#bfdbfe' }}>
+          <Icon.Alert width={16} height={16} />
+          <span>
+            우리 병원은 이제 새 주소에서 로그인해요. <b>사번과 새 비밀번호</b>로 로그인해요 — 이름(한글 아이디)으로는 들어갈 수
+            없어요. 처음이면 '처음이세요?'를 눌러요. 잠시 뒤 새 주소로 가요…{' '}
+            <a href={movedTo}>바로 가기</a>
+          </span>
+        </div>
+      )}
       <Field
         label="아이디"
         icon={<Icon.User width={16} height={16} />}
@@ -205,7 +256,7 @@ function LoginForm({ tweaks }) {
   );
 }
 
-function Field({ label, icon, value, onChange, placeholder, type = 'text', invalid, accent, rightAdornment }) {
+function Field({ label, icon, value, onChange, placeholder, type = 'text', invalid, accent, rightAdornment, onBlur }) {
   const [focus, setFocus] = React.useState(false);
   const ringColor = invalid ? '#dc2626' : focus ? accent.to : 'transparent';
   const borderColor = invalid ? '#fca5a5' : focus ? accent.to : '#e2e8f0';
@@ -227,7 +278,10 @@ function Field({ label, icon, value, onChange, placeholder, type = 'text', inval
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           onFocus={() => setFocus(true)}
-          onBlur={() => setFocus(false)}
+          onBlur={() => {
+            setFocus(false);
+            if (onBlur) onBlur();
+          }}
         />
         {rightAdornment}
       </div>
