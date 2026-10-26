@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CounselMan · 권한이 없어요</title>
+  <link rel="icon" type="image/svg+xml" th:href="@{/icon/counselman/counselman-favicon.svg}" />
+  <link rel="stylesheet" th:href="@{/assets/css/tokens.css}" />
+  <link rel="stylesheet" th:href="@{/assets/css/base.css}" />
+  <style>
+    /* Shown instead of the default 403 error page when a signed-in user has no role for a screen
+       (Spring Boot renders error/403 for HTML requests; JSON requests keep the JSON error). */
+    .denied { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+    .denied__card {
+      width: 100%; max-width: 440px; background: var(--surface, #fff);
+      border: 1px solid var(--border-default, #e2e8f0); border-radius: 12px; padding: 28px 24px;
+    }
+    .denied__title { margin: 0; font-size: 20px; font-weight: 700; color: var(--text-primary, #0f172a); }
+    .denied__body { margin: 12px 0 0; font-size: 16px; line-height: 1.6; color: var(--text-secondary, #475569); }
+    .denied__note { margin: 8px 0 0; font-size: 14px; line-height: 1.6; color: var(--text-tertiary, #64748b); }
+    .denied__actions { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .denied__btn {
+      display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 16px;
+      border-radius: 8px; font-size: 15px; font-weight: 600; text-decoration: none;
+      border: 1px solid var(--border-default, #cbd5e1); color: var(--text-primary, #0f172a); background: transparent;
+    }
+    .denied__btn--primary { background: var(--brand-600, #2563eb); border-color: transparent; color: #fff; }
+    .denied__btn:focus-visible { outline: 3px solid var(--focus-ring, #93c5fd); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <main class="denied">
+    <section class="denied__card" aria-labelledby="denied-title">
+      <h1 id="denied-title" class="denied__title">이 화면을 열 권한이 없어요</h1>
+      <p class="denied__body">
+        병원의 CounselMan 관리자에게 역할(예: 상담원)을 받아야 열 수 있어요. 역할을 받은 뒤 다시 열어 주세요.
+      </p>
+      <p class="denied__note">방금 무언가를 저장하던 중이었다면, 화면을 새로 고친 뒤 다시 해 주세요.</p>
+      <div class="denied__actions">
+        <a class="denied__btn denied__btn--primary" th:href="@{/}" href="/">처음 화면으로</a>
+        <a class="denied__btn" th:href="@{/logout}" href="/logout">로그아웃</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

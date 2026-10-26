@@ -69,13 +69,16 @@
     error:      /*[[${error}]]*/ null,
     instCode:   /*[[${loginInstCode}]]*/ '',
     username:   /*[[${loginUsername}]]*/ '',
-    findPwdUrl: /*[[${findPwdUrl}]]*/ '/csm/findpwd'
+    findPwdUrl: /*[[${findPwdUrl}]]*/ '/csm/findpwd',
+    routeUrl:   /*[[@{/login/route}]]*/ '/login/route',
+    routeBypass: /*[[${routeBypass}]]*/ false
   };
 </script>
 <form id="mp-login-form" method="post" th:action="@{/login}" style="display:none">
   <input type="hidden" id="mp-ic" name="instCode">
   <input type="hidden" id="mp-un" name="username">
   <input type="hidden" id="mp-pw" name="password">
+  <input type="hidden" id="mp-legacy" name="legacy">
 </form>
 
 <script type="text/babel" th:src="@{/jsx/tweaks-panel.jsx}"></script>

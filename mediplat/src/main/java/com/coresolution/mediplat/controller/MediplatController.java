@@ -39,6 +39,7 @@ import com.coresolution.mediplat.model.SeminarNotification;
 import com.coresolution.mediplat.model.SeminarReservation;
 import com.coresolution.mediplat.model.SeminarRoom;
 import com.coresolution.mediplat.service.CounselManSsoLinkService;
+import com.coresolution.mediplat.service.LoginRouteService;
 import com.coresolution.mediplat.service.MaintenanceService;
 import com.coresolution.mediplat.service.PlatformStoreService;
 import com.coresolution.mediplat.service.SeminarRoomService;
@@ -63,6 +64,7 @@ public class MediplatController {
     private final SeminarRoomService seminarRoomService;
     private final MaintenanceService maintenanceService;
     private final ServiceIconCatalog serviceIconCatalog;
+    private final LoginRouteService loginRouteService;
 
     @Value("${platform.bootstrap.counselman-base-url:http://localhost:8081/csm}")
     private String counselmanBaseUrl;
@@ -72,7 +74,9 @@ public class MediplatController {
             CounselManSsoLinkService counselManSsoLinkService,
             SeminarRoomService seminarRoomService,
             MaintenanceService maintenanceService,
-            ServiceIconCatalog serviceIconCatalog) {
+            ServiceIconCatalog serviceIconCatalog,
+            LoginRouteService loginRouteService) {
+        this.loginRouteService = loginRouteService;
         this.storeService = storeService;
         this.counselManSsoLinkService = counselManSsoLinkService;
         this.seminarRoomService = seminarRoomService;
@@ -96,11 +100,17 @@ public class MediplatController {
     }
 
     @GetMapping("/login")
-    public String loginPage(@RequestParam(name = "error", required = false) String error, Model model, HttpSession session) {
+    public String loginPage(
+            @RequestParam(name = "error", required = false) String error,
+            @RequestParam(name = "legacy", required = false) String legacy,
+            Model model,
+            HttpSession session) {
         if (sessionUser(session) != null) {
             return "redirect:/portal";
         }
         model.addAttribute("error", error);
+        // ?legacy=1 keeps the old login for admins (only when mediplat.route.bypass-enabled)
+        model.addAttribute("routeBypass", isRouteBypass(legacy));
         if (!model.containsAttribute("loginInstCode")) {
             model.addAttribute("loginInstCode", "");
         }
@@ -117,13 +127,43 @@ public class MediplatController {
         return base + "/findpwd";
     }
 
+    /**
+     * Login page lookup: does this institution log in at moduplat now? Answers only {"url": ...|null} — the same null
+     * for unknown and not-moved codes. Fail open (null) on any problem or when the caller is over the per-IP limit.
+     */
+    @GetMapping("/login/route")
+    @ResponseBody
+    public Map<String, Object> loginRoute(
+            @RequestParam(name = "inst", required = false) String inst,
+            jakarta.servlet.http.HttpServletRequest request) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        String url = loginRouteService.allow(request.getRemoteAddr())
+                ? loginRouteService.routeFor(inst).orElse(null)
+                : null;
+        body.put("url", url);
+        return body;
+    }
+
+    private boolean isRouteBypass(String legacy) {
+        return loginRouteService.isBypassEnabled() && "1".equals(legacy);
+    }
+
     @PostMapping("/login")
     public String login(
             @RequestParam(name = "instCode", required = false) String instCode,
             @RequestParam("username") String username,
             @RequestParam("password") String password,
+            @RequestParam(name = "legacy", required = false) String legacy,
             HttpSession session,
             RedirectAttributes redirectAttributes) {
+        // Same decision as the page, in case the script was skipped: moved institutions log in at moduplat.
+        // The password is not checked here (it is not this platform's password any more)
+        if (!isRouteBypass(legacy)) {
+            java.util.Optional<String> route = loginRouteService.routeFor(instCode);
+            if (route.isPresent()) {
+                return "redirect:" + route.get();
+            }
+        }
         PlatformSessionUser user = storeService.authenticate(instCode, username, password);
         if (user == null) {
             redirectAttributes.addAttribute("error", "등록된 기관코드/기관명 또는 계정정보가 올바르지 않습니다.");

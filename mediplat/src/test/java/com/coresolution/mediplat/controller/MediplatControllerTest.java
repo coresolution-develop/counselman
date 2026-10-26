@@ -25,6 +25,7 @@ import com.coresolution.mediplat.model.PlatformService;
 import com.coresolution.mediplat.model.PlatformSessionUser;
 import com.coresolution.mediplat.model.PlatformUser;
 import com.coresolution.mediplat.service.CounselManSsoLinkService;
+import com.coresolution.mediplat.service.LoginRouteService;
 import com.coresolution.mediplat.service.MaintenanceService;
 import com.coresolution.mediplat.service.PlatformStoreService;
 import com.coresolution.mediplat.service.SeminarRoomService;
@@ -47,11 +48,14 @@ class MediplatControllerTest {
     @Mock
     private MaintenanceService maintenanceService;
 
+    @Mock
+    private LoginRouteService loginRouteService;
+
     private MediplatController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new MediplatController(storeService, counselManSsoLinkService, seminarRoomService, maintenanceService, newIconCatalog());
+        controller = new MediplatController(storeService, counselManSsoLinkService, seminarRoomService, maintenanceService, newIconCatalog(), loginRouteService);
     }
 
     @Test
@@ -369,6 +373,48 @@ class MediplatControllerTest {
         assertEquals("redirect:https://form.sosyge.net", view);
         verify(counselManSsoLinkService, never()).createLaunchUrl(any(), any());
         verify(counselManSsoLinkService, never()).createLaunchUrl(any(), any(), any(), any());
+    }
+
+    @Test
+    void login_movedInstitution_redirectsToModuplat_withoutCheckingThePassword() {
+        when(loginRouteService.routeFor("COHS")).thenReturn(java.util.Optional.of("https://app.moduplat.com/cohs"));
+
+        String view = controller.login("COHS", "이수민", "pw", null, new MockHttpSession(), new RedirectAttributesModelMap());
+
+        assertEquals("redirect:https://app.moduplat.com/cohs", view);
+        verify(storeService, never()).authenticate(any(), any(), any());
+    }
+
+    @Test
+    void login_notMoved_keepsTheOldLogin() {
+        when(loginRouteService.routeFor("FALH")).thenReturn(java.util.Optional.empty());
+
+        String view = controller.login("FALH", "user1", "pw", null, new MockHttpSession(), new RedirectAttributesModelMap());
+
+        assertEquals("redirect:/login", view);
+        verify(storeService).authenticate("FALH", "user1", "pw");
+    }
+
+    @Test
+    void login_bypass_onlyWhenEnabled() {
+        when(loginRouteService.isBypassEnabled()).thenReturn(true);
+
+        controller.login("COHS", "user1", "pw", "1", new MockHttpSession(), new RedirectAttributesModelMap());
+
+        verify(loginRouteService, never()).routeFor(any());
+        verify(storeService).authenticate("COHS", "user1", "pw");
+    }
+
+    @Test
+    void loginRoute_answersOnlyTheUrl_andNullOverTheLimit() {
+        org.springframework.mock.web.MockHttpServletRequest request = new org.springframework.mock.web.MockHttpServletRequest();
+        when(loginRouteService.allow(any())).thenReturn(true, false);
+        when(loginRouteService.routeFor("COHS")).thenReturn(java.util.Optional.of("https://app.moduplat.com/cohs"));
+
+        assertEquals(Map.of("url", "https://app.moduplat.com/cohs"), controller.loginRoute("COHS", request));
+        Map<String, Object> limited = controller.loginRoute("COHS", request);
+        assertEquals(1, limited.size());
+        assertEquals(null, limited.get("url"));
     }
 
     /** 테스트에서도 실제 static/icons 를 훑은 카탈로그를 쓴다(아이콘 key 검증 경로 동일). */

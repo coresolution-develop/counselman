@@ -51,13 +51,14 @@ class InstitutionAdminFlowTest {
         SeminarRoomService seminarRoomService = mock(SeminarRoomService.class);
 
         MaintenanceService maintenanceService = mock(MaintenanceService.class);
-        MediplatController controller = new MediplatController(storeService, counselManSsoLinkService, seminarRoomService, maintenanceService, newIconCatalog());
+        MediplatController controller = new MediplatController(storeService, counselManSsoLinkService, seminarRoomService, maintenanceService, newIconCatalog(), new com.coresolution.mediplat.service.LoginRouteService(storeService));
 
         MockHttpSession adminSession = new MockHttpSession();
         String loginView = controller.login(
                 "FALH",
                 "instadmin",
                 "AdminPass1!",
+                null,
                 adminSession,
                 new RedirectAttributesModelMap());
         assertEquals("redirect:/portal", loginView);

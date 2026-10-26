@@ -191,6 +191,11 @@ public class PlatformStoreService {
                 ROLE_ROOM_BOARD_VIEWER);
     }
 
+    /** The stored institution code for a login entry (code, case-insensitive, or name), or null */
+    public String resolveInstCode(String instCodeOrName) {
+        return resolveLoginInstCode(instCodeOrName);
+    }
+
     private String resolveLoginInstCode(String instCodeOrName) {
         if (!StringUtils.hasText(instCodeOrName)) {
             return null;
