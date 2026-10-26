@@ -5,6 +5,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.coresolution.csm.config.InstDetails;
+import com.coresolution.csm.config.SsoReturn;
 import com.coresolution.csm.serivce.CsmAuthService;
 import com.coresolution.csm.serivce.CsmSchemaBootstrapService;
 import com.coresolution.csm.serivce.MediplatSsoService;
@@ -40,6 +42,10 @@ public class MediplatSsoController {
     private final CsmSchemaBootstrapService schemaBootstrapService;
     private final PermissionResolver permissionResolver;
 
+    /** Where a user who came through SSO from another platform may be sent back on logout (see SsoReturn) */
+    @Value("${csm.sso.return-allow:}")
+    private String ssoReturnAllow;
+
     @GetMapping({ "mediplat/sso/entry", "/mediplat/sso/entry" })
     public String mediplatSsoEntry(
             @RequestParam("inst") String inst,
@@ -47,6 +53,8 @@ public class MediplatSsoController {
             @RequestParam("expires") long expires,
             @RequestParam("signature") String signature,
             @RequestParam(name = "target", required = false) String target,
+            // Not part of the signature: only decides where logout goes, and only among configured entries
+            @RequestParam(name = "from", required = false) String from,
             HttpServletRequest request) {
         String normalizedInst = cs.resolveInst(inst);
         if (normalizedInst == null) {
@@ -112,6 +120,7 @@ public class MediplatSsoController {
         session.setAttribute("inst", normalizedInst);
         session.setAttribute("userInfo", info);
         session.setAttribute("instname", info.getUs_col_05());
+        SsoReturn.remember(session, from, ssoReturnAllow);
 
         return "redirect:" + redirectTarget;
     }

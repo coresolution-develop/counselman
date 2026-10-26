@@ -34,6 +34,9 @@ public class SecurityConfig {
         @Value("${mediplat.platform.base-url:http://localhost:8082}")
         private String mediplatPlatformBaseUrl;
 
+        @Value("${csm.sso.return-allow:}")
+        private String ssoReturnAllow;
+
         @Autowired
         private KakaoOAuth2UserService kakaoOAuth2UserService;
 
@@ -133,7 +136,13 @@ public class SecurityConfig {
                                 .formLogin(form -> form.disable())
                                 .httpBasic(basic -> basic.disable())
                                 .logout(l -> l.logoutUrl("/logout")
-                                                .logoutSuccessUrl(resolveMediplatRedirectUrl())
+                                                // Runs before the session is invalidated: keep the SSO return url for the success handler
+                                                .addLogoutHandler((req, res, auth) -> SsoReturn.recall(req, ssoReturnAllow)
+                                                                .ifPresent(url -> req.setAttribute(SsoReturn.REQUEST_KEY, url)))
+                                                // Came through SSO from another platform (moduplat): back there, otherwise MediPlat as before
+                                                .logoutSuccessHandler((req, res, auth) -> res.sendRedirect(
+                                                                SsoReturn.recall(req, ssoReturnAllow)
+                                                                                .orElseGet(this::resolveMediplatRedirectUrl)))
                                                 .permitAll());
 
                 if (clientRegistrationRepositoryProvider.getIfAvailable() != null) {

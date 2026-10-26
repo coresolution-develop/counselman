@@ -61,6 +61,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
+import com.coresolution.csm.config.SsoReturn;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -157,6 +158,10 @@ public class PageController {
 
     @Value("${mediplat.platform.base-url:http://localhost:8082}")
     private String mediplatPlatformBaseUrl;
+    /** Logout return for users who came through SSO from another platform (see SsoReturn) */
+    @Value("${csm.sso.return-allow:}")
+    private String ssoReturnAllow;
+
     @Value("${csm.base-url:}")
     private String csmBaseUrl;
     @Autowired
@@ -675,6 +680,8 @@ public class PageController {
     public String logout(HttpServletRequest request, HttpServletResponse response, HttpSession session,
             @RequestParam(value = "returnTo", required = false) String returnTo,
             @RequestParam(value = "t", required = false) String t) {
+        // Read before the session is invalidated below
+        Optional<String> back = SsoReturn.recall(request, ssoReturnAllow);
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         new SecurityContextLogoutHandler().logout(request, response, auth);
         SecurityContextHolder.clearContext();
@@ -683,7 +690,8 @@ public class PageController {
             String token = t == null ? "" : t.replaceAll("[^A-Za-z0-9]", "");
             return token.isEmpty() ? "redirect:/chat" : "redirect:/chat?t=" + token;
         }
-        return "redirect:" + resolveMediplatRedirectUrl();
+        // Came through SSO from another platform (moduplat): back there, otherwise MediPlat as before
+        return "redirect:" + back.orElseGet(this::resolveMediplatRedirectUrl);
     }
 
     private String resolveMediplatRedirectUrl() {
